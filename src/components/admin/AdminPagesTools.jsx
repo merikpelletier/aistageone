@@ -33,11 +33,13 @@ function CodeSection({ surface, setting, proposals, onRefresh }) {
   });
   const apply = useMutation({
     mutationFn: async (id) => (await base44.functions.invoke('admin-pages-tools', { action: 'apply', change_id: id })).data,
-    onSuccess: (result) => { setSelectedProposal(result.change); onRefresh(); toast.success(result.runtime_applied ? 'Settings applied' : 'Code change approved for deployment'); },
+    onSuccess: (result) => { setSelectedProposal(result.change); onRefresh(); toast.success(result.github ? 'Code committed to GitHub — Vercel deployment started' : 'Settings applied'); },
     onError: (error) => toast.error(error.message || 'Apply failed'),
   });
   const current = selectedProposal || proposals?.[0];
   const hasRuntimePatch = current?.has_runtime_patch ?? Boolean(Object.keys(current?.proposed_changes?.look_patch || {}).length || Object.keys(current?.proposed_changes?.configuration_patch || {}).length);
+  const hasCodePatch = current?.has_code_patch ?? Boolean(current?.proposed_changes?.file_changes?.length);
+  const commitUrl = current?.proposed_changes?.result?.commit_url;
   return <div className="space-y-5">
     <div className="rounded-2xl border border-yellow-400/25 bg-yellow-400/[0.06] p-4 text-sm text-white/70">
       The coder receives the selected item, its current settings and its known source files. It prepares one targeted change. No autonomous agent or automatic paid retry is used.
@@ -54,8 +56,9 @@ function CodeSection({ surface, setting, proposals, onRefresh }) {
       <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-white/70">{current.summary}</p>
       {current.files?.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{current.files.map((file) => <span key={file} className="rounded-lg bg-black px-2.5 py-1.5 font-mono text-[11px] text-white/60">{file}</span>)}</div>}
       {current.patch && <pre className="mt-4 max-h-80 overflow-auto rounded-xl bg-black p-4 text-xs leading-relaxed text-emerald-300">{current.patch}</pre>}
-      {current.status === 'review' && <button onClick={() => apply.mutate(current.id)} disabled={apply.isPending} className="mt-4 flex items-center gap-2 rounded-xl border border-yellow-400/50 px-4 py-2.5 text-sm font-black text-yellow-400 disabled:opacity-40"><Eye size={15} />{hasRuntimePatch ? 'Apply approved settings' : 'Approve code change'}</button>}
-      {!hasRuntimePatch && <p className="mt-3 text-xs text-white/35">Source-code patches are approved here, then remain queued for the normal reviewed Vercel publication. This first version does not let the browser rewrite the repository.</p>}
+      {current.status === 'review' && <button onClick={() => apply.mutate(current.id)} disabled={apply.isPending} className="mt-4 flex items-center gap-2 rounded-xl border border-yellow-400/50 px-4 py-2.5 text-sm font-black text-yellow-400 disabled:opacity-40"><Eye size={15} />{apply.isPending ? 'Applying…' : hasCodePatch ? 'Apply code to GitHub' : 'Apply approved settings'}</button>}
+      {commitUrl && <a className="mt-4 block text-xs font-bold text-emerald-300 underline" href={commitUrl} target="_blank" rel="noreferrer">Open the applied GitHub commit</a>}
+      {hasCodePatch && current.status === 'review' && <p className="mt-3 text-xs text-white/35">Applying creates one reviewed commit on GitHub main. The connected Vercel project then deploys it automatically.</p>}
     </div>}
   </div>;
 }
