@@ -95,19 +95,22 @@ export default function Layout({ children, currentPageName }) {
   const showAIBar = !isAdminPage && isAuthenticated && agentBar?.visible === true && agentBar?.active === true && (agentPages.length === 0 || agentPages.includes(currentPageName));
   const agentPosition = agentBar?.configuration?.position === 'bottom' ? 'bottom' : 'top';
   const contentWidth = pageSetting?.look?.content_width;
+  const pageAccent = pageSetting?.look?.accent_color || '#facc15';
+  const pageSpacing = pageSetting?.look?.spacing || 'default';
   const pageStyle = {
     backgroundColor: pageSetting?.look?.background_color || undefined,
-    '--aistage-admin-accent': pageSetting?.look?.accent_color || '#facc15',
+    '--aistage-surface-accent': pageAccent,
   };
   const contentStyle = {
     paddingTop: showAIBar && agentPosition === 'top' ? 'calc(52px + env(safe-area-inset-top))' : 0,
     paddingBottom: showAIBar && agentPosition === 'bottom' ? 'calc(52px + env(safe-area-inset-bottom))' : 0,
     maxWidth: contentWidth === 'wide' ? 1440 : contentWidth === 'contained' ? 1200 : undefined,
     marginInline: contentWidth === 'wide' || contentWidth === 'contained' ? 'auto' : undefined,
+    paddingInline: pageSpacing === 'relaxed' ? 'clamp(12px, 2vw, 24px)' : pageSpacing === 'compact' ? 0 : undefined,
   };
 
   return (
-    <div className="min-h-screen bg-yellow-400" style={pageStyle} data-admin-spacing={pageSetting?.look?.spacing || 'default'}>
+    <div className="min-h-screen bg-yellow-400" style={pageStyle} data-admin-spacing={pageSpacing}>
       {showLandscapeBlock && (
         <div className="fixed inset-0 bg-yellow-400 z-[9999] flex flex-col items-center justify-center">
           <div className="text-black text-center px-8">
@@ -167,10 +170,23 @@ export default function Layout({ children, currentPageName }) {
         ::selection {
           background: rgba(220, 38, 38, 0.3);
         }
+
+        .aistage-page-content [class*="bg-yellow-"] {
+          background-color: var(--aistage-surface-accent) !important;
+        }
+        .aistage-page-content [class*="text-yellow-"] {
+          color: var(--aistage-surface-accent) !important;
+        }
+        .aistage-page-content [class*="border-yellow-"] {
+          border-color: var(--aistage-surface-accent) !important;
+        }
+        .aistage-page-content [class*="ring-yellow-"] {
+          --tw-ring-color: var(--aistage-surface-accent) !important;
+        }
       `}</style>
       
-      {showAIBar && <PersistentAIBar agentName={agentBar?.configuration?.agent_name || 'production_assistant'} label={agentBar?.configuration?.label} placeholder={agentBar?.configuration?.placeholder} position={agentPosition} behavior={agentBar?.configuration?.prompt} permissions={agentBar?.configuration?.permissions} actions={agentBar?.configuration?.actions} model={agentBar?.configuration?.model} />}
-      <div style={contentStyle}>
+      {showAIBar && <PersistentAIBar agentName={agentBar?.configuration?.agent_name || 'production_assistant'} label={agentBar?.configuration?.label} placeholder={agentBar?.configuration?.placeholder} position={agentPosition} behavior={agentBar?.configuration?.prompt} permissions={agentBar?.configuration?.permissions} actions={agentBar?.configuration?.actions} model={agentBar?.configuration?.model} backgroundColor={agentBar?.look?.background_color} accentColor={agentBar?.look?.accent_color} foregroundColor={agentBar?.look?.foreground_color} />}
+      <div className="aistage-page-content" style={contentStyle}>
         {children}
       </div>
       

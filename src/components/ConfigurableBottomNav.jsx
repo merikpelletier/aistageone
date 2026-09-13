@@ -24,6 +24,11 @@ export default function ConfigurableBottomNav({ settings = [] }) {
   const [cartCount, setCartCount] = useState(0);
   const [labelOverrides, setLabelOverrides] = useState({});
   const isAdmin = user?.role === 'admin';
+  const navSetting = settings.find((item) => item.surface_type === 'tool' && item.surface_key === 'bottom_navigation');
+  const navBackground = navSetting?.look?.background_color || '#facc15';
+  const navForeground = navSetting?.look?.foreground_color || '#000000';
+  const navActive = navSetting?.look?.active_color || '#dc2626';
+  const navBorder = navSetting?.look?.border_color || 'rgba(0,0,0,0.2)';
 
   useEffect(() => {
     const updateCartCount = () => {
@@ -51,16 +56,16 @@ export default function ConfigurableBottomNav({ settings = [] }) {
     };
   }).filter((item) => item.visible && (!item.adminOnly || isAdmin)).sort((a, b) => a.order - b.order), [isAdmin, labelOverrides, settings]);
 
-  return <nav className="bottom-nav-safe fixed bottom-0 left-0 right-0 z-50 border-t border-black/20 bg-yellow-400 shadow-lg">
+  return <nav className="bottom-nav-safe fixed bottom-0 left-0 right-0 z-50 border-t shadow-lg" style={{ backgroundColor: navBackground, borderColor: navBorder }}>
     <div className="flex h-14 w-full items-center md:h-16">
       {navItems.map((item) => {
         const target = createPageUrl(item.key);
         const active = pathname === target || pathname === `/${item.key}`;
         const Icon = item.icon;
         const content = <>
-          <div className="relative"><Icon size={20} className="text-black" />{item.cart && cartCount > 0 && <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs font-bold leading-none text-white">{cartCount}</span>}</div>
-          <span className="hidden max-w-full truncate text-[10px] font-semibold tracking-wide text-black md:block">{item.account && !user ? 'LOG IN' : item.label}</span>
-          {active && <motion.div layoutId="nav-indicator" className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-red-600" transition={{ type: 'spring', stiffness: 500, damping: 30 }} />}
+          <div className="relative"><Icon size={20} style={{ color: navForeground }} />{item.cart && cartCount > 0 && <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full text-xs font-bold leading-none text-white" style={{ backgroundColor: navActive }}>{cartCount}</span>}</div>
+          <span className="hidden max-w-full truncate text-[10px] font-semibold tracking-wide md:block" style={{ color: navForeground }}>{item.account && !user ? 'LOG IN' : item.label}</span>
+          {active && <motion.div layoutId="nav-indicator" className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full" style={{ backgroundColor: navActive }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} />}
         </>;
         const className = 'relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 md:h-16';
         if (item.account && !user) return <button key={item.key} onClick={() => base44.auth.redirectToLogin(window.location.href)} className={className}>{content}</button>;

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/lib/AppContext';
 
 // Sound wave animation — idle breathes gently, active pulses energetically
-function SoundWave({ isActive }) {
+function SoundWave({ isActive, accentColor }) {
   const bars = [3, 5, 8, 11, 7, 4, 9, 6, 10, 4, 7, 5, 8, 4, 6];
   return (
     <div className="flex items-center gap-[2px] h-7">
@@ -15,7 +15,7 @@ function SoundWave({ isActive }) {
           key={i}
           className="w-[2px] rounded-full"
           style={{
-            background: 'linear-gradient(to top, #b8860b, #ffd700, #ffec80)',
+            background: accentColor || 'linear-gradient(to top, #b8860b, #ffd700, #ffec80)',
           }}
           animate={isActive ? {
             // Energetic speaking wave
@@ -74,7 +74,7 @@ function useVoiceRecorder({ onTranscript }) {
   return { isRecording, start, stop };
 }
 
-export default function PersistentAIBar({ agentName = 'production_assistant', label = 'Production Assistant', placeholder = 'Ask the AI...', position = 'top' }) {
+export default function PersistentAIBar({ agentName = 'production_assistant', label = 'Production Assistant', placeholder = 'Ask the AI...', position = 'top', backgroundColor, accentColor, foregroundColor }) {
   const { appContext } = useAppContext();
   const [input, setInput] = useState('');
   const [conversation, setConversation] = useState(null);
@@ -219,7 +219,7 @@ export default function PersistentAIBar({ agentName = 'production_assistant', la
       <audio ref={audioRef} className="hidden" />
 
       {/* Persistent top bar */}
-      <div className={`fixed left-0 right-0 z-[300] bg-black/90 backdrop-blur-md ${position === 'bottom' ? 'bottom-0 border-t border-yellow-600/30' : 'top-0 border-b border-yellow-600/30'}`} style={position === 'bottom' ? { paddingBottom: 'env(safe-area-inset-bottom)', height: 'calc(52px + env(safe-area-inset-bottom))' } : { paddingTop: 'env(safe-area-inset-top)', height: 'calc(52px + env(safe-area-inset-top))' }} aria-label={label}>
+      <div className={`fixed left-0 right-0 z-[300] bg-black/90 backdrop-blur-md ${position === 'bottom' ? 'bottom-0 border-t' : 'top-0 border-b'}`} style={position === 'bottom' ? { paddingBottom: 'env(safe-area-inset-bottom)', height: 'calc(52px + env(safe-area-inset-bottom))', backgroundColor: backgroundColor || undefined, borderColor: accentColor || undefined, color: foregroundColor || undefined } : { paddingTop: 'env(safe-area-inset-top)', height: 'calc(52px + env(safe-area-inset-top))', backgroundColor: backgroundColor || undefined, borderColor: accentColor || undefined, color: foregroundColor || undefined }} aria-label={label}>
         <div className="flex items-center h-[52px] gap-2" style={{ paddingLeft: '8px', paddingRight: 'calc(8px + env(safe-area-inset-right))' }}>
 
           {/* Sound wave / mode toggle */}
@@ -227,7 +227,7 @@ export default function PersistentAIBar({ agentName = 'production_assistant', la
             onClick={() => setShowMessages(v => !v)}
             className="flex items-center gap-1.5 px-2 h-9 rounded-xl bg-black/40 border border-yellow-600/40 flex-shrink-0"
           >
-            <SoundWave isActive={isSpeaking || isLoading} />
+            <SoundWave isActive={isSpeaking || isLoading} accentColor={accentColor} />
           </button>
 
           {/* Text input */}
@@ -244,7 +244,8 @@ export default function PersistentAIBar({ agentName = 'production_assistant', la
           <button
             onClick={() => handleSend()}
             disabled={!input.trim() || isLoading || !conversation}
-            className="w-9 h-9 rounded-xl bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 flex items-center justify-center flex-shrink-0 transition-colors"
+            className="w-9 h-9 rounded-xl bg-yellow-400 hover:opacity-90 disabled:opacity-40 flex items-center justify-center flex-shrink-0 transition-colors"
+            style={{ backgroundColor: accentColor || undefined }}
           >
             <Send size={14} className="text-black" />
           </button>
@@ -294,8 +295,8 @@ export default function PersistentAIBar({ agentName = 'production_assistant', la
               ) : (
                 messages.map((msg, i) => (
                   <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
-                      msg.role === 'user' ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white'
+                    <div style={msg.role === 'user' ? { backgroundColor: accentColor || '#facc15' } : undefined} className={`max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
+                      msg.role === 'user' ? 'text-black' : 'bg-white/10 text-white'
                     }`}>
                       {msg.content}
                     </div>

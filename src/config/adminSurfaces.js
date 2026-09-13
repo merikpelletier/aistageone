@@ -22,7 +22,7 @@ export const ADMIN_TOOL_SURFACES = [
 
 const TOOL_SOURCE_FILES = {
   agent_bar: ['src/Layout.jsx', 'src/components/PersistentAIBar.jsx', 'supabase/functions/agent-conversations/index.ts'],
-  bottom_navigation: ['src/components/BottomNav.jsx', 'src/Layout.jsx'], install_prompt: ['src/components/InstallPrompt.jsx', 'src/Layout.jsx'],
+  bottom_navigation: ['src/components/ConfigurableBottomNav.jsx', 'src/Layout.jsx'], install_prompt: ['src/components/InstallPrompt.jsx', 'src/Layout.jsx'],
   story_blocks: ['src/components/studio/StoryBlocks.jsx', 'src/components/studio/AuthorStoryBlocks.jsx'], actor_designer: ['src/components/studio/LabWorkspace.jsx', 'src/components/studio/InlineHeadshot.jsx'],
   voice: ['src/components/studio/VoiceRecorder.jsx'], dubbing: ['src/components/studio/DubbingStudio.jsx'], tts: ['src/components/studio/TextToSpeech.jsx'],
   lip_sync: ['src/components/studio/LipSync.jsx'], music: ['src/components/studio/StudioAudioTool.jsx'], sound_fx: ['src/components/studio/StudioAudioTool.jsx'],
