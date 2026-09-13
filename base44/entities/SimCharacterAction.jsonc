@@ -1,0 +1,112 @@
+{
+  "name": "SimCharacterAction",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "ID of the StorySession this simulation belongs to"
+    },
+    "simulation_run_id": {
+      "type": "string",
+      "description": "Optional identifier for a specific simulation run within the session"
+    },
+    "actor_id": {
+      "type": "string",
+      "description": "SimCharacter performing the action"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "theft",
+        "movement",
+        "communication",
+        "investigation",
+        "confrontation",
+        "other"
+      ],
+      "description": "Category of the action"
+    },
+    "action_description": {
+      "type": "string",
+      "description": "What the character attempts to do"
+    },
+    "target_asset_id": {
+      "type": "string",
+      "description": "Optional \u2014 SimAsset targeted by the action"
+    },
+    "target_location_id": {
+      "type": "string",
+      "description": "Optional \u2014 SimLocation targeted by the action"
+    },
+    "proposed_tick": {
+      "type": "number",
+      "description": "Tick when the intention was formed. In Phase 1, actions are manually initialized \u2014 automatic action proposal from goals/pressures is deferred."
+    },
+    "execution_tick": {
+      "type": "number",
+      "description": "Tick when the action is resolved by the Action Resolver"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "proposed",
+        "preconditions_met",
+        "executed",
+        "failed",
+        "interrupted"
+      ],
+      "default": "proposed",
+      "description": "Current status of the action"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "success",
+        "partial_success",
+        "failure",
+        "interruption"
+      ],
+      "description": "Result determined by the Action Resolver"
+    },
+    "motivation_situation_id": {
+      "type": "string",
+      "description": "Optional \u2014 SimActiveSituation that motivated the action"
+    },
+    "motivation_belief_id": {
+      "type": "string",
+      "description": "Optional \u2014 SimBelief driving the action"
+    },
+    "resulting_state_change_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "SimStateChange IDs produced by this action"
+    },
+    "resulting_observation_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "SimObservation IDs produced by this action"
+    }
+  },
+  "required": [
+    "session_id",
+    "actor_id",
+    "action_type",
+    "action_description"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

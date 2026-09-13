@@ -1,0 +1,37 @@
+{
+  "name": "ProfileFan",
+  "type": "object",
+  "properties": {
+    "member_email": {
+      "type": "string",
+      "description": "Email of the member profile being followed"
+    },
+    "fan_email": {
+      "type": "string",
+      "description": "Email address of the fan subscriber"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "unsubscribed"
+      ],
+      "default": "active",
+      "description": "Subscription status"
+    },
+    "subscribed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date of initial subscription"
+    },
+    "unsubscribed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date of unsubscription (if applicable)"
+    }
+  },
+  "required": [
+    "member_email",
+    "fan_email"
+  ]
+}

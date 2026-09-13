@@ -1,0 +1,58 @@
+{
+  "name": "TemporaryUser",
+  "type": "object",
+  "properties": {
+    "identifier": {
+      "type": "string",
+      "description": "e.g., Cochon 001"
+    },
+    "identifier_number": {
+      "type": "number",
+      "description": "The numeric part for sequencing"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Unique session identifier"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional short bio"
+    },
+    "location": {
+      "type": "string",
+      "description": "Optional city/region"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of photo URLs (max 5)"
+    },
+    "external_links": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Optional external links"
+    },
+    "last_activity": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "expelled": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "identifier",
+    "identifier_number",
+    "session_id",
+    "is_active"
+  ]
+}

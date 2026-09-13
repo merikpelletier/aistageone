@@ -1,0 +1,98 @@
+{
+  "name": "SimObservation",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "ID of the StorySession this simulation belongs to"
+    },
+    "simulation_run_id": {
+      "type": "string",
+      "description": "Optional identifier for a specific simulation run within the session"
+    },
+    "observer_id": {
+      "type": "string",
+      "description": "SimCharacter who perceived the event or state"
+    },
+    "observation_source_type": {
+      "type": "string",
+      "enum": [
+        "direct_action",
+        "discovered_state_change",
+        "asset_condition",
+        "character_condition",
+        "communicated_information",
+        "prior_knowledge"
+      ],
+      "description": "How the observation originated. direct_action = witnessed a CharacterAction. discovered_state_change = noticed a StateChange after the fact. asset_condition = noticed something about an asset. character_condition = noticed something about a character. communicated_information = received info via communication. prior_knowledge = seeded at initialization from authored starting knowledge / public / private facts."
+    },
+    "source_action_id": {
+      "type": "string",
+      "description": "Optional \u2014 SimCharacterAction ID, for direct_action observations"
+    },
+    "source_state_change_id": {
+      "type": "string",
+      "description": "Optional \u2014 SimStateChange ID, for discovered_state_change observations"
+    },
+    "source_entity_type": {
+      "type": "string",
+      "enum": [
+        "asset",
+        "character"
+      ],
+      "description": "Optional \u2014 type of entity observed, for asset_condition / character_condition observations"
+    },
+    "source_entity_id": {
+      "type": "string",
+      "description": "Optional \u2014 ID of the asset or character observed, for condition observations"
+    },
+    "source_transmission_id": {
+      "type": "string",
+      "description": "Optional \u2014 SimInformationTransmission ID, for communicated_information observations"
+    },
+    "observation_tick": {
+      "type": "number",
+      "description": "Tick when the observation was made"
+    },
+    "is_understood": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the observer understood what they perceived"
+    },
+    "understanding_description": {
+      "type": "string",
+      "description": "What the observer thinks they perceived (may be wrong)"
+    },
+    "available_from_tick": {
+      "type": "number",
+      "description": "The tick at which this observation becomes eligible for Information Network Resolver processing."
+    },
+    "processing_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processed"
+      ],
+      "default": "pending",
+      "description": "pending = not yet processed by the Information Network Resolver. processed = the resolver has evaluated this observation, or it was seeded as processed at initialization."
+    }
+  },
+  "required": [
+    "session_id",
+    "observer_id",
+    "observation_source_type",
+    "observation_tick"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

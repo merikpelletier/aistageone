@@ -1,0 +1,46 @@
+# Configuration locale du projet AISTAGE.ONE.
+# Le lien vers le projet distant est établi séparément et n'est pas un secret.
+project_id = "aistage-one"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "https://aistage-one.vercel.app"
+additional_redirect_urls = ["https://aistage-one.vercel.app/**", "http://localhost:5173/**"]
+jwt_expiry = 3600
+enable_signup = true
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[functions.authorizeNetWebhook]
+verify_jwt = false
+
+[functions.replicateWebhook]
+verify_jwt = false
+
+[functions.expireDossiersScheduled]
+verify_jwt = false
+
+# These endpoints authenticate users in createCreditBillingContext; callbacks
+# use a server-only random token and re-fetch the prediction from Replicate.
+[functions.generateMusic]
+verify_jwt = false
+
+[functions.generateSoundFx]
+verify_jwt = false

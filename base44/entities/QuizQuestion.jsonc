@@ -1,0 +1,39 @@
+{
+  "name": "QuizQuestion",
+  "type": "object",
+  "properties": {
+    "question": {
+      "type": "string",
+      "description": "La question \u00e0 poser"
+    },
+    "correct_answers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Les bonnes r\u00e9ponses"
+    },
+    "wrong_answers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Les mauvaises r\u00e9ponses"
+    },
+    "time_limit": {
+      "type": "number",
+      "default": 30,
+      "description": "Temps limite en secondes"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Question active dans le jeu"
+    }
+  },
+  "required": [
+    "question",
+    "correct_answers",
+    "wrong_answers"
+  ]
+}

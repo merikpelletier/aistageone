@@ -1,0 +1,51 @@
+{
+  "name": "SimAsset",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "ID of the StorySession this simulation belongs to"
+    },
+    "simulation_run_id": {
+      "type": "string",
+      "description": "Optional identifier for a specific simulation run within the session"
+    },
+    "name": {
+      "type": "string",
+      "description": "Asset name (e.g. 'Grain Merchant's Ledger')"
+    },
+    "description": {
+      "type": "string",
+      "description": "What the asset is"
+    },
+    "current_location_id": {
+      "type": "string",
+      "description": "SimLocation ID where the asset physically rests. LOCATION INVARIANT: An unattended asset has current_location_id and NO current_holder_id. A held asset has current_holder_id, and its effective location is inherited from the holder (current_location_id is cleared or set to the holder's location). The asset must NOT independently remain recorded inside its former container after possession transfer \u2014 the Action Resolver updates both fields atomically."
+    },
+    "current_holder_id": {
+      "type": "string",
+      "description": "SimCharacter ID currently holding the asset. Null = unattended."
+    },
+    "is_secured": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the asset is locked, guarded, or hidden"
+    }
+  },
+  "required": [
+    "session_id",
+    "name"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

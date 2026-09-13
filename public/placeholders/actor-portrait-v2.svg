@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" role="img" aria-label="Portrait reference guide">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#202024"/><stop offset="1" stop-color="#111114"/></linearGradient><radialGradient id="glow"><stop stop-color="#facc15" stop-opacity=".13"/><stop offset="1" stop-color="#facc15" stop-opacity="0"/></radialGradient></defs>
+  <rect width="300" height="400" rx="24" fill="url(#bg)"/><circle cx="150" cy="178" r="145" fill="url(#glow)"/>
+  <g fill="none" stroke="#d4d4d8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".76">
+    <path d="M104 116c0-48 20-76 46-76s46 28 46 76c0 54-18 91-46 91s-46-37-46-91zM119 195v35c-49 12-76 56-81 135M181 195v35c49 12 76 56 81 135M119 230c18 17 44 17 62 0M111 110c25-18 53-18 78 0"/>
+    <path d="M122 126c8-5 17-5 25 0M153 126c8-5 17-5 25 0M150 128v31l-10 5M134 177c11 7 22 7 33 0" opacity=".48"/>
+  </g>
+  <g fill="none" stroke="#facc15" stroke-width="2" opacity=".65"><path d="M22 48V22h26M252 22h26v26M22 352v26h26M252 378h26v-26"/><path d="M150 22v14M150 364v14"/></g>
+</svg>

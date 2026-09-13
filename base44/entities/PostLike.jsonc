@@ -1,0 +1,22 @@
+{
+  "name": "PostLike",
+  "type": "object",
+  "properties": {
+    "post_id": {
+      "type": "string",
+      "description": "ID of the post being liked"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who liked"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Name of the user who liked"
+    }
+  },
+  "required": [
+    "post_id",
+    "user_email"
+  ]
+}

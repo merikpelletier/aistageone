@@ -1,0 +1,112 @@
+{
+  "name": "StorySession",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who owns this session"
+    },
+    "theme_id": {
+      "type": "string",
+      "description": "ID of the selected StoryTheme"
+    },
+    "hero_story_character_id": {
+      "type": "string",
+      "description": "ID of the StoryCharacter selected as the Hero"
+    },
+    "starting_topic_id": {
+      "type": "string",
+      "description": "ID of the selected StartingTopic"
+    },
+    "simulation_run_id": {
+      "type": "string",
+      "description": "Unique identifier for the simulation run attached to this StorySession. Set once at simulation initialization; reused across all chapters of the same session."
+    },
+    "story_memory": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Living story memory: current_situation, active_characters, important_events, unresolved_conflicts, current_location, hero_emotional_state, relationship_changes, world_pressures, continuity_notes"
+    },
+    "director_note": {
+      "type": "string",
+      "default": "",
+      "description": "User's steering instruction for the NEXT chapter only. Injected into the story orchestrator prompt as a high-priority directive, then cleared after the block is created so it doesn't loop."
+    },
+    "block_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of Story Blocks generated in this session"
+    },
+    "arc_chapter_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Planned total number of chapters for the story arc \u2014 a soft guide the AI uses to pace the story toward the reveal (0 = unstructured)"
+    },
+    "arc_start": {
+      "type": "string",
+      "description": "Story arc \u2014 the beginning setup: world, Hero's situation, the inciting conflict"
+    },
+    "arc_middle": {
+      "type": "string",
+      "description": "Story arc \u2014 the rising action: complications, twists, escalating stakes, key confrontations"
+    },
+    "arc_reveal": {
+      "type": "string",
+      "description": "Story arc \u2014 the climax and resolution the whole story builds toward"
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this session is viewable by other users"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "completed",
+        "archived"
+      ],
+      "default": "active",
+      "description": "Session status"
+    },
+    "narrator_voice": {
+      "type": "string",
+      "enum": [
+        "river",
+        "honey",
+        "sunny",
+        "storm",
+        "spark"
+      ],
+      "default": "river",
+      "description": "TTS narrator voice for all blocks in this session"
+    },
+    "is_published": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this session has been published as a Dossier"
+    },
+    "published_dossier_id": {
+      "type": "string",
+      "description": "ID of the Dossier created when this session was published"
+    }
+  },
+  "required": [
+    "user_email",
+    "theme_id",
+    "hero_story_character_id",
+    "starting_topic_id"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "update": {
+      "data.user_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
+}

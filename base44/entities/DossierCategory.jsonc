@@ -1,0 +1,17 @@
+{
+  "name": "DossierCategory",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Category name (e.g. Music Video, Interview, Editorial)"
+    },
+    "order": {
+      "type": "number",
+      "description": "Display order"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

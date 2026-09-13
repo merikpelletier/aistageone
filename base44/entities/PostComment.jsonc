@@ -1,0 +1,28 @@
+{
+  "name": "PostComment",
+  "type": "object",
+  "properties": {
+    "post_id": {
+      "type": "string",
+      "description": "ID of the post being commented on"
+    },
+    "author_email": {
+      "type": "string",
+      "description": "Email of the comment author"
+    },
+    "author_name": {
+      "type": "string",
+      "description": "Name of the comment author"
+    },
+    "content": {
+      "type": "string",
+      "description": "Comment text"
+    }
+  },
+  "required": [
+    "post_id",
+    "author_email",
+    "author_name",
+    "content"
+  ]
+}

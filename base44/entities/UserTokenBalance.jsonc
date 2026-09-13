@@ -1,0 +1,24 @@
+{
+  "name": "UserTokenBalance",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user"
+    },
+    "balance": {
+      "type": "number",
+      "default": 0,
+      "description": "Current token balance"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last update timestamp"
+    }
+  },
+  "required": [
+    "user_email",
+    "balance"
+  ]
+}

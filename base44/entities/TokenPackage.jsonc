@@ -1,0 +1,38 @@
+{
+  "name": "TokenPackage",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Package name (e.g. 'Starter Pack', 'Pro Bundle')"
+    },
+    "token_amount": {
+      "type": "number",
+      "description": "Number of tokens in this package"
+    },
+    "price": {
+      "type": "number",
+      "description": "Price in CAD"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this package is available for purchase"
+    },
+    "bonus_percentage": {
+      "type": "number",
+      "default": 0,
+      "description": "Bonus tokens percentage (e.g. 10 = 10% extra tokens)"
+    },
+    "order": {
+      "type": "number",
+      "default": 0,
+      "description": "Display order"
+    }
+  },
+  "required": [
+    "name",
+    "token_amount",
+    "price"
+  ]
+}

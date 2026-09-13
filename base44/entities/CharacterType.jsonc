@@ -1,0 +1,17 @@
+{
+  "name": "CharacterType",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Character type label (e.g. Hero, Villain, Mentor)"
+    },
+    "order": {
+      "type": "number",
+      "description": "Display order"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

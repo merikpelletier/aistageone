@@ -1,0 +1,48 @@
+{
+  "name": "CampaignSubscription",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "ID of the campaign being subscribed to"
+    },
+    "subscriber_email": {
+      "type": "string",
+      "description": "Email of the subscriber"
+    },
+    "subscriber_name": {
+      "type": "string",
+      "description": "Name of the subscriber"
+    },
+    "campaign_title": {
+      "type": "string",
+      "description": "Snapshot of campaign title at subscription time"
+    },
+    "fee_paid": {
+      "type": "number",
+      "description": "Fee paid at time of subscription"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "cancelled"
+      ],
+      "default": "active",
+      "description": "Subscription status"
+    },
+    "payment_id": {
+      "type": "string",
+      "description": "Payment transaction ID if applicable"
+    },
+    "subscribed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the subscription was created"
+    }
+  },
+  "required": [
+    "campaign_id",
+    "subscriber_email"
+  ]
+}

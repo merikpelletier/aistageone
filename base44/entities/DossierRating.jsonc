@@ -1,0 +1,25 @@
+{
+  "name": "DossierRating",
+  "type": "object",
+  "properties": {
+    "dossier_id": {
+      "type": "string",
+      "description": "ID of the dossier being rated"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who rated"
+    },
+    "rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Rating value (1-5)"
+    }
+  },
+  "required": [
+    "dossier_id",
+    "user_email",
+    "rating"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "ShopSettings",
+  "type": "object",
+  "properties": {
+    "payment_link": {
+      "type": "string",
+      "description": "Lien de paiement pour le panier"
+    }
+  },
+  "required": [
+    "payment_link"
+  ]
+}

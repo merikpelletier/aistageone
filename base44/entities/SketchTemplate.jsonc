@@ -1,0 +1,107 @@
+{
+  "name": "SketchTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Display name of the sketch theme"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "comedy",
+        "character_intro"
+      ],
+      "default": "comedy",
+      "description": "Theme category shown in the Sketch Generator"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short subtitle shown under the theme name"
+    },
+    "scenario": {
+      "type": "string",
+      "description": "The funny situation the user's photo is placed into, written as a self-contained scene. e.g. 'You're waiting for the bus and a passing car splashes you with muddy water.'"
+    },
+    "base_scene_prompt": {
+      "type": "string",
+      "description": "The exact text prompt used by AI to generate the base scene image. If empty, the generator builds a prompt from the scenario."
+    },
+    "video_prompt": {
+      "type": "string",
+      "description": "The EXACT prompt sent to the video model when generating the sketch. This is the admin's direct control over the video generation. If empty, nothing is sent and generation is blocked."
+    },
+    "transformation_prompt": {
+      "type": "string",
+      "description": "If set, the sketch uses the transformation-morph pipeline: FLUX Kontext restyles the user's photo using this prompt (keep the face, change outfit/makeup/wig/etc.), then Kling v2.1 interpolates between the original photo and the restyled image to produce an on-screen transformation. Describe the END STATE look only (e.g. 'Transform this person into a glamorous drag queen: full dramatic makeup, big blonde bouffant wig, sparkling sequin gown, chandelier earrings, long lashes'). Leave empty for non-transformation sketches."
+    },
+    "base_scene_image": {
+      "type": "string",
+      "description": "Admin-authored base scene photo (the funny situation with a placeholder character). The user's uploaded face is swapped onto the character in this image, then the swapped image is animated into a video. This is the anchor for character-replacement sketches."
+    },
+    "default_duration": {
+      "type": "number",
+      "default": 5,
+      "description": "Default video duration in seconds (5 or 10)"
+    },
+    "default_aspect_ratio": {
+      "type": "string",
+      "enum": [
+        "16:9",
+        "9:16",
+        "1:1"
+      ],
+      "default": "9:16",
+      "description": "Default aspect ratio for generated videos"
+    },
+    "cover_image": {
+      "type": "string",
+      "description": "Optional cover/thumbnail image URL for the theme card"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the theme is shown in the Sketch Generator"
+    },
+    "order": {
+      "type": "number",
+      "default": 0,
+      "description": "Display order"
+    }
+  },
+  "required": [
+    "name",
+    "category",
+    "scenario"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

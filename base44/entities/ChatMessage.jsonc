@@ -1,0 +1,41 @@
+{
+  "name": "ChatMessage",
+  "type": "object",
+  "properties": {
+    "salon": {
+      "type": "string",
+      "enum": [
+        "cochon",
+        "contact",
+        "commercial"
+      ],
+      "description": "Which chat room"
+    },
+    "sender_identifier": {
+      "type": "string",
+      "description": "Temporary identifier (e.g., Cochon 001)"
+    },
+    "content": {
+      "type": "string",
+      "description": "Message content"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "Optional attached photo"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier for cleanup"
+    },
+    "is_admin": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "salon",
+    "sender_identifier",
+    "content",
+    "session_id"
+  ]
+}

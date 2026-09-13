@@ -1,0 +1,22 @@
+{
+  "name": "ProfilePlaceholder",
+  "type": "object",
+  "properties": {
+    "icon_url": {
+      "type": "string",
+      "description": "URL of placeholder icon"
+    },
+    "name": {
+      "type": "string",
+      "description": "Name of the icon set"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "icon_url",
+    "name"
+  ]
+}

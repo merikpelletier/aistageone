@@ -1,0 +1,26 @@
+{
+  "name": "SalonStatus",
+  "type": "object",
+  "properties": {
+    "salon": {
+      "type": "string",
+      "enum": [
+        "cochon",
+        "contact",
+        "commercial"
+      ]
+    },
+    "is_open": {
+      "type": "boolean",
+      "default": true
+    },
+    "closed_message": {
+      "type": "string",
+      "description": "Message shown when salon is closed"
+    }
+  },
+  "required": [
+    "salon",
+    "is_open"
+  ]
+}

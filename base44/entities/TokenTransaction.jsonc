@@ -1,0 +1,47 @@
+{
+  "name": "TokenTransaction",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user"
+    },
+    "transaction_type": {
+      "type": "string",
+      "enum": [
+        "purchase",
+        "usage",
+        "refund",
+        "membership_grant"
+      ],
+      "description": "Type of transaction"
+    },
+    "token_amount": {
+      "type": "number",
+      "description": "Number of tokens (positive for add, negative for use)"
+    },
+    "balance_after": {
+      "type": "number",
+      "description": "Balance after this transaction"
+    },
+    "related_entity": {
+      "type": "string",
+      "description": "Related entity (e.g. dossier ID, production ID)"
+    },
+    "payment_id": {
+      "type": "string",
+      "description": "Stripe payment ID if purchased"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Transaction timestamp"
+    }
+  },
+  "required": [
+    "user_email",
+    "transaction_type",
+    "token_amount",
+    "balance_after"
+  ]
+}

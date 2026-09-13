@@ -1,0 +1,60 @@
+{
+  "name": "MemberPost",
+  "type": "object",
+  "properties": {
+    "member_email": {
+      "type": "string",
+      "description": "Email of the member who created the post"
+    },
+    "member_name": {
+      "type": "string",
+      "description": "Name of the member"
+    },
+    "title": {
+      "type": "string",
+      "description": "Post title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Post description/content"
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Array of links with URL and display text"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of image URLs (up to 4)"
+    },
+    "likes_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Total number of likes"
+    },
+    "comments_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Total number of comments"
+    }
+  },
+  "required": [
+    "member_email",
+    "member_name",
+    "title",
+    "description"
+  ]
+}

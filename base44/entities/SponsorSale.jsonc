@@ -1,0 +1,58 @@
+{
+  "name": "SponsorSale",
+  "type": "object",
+  "properties": {
+    "member_email": {
+      "type": "string",
+      "description": "Email of the member whose profile was sponsored"
+    },
+    "bracket_id": {
+      "type": "string",
+      "description": "ID of the SponsorBracket sold"
+    },
+    "bracket_name": {
+      "type": "string",
+      "description": "Snapshot of the bracket name at time of sale"
+    },
+    "duration": {
+      "type": "string",
+      "description": "Snapshot of the bracket duration at time of sale"
+    },
+    "total_amount": {
+      "type": "number",
+      "description": "Total sale amount in dollars"
+    },
+    "platform_share": {
+      "type": "number",
+      "description": "30% platform cut (AIStage One)"
+    },
+    "member_share": {
+      "type": "number",
+      "description": "70% member earnings"
+    },
+    "sale_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date the sale was recorded"
+    },
+    "payout_month": {
+      "type": "string",
+      "description": "YYYY-MM \u2014 month this sale contributes to"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional admin notes"
+    }
+  },
+  "required": [
+    "member_email",
+    "bracket_id",
+    "bracket_name",
+    "duration",
+    "total_amount",
+    "platform_share",
+    "member_share",
+    "sale_date",
+    "payout_month"
+  ]
+}

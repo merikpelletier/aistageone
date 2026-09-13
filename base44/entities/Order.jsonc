@@ -1,0 +1,99 @@
+{
+  "name": "Order",
+  "type": "object",
+  "properties": {
+    "order_id": {
+      "type": "string",
+      "description": "Authorize.Net transaction ID"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "options": {
+            "type": "object"
+          }
+        }
+      },
+      "description": "Order items"
+    },
+    "subtotal": {
+      "type": "number",
+      "description": "Subtotal before taxes"
+    },
+    "tps": {
+      "type": "number",
+      "description": "TPS (5%)"
+    },
+    "tvq": {
+      "type": "number",
+      "description": "TVQ (9.975%)"
+    },
+    "shipping": {
+      "type": "number",
+      "default": 0,
+      "description": "Shipping cost"
+    },
+    "total": {
+      "type": "number",
+      "description": "Total amount paid"
+    },
+    "customer_email": {
+      "type": "string",
+      "description": "Customer email"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Customer name"
+    },
+    "shipping_address": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "zip": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "completed",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "payment_date": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "order_id",
+    "items",
+    "subtotal",
+    "total"
+  ]
+}

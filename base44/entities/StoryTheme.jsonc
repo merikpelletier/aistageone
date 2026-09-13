@@ -1,0 +1,94 @@
+{
+  "name": "StoryTheme",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Display title of the theme"
+    },
+    "type": {
+      "type": "string",
+      "description": "Theme type or genre (e.g. drama, comedy, thriller, sci-fi)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Full description of the theme's world, mood, and setting"
+    },
+    "tone_rules": {
+      "type": "string",
+      "description": "Rules governing the tone and atmosphere of the story"
+    },
+    "story_rules": {
+      "type": "string",
+      "description": "Rules governing story structure, pacing, and content boundaries"
+    },
+    "story_character_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of StoryCharacter records associated with this theme"
+    },
+    "story_set_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of StorySet records associated with this theme"
+    },
+    "starting_topic_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of StartingTopic records associated with this theme"
+    },
+    "credit_cost_per_block": {
+      "type": "number",
+      "default": 10,
+      "description": "Token cost per Story Block for this theme"
+    },
+    "cover_image": {
+      "type": "string",
+      "description": "Optional cover image URL for the theme"
+    },
+    "cover_template_image": {
+      "type": "string",
+      "description": "Designed cover background image (portrait) with the series title baked into the artwork. Published Story-class dossiers use this as their card background; the story title is overlaid at the top and the chosen scene image is centered."
+    },
+    "media_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Media assets (videos, audios, images) related to this theme"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this theme is available to users"
+    },
+    "order": {
+      "type": "number",
+      "default": 0,
+      "description": "Display order"
+    }
+  },
+  "required": [
+    "title",
+    "type",
+    "description"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

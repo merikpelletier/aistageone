@@ -1,0 +1,35 @@
+{
+  "name": "KnowledgeEntry",
+  "type": "object",
+  "properties": {
+    "category": {
+      "type": "string",
+      "description": "Category of this knowledge entry (e.g. Tool, Technique, Character Type)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Short title (e.g. 'Lip Sync', 'Faceswitch', 'Establishing Shot')"
+    },
+    "description": {
+      "type": "string",
+      "description": "Full explanation \u2014 what it is, how it works, when to use it, tips"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Optional extra tags for filtering (e.g. 'musical', 'video', 'performance')"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this entry is available to the agent"
+    }
+  },
+  "required": [
+    "category",
+    "title",
+    "description"
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "name": "UserTimeline",
+  "type": "object",
+  "properties": {
+    "episode_page_id": {
+      "type": "string",
+      "description": "ID of the DossierPage with page_type=episode"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who owns this timeline"
+    },
+    "selected_character_id": {
+      "type": "string",
+      "description": "ID of the character the user chose to play"
+    },
+    "selected_method": {
+      "type": "string",
+      "enum": [
+        "likeness_reference",
+        "likeness_performance",
+        "reference_performance",
+        "body_and_voice",
+        "faceswitch",
+        "voice_only"
+      ],
+      "description": "Participation method chosen by user"
+    },
+    "character_photo_url": {
+      "type": "string",
+      "description": "AI-generated photo of the user as the character"
+    },
+    "block_overrides": {
+      "type": "array",
+      "description": "User replacements for specific timeline blocks",
+      "items": {
+        "type": "object",
+        "properties": {
+          "block_id": {
+            "type": "string"
+          },
+          "user_media_url": {
+            "type": "string",
+            "description": "User-uploaded replacement video/image"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "uploaded",
+              "approved"
+            ],
+            "default": "pending"
+          }
+        }
+      }
+    },
+    "is_published": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this timeline is published and visible to others"
+    }
+  },
+  "required": [
+    "episode_page_id",
+    "user_email"
+  ]
+}

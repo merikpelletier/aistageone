@@ -1,0 +1,335 @@
+{
+  "name": "DossierPage",
+  "type": "object",
+  "properties": {
+    "dossier_id": {
+      "type": "string",
+      "description": "Reference to parent dossier"
+    },
+    "page_type": {
+      "type": "string",
+      "enum": [
+        "cover",
+        "text",
+        "image",
+        "video",
+        "mixed",
+        "join_cast",
+        "episode",
+        "series",
+        "production_kit",
+        "member_episodes",
+        "block_player"
+      ],
+      "description": "Type of content block"
+    },
+    "title": {
+      "type": "string",
+      "description": "Optional page title"
+    },
+    "content": {
+      "type": "string",
+      "description": "Text content (for text or mixed pages)"
+    },
+    "media_url": {
+      "type": "string",
+      "description": "URL of image or video (portrait)"
+    },
+    "media_url_landscape": {
+      "type": "string",
+      "description": "URL of image or video for landscape orientation (optional, falls back to media_url)"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Gallery images for products or sets (max 12)"
+    },
+    "order": {
+      "type": "number",
+      "description": "Page order within dossier"
+    },
+    "image_layout": {
+      "type": "string",
+      "enum": [
+        "background",
+        "above",
+        "below"
+      ],
+      "default": "background",
+      "description": "How the image is displayed on mixed pages"
+    },
+    "text_position": {
+      "type": "string",
+      "enum": [
+        "top",
+        "center",
+        "bottom"
+      ],
+      "default": "center"
+    },
+    "text_color": {
+      "type": "string",
+      "enum": [
+        "white",
+        "black"
+      ],
+      "default": "white"
+    },
+    "is_product": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, this page is a product"
+    },
+    "price": {
+      "type": "string",
+      "description": "Display price for products"
+    },
+    "product_options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "episode_title": {
+      "type": "string",
+      "description": "Episode title (for episode pages)"
+    },
+    "episode_description": {
+      "type": "string",
+      "description": "Episode brief/description (for episode pages)"
+    },
+    "episode_role": {
+      "type": "string",
+      "description": "Role or character available (for episode pages)"
+    },
+    "episode_tools_hint": {
+      "type": "string",
+      "description": "Suggested AI tools (for episode pages)"
+    },
+    "cast_episodes": {
+      "type": "array",
+      "description": "List of episodes members can join (for join_cast page type)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "episode_title": {
+            "type": "string"
+          },
+          "episode_description": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "tools_hint": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "cast_members_only": {
+      "type": "boolean",
+      "default": true
+    },
+    "series_presentation": {
+      "type": "string",
+      "description": "Series overview / pitch text (for series pages)"
+    },
+    "series_characters": {
+      "type": "array",
+      "description": "Character profiles for the series",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "photo_url": {
+            "type": "string"
+          },
+          "character_type": {
+            "type": "string",
+            "description": "Archetype/role of the character (e.g. Hero, Villain, Mentor)"
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Gallery of reference photos for the character"
+          }
+        }
+      }
+    },
+    "series_sets": {
+      "type": "array",
+      "description": "Set locations for the series (source of truth, synced to kit pages)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "series_costumes": {
+      "type": "array",
+      "description": "Costume references for the series",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "kit_description": {
+      "type": "string",
+      "description": "Production kit overview / description"
+    },
+    "kit_sets": {
+      "type": "array",
+      "description": "Set locations with media galleries",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "kit_characters": {
+      "type": "array",
+      "description": "Characters with reference media galleries",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "photo_url": {
+            "type": "string"
+          },
+          "character_type": {
+            "type": "string",
+            "description": "Archetype/role of the character (e.g. Hero, Villain, Mentor)"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "kit_costumes": {
+      "type": "array",
+      "description": "Costume references with media galleries",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "kit_reference_media": {
+      "type": "array",
+      "description": "General reference media (images/videos)",
+      "items": {
+        "type": "string"
+      }
+    },
+    "block_player_episode_page_id": {
+      "type": "string",
+      "description": "ID of the StorySession to load blocks from (for block_player page type)"
+    },
+    "block_player_block_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Specific StoryBlock IDs to play (for block_player pages). Empty = play all chapters in the session."
+    },
+    "is_locked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this episode is locked by admin (prevents members from creating scenes)"
+    },
+    "is_hidden_from_public": {
+      "type": "boolean",
+      "default": false,
+      "description": "Hide this page from public dossier view (still accessible in Studio)"
+    },
+    "show_studio_banner": {
+      "type": "boolean",
+      "default": false,
+      "description": "Show banner 'AVAILABLE IN THE STUDIO ON THE STAGE SECTION' (for series pages)"
+    }
+  },
+  "required": [
+    "dossier_id",
+    "page_type",
+    "order"
+  ]
+}

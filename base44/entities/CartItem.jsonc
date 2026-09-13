@@ -1,0 +1,32 @@
+{
+  "name": "CartItem",
+  "type": "object",
+  "properties": {
+    "dossier_id": {
+      "type": "string",
+      "description": "ID du dossier/produit"
+    },
+    "dossier_title": {
+      "type": "string",
+      "description": "Titre du produit"
+    },
+    "price": {
+      "type": "string",
+      "description": "Prix affich\u00e9"
+    },
+    "cover_image": {
+      "type": "string",
+      "description": "Image du produit"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session de l'utilisateur"
+    }
+  },
+  "required": [
+    "dossier_id",
+    "dossier_title",
+    "price",
+    "session_id"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "name": "MemberEarnings",
+  "type": "object",
+  "properties": {
+    "member_email": {
+      "type": "string",
+      "description": "Email of the member"
+    },
+    "payout_month": {
+      "type": "string",
+      "description": "YYYY-MM \u2014 the month these earnings belong to"
+    },
+    "total_sales": {
+      "type": "number",
+      "description": "Total gross sales for the month"
+    },
+    "platform_total": {
+      "type": "number",
+      "description": "Total 30% platform cut for the month"
+    },
+    "member_total": {
+      "type": "number",
+      "description": "Total 70% member earnings for the month"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "paid"
+      ],
+      "default": "pending",
+      "description": "Payout status"
+    },
+    "paid_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date admin marked as paid"
+    }
+  },
+  "required": [
+    "member_email",
+    "payout_month",
+    "total_sales",
+    "platform_total",
+    "member_total"
+  ]
+}

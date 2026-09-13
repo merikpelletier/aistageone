@@ -1,0 +1,35 @@
+{
+  "name": "SalonAccess",
+  "type": "object",
+  "properties": {
+    "salon": {
+      "type": "string",
+      "enum": [
+        "cochon",
+        "contact",
+        "commercial"
+      ],
+      "description": "Salon identifier"
+    },
+    "restricted": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, only approved members can access"
+    },
+    "allowed_membership_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "publisher",
+          "influencer",
+          "brand"
+        ]
+      },
+      "description": "Membership types allowed to access (if restricted)"
+    }
+  },
+  "required": [
+    "salon"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "name": "ScheduledPromo",
+  "type": "object",
+  "properties": {
+    "salon": {
+      "type": "string",
+      "enum": [
+        "cochon",
+        "contact",
+        "commercial"
+      ],
+      "description": "Which chat room"
+    },
+    "content": {
+      "type": "string",
+      "description": "Promo message content"
+    },
+    "link_url": {
+      "type": "string",
+      "description": "Optional link URL"
+    },
+    "link_text": {
+      "type": "string",
+      "description": "Link display text"
+    },
+    "scheduled_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When to send"
+    },
+    "sent": {
+      "type": "boolean",
+      "default": false
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When it was actually sent"
+    }
+  },
+  "required": [
+    "salon",
+    "content",
+    "scheduled_time"
+  ]
+}

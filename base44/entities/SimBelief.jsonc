@@ -1,0 +1,90 @@
+{
+  "name": "SimBelief",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "ID of the StorySession this simulation belongs to"
+    },
+    "simulation_run_id": {
+      "type": "string",
+      "description": "Optional identifier for a specific simulation run within the session"
+    },
+    "character_id": {
+      "type": "string",
+      "description": "SimCharacter who holds this belief"
+    },
+    "belief_text": {
+      "type": "string",
+      "description": "The belief statement"
+    },
+    "belief_type": {
+      "type": "string",
+      "enum": [
+        "fact",
+        "hypothesis",
+        "falsehood"
+      ],
+      "description": "Nature of the belief"
+    },
+    "confidence": {
+      "type": "number",
+      "default": 0.5,
+      "description": "0\u20131 confidence scale"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "observation",
+        "inference",
+        "communication",
+        "prior"
+      ],
+      "description": "How the belief was formed"
+    },
+    "source_observation_id": {
+      "type": "string",
+      "description": "Optional \u2014 SimObservation that led to this belief"
+    },
+    "created_tick": {
+      "type": "number",
+      "description": "Tick when the belief formed"
+    },
+    "communication_status": {
+      "type": "string",
+      "enum": [
+        "not_evaluated",
+        "deferred",
+        "communicated",
+        "declined"
+      ],
+      "default": "not_evaluated",
+      "description": "Stage B \u2014 the holder's communication decision for this private belief. not_evaluated = the resolver has not yet decided whether the holder communicates it. deferred = the holder has decided to communicate, but is waiting for communication_scheduled_tick. communicated = a Claim and InformationTransmission have been created from this belief. declined = the holder has decided NOT to communicate this belief (it stays private)."
+    },
+    "communication_scheduled_tick": {
+      "type": "number",
+      "description": "Stage B \u2014 the tick at which a deferred belief becomes eligible for communication. Models the latency between forming a private belief and acting on the impulse to tell someone."
+    },
+    "target_recipient_id": {
+      "type": "string",
+      "description": "Stage B \u2014 the SimCharacter the holder intends to tell. Set when the communication decision is made. Drives who receives the resulting communicated-information Observation. A belief may have at most one target_recipient_id in this prototype (single-recipient communication)."
+    }
+  },
+  "required": [
+    "session_id",
+    "character_id",
+    "belief_text"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

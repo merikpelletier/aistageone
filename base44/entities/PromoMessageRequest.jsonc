@@ -1,0 +1,78 @@
+{
+  "name": "PromoMessageRequest",
+  "type": "object",
+  "properties": {
+    "package_id": {
+      "type": "string",
+      "description": "ID of the chosen PromoMessagePackage"
+    },
+    "package_name": {
+      "type": "string",
+      "description": "Snapshot of package name at submission time"
+    },
+    "package_price": {
+      "type": "number",
+      "description": "Price at time of submission"
+    },
+    "salon": {
+      "type": "string",
+      "enum": [
+        "cochon",
+        "contact",
+        "commercial"
+      ],
+      "description": "Target chat room salon"
+    },
+    "message": {
+      "type": "string",
+      "description": "The promotional message content"
+    },
+    "link": {
+      "type": "string",
+      "description": "Optional destination link"
+    },
+    "link_text": {
+      "type": "string",
+      "description": "Optional link display text"
+    },
+    "send_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Requested date and time to send the message"
+    },
+    "sponsor_name": {
+      "type": "string",
+      "description": "Name of the sponsoring company or person"
+    },
+    "sponsor_email": {
+      "type": "string",
+      "description": "Contact email of the sponsor"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "sent"
+      ],
+      "default": "pending",
+      "description": "Admin review and send status"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Internal admin notes"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "package_id",
+    "salon",
+    "message",
+    "sponsor_name",
+    "sponsor_email"
+  ]
+}

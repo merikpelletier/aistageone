@@ -1,0 +1,57 @@
+{
+  "name": "CharacterSheet",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the member"
+    },
+    "character_name": {
+      "type": "string",
+      "description": "Name of the character"
+    },
+    "character_bio": {
+      "type": "string",
+      "description": "Character background, personality, story"
+    },
+    "character_traits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Key personality traits or tags (e.g. Bold, Mysterious)"
+    },
+    "character_photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Reference photos of the character (up to 6)"
+    },
+    "voice_sample_url": {
+      "type": "string",
+      "description": "URL of a voice sample audio file"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Skills or capabilities (e.g. Acting, Singing, Dancing)"
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Languages the character/actor speaks"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes for productions"
+    }
+  },
+  "required": [
+    "user_email"
+  ]
+}

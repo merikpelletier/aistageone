@@ -1,0 +1,141 @@
+{
+  "name": "EpisodeProduction",
+  "type": "object",
+  "properties": {
+    "episode_page_id": {
+      "type": "string",
+      "description": "ID of the DossierPage with page_type=episode"
+    },
+    "dossier_id": {
+      "type": "string",
+      "description": "ID of the parent Dossier"
+    },
+    "characters": {
+      "type": "array",
+      "description": "Characters available for casting in this episode",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "photo_url": {
+            "type": "string"
+          },
+          "character_type": {
+            "type": "string",
+            "description": "Archetype/role of the character (e.g. Hero, Villain, Mentor)"
+          },
+          "participation_methods": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "likeness_reference",
+                "likeness_performance",
+                "reference_performance",
+                "body_and_voice",
+                "faceswitch",
+                "voice_only"
+              ]
+            }
+          },
+          "reference_images": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "block_id": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "timeline": {
+      "type": "array",
+      "description": "Master Timeline \u2014 ordered list of video blocks for the episode",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "block_type": {
+            "type": "string",
+            "enum": [
+              "character",
+              "establishing_shot",
+              "action_element",
+              "transition",
+              "closing_shot"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "assigned_character_id": {
+            "type": "string",
+            "description": "ID of character from characters array"
+          },
+          "dialogue": {
+            "type": "string"
+          },
+          "reference_media": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Reference image or video URLs"
+          },
+          "production_instructions": {
+            "type": "string"
+          },
+          "allowed_methods": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "likeness_reference",
+                "likeness_performance",
+                "reference_performance",
+                "body_and_voice",
+                "faceswitch",
+                "voice_only"
+              ]
+            }
+          },
+          "karaoke_guide_url": {
+            "type": "string",
+            "description": "URL of the karaoke guide video (lyrics + music) for Musical episodes"
+          },
+          "instrumental_track_url": {
+            "type": "string",
+            "description": "URL of the instrumental track audio for Musical episodes"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "episode_page_id",
+    "dossier_id"
+  ]
+}

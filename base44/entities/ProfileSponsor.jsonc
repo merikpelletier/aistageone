@@ -1,0 +1,99 @@
+{
+  "name": "ProfileSponsor",
+  "type": "object",
+  "properties": {
+    "member_email": {
+      "type": "string",
+      "description": "Email of the member this sponsor belongs to"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Sponsor logo/image URL"
+    },
+    "link": {
+      "type": "string",
+      "description": "Sponsor website or destination URL"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this sponsor is currently active/visible (set by admin on approval)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "active",
+        "expired"
+      ],
+      "default": "pending",
+      "description": "Admin review status"
+    },
+    "bracket_id": {
+      "type": "string",
+      "description": "ID of the chosen SponsorBracket"
+    },
+    "bracket_name": {
+      "type": "string",
+      "description": "Snapshot of bracket name at submission time"
+    },
+    "bracket_price": {
+      "type": "number",
+      "description": "Price at time of submission"
+    },
+    "bracket_duration": {
+      "type": "string",
+      "description": "Duration snapshot"
+    },
+    "platform_share": {
+      "type": "number",
+      "description": "30% platform cut"
+    },
+    "member_share": {
+      "type": "number",
+      "description": "70% member earnings"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Sponsorship start date (set by admin on approval)"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Sponsorship end date"
+    },
+    "sponsor_name": {
+      "type": "string",
+      "description": "Name of the sponsoring company or person"
+    },
+    "sponsor_email": {
+      "type": "string",
+      "description": "Contact email of the sponsor"
+    },
+    "terms_accepted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Sponsor accepted terms and conditions"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Internal admin notes"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "member_email",
+    "image_url",
+    "link"
+  ]
+}

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" role="img" aria-label="Face profile reference guide">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#202024"/><stop offset="1" stop-color="#111114"/></linearGradient><radialGradient id="glow"><stop stop-color="#22d3ee" stop-opacity=".12"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></radialGradient></defs>
+  <rect width="300" height="400" rx="24" fill="url(#bg)"/><circle cx="150" cy="178" r="145" fill="url(#glow)"/>
+  <g fill="none" stroke="#d4d4d8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".76">
+    <path d="M111 54c47-20 89 9 91 57 1 19-5 35-18 47l24 20-25 8c-8 15-19 25-34 31v31c50 11 79 54 85 117M149 248c-50 11-79 54-85 117M112 55c-17 20-26 47-25 77 2 45 23 73 62 85"/>
+    <path d="M149 217c10 2 22-2 34-31M181 101c6 3 11 3 17 1M184 158c8 4 14 4 21 1" opacity=".5"/>
+  </g>
+  <g fill="none" stroke="#22d3ee" stroke-width="2" opacity=".65"><path d="M22 48V22h26M252 22h26v26M22 352v26h26M252 378h26v-26"/><path d="M150 22v14M150 364v14"/></g>
+</svg>

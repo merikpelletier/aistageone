@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.vercel/
+.env
+.env.*
+!.env.example
+supabase/.temp/
+*.log
+*.local
+.DS_Store
+Thumbs.db
+.aider*
+vercel-source-manifest.json

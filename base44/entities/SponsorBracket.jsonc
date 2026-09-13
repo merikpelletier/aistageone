@@ -1,0 +1,28 @@
+{
+  "name": "SponsorBracket",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the pricing bracket (e.g. Bronze, Silver, Gold)"
+    },
+    "price": {
+      "type": "number",
+      "description": "Price in dollars"
+    },
+    "duration": {
+      "type": "string",
+      "description": "Duration of the sponsorship (e.g. 1 week, 1 month)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this bracket is currently offered"
+    }
+  },
+  "required": [
+    "name",
+    "price",
+    "duration"
+  ]
+}

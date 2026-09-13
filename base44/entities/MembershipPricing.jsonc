@@ -1,0 +1,34 @@
+{
+  "name": "MembershipPricing",
+  "type": "object",
+  "properties": {
+    "membership_type": {
+      "type": "string",
+      "description": "Membership type name (e.g. 'VIP', 'Premium', 'Enterprise')"
+    },
+    "price_monthly": {
+      "type": "number",
+      "description": "Monthly price in CAD"
+    },
+    "tokens_included": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of tokens included per month"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this pricing tier is active"
+    },
+    "order": {
+      "type": "number",
+      "default": 0,
+      "description": "Display order"
+    }
+  },
+  "required": [
+    "membership_type",
+    "price_monthly",
+    "tokens_included"
+  ]
+}

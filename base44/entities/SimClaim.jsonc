@@ -1,0 +1,69 @@
+{
+  "name": "SimClaim",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "ID of the StorySession this simulation belongs to"
+    },
+    "simulation_run_id": {
+      "type": "string",
+      "description": "Optional identifier for a specific simulation run within the session"
+    },
+    "claim_text": {
+      "type": "string",
+      "description": "The assertion being transmitted"
+    },
+    "claim_type": {
+      "type": "string",
+      "enum": [
+        "fact",
+        "suspicion",
+        "accusation",
+        "rumour"
+      ],
+      "description": "Nature of the claim"
+    },
+    "originator_id": {
+      "type": "string",
+      "description": "SimCharacter who first made the claim"
+    },
+    "source_belief_id": {
+      "type": "string",
+      "description": "Optional \u2014 the SimBelief the originator is communicating. Links the socially distributed claim to the private belief it originated from. A claim with a source_belief_id is the public expression of that private belief."
+    },
+    "subject_character_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "SimCharacter IDs the claim is about"
+    },
+    "created_tick": {
+      "type": "number",
+      "description": "Tick when the claim was first made"
+    },
+    "mutation_count": {
+      "type": "number",
+      "default": 0,
+      "description": "How many times the claim has been retold with changes"
+    }
+  },
+  "required": [
+    "session_id",
+    "claim_text",
+    "originator_id"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

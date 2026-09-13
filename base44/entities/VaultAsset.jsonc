@@ -1,0 +1,96 @@
+{
+  "name": "VaultAsset",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who saved this asset"
+    },
+    "name": {
+      "type": "string",
+      "description": "Optional user-given label for this asset (shown on the vault card)"
+    },
+    "url": {
+      "type": "string",
+      "description": "URL of the saved media asset"
+    },
+    "media_type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "video",
+        "script"
+      ],
+      "description": "Type of media"
+    },
+    "asset_category": {
+      "type": "string",
+      "enum": [
+        "character",
+        "set",
+        "costume",
+        "reference",
+        "script"
+      ],
+      "description": "Category of the asset within the production kit"
+    },
+    "source_dossier_id": {
+      "type": "string",
+      "description": "ID of the dossier this asset came from"
+    },
+    "folder_id": {
+      "type": "string",
+      "description": "ID of the VaultFolder this asset belongs to (null = unfiled)"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Free-form keywords describing this asset (e.g. 'noir', '1940', 'dramatic')"
+    },
+    "style_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Visual style labels (e.g. 'cinematic', 'editorial', 'vintage')"
+    },
+    "color_palette": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Dominant color labels (e.g. 'midnight blue', 'gold')"
+    },
+    "actor_name": {
+      "type": "string",
+      "description": "Name of the actor/character this asset represents (if applicable)"
+    },
+    "source_asset_id": {
+      "type": "string",
+      "description": "Link to the original native-quality asset (for high-res retrieval)"
+    },
+    "is_magazine_ready": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this asset is marked ready for editorial magazine publication"
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "enum": [
+        "9:16",
+        "16:9",
+        "4:3",
+        "1:1",
+        "3:4"
+      ],
+      "description": "Native aspect ratio of the asset"
+    }
+  },
+  "required": [
+    "user_email",
+    "url",
+    "media_type"
+  ]
+}

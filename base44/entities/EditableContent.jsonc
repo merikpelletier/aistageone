@@ -1,0 +1,22 @@
+{
+  "name": "EditableContent",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Unique key for this content block (e.g., 'rules', 'legal', 'about')"
+    },
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string",
+      "description": "HTML or markdown content"
+    }
+  },
+  "required": [
+    "key",
+    "title",
+    "content"
+  ]
+}

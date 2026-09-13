@@ -1,0 +1,60 @@
+{
+  "name": "AgentConfig",
+  "type": "object",
+  "properties": {
+    "config_name": {
+      "type": "string",
+      "description": "Human-readable name for this configuration (e.g. 'Summer Music Video 2025')"
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "global_type",
+        "specific_production"
+      ],
+      "default": "global_type",
+      "description": "Whether this config applies to all productions of a type, or one specific production"
+    },
+    "production_type": {
+      "type": "string",
+      "description": "Type of production (e.g., music_video, documentary, short_film, commercial)"
+    },
+    "dossier_id": {
+      "type": "string",
+      "description": "ID of the specific Dossier this config is linked to (when scope=specific_production)"
+    },
+    "dossier_title": {
+      "type": "string",
+      "description": "Cached title of the linked dossier for display"
+    },
+    "system_instructions": {
+      "type": "string",
+      "description": "The AI agent's system instructions for guiding users through this production"
+    },
+    "best_practices": {
+      "type": "string",
+      "description": "Best practices and tips specific to this production"
+    },
+    "voice_model": {
+      "type": "string",
+      "enum": [
+        "river",
+        "honey",
+        "sunny",
+        "storm",
+        "spark"
+      ],
+      "default": "river",
+      "description": "Voice model for text-to-speech"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this configuration is currently active"
+    }
+  },
+  "required": [
+    "config_name",
+    "system_instructions"
+  ]
+}

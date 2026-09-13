@@ -1,0 +1,36 @@
+{
+  "name": "PrivateMessage",
+  "type": "object",
+  "properties": {
+    "from_identifier": {
+      "type": "string"
+    },
+    "to_identifier": {
+      "type": "string"
+    },
+    "from_session_id": {
+      "type": "string"
+    },
+    "to_session_id": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "Optional attached photo"
+    },
+    "read": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "from_identifier",
+    "to_identifier",
+    "from_session_id",
+    "to_session_id",
+    "content"
+  ]
+}

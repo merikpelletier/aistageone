@@ -1,0 +1,55 @@
+{
+  "name": "Membership",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email de l'utilisateur"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Nom de l'utilisateur"
+    },
+    "membership_type": {
+      "type": "string",
+      "enum": [
+        "publisher",
+        "influencer",
+        "brand",
+        "base"
+      ],
+      "description": "Type de membership choisi"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending",
+      "description": "Statut de la demande"
+    },
+    "bio": {
+      "type": "string",
+      "description": "Pr\u00e9sentation / motivation du membre"
+    },
+    "website": {
+      "type": "string",
+      "description": "Site web ou lien social"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Notes internes de l'admin"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date d'approbation"
+    }
+  },
+  "required": [
+    "user_email",
+    "membership_type"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "SalonLabel",
+  "type": "object",
+  "properties": {
+    "salon_id": {
+      "type": "string",
+      "description": "Reference to salon (cochon, contact, commercial)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name of the salon"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the salon"
+    }
+  },
+  "required": [
+    "salon_id",
+    "name",
+    "description"
+  ]
+}

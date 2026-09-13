@@ -1,0 +1,94 @@
+{
+  "name": "TimelineStory",
+  "type": "object",
+  "properties": {
+    "kit_page_id": {
+      "type": "string",
+      "description": "ID of the DossierPage with page_type=production_kit"
+    },
+    "dossier_id": {
+      "type": "string",
+      "description": "ID of the parent Dossier"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who owns this story"
+    },
+    "production_name": {
+      "type": "string",
+      "description": "User-defined name for this story"
+    },
+    "episode_title": {
+      "type": "string",
+      "description": "User-defined episode title"
+    },
+    "episode_description": {
+      "type": "string",
+      "description": "Brief description of this episode"
+    },
+    "poster_image": {
+      "type": "string",
+      "description": "Poster image URL for this episode"
+    },
+    "series_description": {
+      "type": "string",
+      "description": "Description of the overall series"
+    },
+    "author_name": {
+      "type": "string",
+      "description": "Author name for this story"
+    },
+    "publication_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Target publication date"
+    },
+    "category": {
+      "type": "string",
+      "description": "User-selected dossier category (published as Story class)"
+    },
+    "blocks": {
+      "type": "array",
+      "description": "Timeline blocks (scenes) created by the user for this story",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "media_url": {
+            "type": "string",
+            "description": "User-uploaded or AI-generated media URL"
+          },
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "video",
+              "audio",
+              "image"
+            ],
+            "description": "Type of media in this block"
+          }
+        }
+      }
+    },
+    "is_published": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this story is published and visible to others"
+    }
+  },
+  "required": [
+    "kit_page_id",
+    "user_email"
+  ]
+}

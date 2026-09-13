@@ -1,0 +1,292 @@
+{
+  "name": "StorySet",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the set/location"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the set's atmosphere, style, etc."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Style tags (e.g. Medieval, Futuristic, Urban)"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Reference images for this set (up to 8)"
+    },
+    "sim_location_type": {
+      "type": "string",
+      "description": "Simulation environment: the kind of place this is. Admin-authored only."
+    },
+    "sim_public_access": {
+      "type": "string",
+      "enum": [
+        "open",
+        "controlled",
+        "restricted",
+        "private"
+      ],
+      "description": "Simulation environment: who can normally enter."
+    },
+    "sim_crowd_level": {
+      "type": "string",
+      "enum": [
+        "empty",
+        "low",
+        "moderate",
+        "high",
+        "packed"
+      ],
+      "description": "Simulation environment: normal crowd density (base condition)."
+    },
+    "sim_visibility": {
+      "type": "string",
+      "enum": [
+        "very_low",
+        "low",
+        "moderate",
+        "high",
+        "very_high"
+      ],
+      "description": "Simulation environment: how easily actions can be seen (base condition)."
+    },
+    "sim_privacy": {
+      "type": "string",
+      "enum": [
+        "none",
+        "low",
+        "moderate",
+        "high",
+        "complete"
+      ],
+      "description": "Simulation environment: how secluded the space is (base condition)."
+    },
+    "sim_guard_presence": {
+      "type": "string",
+      "enum": [
+        "none",
+        "low",
+        "moderate",
+        "high"
+      ],
+      "description": "Simulation environment: normal guard / watch level (base condition)."
+    },
+    "sim_general_danger": {
+      "type": "string",
+      "enum": [
+        "very_low",
+        "low",
+        "moderate",
+        "high",
+        "extreme"
+      ],
+      "description": "Simulation environment: baseline danger (base condition)."
+    },
+    "sim_ambush_risk": {
+      "type": "string",
+      "enum": [
+        "very_low",
+        "low",
+        "moderate",
+        "high",
+        "extreme"
+      ],
+      "description": "Simulation environment: baseline likelihood of ambush (base condition)."
+    },
+    "sim_surveillance_risk": {
+      "type": "string",
+      "enum": [
+        "very_low",
+        "low",
+        "moderate",
+        "high",
+        "extreme"
+      ],
+      "description": "Simulation environment: baseline surveillance level (base condition)."
+    },
+    "sim_escape_difficulty": {
+      "type": "string",
+      "enum": [
+        "very_easy",
+        "easy",
+        "moderate",
+        "difficult",
+        "very_difficult"
+      ],
+      "description": "Simulation environment: how hard it is to flee the location."
+    },
+    "sim_entry_points": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Simulation environment: ways into the location."
+    },
+    "sim_exit_routes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Simulation environment: ways out of the location."
+    },
+    "sim_hiding_places": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Simulation environment: spots to hide."
+    },
+    "sim_environmental_hazards": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Simulation environment: hazards present in the space."
+    },
+    "sim_suitable_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Simulation environment: action categories this location supports (e.g. public_trade, secret_meeting, surveillance, ambush, escape, confrontation, hiding, celebration, investigation)."
+    },
+    "sim_unsuitable_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Simulation environment: action categories this location does not support."
+    },
+    "sim_special_rules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Simulation environment: location-specific constraints or advantages (base condition)."
+    },
+    "sim_time_profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "time_period": {
+            "type": "string",
+            "enum": [
+              "dawn",
+              "morning",
+              "afternoon",
+              "evening",
+              "night",
+              "late_night"
+            ]
+          },
+          "crowd_level": {
+            "type": "string",
+            "enum": [
+              "empty",
+              "low",
+              "moderate",
+              "high",
+              "packed"
+            ]
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "very_low",
+              "low",
+              "moderate",
+              "high",
+              "very_high"
+            ]
+          },
+          "privacy": {
+            "type": "string",
+            "enum": [
+              "none",
+              "low",
+              "moderate",
+              "high",
+              "complete"
+            ]
+          },
+          "guard_presence": {
+            "type": "string",
+            "enum": [
+              "none",
+              "low",
+              "moderate",
+              "high"
+            ]
+          },
+          "general_danger": {
+            "type": "string",
+            "enum": [
+              "very_low",
+              "low",
+              "moderate",
+              "high",
+              "extreme"
+            ]
+          },
+          "ambush_risk": {
+            "type": "string",
+            "enum": [
+              "very_low",
+              "low",
+              "moderate",
+              "high",
+              "extreme"
+            ]
+          },
+          "surveillance_risk": {
+            "type": "string",
+            "enum": [
+              "very_low",
+              "low",
+              "moderate",
+              "high",
+              "extreme"
+            ]
+          },
+          "special_rules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "time_period"
+        ]
+      },
+      "description": "Simulation environment: optional time-based overrides. The base fields describe the normal condition; a matching profile overrides only the fields it provides."
+    }
+  },
+  "required": [
+    "name",
+    "description"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

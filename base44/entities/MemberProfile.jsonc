@@ -1,0 +1,61 @@
+{
+  "name": "MemberProfile",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the member"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Custom display name for the community"
+    },
+    "bio": {
+      "type": "string",
+      "description": "Member bio/about text"
+    },
+    "avatar_url": {
+      "type": "string",
+      "description": "Profile avatar image URL"
+    },
+    "title": {
+      "type": "string",
+      "description": "Professional title or role"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Gallery image URLs (up to 6)"
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Link label (e.g., Instagram, Portfolio)"
+          },
+          "url": {
+            "type": "string",
+            "description": "Link URL"
+          }
+        }
+      },
+      "description": "Array of social/web links"
+    },
+    "custom_banner_url": {
+      "type": "string",
+      "description": "Custom banner image URL set by admin (overrides sponsor banner)"
+    },
+    "custom_banner_link": {
+      "type": "string",
+      "description": "URL to open when custom banner is clicked"
+    }
+  },
+  "required": [
+    "user_email"
+  ]
+}

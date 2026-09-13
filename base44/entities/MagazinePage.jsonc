@@ -1,0 +1,65 @@
+{
+  "name": "MagazinePage",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who authored this page"
+    },
+    "title": {
+      "type": "string",
+      "description": "Display title of the magazine page"
+    },
+    "template": {
+      "type": "string",
+      "enum": [
+        "cover",
+        "portrait_full",
+        "spread",
+        "grid"
+      ],
+      "description": "Starting editorial template"
+    },
+    "canvas": {
+      "type": "string",
+      "enum": [
+        "portrait",
+        "landscape",
+        "square"
+      ],
+      "default": "portrait",
+      "description": "Canvas shape"
+    },
+    "background_url": {
+      "type": "string",
+      "description": "Optional background image URL"
+    },
+    "background_color": {
+      "type": "string",
+      "description": "Canvas background color (hex), used when no background_url is set"
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "description": "Composed layers: {id, type:'image'|'text', url?, content?, x, y, w, h, zIndex, opacity, rotation, objectFit, radius, hidden, fontSize, color, fontWeight, align, fontFamily, letterSpacing, uppercase}"
+    },
+    "order": {
+      "type": "number",
+      "default": 0,
+      "description": "Display order"
+    },
+    "is_published": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this page is published"
+    }
+  },
+  "required": [
+    "user_email",
+    "title",
+    "template"
+  ]
+}

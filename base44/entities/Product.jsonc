@@ -1,0 +1,44 @@
+{
+  "name": "Product",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "price": {
+      "type": "string",
+      "description": "Display price"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "external_link": {
+      "type": "string",
+      "description": "External payment page URL"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "product",
+        "access",
+        "support"
+      ],
+      "default": "product"
+    },
+    "order": {
+      "type": "number"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "price",
+    "external_link"
+  ]
+}

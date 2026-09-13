@@ -1,0 +1,50 @@
+{
+  "name": "ToolPricing",
+  "type": "object",
+  "properties": {
+    "tool_id": {
+      "type": "string",
+      "description": "Unique tool identifier (e.g. 'dress_actor', 'compose_scene', 'animate_image')"
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "Display name for the tool"
+    },
+    "token_cost": {
+      "type": "number",
+      "description": "Number of tokens required to use this tool"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this tool pricing is active"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "image",
+        "video",
+        "audio",
+        "other"
+      ],
+      "description": "Tool category for organization"
+    }
+  },
+  "required": [
+    "tool_id",
+    "tool_name",
+    "token_cost"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

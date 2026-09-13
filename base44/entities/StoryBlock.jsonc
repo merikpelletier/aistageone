@@ -1,0 +1,130 @@
+{
+  "name": "StoryBlock",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "ID of the StorySession this block belongs to"
+    },
+    "order": {
+      "type": "number",
+      "description": "Block order within the session (0-based)"
+    },
+    "block_title": {
+      "type": "string",
+      "description": "Short title for this Story Block"
+    },
+    "video_segments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs of generated media segments (images and videos, mixed)"
+    },
+    "narration_audio_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "TTS narration audio URLs per segment (parallel to video_segments)"
+    },
+    "sfx_audio_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Per-segment sound effect / ambient audio URLs (parallel to video_segments)"
+    },
+    "choice_options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Choice options presented at the end of this block"
+    },
+    "selected_choice": {
+      "type": "string",
+      "description": "ID of the choice selected by the user (null until chosen)"
+    },
+    "narrative_summary": {
+      "type": "string",
+      "description": "One paragraph summary of what happens in this block"
+    },
+    "director_note": {
+      "type": "string",
+      "default": "",
+      "description": "Director's note that was applied to this block \u2014 preserved for reference even after the session-level note is cleared."
+    },
+    "selected_characters": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Names of characters appearing in this block"
+    },
+    "selected_sets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Names of sets used in this block"
+    },
+    "segment_instructions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "description": "Agent's segment instructions (prompt, narration_text, media_type, dialogue, characters, sets, camera, tone, continuity, sound_effect, sfx_prediction_id)"
+    },
+    "generation_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "planning",
+        "generating",
+        "completed",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "Generation status of this block"
+    },
+    "planning_conversation_id": {
+      "type": "string",
+      "description": "ID of the agent conversation used for async story planning"
+    },
+    "active_prediction_id": {
+      "type": "string",
+      "description": "ID of the currently active Replicate prediction (for webhook callback lookup)"
+    },
+    "last_error": {
+      "type": "string",
+      "description": "Last error from media generation"
+    },
+    "rate_limited_until": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp until which the block is in rate-limit cooldown (no Replicate calls)"
+    },
+    "is_storyline_switch": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if this block was a one-chapter hero/storyline pivot \u2014 does NOT overwrite the session's continuity memory"
+    }
+  },
+  "required": [
+    "session_id",
+    "order"
+  ]
+}

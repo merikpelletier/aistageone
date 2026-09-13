@@ -1,0 +1,138 @@
+{
+  "name": "StartingTopic",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Display title of the starting topic"
+    },
+    "description": {
+      "type": "string",
+      "description": "Full description used by the AI agent as inspiration to start the story"
+    },
+    "theme_id": {
+      "type": "string",
+      "description": "ID of the StoryTheme this topic belongs to"
+    },
+    "order": {
+      "type": "number",
+      "default": 0,
+      "description": "Display order within the theme"
+    },
+    "character_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of StoryCharacters tagged for this topic \u2014 guides the AI on which characters should be involved when the story starts from this topic. Reused by the simulation as the affected characters list."
+    },
+    "sim_opening_situation": {
+      "type": "string",
+      "description": "Authoritative simulation init: the opening objective event or pressure."
+    },
+    "sim_world_conditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Authoritative simulation init: starting world conditions."
+    },
+    "sim_public_facts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Authoritative simulation init: facts everyone in the pack knows."
+    },
+    "sim_private_facts_by_character": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "character_id": {
+            "type": "string"
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "character_id",
+          "facts"
+        ]
+      },
+      "description": "Authoritative simulation init: privately-held starting facts, per character. Seeded as per-character processed SimObservation records."
+    },
+    "sim_hero_initial_goals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "character_id": {
+            "type": "string",
+            "description": "A selectable Hero StoryCharacter id"
+          },
+          "goal": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "character_id",
+          "goal"
+        ]
+      },
+      "description": "Authoritative simulation init: per-Hero initial goals \u2014 different users may choose different Heroes for the same Starting Topic."
+    },
+    "sim_initial_active_situations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "situation_type": {
+            "type": "string",
+            "enum": [
+              "debt",
+              "investigation",
+              "threat",
+              "deadline",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "escalating",
+              "resolved",
+              "abandoned"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "situation_type",
+          "status"
+        ]
+      },
+      "description": "Authoritative simulation init: initial Active Situations seeded as SimActiveSituation records. Admin-authored only \u2014 not combined from descriptions or backstories."
+    }
+  },
+  "required": [
+    "title",
+    "description",
+    "theme_id"
+  ],
+  "rls": {
+    "read": true
+  }
+}

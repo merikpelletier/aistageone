@@ -1,0 +1,79 @@
+{
+  "name": "SimStateChange",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "ID of the StorySession this simulation belongs to"
+    },
+    "simulation_run_id": {
+      "type": "string",
+      "description": "Optional identifier for a specific simulation run within the session"
+    },
+    "action_id": {
+      "type": "string",
+      "description": "SimCharacterAction that caused this state change"
+    },
+    "change_type": {
+      "type": "string",
+      "enum": [
+        "relocation",
+        "possession_transfer",
+        "access_change",
+        "evidence_created",
+        "evidence_removed"
+      ],
+      "description": "Nature of the objective change"
+    },
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "asset",
+        "character",
+        "location"
+      ],
+      "description": "Type of entity affected"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "ID of the affected SimAsset, SimCharacter, or SimLocation"
+    },
+    "previous_state": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Serialized snapshot of the entity before the change"
+    },
+    "new_state": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Serialized snapshot of the entity after the change"
+    },
+    "change_tick": {
+      "type": "number",
+      "description": "Tick when the change occurred"
+    },
+    "available_from_tick": {
+      "type": "number",
+      "description": "The tick at which this state change becomes discoverable. The change occurs at change_tick but is only noticeable by a character at or after available_from_tick. Models delayed discovery \u2014 e.g. a ledger is stolen at tick 3 but its absence is only noticeable from tick 5."
+    }
+  },
+  "required": [
+    "session_id",
+    "action_id",
+    "change_type",
+    "entity_type",
+    "entity_id"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "DossierComment",
+  "type": "object",
+  "properties": {
+    "dossier_id": {
+      "type": "string",
+      "description": "ID of the dossier being commented on"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the comment author"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Name of the comment author"
+    },
+    "content": {
+      "type": "string",
+      "description": "Comment text"
+    }
+  },
+  "required": [
+    "dossier_id",
+    "user_email",
+    "user_name",
+    "content"
+  ]
+}

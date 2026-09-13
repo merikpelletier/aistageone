@@ -1,0 +1,27 @@
+{
+  "name": "PromoMessagePackage",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the promotional message package (e.g. Basic Message, Premium Message)"
+    },
+    "price": {
+      "type": "number",
+      "description": "Price in dollars"
+    },
+    "description": {
+      "type": "string",
+      "description": "What's included in this package"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this package is currently offered"
+    }
+  },
+  "required": [
+    "name",
+    "price"
+  ]
+}

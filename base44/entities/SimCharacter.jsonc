@@ -1,0 +1,101 @@
+{
+  "name": "SimCharacter",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "ID of the StorySession this simulation belongs to"
+    },
+    "simulation_run_id": {
+      "type": "string",
+      "description": "Optional identifier for a specific simulation run within the session"
+    },
+    "name": {
+      "type": "string",
+      "description": "Character name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short role summary"
+    },
+    "current_location_id": {
+      "type": "string",
+      "description": "SimLocation ID \u2014 where the character physically is"
+    },
+    "traits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Personality traits"
+    },
+    "physical_description": {
+      "type": "string",
+      "description": "Appearance description for visual continuity"
+    },
+    "source_story_character_id": {
+      "type": "string",
+      "description": "Back-link to the StoryCharacter this SimCharacter was initialized from. Lets the Narrative Director resolve portraits, bios, and locations back to the original narrative asset."
+    },
+    "sim_goals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Authoritative simulation init copied verbatim from StoryCharacter.sim_goals at initialization. Never derived or invented."
+    },
+    "sim_immediate_needs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Authoritative simulation init copied verbatim from StoryCharacter.sim_immediate_needs."
+    },
+    "sim_relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "character_id": {
+            "type": "string",
+            "description": "ID of another StoryCharacter in the pack"
+          },
+          "relationship_type": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "character_id",
+          "relationship_type"
+        ]
+      },
+      "description": "Authoritative simulation init copied verbatim from StoryCharacter.sim_relationships."
+    },
+    "sim_responsibilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Authoritative simulation init copied verbatim from StoryCharacter.sim_responsibilities."
+    }
+  },
+  "required": [
+    "session_id",
+    "name"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

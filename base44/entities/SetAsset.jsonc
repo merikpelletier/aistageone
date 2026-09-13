@@ -1,0 +1,35 @@
+{
+  "name": "SetAsset",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who owns this set"
+    },
+    "name": {
+      "type": "string",
+      "description": "Name of the set/location"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the set's atmosphere, style, etc."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Style tags (e.g. Futuriste, M\u00e9di\u00e9val, Urbain)"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Reference images for this set (up to 8)"
+    }
+  },
+  "required": [
+    "user_email"
+  ]
+}

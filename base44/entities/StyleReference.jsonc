@@ -1,0 +1,63 @@
+{
+  "name": "StyleReference",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Short label shown to admins (not shown in the picker)"
+    },
+    "url": {
+      "type": "string",
+      "description": "Image URL used as a style reference in the Atelier Generate modal"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "covers",
+        "clothes",
+        "characters",
+        "merchandise"
+      ],
+      "default": "covers",
+      "description": "Reference category \u2014 the Atelier Generate modal filters references by this so users only see references relevant to what they're making."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Optional style keywords (e.g. 'noir', 'editorial', 'cinematic')"
+    },
+    "order": {
+      "type": "number",
+      "default": 0,
+      "description": "Display order in the picker"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this reference is shown in the Atelier picker"
+    }
+  },
+  "required": [
+    "url"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

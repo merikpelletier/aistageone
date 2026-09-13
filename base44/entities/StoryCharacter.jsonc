@@ -1,0 +1,232 @@
+{
+  "name": "StoryCharacter",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Character name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short character summary / role \u2014 used by the AI agent"
+    },
+    "backstory": {
+      "type": "string",
+      "description": "Detailed character history, origin, motivations, and key past events that guide how the AI agent portrays this character across the story"
+    },
+    "character_type": {
+      "type": "string",
+      "enum": [
+        "Hero",
+        "Anti-Hero",
+        "Tragic Hero",
+        "Byronic Hero",
+        "Reluctant Hero",
+        "Villain",
+        "Antagonist",
+        "Mentor",
+        "Sage",
+        "Oracle",
+        "Ally",
+        "Sidekick",
+        "Confidant",
+        "Love Interest",
+        "Deuteragonist",
+        "Tritagonist",
+        "Foil",
+        "Trickster",
+        "Shapeshifter",
+        "Threshold Guardian",
+        "Herald",
+        "Shadow",
+        "Caregiver",
+        "Rebel",
+        "Outlaw",
+        "Creator",
+        "Ruler",
+        "Magician",
+        "Innocent",
+        "Explorer",
+        "Jester",
+        "Comic Relief",
+        "Narrator",
+        "NPC",
+        "Greek Chorus",
+        "Seducer",
+        "Femme Fatale"
+      ],
+      "description": "Character archetype/role"
+    },
+    "traits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Personality traits"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Portrait / identification photos for the character (up to 8). The first photo is used as the portrait thumbnail."
+    },
+    "reference_sheet": {
+      "type": "string",
+      "description": "Character reference sheet (turnaround / multi-view) used by the video engine for identity consistency. This is the anchor image passed to Veo \u2014 NOT the portrait."
+    },
+    "reference_sheet_notes": {
+      "type": "string",
+      "description": "Admin-authored visual integrity notes describing the reference sheet: build/physique, skin tone, eye color, hair style and color, and distinguishing features. Used by the video engine to enforce identity consistency across generations."
+    },
+    "reference_sheet_color_palette": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Admin-authored dominant color labels (skin, hair, wardrobe) used to keep recompositions visually consistent with the reference sheet."
+    },
+    "reference_sheet_wardrobe_anchors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Admin-authored canonical outfit elements that should be locked across generations unless an explicit costume change is requested."
+    },
+    "reference_sheet_do_not_change": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Admin-authored features that must never be altered by the video engine (e.g. scars, prosthetics, a specific facial mark)."
+    },
+    "reference_sheet_style_constraints": {
+      "type": "string",
+      "description": "Admin-authored style/format constraints for the reference sheet: lighting preference, lens/look, aspect ratio the sheet was shot in, and texture/material notes (fabric types, skin texture, makeup state)."
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this character is available for linking to themes"
+    },
+    "sim_starting_story_set_id": {
+      "type": "string",
+      "description": "Authoritative simulation init: ID of a StorySet in the pack where this character starts in the simulation. Resolved to a SimLocation at init. Admin-authored only \u2014 never derived."
+    },
+    "sim_goals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Authoritative simulation init: this character's goals. Admin-authored only \u2014 not derived from backstory or descriptions."
+    },
+    "sim_immediate_needs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Authoritative simulation init: immediate needs / pressures pressing right now."
+    },
+    "sim_relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "character_id": {
+            "type": "string",
+            "description": "ID of another StoryCharacter in the same pack"
+          },
+          "relationship_type": {
+            "type": "string",
+            "description": "Short label, e.g. ally, rival, employer, kin, creditor"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "character_id",
+          "relationship_type"
+        ]
+      },
+      "description": "Authoritative simulation init: relationships to other pack characters."
+    },
+    "sim_responsibilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Authoritative simulation init: duties / role obligations."
+    },
+    "sim_controlled_assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "description": "Authoritative simulation init: possessions seeded as SimAsset records. Setup assigns possession via current_holder_id."
+    },
+    "sim_starting_knowledge": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Authoritative simulation init: starting facts held privately by this character. Seeded as processed SimObservation records. Public facts belong on StartingTopic.sim_public_facts, not here."
+    },
+    "sim_starting_beliefs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "belief_type": {
+            "type": "string",
+            "enum": [
+              "fact",
+              "hypothesis",
+              "conviction",
+              "assumption"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "description": "0\u20131. Optional; admin-set only \u2014 never auto-invented."
+          }
+        },
+        "required": [
+          "text",
+          "belief_type"
+        ]
+      },
+      "description": "Authoritative simulation init: starting beliefs / assumptions. Seeded as SimBelief with source='prior'."
+    }
+  },
+  "required": [
+    "name",
+    "description"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

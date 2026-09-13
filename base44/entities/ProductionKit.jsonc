@@ -1,0 +1,141 @@
+{
+  "name": "ProductionKit",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Display title of the production kit"
+    },
+    "subtitle": {
+      "type": "string",
+      "description": "Optional subtitle shown on the kit card"
+    },
+    "cover_image": {
+      "type": "string",
+      "description": "Cover image or video URL for the kit card"
+    },
+    "kit_description": {
+      "type": "string",
+      "description": "Production kit overview / description shown at the top of the viewer"
+    },
+    "kit_characters": {
+      "type": "array",
+      "description": "Characters (actors) with reference media galleries",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "photo_url": {
+            "type": "string"
+          },
+          "character_type": {
+            "type": "string",
+            "description": "Archetype/role (e.g. Hero, Villain, Mentor)"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "kit_sets": {
+      "type": "array",
+      "description": "Set locations with media galleries",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "kit_costumes": {
+      "type": "array",
+      "description": "Costume references with media galleries",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "kit_reference_media": {
+      "type": "array",
+      "description": "General reference media (images/videos)",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published"
+      ],
+      "default": "draft",
+      "description": "Only published kits appear in the Studio"
+    },
+    "order": {
+      "type": "number",
+      "default": 0,
+      "description": "Display order in the Studio library"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this kit is active"
+    }
+  },
+  "required": [
+    "title",
+    "status",
+    "order"
+  ],
+  "rls": {
+    "read": true,
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

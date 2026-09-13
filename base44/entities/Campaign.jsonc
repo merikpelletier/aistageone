@@ -1,0 +1,86 @@
+{
+  "name": "Campaign",
+  "type": "object",
+  "properties": {
+    "member_email": {
+      "type": "string",
+      "description": "Email of the member who owns this campaign"
+    },
+    "title": {
+      "type": "string",
+      "description": "Campaign title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Campaign description / pitch to subscribers"
+    },
+    "linked_story_id": {
+      "type": "string",
+      "description": "ID of the TimelineStory this campaign is associated with"
+    },
+    "linked_dossier_id": {
+      "type": "string",
+      "description": "ID of the Dossier this campaign banner appears on"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Campaign start date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Campaign end date"
+    },
+    "subscription_fee": {
+      "type": "number",
+      "description": "Subscription fee in dollars (0 = free)"
+    },
+    "notify_new_episodes": {
+      "type": "boolean",
+      "default": true,
+      "description": "Subscribers get notified when a new episode is published"
+    },
+    "notify_merch_releases": {
+      "type": "boolean",
+      "default": false,
+      "description": "Subscribers get notified about merchandise releases"
+    },
+    "notify_upcoming_projects": {
+      "type": "boolean",
+      "default": false,
+      "description": "Subscribers get notified about upcoming projects"
+    },
+    "banner_image_url": {
+      "type": "string",
+      "description": "Optional custom banner image URL"
+    },
+    "banner_color": {
+      "type": "string",
+      "enum": [
+        "yellow",
+        "red",
+        "blue",
+        "green",
+        "purple",
+        "pink"
+      ],
+      "default": "yellow",
+      "description": "Banner accent color"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "ended"
+      ],
+      "default": "draft",
+      "description": "Campaign status"
+    }
+  },
+  "required": [
+    "member_email",
+    "title"
+  ]
+}
