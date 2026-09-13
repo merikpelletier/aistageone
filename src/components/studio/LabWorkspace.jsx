@@ -1113,6 +1113,8 @@ export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoice
     backgroundColor: activeToolLook.background_color || undefined,
     borderColor: activeToolLook.accent_color || undefined,
     '--aistage-tool-accent': activeToolLook.accent_color || '#facc15',
+    '--aistage-tool-text': activeToolLook.text_color || undefined,
+    '--aistage-tool-icon': activeToolLook.icon_color || undefined,
   };
 
   return (
@@ -1122,6 +1124,8 @@ export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoice
         .aistage-tool-surface [class*="text-yellow-"] { color: var(--aistage-tool-accent) !important; }
         .aistage-tool-surface [class*="border-yellow-"] { border-color: var(--aistage-tool-accent) !important; }
         .aistage-tool-surface [class*="ring-yellow-"] { --tw-ring-color: var(--aistage-tool-accent) !important; }
+        .aistage-tool-surface.aistage-tool-text [class*="text-"] { color: var(--aistage-tool-text) !important; }
+        .aistage-tool-surface.aistage-tool-icons svg { color: var(--aistage-tool-icon) !important; stroke: currentColor; }
       `}</style>
       {/* Balance Header */}
       <div className="flex items-center justify-between bg-black rounded-2xl px-4 py-3">
@@ -1154,7 +1158,7 @@ export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoice
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="aistage-tool-surface bg-black rounded-3xl p-6 shadow-2xl border-2 border-yellow-400/30"
+            className={`aistage-tool-surface bg-black rounded-3xl p-6 shadow-2xl border-2 border-yellow-400/30${activeToolLook.text_color ? ' aistage-tool-text' : ''}${activeToolLook.icon_color ? ' aistage-tool-icons' : ''}`}
             style={activeToolStyle}
             id="active-tool-panel"
           >

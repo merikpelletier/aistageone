@@ -96,10 +96,14 @@ export default function Layout({ children, currentPageName }) {
   const agentPosition = agentBar?.configuration?.position === 'bottom' ? 'bottom' : 'top';
   const contentWidth = pageSetting?.look?.content_width;
   const pageAccent = pageSetting?.look?.accent_color || '#facc15';
+  const pageText = pageSetting?.look?.text_color || '';
+  const pageIcon = pageSetting?.look?.icon_color || '';
   const pageSpacing = pageSetting?.look?.spacing || 'default';
   const pageStyle = {
     backgroundColor: pageSetting?.look?.background_color || undefined,
     '--aistage-surface-accent': pageAccent,
+    '--aistage-surface-text': pageText || undefined,
+    '--aistage-surface-icon': pageIcon || undefined,
   };
   const contentStyle = {
     paddingTop: showAIBar && agentPosition === 'top' ? 'calc(52px + env(safe-area-inset-top))' : 0,
@@ -183,10 +187,17 @@ export default function Layout({ children, currentPageName }) {
         .aistage-page-content [class*="ring-yellow-"] {
           --tw-ring-color: var(--aistage-surface-accent) !important;
         }
+        .aistage-page-content.aistage-page-text [class*="text-"] {
+          color: var(--aistage-surface-text) !important;
+        }
+        .aistage-page-content.aistage-page-icons svg {
+          color: var(--aistage-surface-icon) !important;
+          stroke: currentColor;
+        }
       `}</style>
       
-      {showAIBar && <PersistentAIBar agentName={agentBar?.configuration?.agent_name || 'production_assistant'} label={agentBar?.configuration?.label} placeholder={agentBar?.configuration?.placeholder} position={agentPosition} behavior={agentBar?.configuration?.prompt} permissions={agentBar?.configuration?.permissions} actions={agentBar?.configuration?.actions} model={agentBar?.configuration?.model} backgroundColor={agentBar?.look?.background_color} accentColor={agentBar?.look?.accent_color} foregroundColor={agentBar?.look?.foreground_color} />}
-      <div className="aistage-page-content" style={contentStyle}>
+      {showAIBar && <PersistentAIBar agentName={agentBar?.configuration?.agent_name || 'production_assistant'} label={agentBar?.configuration?.label} placeholder={agentBar?.configuration?.placeholder} position={agentPosition} behavior={agentBar?.configuration?.prompt} permissions={agentBar?.configuration?.permissions} actions={agentBar?.configuration?.actions} model={agentBar?.configuration?.model} backgroundColor={agentBar?.look?.background_color} accentColor={agentBar?.look?.accent_color} textColor={agentBar?.look?.text_color || agentBar?.look?.foreground_color} iconColor={agentBar?.look?.icon_color || agentBar?.look?.foreground_color} />}
+      <div className={`aistage-page-content${pageText ? ' aistage-page-text' : ''}${pageIcon ? ' aistage-page-icons' : ''}`} style={contentStyle}>
         {children}
       </div>
       

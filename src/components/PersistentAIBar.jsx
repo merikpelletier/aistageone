@@ -74,7 +74,7 @@ function useVoiceRecorder({ onTranscript }) {
   return { isRecording, start, stop };
 }
 
-export default function PersistentAIBar({ agentName = 'production_assistant', label = 'Production Assistant', placeholder = 'Ask the AI...', position = 'top', backgroundColor, accentColor, foregroundColor }) {
+export default function PersistentAIBar({ agentName = 'production_assistant', label = 'Production Assistant', placeholder = 'Ask the AI...', position = 'top', backgroundColor, accentColor, textColor, iconColor }) {
   const { appContext } = useAppContext();
   const [input, setInput] = useState('');
   const [conversation, setConversation] = useState(null);
@@ -217,9 +217,13 @@ export default function PersistentAIBar({ agentName = 'production_assistant', la
   return (
     <>
       <audio ref={audioRef} className="hidden" />
+      <style>{`
+        .aistage-agent-bar.aistage-agent-text [class*="text-"] { color: var(--aistage-agent-text) !important; }
+        .aistage-agent-bar.aistage-agent-icons svg { color: var(--aistage-agent-icon) !important; stroke: currentColor; }
+      `}</style>
 
       {/* Persistent top bar */}
-      <div className={`fixed left-0 right-0 z-[300] bg-black/90 backdrop-blur-md ${position === 'bottom' ? 'bottom-0 border-t' : 'top-0 border-b'}`} style={position === 'bottom' ? { paddingBottom: 'env(safe-area-inset-bottom)', height: 'calc(52px + env(safe-area-inset-bottom))', backgroundColor: backgroundColor || undefined, borderColor: accentColor || undefined, color: foregroundColor || undefined } : { paddingTop: 'env(safe-area-inset-top)', height: 'calc(52px + env(safe-area-inset-top))', backgroundColor: backgroundColor || undefined, borderColor: accentColor || undefined, color: foregroundColor || undefined }} aria-label={label}>
+      <div className={`aistage-agent-bar${textColor ? ' aistage-agent-text' : ''}${iconColor ? ' aistage-agent-icons' : ''} fixed left-0 right-0 z-[300] bg-black/90 backdrop-blur-md ${position === 'bottom' ? 'bottom-0 border-t' : 'top-0 border-b'}`} style={position === 'bottom' ? { paddingBottom: 'env(safe-area-inset-bottom)', height: 'calc(52px + env(safe-area-inset-bottom))', backgroundColor: backgroundColor || undefined, borderColor: accentColor || undefined, '--aistage-agent-text': textColor || undefined, '--aistage-agent-icon': iconColor || undefined } : { paddingTop: 'env(safe-area-inset-top)', height: 'calc(52px + env(safe-area-inset-top))', backgroundColor: backgroundColor || undefined, borderColor: accentColor || undefined, '--aistage-agent-text': textColor || undefined, '--aistage-agent-icon': iconColor || undefined }} aria-label={label}>
         <div className="flex items-center h-[52px] gap-2" style={{ paddingLeft: '8px', paddingRight: 'calc(8px + env(safe-area-inset-right))' }}>
 
           {/* Sound wave / mode toggle */}
@@ -281,8 +285,8 @@ export default function PersistentAIBar({ agentName = 'production_assistant', la
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className="fixed left-0 right-0 z-[290] bg-black/95 backdrop-blur-md border-b border-yellow-600/20 max-h-[60vh] overflow-y-auto"
-            style={position === 'bottom' ? { bottom: 'calc(52px + env(safe-area-inset-bottom))' } : { top: 'calc(52px + env(safe-area-inset-top))' }}
+            className={`aistage-agent-bar${textColor ? ' aistage-agent-text' : ''}${iconColor ? ' aistage-agent-icons' : ''} fixed left-0 right-0 z-[290] bg-black/95 backdrop-blur-md border-b border-yellow-600/20 max-h-[60vh] overflow-y-auto`}
+            style={position === 'bottom' ? { bottom: 'calc(52px + env(safe-area-inset-bottom))', '--aistage-agent-text': textColor || undefined, '--aistage-agent-icon': iconColor || undefined } : { top: 'calc(52px + env(safe-area-inset-top))', '--aistage-agent-text': textColor || undefined, '--aistage-agent-icon': iconColor || undefined }}
           >
             <div className="flex justify-end px-4 pt-3 sticky top-0 bg-black/95 z-10">
               <button onClick={() => setShowMessages(false)} className="text-white hover:text-white transition-colors">
