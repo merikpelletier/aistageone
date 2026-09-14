@@ -149,7 +149,7 @@ export default function AdminContent() {
           variant="outline"
           size="sm"
           onClick={() => openDialog({ key: '', title: '', content: '' })}
-          className="border-white/20 text-white"
+          className="border-white/20"
         >
           <Plus size={14} className="mr-2" />
           Add content block
