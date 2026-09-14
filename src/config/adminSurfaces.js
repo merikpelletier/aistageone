@@ -72,5 +72,15 @@ export const defaultSurfaceSettings = (surface) => ({
     scope: surface.scope || 'page',
     order: ADMIN_SURFACES.findIndex((item) => item.type === surface.type && item.key === surface.key),
     show_navigation: surface.type === 'page' ? surface.key !== 'Admin' : undefined,
+    ...(surface.type === 'page' && surface.key === 'Studio' ? {
+      home_items: [
+        { key: 'my_projects', label: 'My Projects', description: 'Dossiers in production', icon: 'Home', background_image: '', visible: true, order: 0 },
+        { key: 'production_kits', label: 'Production Kits', description: 'Your actors & sets for AI tools', icon: 'Clapperboard', background_image: '', visible: false, order: 1 },
+        { key: 'stages', label: 'Stages', description: 'Sketch generators', icon: 'Theater', background_image: '', visible: true, order: 2 },
+        { key: 'tools', label: 'Tools', description: 'AI production tools', icon: 'Wrench', background_image: '', visible: true, order: 3 },
+        { key: 'my_vault', label: 'My Vault', description: 'Saved assets & references', icon: 'Bookmark', background_image: '', visible: true, order: 4 },
+        { key: 'fotoplay', label: 'FotoPlay', description: 'Interactive AI storytelling', icon: 'BookOpen', background_image: '', visible: true, order: 5 },
+      ],
+    } : {}),
   },
 });

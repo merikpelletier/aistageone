@@ -6,6 +6,16 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Layers, Camera, ChevronRight, ChevronLeft, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+
+const HOME_ICON_MAP = { Home, Clapperboard, Theater, Wrench, Bookmark: undefined, BookOpen, Users, Layers, Film };
+const DEFAULT_HOME_ITEMS = [
+  { key: 'my_projects', label: 'My Projects', description: 'Dossiers in production', icon: 'Home', background_image: '', visible: true, order: 0 },
+  { key: 'production_kits', label: 'Production Kits', description: 'Your actors & sets for AI tools', icon: 'Clapperboard', background_image: '', visible: false, order: 1 },
+  { key: 'stages', label: 'Stages', description: 'Sketch generators', icon: 'Theater', background_image: '', visible: true, order: 2 },
+  { key: 'tools', label: 'Tools', description: 'AI production tools', icon: 'Wrench', background_image: '', visible: true, order: 3 },
+  { key: 'my_vault', label: 'My Vault', description: 'Saved assets & references', icon: 'Bookmark', background_image: '', visible: true, order: 4 },
+  { key: 'fotoplay', label: 'FotoPlay', description: 'Interactive AI storytelling', icon: 'BookOpen', background_image: '', visible: true, order: 5 },
+];
 import CharacterSheetEditor from '@/components/CharacterSheetEditor';
 import SetAssetEditor from '@/components/studio/SetAssetEditor';
 import KitProductionRoom from '@/components/KitProductionRoom';
@@ -25,30 +35,33 @@ import StoryBlocks from '@/components/studio/StoryBlocks';
 import VaultSection from '@/components/VaultSection';
 import LayoutTool from '@/components/studio/LayoutTool';
 import { Bookmark } from 'lucide-react';
+HOME_ICON_MAP.Bookmark = Bookmark;
 
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
-function StudioCard({ icon: Icon, title, subtitle, color, onClick, badge }) {
+function StudioCard({ icon: Icon, title, subtitle, color, onClick, badge, backgroundImage }) {
   return (
     <motion.button
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
+      style={backgroundImage ? { backgroundImage: `url(${backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       className="w-full text-left bg-black rounded-3xl p-6 relative overflow-hidden flex items-center gap-5 active:opacity-90 transition-opacity"
     >
-      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 ${color}`}>
+      {backgroundImage && <div className="absolute inset-0 bg-black/50" />}
+      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 relative ${color}`}>
         <Icon size={28} className="text-black" />
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 relative">
         <p className="text-white font-semibold tracking-wide text-base">{title}</p>
         <p className="text-yellow-400 text-sm mt-1 font-medium">{subtitle}</p>
       </div>
       {badge > 0 && (
-        <span className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+        <span className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 relative">
           {badge > 99 ? '99+' : badge}
         </span>
       )}
-      <ChevronRight size={20} className="text-yellow-400 flex-shrink-0" />
+      <ChevronRight size={20} className="text-yellow-400 flex-shrink-0 relative" />
     </motion.button>
   );
 }
@@ -193,6 +206,41 @@ export default function Studio() {
     queryFn: () => base44.entities.Dossier.filter({ status: 'published' }),
   });
   const projectsInProductionCount = publishedDossiers.length;
+
+  const { data: studioRuntime } = useQuery({
+    queryKey: ['admin-surface-runtime'],
+    queryFn: async () => (await base44.functions.invoke('admin-pages-tools', { action: 'runtime' })).data,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const studioSurfaceSetting = studioRuntime?.settings?.find((item) => item.surface_type === 'page' && item.surface_key === 'Studio');
+  const homeItems = (studioSurfaceSetting?.configuration?.home_items?.length ? studioSurfaceSetting.configuration.home_items : DEFAULT_HOME_ITEMS)
+    .filter((item) => item.visible !== false)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const homeItemActions = {
+    my_projects: () => navigate('/MyProjects'),
+    production_kits: () => setActiveTab('library'),
+    stages: () => setActiveTab('lab'),
+    tools: () => setActiveTab('tools'),
+    my_vault: () => setShowVault(true),
+    fotoplay: () => setActiveTab('stories'),
+  };
+  const homeItemBadges = {
+    my_projects: projectsInProductionCount,
+    production_kits: communityKits.length,
+    stages: 0,
+    tools: 0,
+    my_vault: vaultAssets.length,
+    fotoplay: 0,
+  };
+  const homeItemColors = {
+    my_projects: 'bg-yellow-400',
+    production_kits: 'bg-yellow-300',
+    stages: 'bg-yellow-200',
+    tools: 'bg-yellow-100',
+    my_vault: 'bg-yellow-300',
+    fotoplay: 'bg-yellow-300',
+  };
 
   // Handle production mode - show simple tool interface
   useEffect(() => {
@@ -581,54 +629,18 @@ export default function Studio() {
 
           <p className="text-black text-sm font-bold tracking-widest uppercase pt-6">Navigation</p>
 
-          <StudioCard
-            icon={Home}
-            title="My Projects"
-            subtitle="Dossiers in production"
-            color="bg-yellow-400"
-            badge={projectsInProductionCount}
-            onClick={() => navigate('/MyProjects')}
-          />
-          <StudioCard
-            icon={Clapperboard}
-            title="Production Kits"
-            subtitle="Your actors & sets for AI tools"
-            color="bg-yellow-300"
-            badge={communityKits.length}
-            onClick={() => setActiveTab('library')}
-          />
-          <StudioCard
-            icon={Theater}
-            title="Stages"
-            subtitle="Sketch generators"
-            color="bg-yellow-200"
-            badge={0}
-            onClick={() => setActiveTab('lab')}
-          />
-          <StudioCard
-            icon={Wrench}
-            title="Tools"
-            subtitle="AI production tools"
-            color="bg-yellow-100"
-            badge={0}
-            onClick={() => setActiveTab('tools')}
-          />
-          <StudioCard
-            icon={Bookmark}
-            title="My Vault"
-            subtitle="Saved assets & references"
-            color="bg-yellow-300"
-            badge={vaultAssets.length}
-            onClick={() => setShowVault(true)}
-          />
-          <StudioCard
-            icon={BookOpen}
-            title="FotoPlay"
-            subtitle="Interactive AI storytelling"
-            color="bg-yellow-300"
-            badge={0}
-            onClick={() => setActiveTab('stories')}
-          />
+          {homeItems.map((item) => (
+            <StudioCard
+              key={item.key}
+              icon={HOME_ICON_MAP[item.icon] || Home}
+              title={item.label}
+              subtitle={item.description}
+              color={homeItemColors[item.key] || 'bg-yellow-300'}
+              badge={homeItemBadges[item.key] || 0}
+              backgroundImage={item.background_image}
+              onClick={homeItemActions[item.key] || (() => {})}
+            />
+          ))}
         </motion.div>
       )}
 
