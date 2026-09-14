@@ -100,6 +100,7 @@ function ConfigurationSection({ surface, draft, setDraft }) {
       <StudioHomeItemsEditor items={config.home_items || []} onChange={(items) => update('home_items', items)} />
       <FotoplayViewsEditor views={config.fotoplay_views || []} onChange={(views) => update('fotoplay_views', views)} />
     </>}
+    {surface.type === 'page' && surface.key === 'Plus' && <PlusPageBackgroundEditor value={config.background_image || ''} onChange={(url) => update('background_image', url)} />}
     {surface.type === 'page' && surface.key === 'Plus' && <PlusSectionsEditor sections={config.plus_sections || []} onChange={(sections) => update('plus_sections', sections)} />}
     {surface.type === 'tool' && surface.scope === 'studio' && <div className="grid gap-4 md:grid-cols-2"><div><span className={label}>Studio section</span><select className={field} value={config.group || ''} onChange={(event) => update('group', event.target.value)}><option className="bg-black" value="">Keep current section</option>{studioGroups.map((group) => <option key={group} className="bg-black" value={group}>{group}</option>)}</select></div><div><span className={label}>Description</span><input className={field} value={config.description || ''} onChange={(event) => update('description', event.target.value)} placeholder="Keep current description" /></div></div>}
     {surface.key === 'agent_bar' && <>
@@ -225,6 +226,15 @@ const DEFAULT_PLUS_SECTIONS = [
   { key: 'contact', label: 'WRITE TO US', visible: true, order: 3 },
   { key: 'philosophy', label: 'Footer', visible: true, order: 4 },
 ];
+
+function PlusPageBackgroundEditor({ value, onChange }) {
+  const [uploading, setUploading] = useState(false);
+  return <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
+    <p className={label}>Page background</p>
+    <StudioImageUploadField label="Background image" value={value} onChange={onChange} uploading={uploading} setUploading={setUploading} />
+    <p className="text-xs text-white/35">Covers the full Plus page behind all sections. Falls back to the existing yellow background when empty.</p>
+  </div>;
+}
 
 function PlusSectionsEditor({ sections, onChange }) {
   const merged = DEFAULT_PLUS_SECTIONS.map((def) => ({ ...def, ...(sections.find((item) => item.key === def.key) || {}) }));
