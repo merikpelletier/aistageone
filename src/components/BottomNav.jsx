@@ -62,7 +62,7 @@ export default function BottomNav() {
   }, []);
 
   return (
-    <nav className="bottom-nav-safe fixed bottom-0 left-0 right-0 z-50 bg-yellow-400 border-t border-black/20 shadow-lg">
+    <nav className="bottom-nav-safe fixed bottom-0 left-0 right-0 z-50 bg-black border-t border-white/20 shadow-lg">
       <div className="flex items-center h-14 md:h-16 w-full">
 
         {/* All nav icons evenly distributed */}
