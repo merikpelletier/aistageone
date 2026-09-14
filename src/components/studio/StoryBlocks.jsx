@@ -1,7 +1,7 @@
 import VoicePicker from '@/components/studio/VoicePicker.jsx';
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { BookOpen, Loader2, Sparkles, ArrowLeft, CheckCircle2, Play, Clock, Film, Search, Users, Trash2, Clapperboard, RotateCcw, Plus, Clapperboard as Clap, Volume2, Image as ImageIcon, ChevronLeft, ChevronRight, Send, List, FolderDown, PenTool } from 'lucide-react';
 import { toast } from 'sonner';
