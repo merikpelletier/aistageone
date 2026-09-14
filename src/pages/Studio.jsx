@@ -40,7 +40,7 @@ HOME_ICON_MAP.Bookmark = Bookmark;
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
-function StudioCard({ icon: Icon, title, subtitle, color, onClick, badge, backgroundImage }) {
+function StudioCard({ icon: Icon, iconImage, title, subtitle, color, onClick, badge, backgroundImage }) {
   return (
     <motion.button
       whileTap={{ scale: 0.97 }}
@@ -49,8 +49,8 @@ function StudioCard({ icon: Icon, title, subtitle, color, onClick, badge, backgr
       className="w-full text-left bg-black rounded-3xl p-6 relative overflow-hidden flex items-center gap-5 active:opacity-90 transition-opacity"
     >
       {backgroundImage && <div className="absolute inset-0 bg-black/50" />}
-      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 relative ${color}`}>
-        <Icon size={28} className="text-black" />
+      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 relative overflow-hidden ${color}`}>
+        {iconImage ? <img src={iconImage} alt="" className="w-full h-full object-cover" /> : <Icon size={28} className="text-black" />}
       </div>
       <div className="flex-1 min-w-0 relative">
         <p className="text-white font-semibold tracking-wide text-base">{title}</p>
@@ -633,6 +633,7 @@ export default function Studio() {
             <StudioCard
               key={item.key}
               icon={HOME_ICON_MAP[item.icon] || Home}
+              iconImage={item.icon_image?.trim() ? item.icon_image : null}
               title={item.label}
               subtitle={item.description}
               color={homeItemColors[item.key] || 'bg-yellow-300'}

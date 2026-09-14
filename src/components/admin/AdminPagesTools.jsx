@@ -108,21 +108,63 @@ function ConfigurationSection({ surface, draft, setDraft }) {
 
 const STUDIO_HOME_ICONS = ['Home', 'Clapperboard', 'Theater', 'Wrench', 'Bookmark', 'BookOpen'];
 
+function StudioImageUploadField({ label: fieldLabel, value, onChange, uploading, setUploading }) {
+  const inputId = `studio-upload-${fieldLabel}-${Math.random().toString(36).slice(2)}`;
+  const handleFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      onChange(file_url);
+    } catch (error) {
+      toast.error(error.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
+  };
+  return <div>
+    <span className={label}>{fieldLabel}</span>
+    {value ? <div className="space-y-2">
+      <div className="h-24 w-full overflow-hidden rounded-xl border border-white/10 bg-black/40"><img src={value} alt={fieldLabel} className="h-full w-full object-cover" /></div>
+      <div className="flex gap-2">
+        <label htmlFor={inputId} className="cursor-pointer rounded-xl bg-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/15">{uploading ? 'Uploading…' : 'Replace'}</label>
+        <button type="button" onClick={() => onChange('')} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-black text-red-300 hover:bg-white/15">Remove</button>
+      </div>
+    </div> : <label htmlFor={inputId} className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-white/20 bg-white/5 px-3 py-6 text-xs font-black text-white/60 hover:bg-white/10">{uploading ? 'Uploading…' : `Upload ${fieldLabel}`}</label>}
+    <input id={inputId} type="file" accept="image/*" className="hidden" onChange={handleFile} disabled={uploading} />
+  </div>;
+}
+
 function StudioHomeItemsEditor({ items, onChange }) {
   const sorted = [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const updateItem = (key, patch) => onChange(items.map((item) => item.key === key ? { ...item, ...patch } : item));
+  const [uploadingKey, setUploadingKey] = useState(null);
   return <div className="space-y-3">
     <p className={label}>Studio home items</p>
-    {sorted.map((item) => <div key={item.key} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
+    {sorted.map((item) => {
+      const iconSource = item.icon_image ? 'custom' : 'builtin';
+      return <div key={item.key} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
       <div className="flex items-center justify-between gap-3"><span className="text-sm font-black text-white">{item.key}</span><label className="flex items-center gap-2 text-xs text-white/60"><input type="checkbox" className="accent-yellow-400" checked={item.visible !== false} onChange={(event) => updateItem(item.key, { visible: event.target.checked })} />Visible</label></div>
       <div className="grid gap-3 md:grid-cols-2">
         <div><span className={label}>Display name</span><input className={field} value={item.label || ''} onChange={(event) => updateItem(item.key, { label: event.target.value })} /></div>
         <div><span className={label}>Order</span><input type="number" className={field} value={item.order ?? 0} onChange={(event) => updateItem(item.key, { order: Number(event.target.value) })} /></div>
-        <div><span className={label}>Icon</span><select className={field} value={item.icon || 'Home'} onChange={(event) => updateItem(item.key, { icon: event.target.value })}>{STUDIO_HOME_ICONS.map((icon) => <option key={icon} className="bg-black" value={icon}>{icon}</option>)}</select></div>
-        <div><span className={label}>Background image URL</span><input className={field} value={item.background_image || ''} onChange={(event) => updateItem(item.key, { background_image: event.target.value })} placeholder="https://..." /></div>
       </div>
+      <div className="rounded-xl border border-white/10 bg-black/20 p-3 space-y-3">
+        <div className="flex items-center gap-2">
+          <span className={label}>Icon source</span>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => updateItem(item.key, { icon_image: '' })} className={`rounded-lg px-3 py-1.5 text-xs font-black ${iconSource === 'builtin' ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white/60'}`}>Built-in icon</button>
+            <button type="button" onClick={() => updateItem(item.key, { icon_image: item.icon_image || ' ' })} className={`rounded-lg px-3 py-1.5 text-xs font-black ${iconSource === 'custom' ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white/60'}`}>Custom image</button>
+          </div>
+        </div>
+        {iconSource === 'builtin' ? <div><span className={label}>Icon</span><select className={field} value={item.icon || 'Home'} onChange={(event) => updateItem(item.key, { icon: event.target.value })}>{STUDIO_HOME_ICONS.map((icon) => <option key={icon} className="bg-black" value={icon}>{icon}</option>)}</select></div> : <StudioImageUploadField label="Icon image" value={item.icon_image?.trim() ? item.icon_image : ''} onChange={(url) => updateItem(item.key, { icon_image: url || ' ' })} uploading={uploadingKey === `${item.key}-icon`} setUploading={(value) => setUploadingKey(value ? `${item.key}-icon` : null)} />}
+      </div>
+      <StudioImageUploadField label="Background image" value={item.background_image || ''} onChange={(url) => updateItem(item.key, { background_image: url })} uploading={uploadingKey === `${item.key}-bg`} setUploading={(value) => setUploadingKey(value ? `${item.key}-bg` : null)} />
       <div><span className={label}>Description</span><input className={field} value={item.description || ''} onChange={(event) => updateItem(item.key, { description: event.target.value })} /></div>
-    </div>)}
+    </div>;
+    })}
   </div>;
 }
 
