@@ -608,16 +608,16 @@ export default function Studio() {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`flex items-center justify-center px-1 py-2.5 rounded-xl transition-all text-center overflow-hidden ${
+                  className={`flex items-center justify-center px-1 py-3.5 rounded-2xl transition-all text-center overflow-hidden ${
                     activeTab === tab.key
-                      ? 'bg-black text-yellow-400 shadow-lg'
-                      : 'bg-black/10 text-black hover:bg-black/20'
+                      ? 'bg-black text-yellow-400 shadow-xl ring-2 ring-yellow-400/60 scale-105'
+                      : 'bg-black/20 text-black hover:bg-black/30'
                   }`}
                 >
                   {tabIconImage ? (
-                    <img src={tabIconImage} alt="" className="w-5 h-5 object-cover rounded" />
+                    <img src={tabIconImage} alt="" className={`w-8 h-8 object-cover rounded-lg ${activeTab === tab.key ? 'ring-2 ring-yellow-400/70' : 'ring-1 ring-black/30'}`} />
                   ) : (
-                    <TabIcon className="w-5 h-5" />
+                    <TabIcon className="w-7 h-7 stroke-[2.5]" />
                   )}
                 </button>
               );
