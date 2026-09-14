@@ -33,6 +33,8 @@ const TOOL_SOURCE_FILES = {
 };
 
 ADMIN_PAGE_SURFACES.forEach((surface) => { surface.source_files = [`src/pages/${surface.key}.jsx`]; });
+const STUDIO_PAGE_SURFACE = ADMIN_PAGE_SURFACES.find((surface) => surface.key === 'Studio');
+if (STUDIO_PAGE_SURFACE) { STUDIO_PAGE_SURFACE.source_files = ['src/pages/Studio.jsx', 'src/components/studio/LabWorkspace.jsx']; }
 ADMIN_TOOL_SURFACES.forEach((surface) => { surface.source_files = TOOL_SOURCE_FILES[surface.key] || ['src/pages/Studio.jsx']; });
 
 export const ADMIN_SURFACES = [...ADMIN_PAGE_SURFACES, ...ADMIN_TOOL_SURFACES];
