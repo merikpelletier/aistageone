@@ -90,26 +90,26 @@ export default function Plus() {
         />
       )}
       {backgroundImage && <div className="absolute inset-0 bg-black/55" />}
-      <div className="relative">
+      <div className="relative max-w-[1100px] mx-auto">
       {/* Header */}
-      <div className="px-6 mb-12">
+      <div className="px-6 mb-10">
         <h1 className={`text-3xl font-extralight tracking-widest ${backgroundImage ? 'text-white' : 'text-black'}`}>{L('plus_title', 'MORE')}</h1>
         <div className="w-12 h-0.5 bg-red-600 mt-4" />
       </div>
 
       {/* Admin Login Link */}
       {(isVisible('asset_catalog') || isVisible('admin')) && (
-        <div className="px-6 mb-12">
+        <div className="px-6 mb-10 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {isVisible('asset_catalog') && (
             <Link
               to={createPageUrl('Catalog')}
-              className="flex items-center justify-between p-4 mb-3 bg-neutral-950/95 border border-white/10 rounded-xl shadow-lg shadow-black/30 group hover:bg-neutral-900 hover:border-yellow-400/30 transition-colors"
+              className="flex items-center justify-between p-4 bg-neutral-950/95 border border-white/10 rounded-xl shadow-lg shadow-black/30 group hover:bg-neutral-900 hover:border-yellow-400/30 transition-colors"
             >
-              <div className="flex items-center gap-4">
-                <Boxes size={20} className="text-yellow-400" />
-                <span className="text-white font-light tracking-wide">{sectionLabel('asset_catalog', 'Asset Catalog')}</span>
+              <div className="flex items-center gap-3">
+                <Boxes size={18} className="text-yellow-400" />
+                <span className="text-white font-light tracking-wide text-sm">{sectionLabel('asset_catalog', 'Asset Catalog')}</span>
               </div>
-              <ChevronRight size={18} className="text-white group-hover:text-yellow-400 transition-colors" />
+              <ChevronRight size={16} className="text-white group-hover:text-yellow-400 transition-colors" />
             </Link>
           )}
           {isVisible('admin') && (
@@ -117,11 +117,11 @@ export default function Plus() {
               to={createPageUrl('Admin')}
               className="flex items-center justify-between p-4 bg-neutral-950/95 border border-white/10 rounded-xl shadow-lg shadow-black/30 group hover:bg-neutral-900 hover:border-yellow-400/30 transition-colors"
             >
-              <div className="flex items-center gap-4">
-                <Lock size={20} className="text-white" />
-                <span className="text-white font-light tracking-wide">{sectionLabel('admin', L('plus_admin_label', 'Admin'))}</span>
+              <div className="flex items-center gap-3">
+                <Lock size={18} className="text-white" />
+                <span className="text-white font-light tracking-wide text-sm">{sectionLabel('admin', L('plus_admin_label', 'Admin'))}</span>
               </div>
-              <ChevronRight size={18} className="text-white group-hover:text-white transition-colors" />
+              <ChevronRight size={16} className="text-white group-hover:text-white transition-colors" />
             </Link>
           )}
         </div>
@@ -129,18 +129,18 @@ export default function Plus() {
 
       {/* Content Sections */}
       {isVisible('information') && (
-      <div className="px-6 mb-12">
-        <h2 className="text-yellow-400 text-xs tracking-widest mb-6 font-bold">{sectionLabel('information', L('plus_info_section', 'INFORMATION'))}</h2>
-        <div className="space-y-3">
+      <div className="px-6 mb-10">
+        <h2 className="text-yellow-400 text-xs tracking-widest mb-4 font-bold">{sectionLabel('information', L('plus_info_section', 'INFORMATION'))}</h2>
+        <div className="flex flex-col gap-2">
           {contents.map((content) => (
-            <div key={content.id} className="rounded-xl overflow-hidden shadow-lg shadow-black/30">
+            <div key={content.id} className="rounded-lg overflow-hidden shadow-md shadow-black/20">
               <button
                 onClick={() => setExpandedContent(expandedContent === content.key ? null : content.key)}
-                className="w-full flex items-center justify-between p-4 bg-neutral-950/95 border border-white/10 rounded-xl hover:bg-neutral-900 hover:border-yellow-400/30 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-2.5 bg-neutral-950/95 border border-white/10 rounded-lg hover:bg-neutral-900 hover:border-yellow-400/30 transition-colors"
               >
-                <span className="text-white font-light tracking-wide">{content.title}</span>
+                <span className="text-white font-light tracking-wide text-sm">{content.title}</span>
                 <ChevronDown 
-                  size={18} 
+                  size={16} 
                   className={`text-yellow-400 transition-transform ${expandedContent === content.key ? 'rotate-180' : ''}`} 
                 />
               </button>
@@ -149,7 +149,7 @@ export default function Plus() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="bg-neutral-900/95 border border-white/10 border-t-0 rounded-b-xl p-6 -mt-px"
+                  className="bg-neutral-900/95 border border-white/10 border-t-0 rounded-b-lg px-4 py-4 -mt-px"
                 >
                   <div className="text-white font-light leading-relaxed whitespace-pre-wrap text-sm">
                     {content.content}
@@ -164,9 +164,9 @@ export default function Plus() {
 
       {/* Contact Section */}
       {isVisible('contact') && (
-      <div className="px-6">
-        <h2 className={`text-2xl font-extralight tracking-widest mb-6 ${backgroundImage ? 'text-white' : 'text-black'}`}>{sectionLabel('contact', L('plus_contact_section', 'WRITE TO US'))}</h2>
-        <div className="w-12 h-0.5 bg-red-600 mb-6" />
+      <div className="px-6 mb-4">
+        <h2 className={`text-xl font-extralight tracking-widest mb-4 ${backgroundImage ? 'text-white' : 'text-black'}`}>{sectionLabel('contact', L('plus_contact_section', 'WRITE TO US'))}</h2>
+        <div className="w-12 h-0.5 bg-red-600 mb-4" />
         
         {!showContactForm ? (
           <motion.button
@@ -230,15 +230,13 @@ export default function Plus() {
       </div>
       )}
 
-      {/* Philosophy */}
+      {/* Philosophy Footer */}
       {isVisible('philosophy') && (
-      <div className="px-6 mt-16">
-        <div className="border-t border-white/10 pt-8">
-          <p className="text-white/80 text-xs leading-relaxed text-center font-light">
-            {L('plus_footer', 'The Wise Pig is a temporary space, an unfiltered adult space, a living editorial project, without memory, without algorithm, without social competition.')}
-          </p>
-        </div>
-      </div>
+      <footer className="px-6 mt-12 pb-4 text-center">
+        <p className="text-white/70 text-[11px] leading-relaxed font-light max-w-md mx-auto">
+          {L('plus_footer', 'The Wise Pig is a temporary space, an unfiltered adult space, a living editorial project, without memory, without algorithm, without social competition.')}
+        </p>
+      </footer>
       )}
       </div>
     </div>
