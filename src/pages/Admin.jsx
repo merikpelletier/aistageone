@@ -2,7 +2,6 @@ import AdminModels from '@/components/admin/AdminModels';
 import AdminFinance from '@/components/admin/AdminFinance';
 import AdminOloInventory from '@/components/admin/AdminOloInventory';
 import AdminPagesTools from '@/components/admin/AdminPagesTools';
-import AdminMyStudio from '@/components/admin/AdminMyStudio';
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -137,13 +136,6 @@ export default function Admin() {
           >
             <MonitorCog size={14} className="mr-2" />
             Pages & Tools
-          </TabsTrigger>
-          <TabsTrigger
-            value="my-studio"
-            className="flex-1 py-3 text-xs tracking-wide text-white hover:text-white data-[state=active]:bg-white data-[state=active]:text-black rounded-sm"
-          >
-            <Presentation size={14} className="mr-2" />
-            My Studio
           </TabsTrigger>
           <TabsTrigger
             value="dossiers"
@@ -311,9 +303,6 @@ export default function Admin() {
 
         <TabsContent value="pages-tools" className="mt-6">
           <AdminPagesTools />
-        </TabsContent>
-        <TabsContent value="my-studio" className="mt-6">
-          <AdminMyStudio />
         </TabsContent>
         <TabsContent value="dossiers" className="mt-6">
           <AdminDossiers />
