@@ -15,10 +15,29 @@ import UserCharacterEditor from './UserCharacterEditor';
 import SaveToVaultModal from './SaveToVaultModal';
 import AuthorStoryBlocks from './AuthorStoryBlocks';
 
+const DEFAULT_FOTOPLAY_VIEW_DEFAULTS = {
+  gateway: { label: 'FotoPlay', description: 'Choose your experience' },
+  author: { label: 'FotoPlay Author', description: "Create an original story from scratch or begin with selected characters, locations and ideas from a Story Pack. Every imported component becomes part of your editable private project." },
+  browse: { label: 'Stories', description: 'Browse available participatory Story Packs' },
+};
+
 export default function StoryBlocks({ user, onBack }) {
   const isMountedRef = useRef(true);
   useEffect(() => () => { isMountedRef.current = false; }, []);
   const qc = useQueryClient();
+  const { data: fotoplayRuntime } = useQuery({
+    queryKey: ['admin-surface-runtime'],
+    queryFn: async () => (await base44.functions.invoke('admin-pages-tools', { action: 'runtime' })).data,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const fotoplaySurfaceSetting = fotoplayRuntime?.settings?.find((item) => item.surface_type === 'page' && item.surface_key === 'Studio');
+  const configuredFotoplayViews = fotoplaySurfaceSetting?.configuration?.fotoplay_views || [];
+  const getFotoplayView = (key) => {
+    const configured = configuredFotoplayViews.find((item) => item.key === key);
+    const fallback = DEFAULT_FOTOPLAY_VIEW_DEFAULTS[key] || {};
+    return { visible: true, ...fallback, ...(configured || {}) };
+  };
   const [view, setView] = useState('gateway'); // gateway → unified author workspace
   const [themes, setThemes] = useState([]);
   const [allTopics, setAllTopics] = useState([]);
@@ -706,29 +725,39 @@ export default function StoryBlocks({ user, onBack }) {
   if (view === 'gateway') {
     return (
       <div className="mx-auto w-full max-w-[1500px] px-5 pb-24 lg:px-10">
-        <div className="mb-8 flex items-center gap-3">
-          <button onClick={onBack} className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-black">
-            <ArrowLeft size={20} className="text-yellow-400" />
-          </button>
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-black/55">Choose your experience</p>
-            <h2 className="text-3xl font-black text-black lg:text-5xl">FotoPlay</h2>
-          </div>
-        </div>
-
-        <div>
-          <motion.button whileHover={{ y: -4 }} whileTap={{ scale: 0.99 }} onClick={() => setView('author')} className="group min-h-[360px] w-full overflow-hidden rounded-[2rem] border-2 border-black bg-yellow-400 p-7 text-left shadow-2xl lg:min-h-[520px] lg:p-10">
-            <div className="flex h-full flex-col">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-black text-yellow-400 lg:h-20 lg:w-20"><PenTool size={32} /></div>
-              <div className="mt-auto pt-16">
-                <p className="mb-3 text-xs font-black uppercase tracking-[0.24em] text-black/60">One private author workspace</p>
-                <h3 className="text-3xl font-black leading-tight text-black lg:text-5xl">FotoPlay Author</h3>
-                <p className="mt-4 max-w-3xl text-sm font-semibold leading-relaxed text-black/65 lg:text-base">Create an original story from scratch or begin with selected characters, locations and ideas from a Story Pack. Every imported component becomes part of your editable private project.</p>
-                <div className="mt-8 flex items-center gap-2 text-sm font-black text-black">Start creating <ChevronRight size={19} className="transition-transform group-hover:translate-x-1" /></div>
+        {(() => {
+          const gatewayView = getFotoplayView('gateway');
+          const authorView = getFotoplayView('author');
+          return (
+            <>
+              <div className="mb-8 flex items-center gap-3" style={gatewayView.background_image ? { backgroundImage: `url(${gatewayView.background_image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+                <button onClick={onBack} className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-black">
+                  <ArrowLeft size={20} className="text-yellow-400" />
+                </button>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-black/55">{gatewayView.description || 'Choose your experience'}</p>
+                  <h2 className="text-3xl font-black text-black lg:text-5xl">{gatewayView.label || 'FotoPlay'}</h2>
+                </div>
               </div>
-            </div>
-          </motion.button>
-        </div>
+
+              {authorView.visible !== false && (
+                <div>
+                  <motion.button whileHover={{ y: -4 }} whileTap={{ scale: 0.99 }} onClick={() => setView('author')} className="group min-h-[360px] w-full overflow-hidden rounded-[2rem] border-2 border-black bg-yellow-400 p-7 text-left shadow-2xl lg:min-h-[520px] lg:p-10" style={authorView.background_image ? { backgroundImage: `url(${authorView.background_image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+                    <div className="flex h-full flex-col">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-black text-yellow-400 lg:h-20 lg:w-20"><PenTool size={32} /></div>
+                      <div className="mt-auto pt-16">
+                        <p className="mb-3 text-xs font-black uppercase tracking-[0.24em] text-black/60">One private author workspace</p>
+                        <h3 className="text-3xl font-black leading-tight text-black lg:text-5xl">{authorView.label || 'FotoPlay Author'}</h3>
+                        <p className="mt-4 max-w-3xl text-sm font-semibold leading-relaxed text-black/65 lg:text-base">{authorView.description}</p>
+                        <div className="mt-8 flex items-center gap-2 text-sm font-black text-black">Start creating <ChevronRight size={19} className="transition-transform group-hover:translate-x-1" /></div>
+                      </div>
+                    </div>
+                  </motion.button>
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
     );
   }
@@ -739,15 +768,16 @@ export default function StoryBlocks({ user, onBack }) {
 
   // ── BROWSE VIEW (available stories) ──
   if (view === 'browse') {
+    const browseView = getFotoplayView('browse');
     return (
       <div className="px-5 pb-20">
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-6" style={browseView.background_image ? { backgroundImage: `url(${browseView.background_image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
           <button onClick={() => setView('gateway')} className="w-10 h-10 bg-black rounded-xl flex items-center justify-center flex-shrink-0">
             <ArrowLeft size={20} className="text-yellow-400" />
           </button>
           <div>
-            <h2 className="text-black text-2xl font-bold">Stories</h2>
-            <p className="text-black text-sm font-bold">Browse available participatory Story Packs</p>
+            <h2 className="text-black text-2xl font-bold">{browseView.label || 'Stories'}</h2>
+            <p className="text-black text-sm font-bold">{browseView.description || 'Browse available participatory Story Packs'}</p>
           </div>
         </div>
 

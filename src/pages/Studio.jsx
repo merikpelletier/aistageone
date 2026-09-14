@@ -371,13 +371,22 @@ export default function Studio() {
     });
   }, [activeTab, showVoiceRecorder, showAudioUploader, showDubbingStudio, showTextToSpeech, showVideoTools, showLipSync, showAnimateImage, editingActor, editingSet]);
 
-  const tabs = [
-    { key: 'home', label: 'Home', icon: Home },
-    { key: 'library', label: 'Production Kits', icon: Clapperboard },
-    { key: 'lab', label: 'Stages', icon: Theater },
-    { key: 'tools', label: 'Tools', icon: Wrench },
-    { key: 'stories', label: 'Stories', icon: BookOpen },
+  const DEFAULT_STUDIO_TABS = [
+    { key: 'home', label: 'Home', icon: 'Home', visible: true, order: 0 },
+    { key: 'library', label: 'Production Kits', icon: 'Clapperboard', visible: true, order: 1 },
+    { key: 'lab', label: 'Stages', icon: 'Theater', visible: true, order: 2 },
+    { key: 'tools', label: 'Tools', icon: 'Wrench', visible: true, order: 3 },
+    { key: 'stories', label: 'Stories', icon: 'BookOpen', visible: true, order: 4 },
   ];
+  const configuredStudioViews = studioSurfaceSetting?.configuration?.studio_views;
+  const studioViewsSource = (configuredStudioViews?.length ? configuredStudioViews : DEFAULT_STUDIO_TABS);
+  const tabs = DEFAULT_STUDIO_TABS.map((def) => {
+    const cfg = studioViewsSource.find((item) => item.key === def.key);
+    return cfg ? { ...def, ...cfg } : def;
+  })
+    .filter((tab) => tab.visible !== false)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((tab) => ({ ...tab, icon: HOME_ICON_MAP[tab.icon] || Home }));
 
   const handleJoinProject = (kit) => {
     setActiveKit(kit);
