@@ -72,6 +72,14 @@ export const defaultSurfaceSettings = (surface) => ({
     scope: surface.scope || 'page',
     order: ADMIN_SURFACES.findIndex((item) => item.type === surface.type && item.key === surface.key),
     show_navigation: surface.type === 'page' ? surface.key !== 'Admin' : undefined,
+    ...(surface.type === 'page' && surface.key === 'Magazine' ? {
+      magazine_sections: [
+        { key: 'cover_text', label: 'Cover Title & Subtitle', visible: true, order: 0 },
+        { key: 'cover_actions', label: 'Cover Actions (rate/comment)', visible: true, order: 1 },
+        { key: 'navigation_hints', label: 'Up/Down Navigation Arrows', visible: true, order: 2 },
+        { key: 'dossier_indicators', label: 'Side Dossier Indicators', visible: true, order: 3 },
+      ],
+    } : {}),
     ...(surface.type === 'page' && surface.key === 'Studio' ? {
       home_items: [
         { key: 'my_projects', label: 'My Projects', description: 'Dossiers in production', icon: 'Home', background_image: '', visible: true, order: 0 },

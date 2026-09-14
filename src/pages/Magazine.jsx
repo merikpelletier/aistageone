@@ -12,6 +12,25 @@ export default function Magazine() {
   const { setAppContext } = useAppContext();
   const [searchParams] = useSearchParams();
   const dossierId = searchParams.get('dossier');
+
+  const { data: magazineSettings } = useQuery({
+    queryKey: ['admin-surface-runtime', 'page', 'Magazine'],
+    queryFn: async () => {
+      const { data } = await base44.functions.invoke('admin-pages-tools', { action: 'runtime' });
+      return (data?.settings || []).find((item) => item.surface_type === 'page' && item.surface_key === 'Magazine') || null;
+    },
+    staleTime: 60_000,
+  });
+  const magazineSectionDefaults = {
+    cover_text: { visible: true, order: 0 },
+    cover_actions: { visible: true, order: 1 },
+    navigation_hints: { visible: true, order: 2 },
+    dossier_indicators: { visible: true, order: 3 },
+  };
+  const magazineSections = (magazineSettings?.configuration?.magazine_sections || []).reduce(
+    (map, item) => ({ ...map, [item.key]: { visible: item.visible !== false, order: Number(item.order ?? 0) } }),
+    magazineSectionDefaults
+  );
   
   const [currentDossierIndex, setCurrentDossierIndex] = useState(0);
   const [viewingDossier, setViewingDossier] = useState(null);
@@ -184,7 +203,7 @@ export default function Magazine() {
           </Link>
 
           {/* Content */}
-          {!currentDossier?.hide_text_on_cover && (
+          {magazineSections.cover_text.visible && !currentDossier?.hide_text_on_cover && (
             <div className="absolute top-[108px] left-0 right-0 px-6">
               <motion.h1
                 initial={{ y: 20, opacity: 0 }}
@@ -232,7 +251,7 @@ export default function Magazine() {
           </div>
 
           {/* Cover Actions */}
-          {!activeCoverVideo && (
+          {magazineSections.cover_actions.visible && !activeCoverVideo && (
             <div onClick={(e) => e.stopPropagation()}>
               <DossierCoverActions dossierId={currentDossier?.id} />
             </div>
@@ -241,7 +260,7 @@ export default function Magazine() {
           </AnimatePresence>
 
       {/* Navigation hints */}
-      {currentDossierIndex > 0 && (
+      {magazineSections.navigation_hints.visible && currentDossierIndex > 0 && (
         <button
           onClick={() => setCurrentDossierIndex(currentDossierIndex - 1)}
           className="fixed left-1/2 -translate-x-1/2 text-white hover:text-white transition-colors z-10 drop-shadow-lg" style={{ top: 'calc(52px + env(safe-area-inset-top) + 16px)' }}
@@ -249,7 +268,7 @@ export default function Magazine() {
           <ChevronUp size={28} />
         </button>
       )}
-      {currentDossierIndex < dossiers.length - 1 && (
+      {magazineSections.navigation_hints.visible && currentDossierIndex < dossiers.length - 1 && (
         <button
           onClick={() => setCurrentDossierIndex(currentDossierIndex + 1)}
           className="fixed bottom-20 left-4 text-white hover:text-white transition-colors z-10 drop-shadow-lg"
@@ -259,7 +278,7 @@ export default function Magazine() {
       )}
 
       {/* Dossier indicators */}
-      <div className="fixed right-3 flex flex-col gap-1 z-10 overflow-hidden" style={{ top: 'calc(52px + env(safe-area-inset-top) + 100px)', maxHeight: 'calc(100vh - 52px - env(safe-area-inset-top) - 180px)' }}>
+      {magazineSections.dossier_indicators.visible && <div className="fixed right-3 flex flex-col gap-1 z-10 overflow-hidden" style={{ top: 'calc(52px + env(safe-area-inset-top) + 100px)', maxHeight: 'calc(100vh - 52px - env(safe-area-inset-top) - 180px)' }}>
         {dossiers.map((_, idx) => (
           <button
             key={idx}
@@ -269,7 +288,7 @@ export default function Magazine() {
             }`}
           />
         ))}
-      </div>
+      </div>}
 
       {/* Dossier Viewer */}
       {viewingDossier && viewingDossier.pages?.length > 0 && (
