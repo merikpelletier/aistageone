@@ -20,11 +20,33 @@ import {
 } from 'lucide-react';
 import { Boxes } from 'lucide-react';
 
+const DEFAULT_PLUS_SECTIONS = [
+  { key: 'asset_catalog', label: 'Asset Catalog', visible: true, order: 0 },
+  { key: 'admin', label: 'Admin', visible: true, order: 1 },
+  { key: 'information', label: 'INFORMATION', visible: true, order: 2 },
+  { key: 'contact', label: 'WRITE TO US', visible: true, order: 3 },
+  { key: 'philosophy', label: 'Footer', visible: true, order: 4 },
+];
+
 export default function Plus() {
   const [showContactForm, setShowContactForm] = useState(false);
   const [contactForm, setContactForm] = useState({ message: '', email: '' });
   const [submitted, setSubmitted] = useState(false);
   const [expandedContent, setExpandedContent] = useState(null);
+
+  const { data: runtime } = useQuery({
+    queryKey: ['admin-surface-runtime'],
+    queryFn: async () => (await base44.functions.invoke('admin-pages-tools', { action: 'runtime' })).data,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const plusSetting = runtime?.settings?.find((item) => item.surface_type === 'page' && item.surface_key === 'Plus');
+  const mergedSections = DEFAULT_PLUS_SECTIONS.map((def) => ({ ...def, ...((plusSetting?.configuration?.plus_sections || []).find((item) => item.key === def.key) || {}) }));
+  const sectionsMap = {};
+  mergedSections.forEach((item) => { sectionsMap[item.key] = item; });
+  const sortedSections = [...mergedSections].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const isVisible = (key) => sectionsMap[key]?.visible !== false;
+  const sectionLabel = (key, fallback) => sectionsMap[key]?.label || fallback;
 
   const { data: contents = [] } = useQuery({
     queryKey: ['editable-contents'],
@@ -66,32 +88,39 @@ export default function Plus() {
       </div>
 
       {/* Admin Login Link */}
-      <div className="px-6 mb-12">
-        <Link
-          to={createPageUrl('Catalog')}
-          className="flex items-center justify-between p-4 mb-3 bg-neutral-950 border border-white/10 rounded-sm group hover:bg-neutral-900 transition-colors"
-        >
-          <div className="flex items-center gap-4">
-            <Boxes size={20} className="text-yellow-400" />
-            <span className="text-white font-light tracking-wide">Asset Catalog</span>
-          </div>
-          <ChevronRight size={18} className="text-white group-hover:text-yellow-400 transition-colors" />
-        </Link>
-        <Link
-          to={createPageUrl('Admin')}
-          className="flex items-center justify-between p-4 bg-neutral-950 border border-white/10 rounded-sm group hover:bg-neutral-900 transition-colors"
-        >
-          <div className="flex items-center gap-4">
-            <Lock size={20} className="text-white" />
-            <span className="text-white font-light tracking-wide">{L('plus_admin_label', 'Admin')}</span>
-          </div>
-          <ChevronRight size={18} className="text-white group-hover:text-white transition-colors" />
-        </Link>
-      </div>
+      {(isVisible('asset_catalog') || isVisible('admin')) && (
+        <div className="px-6 mb-12">
+          {isVisible('asset_catalog') && (
+            <Link
+              to={createPageUrl('Catalog')}
+              className="flex items-center justify-between p-4 mb-3 bg-neutral-950 border border-white/10 rounded-sm group hover:bg-neutral-900 transition-colors"
+            >
+              <div className="flex items-center gap-4">
+                <Boxes size={20} className="text-yellow-400" />
+                <span className="text-white font-light tracking-wide">{sectionLabel('asset_catalog', 'Asset Catalog')}</span>
+              </div>
+              <ChevronRight size={18} className="text-white group-hover:text-yellow-400 transition-colors" />
+            </Link>
+          )}
+          {isVisible('admin') && (
+            <Link
+              to={createPageUrl('Admin')}
+              className="flex items-center justify-between p-4 bg-neutral-950 border border-white/10 rounded-sm group hover:bg-neutral-900 transition-colors"
+            >
+              <div className="flex items-center gap-4">
+                <Lock size={20} className="text-white" />
+                <span className="text-white font-light tracking-wide">{sectionLabel('admin', L('plus_admin_label', 'Admin'))}</span>
+              </div>
+              <ChevronRight size={18} className="text-white group-hover:text-white transition-colors" />
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Content Sections */}
+      {isVisible('information') && (
       <div className="px-6 mb-12">
-        <h2 className="text-white text-xs tracking-widest mb-6">{L('plus_info_section', 'INFORMATION')}</h2>
+        <h2 className="text-white text-xs tracking-widest mb-6">{sectionLabel('information', L('plus_info_section', 'INFORMATION'))}</h2>
         <div className="space-y-3">
           {contents.map((content) => (
             <div key={content.id}>
@@ -121,10 +150,12 @@ export default function Plus() {
           ))}
         </div>
       </div>
+      )}
 
       {/* Contact Section */}
+      {isVisible('contact') && (
       <div className="px-6">
-        <h2 className="text-black text-2xl font-extralight tracking-widest mb-6">{L('plus_contact_section', 'WRITE TO US')}</h2>
+        <h2 className="text-black text-2xl font-extralight tracking-widest mb-6">{sectionLabel('contact', L('plus_contact_section', 'WRITE TO US'))}</h2>
         <div className="w-12 h-0.5 bg-red-600 mb-6" />
         
         {!showContactForm ? (
@@ -187,8 +218,10 @@ export default function Plus() {
           </motion.div>
         )}
       </div>
+      )}
 
       {/* Philosophy */}
+      {isVisible('philosophy') && (
       <div className="px-6 mt-16">
         <div className="border-t border-white/10 pt-8">
           <p className="text-white text-xs leading-relaxed text-center font-light">
@@ -196,6 +229,7 @@ export default function Plus() {
           </p>
         </div>
       </div>
+      )}
     </div>
   );
 }

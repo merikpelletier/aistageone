@@ -80,6 +80,15 @@ export const defaultSurfaceSettings = (surface) => ({
         { key: 'dossier_indicators', label: 'Side Dossier Indicators', visible: true, order: 3 },
       ],
     } : {}),
+    ...(surface.type === 'page' && surface.key === 'Plus' ? {
+      plus_sections: [
+        { key: 'asset_catalog', label: 'Asset Catalog', visible: true, order: 0 },
+        { key: 'admin', label: 'Admin', visible: true, order: 1 },
+        { key: 'information', label: 'INFORMATION', visible: true, order: 2 },
+        { key: 'contact', label: 'WRITE TO US', visible: true, order: 3 },
+        { key: 'philosophy', label: 'Footer', visible: true, order: 4 },
+      ],
+    } : {}),
     ...(surface.type === 'page' && surface.key === 'Studio' ? {
       home_items: [
         { key: 'my_projects', label: 'My Projects', description: 'Dossiers in production', icon: 'Home', background_image: '', visible: true, order: 0 },
