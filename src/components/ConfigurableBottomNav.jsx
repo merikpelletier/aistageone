@@ -25,9 +25,9 @@ export default function ConfigurableBottomNav({ settings = [] }) {
   const [labelOverrides, setLabelOverrides] = useState({});
   const isAdmin = user?.role === 'admin';
   const navSetting = settings.find((item) => item.surface_type === 'tool' && item.surface_key === 'bottom_navigation');
-  const navBackground = navSetting?.look?.background_color || '#facc15';
-  const navText = navSetting?.look?.text_color || navSetting?.look?.foreground_color || '#000000';
-  const navIcon = navSetting?.look?.icon_color || navSetting?.look?.foreground_color || '#000000';
+  const navBackground = navSetting?.look?.background_color || '#000000';
+  const navText = navSetting?.look?.text_color || navSetting?.look?.foreground_color || '#ffffff';
+  const navIcon = navSetting?.look?.icon_color || navSetting?.look?.foreground_color || '#ffffff';
   const navActive = navSetting?.look?.active_color || '#dc2626';
   const navBorder = navSetting?.look?.border_color || 'rgba(0,0,0,0.2)';
 
