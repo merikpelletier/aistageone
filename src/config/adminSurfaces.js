@@ -81,6 +81,23 @@ export const defaultSurfaceSettings = (surface) => ({
         { key: 'my_vault', label: 'My Vault', description: 'Saved assets & references', icon: 'Bookmark', background_image: '', visible: true, order: 4 },
         { key: 'fotoplay', label: 'FotoPlay', description: 'Interactive AI storytelling', icon: 'BookOpen', background_image: '', visible: true, order: 5 },
       ],
+      studio_views: [
+        { key: 'home', label: 'Home', icon: 'Home', background_image: '', visible: true, order: 0 },
+        { key: 'library', label: 'Production Kits', icon: 'Clapperboard', background_image: '', visible: true, order: 1 },
+        { key: 'lab', label: 'Fun / Stages', icon: 'Theater', background_image: '', visible: true, order: 2 },
+        { key: 'tools', label: 'Tools', icon: 'Wrench', background_image: '', visible: true, order: 3 },
+        { key: 'stories', label: 'FotoPlay', icon: 'BookOpen', background_image: '', visible: true, order: 4 },
+      ],
+      fotoplay_views: [
+        { key: 'gateway', label: 'Gateway', description: 'Choose your experience entry screen', background_image: '', visible: true, order: 0 },
+        { key: 'author', label: 'Author', description: 'Private author workspace', background_image: '', visible: true, order: 1 },
+        { key: 'browse', label: 'Browse', description: 'Browse available Story Packs', background_image: '', visible: true, order: 2 },
+        { key: 'packDetails', label: 'Pack Details', description: 'Story Pack characters & existing sessions' },
+        { key: 'topicSelection', label: 'Topic Selection', description: 'Choose the starting point for a hero' },
+        { key: 'arcDefinition', label: 'Arc Definition', description: 'Design the AI-proposed story arc' },
+        { key: 'characterEditor', label: 'Character Editor', description: 'Create your own hero character' },
+        { key: 'session', label: 'Session', description: 'Story player and chapter production' },
+      ],
     } : {}),
   },
 });

@@ -137,6 +137,70 @@ function StudioImageUploadField({ label: fieldLabel, value, onChange, uploading,
   </div>;
 }
 
+const STUDIO_VIEW_ICONS = ['Home', 'Clapperboard', 'Theater', 'Wrench', 'BookOpen'];
+const DEFAULT_STUDIO_VIEWS = [
+  { key: 'home', label: 'Home', icon: 'Home', background_image: '', visible: true, order: 0 },
+  { key: 'library', label: 'Production Kits', icon: 'Clapperboard', background_image: '', visible: true, order: 1 },
+  { key: 'lab', label: 'Fun / Stages', icon: 'Theater', background_image: '', visible: true, order: 2 },
+  { key: 'tools', label: 'Tools', icon: 'Wrench', background_image: '', visible: true, order: 3 },
+  { key: 'stories', label: 'FotoPlay', icon: 'BookOpen', background_image: '', visible: true, order: 4 },
+];
+const FOTOPLAY_NAVIGABLE_VIEWS = ['gateway', 'author', 'browse'];
+const DEFAULT_FOTOPLAY_VIEWS = [
+  { key: 'gateway', label: 'Gateway', description: 'Choose your experience entry screen', background_image: '', visible: true, order: 0 },
+  { key: 'author', label: 'Author', description: 'Private author workspace', background_image: '', visible: true, order: 1 },
+  { key: 'browse', label: 'Browse', description: 'Browse available Story Packs', background_image: '', visible: true, order: 2 },
+  { key: 'packDetails', label: 'Pack Details', description: 'Story Pack characters & existing sessions' },
+  { key: 'topicSelection', label: 'Topic Selection', description: 'Choose the starting point for a hero' },
+  { key: 'arcDefinition', label: 'Arc Definition', description: 'Design the AI-proposed story arc' },
+  { key: 'characterEditor', label: 'Character Editor', description: 'Create your own hero character' },
+  { key: 'session', label: 'Session', description: 'Story player and chapter production' },
+];
+
+function StudioViewsEditor({ views, onChange }) {
+  const merged = DEFAULT_STUDIO_VIEWS.map((def) => ({ ...def, ...(views.find((item) => item.key === def.key) || {}) }));
+  const sorted = [...merged].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const updateItem = (key, patch) => onChange(merged.map((item) => item.key === key ? { ...item, ...patch } : item));
+  const [uploadingKey, setUploadingKey] = useState(null);
+  return <div className="space-y-3">
+    {sorted.map((item) => <div key={item.key} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3"><span className="text-sm font-black text-white">{item.key}</span><label className="flex items-center gap-2 text-xs text-white/60"><input type="checkbox" className="accent-yellow-400" checked={item.visible !== false} onChange={(event) => updateItem(item.key, { visible: event.target.checked })} />Visible</label></div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <div><span className={label}>Displayed name</span><input className={field} value={item.label || ''} onChange={(event) => updateItem(item.key, { label: event.target.value })} /></div>
+        <div><span className={label}>Order</span><input type="number" className={field} value={item.order ?? 0} onChange={(event) => updateItem(item.key, { order: Number(event.target.value) })} /></div>
+      </div>
+      <div><span className={label}>Icon</span><select className={field} value={item.icon || 'Home'} onChange={(event) => updateItem(item.key, { icon: event.target.value })}>{STUDIO_VIEW_ICONS.map((icon) => <option key={icon} className="bg-black" value={icon}>{icon}</option>)}</select></div>
+      <StudioImageUploadField label="Background image" value={item.background_image || ''} onChange={(url) => updateItem(item.key, { background_image: url })} uploading={uploadingKey === `${item.key}-bg`} setUploading={(value) => setUploadingKey(value ? `${item.key}-bg` : null)} />
+    </div>)}
+  </div>;
+}
+
+function FotoplayViewsEditor({ views, onChange }) {
+  const merged = DEFAULT_FOTOPLAY_VIEWS.map((def) => ({ ...def, ...(views.find((item) => item.key === def.key) || {}) }));
+  const navigable = merged.filter((item) => FOTOPLAY_NAVIGABLE_VIEWS.includes(item.key)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const workflowOnly = merged.filter((item) => !FOTOPLAY_NAVIGABLE_VIEWS.includes(item.key));
+  const updateItem = (key, patch) => onChange(merged.map((item) => item.key === key ? { ...item, ...patch } : item));
+  const [uploadingKey, setUploadingKey] = useState(null);
+  return <div className="space-y-3">
+    <p className={label}>Navigable entry views</p>
+    {navigable.map((item) => <div key={item.key} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3"><span className="text-sm font-black text-white">{item.key}</span><label className="flex items-center gap-2 text-xs text-white/60"><input type="checkbox" className="accent-yellow-400" checked={item.visible !== false} onChange={(event) => updateItem(item.key, { visible: event.target.checked })} />Visible</label></div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <div><span className={label}>Displayed name</span><input className={field} value={item.label || ''} onChange={(event) => updateItem(item.key, { label: event.target.value })} /></div>
+        <div><span className={label}>Order</span><input type="number" className={field} value={item.order ?? 0} onChange={(event) => updateItem(item.key, { order: Number(event.target.value) })} /></div>
+      </div>
+      <div><span className={label}>Description</span><input className={field} value={item.description || ''} onChange={(event) => updateItem(item.key, { description: event.target.value })} /></div>
+      <StudioImageUploadField label="Background image" value={item.background_image || ''} onChange={(url) => updateItem(item.key, { background_image: url })} uploading={uploadingKey === `${item.key}-bg`} setUploading={(value) => setUploadingKey(value ? `${item.key}-bg` : null)} />
+    </div>)}
+    <p className={`${label} mt-5`}>Workflow steps (not directly navigable)</p>
+    {workflowOnly.map((item) => <div key={item.key} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
+      <span className="text-sm font-black text-white">{item.key}</span>
+      <div><span className={label}>Displayed name</span><input className={field} value={item.label || ''} onChange={(event) => updateItem(item.key, { label: event.target.value })} /></div>
+      <div><span className={label}>Description</span><input className={field} value={item.description || ''} onChange={(event) => updateItem(item.key, { description: event.target.value })} /></div>
+    </div>)}
+  </div>;
+}
+
 function StudioHomeItemsEditor({ items, onChange }) {
   const sorted = [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const updateItem = (key, patch) => onChange(items.map((item) => item.key === key ? { ...item, ...patch } : item));
