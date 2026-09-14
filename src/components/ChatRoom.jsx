@@ -93,7 +93,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
 
   if (salonStatus?.is_open === false) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-yellow-400">
+      <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-black/60">
         <div className="w-20 h-20 bg-black/10 rounded-3xl flex items-center justify-center mb-6">
           <Lock className="w-10 h-10 text-black" />
         </div>
@@ -106,7 +106,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
   }
 
   return (
-    <div className="h-full flex flex-col bg-yellow-400">
+    <div className="h-full flex flex-col bg-transparent">
       {/* Header */}
       <div className="px-6 py-4 border-b border-black/10 flex items-center justify-end">
         <button 
@@ -193,7 +193,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
       </div>
 
       {/* Input */}
-      <div className="p-6 border-t border-black/10 bg-yellow-300/30">
+      <div className="p-6 border-t border-white/10 bg-black/40">
         {!userIdentifier ? (
           <button
             onClick={onRequestIdentifier}
