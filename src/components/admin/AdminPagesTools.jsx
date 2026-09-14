@@ -167,15 +167,27 @@ function StudioViewsEditor({ views, onChange }) {
   const updateItem = (key, patch) => onChange(merged.map((item) => item.key === key ? { ...item, ...patch } : item));
   const [uploadingKey, setUploadingKey] = useState(null);
   return <div className="space-y-3">
-    {sorted.map((item) => <div key={item.key} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
+    {sorted.map((item) => {
+      const iconSource = item.icon_image ? 'custom' : 'builtin';
+      return <div key={item.key} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
       <div className="flex items-center justify-between gap-3"><span className="text-sm font-black text-white">{item.key}</span><label className="flex items-center gap-2 text-xs text-white/60"><input type="checkbox" className="accent-yellow-400" checked={item.visible !== false} onChange={(event) => updateItem(item.key, { visible: event.target.checked })} />Visible</label></div>
       <div className="grid gap-3 md:grid-cols-2">
         <div><span className={label}>Displayed name</span><input className={field} value={item.label || ''} onChange={(event) => updateItem(item.key, { label: event.target.value })} /></div>
         <div><span className={label}>Order</span><input type="number" className={field} value={item.order ?? 0} onChange={(event) => updateItem(item.key, { order: Number(event.target.value) })} /></div>
       </div>
-      <div><span className={label}>Icon</span><select className={field} value={item.icon || 'Home'} onChange={(event) => updateItem(item.key, { icon: event.target.value })}>{STUDIO_VIEW_ICONS.map((icon) => <option key={icon} className="bg-black" value={icon}>{icon}</option>)}</select></div>
+      <div className="rounded-xl border border-white/10 bg-black/20 p-3 space-y-3">
+        <div className="flex items-center gap-2">
+          <span className={label}>Icon source</span>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => updateItem(item.key, { icon_image: '' })} className={`rounded-lg px-3 py-1.5 text-xs font-black ${iconSource === 'builtin' ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white/60'}`}>Built-in icon</button>
+            <button type="button" onClick={() => updateItem(item.key, { icon_image: item.icon_image || ' ' })} className={`rounded-lg px-3 py-1.5 text-xs font-black ${iconSource === 'custom' ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white/60'}`}>Custom image</button>
+          </div>
+        </div>
+        {iconSource === 'builtin' ? <div><span className={label}>Icon</span><select className={field} value={item.icon || 'Home'} onChange={(event) => updateItem(item.key, { icon: event.target.value })}>{STUDIO_VIEW_ICONS.map((icon) => <option key={icon} className="bg-black" value={icon}>{icon}</option>)}</select></div> : <StudioImageUploadField label="Icon image" value={item.icon_image?.trim() ? item.icon_image : ''} onChange={(url) => updateItem(item.key, { icon_image: url || ' ' })} uploading={uploadingKey === `${item.key}-icon`} setUploading={(value) => setUploadingKey(value ? `${item.key}-icon` : null)} />}
+      </div>
       <StudioImageUploadField label="Background image" value={item.background_image || ''} onChange={(url) => updateItem(item.key, { background_image: url })} uploading={uploadingKey === `${item.key}-bg`} setUploading={(value) => setUploadingKey(value ? `${item.key}-bg` : null)} />
-    </div>)}
+    </div>;
+    })}
   </div>;
 }
 

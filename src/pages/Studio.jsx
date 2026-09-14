@@ -388,6 +388,9 @@ export default function Studio() {
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map((tab) => ({ ...tab, icon: HOME_ICON_MAP[tab.icon] || Home }));
 
+  const activeViewConfig = studioViewsSource.find((item) => item.key === activeTab);
+  const activeViewBg = activeViewConfig?.background_image?.trim() ? activeViewConfig.background_image : null;
+
   const handleJoinProject = (kit) => {
     setActiveKit(kit);
   };
@@ -466,7 +469,9 @@ export default function Studio() {
   }
 
   return (
-    <div className="min-h-screen bg-yellow-400 pb-20">
+    <div className="min-h-screen bg-yellow-400 pb-20" style={activeViewBg ? { backgroundImage: `url(${activeViewBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : undefined}>
+      {activeViewBg && <div className="fixed inset-0 bg-black/40 pointer-events-none z-0" />}
+      <div className="relative z-10">
       {/* Voice Recorder Modal */}
       {showVoiceRecorder && (
         <VoiceRecorder
@@ -597,17 +602,23 @@ export default function Studio() {
           <div className="grid grid-cols-5 gap-1.5 mt-8">
             {tabs.map(tab => {
               const TabIcon = tab.icon;
+              const tabCfg = studioViewsSource.find((item) => item.key === tab.key);
+              const tabIconImage = tabCfg?.icon_image?.trim() ? tabCfg.icon_image : null;
               return (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`flex items-center justify-center px-1 py-2.5 rounded-xl transition-all text-center ${
+                  className={`flex items-center justify-center px-1 py-2.5 rounded-xl transition-all text-center overflow-hidden ${
                     activeTab === tab.key
                       ? 'bg-black text-yellow-400 shadow-lg'
                       : 'bg-black/10 text-black hover:bg-black/20'
                   }`}
                 >
-                  <TabIcon className="w-5 h-5" />
+                  {tabIconImage ? (
+                    <img src={tabIconImage} alt="" className="w-5 h-5 object-cover rounded" />
+                  ) : (
+                    <TabIcon className="w-5 h-5" />
+                  )}
                 </button>
               );
             })}
@@ -760,6 +771,7 @@ export default function Studio() {
           />
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }
