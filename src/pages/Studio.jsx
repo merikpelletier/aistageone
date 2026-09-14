@@ -599,7 +599,7 @@ export default function Studio() {
         </motion.div>
 
         {activeTab !== 'home' && (
-          <div className="grid grid-cols-5 gap-1.5 mt-8">
+          <div className="flex items-center justify-evenly mt-8">
             {tabs.map(tab => {
               const TabIcon = tab.icon;
               const tabCfg = studioViewsSource.find((item) => item.key === tab.key);
@@ -608,16 +608,16 @@ export default function Studio() {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`flex items-center justify-center px-1 py-2 min-h-[76px] rounded-2xl transition-all text-center overflow-hidden ${
+                  className={`w-16 h-16 flex items-center justify-center rounded-2xl transition-all overflow-hidden flex-shrink-0 ${
                     activeTab === tab.key
                       ? 'bg-black text-yellow-400 shadow-xl ring-2 ring-yellow-400/60 scale-105'
                       : 'bg-black/20 text-black hover:bg-black/30'
                   }`}
                 >
                   {tabIconImage ? (
-                    <img src={tabIconImage} alt="" className="w-[52px] h-[52px] object-contain" />
+                    <img src={tabIconImage} alt="" className="w-[68px] h-[68px] object-contain" />
                   ) : (
-                    <TabIcon className="w-[38px] h-[38px] stroke-[2.5]" />
+                    <TabIcon className="w-[44px] h-[44px] stroke-[2.5]" />
                   )}
                 </button>
               );
