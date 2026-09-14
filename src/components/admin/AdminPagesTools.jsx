@@ -95,6 +95,7 @@ function ConfigurationSection({ surface, draft, setDraft }) {
     <Toggle checked={draft.visible} onChange={(visible) => setDraft((current) => ({ ...current, visible }))} title="Visible" description={surface.type === 'page' ? 'Controls whether this page appears in the existing navigation.' : 'Controls whether this tool is shown in its existing surface.'} />
     <Toggle checked={draft.active} onChange={(active) => setDraft((current) => ({ ...current, active }))} title="Active" description="Keeps the item configured while allowing it to be disabled." />
     {surface.type === 'page' && <Toggle checked={config.show_navigation !== false} onChange={(value) => update('show_navigation', value)} title="Show existing navigation" />}
+    {surface.type === 'page' && surface.key === 'Studio' && <StudioHomeItemsEditor items={config.home_items || []} onChange={(items) => update('home_items', items)} />}
     {surface.type === 'tool' && surface.scope === 'studio' && <div className="grid gap-4 md:grid-cols-2"><div><span className={label}>Studio section</span><select className={field} value={config.group || ''} onChange={(event) => update('group', event.target.value)}><option className="bg-black" value="">Keep current section</option>{studioGroups.map((group) => <option key={group} className="bg-black" value={group}>{group}</option>)}</select></div><div><span className={label}>Description</span><input className={field} value={config.description || ''} onChange={(event) => update('description', event.target.value)} placeholder="Keep current description" /></div></div>}
     {surface.key === 'agent_bar' && <>
       <div className="grid gap-4 md:grid-cols-2"><div><span className={label}>Position</span><select className={field} value={config.position || 'top'} onChange={(event) => update('position', event.target.value)}><option className="bg-black" value="top">Top</option><option className="bg-black" value="bottom">Bottom</option></select></div><div><span className={label}>Label</span><input className={field} value={config.label || ''} onChange={(event) => update('label', event.target.value)} /></div><div><span className={label}>Input text</span><input className={field} value={config.placeholder || ''} onChange={(event) => update('placeholder', event.target.value)} /></div><div><span className={label}>Model</span><input className={field} value={config.model || ''} onChange={(event) => update('model', event.target.value)} placeholder="Configured Replicate model" /></div></div>
@@ -102,6 +103,26 @@ function ConfigurationSection({ surface, draft, setDraft }) {
       <div><span className={label}>Prompt / behavior</span><textarea className={field} rows={5} value={config.prompt || ''} onChange={(event) => update('prompt', event.target.value)} /></div>
       <div className="grid gap-4 md:grid-cols-2"><div><span className={label}>Permissions</span><textarea className={field} rows={4} value={(config.permissions || []).join('\n')} onChange={(event) => update('permissions', event.target.value.split('\n').map((value) => value.trim()).filter(Boolean))} placeholder="One permission per line" /></div><div><span className={label}>Allowed actions</span><textarea className={field} rows={4} value={(config.actions || []).join('\n')} onChange={(event) => update('actions', event.target.value.split('\n').map((value) => value.trim()).filter(Boolean))} placeholder="One action per line" /></div></div>
     </>}
+  </div>;
+}
+
+const STUDIO_HOME_ICONS = ['Home', 'Clapperboard', 'Theater', 'Wrench', 'Bookmark', 'BookOpen'];
+
+function StudioHomeItemsEditor({ items, onChange }) {
+  const sorted = [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const updateItem = (key, patch) => onChange(items.map((item) => item.key === key ? { ...item, ...patch } : item));
+  return <div className="space-y-3">
+    <p className={label}>Studio home items</p>
+    {sorted.map((item) => <div key={item.key} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3"><span className="text-sm font-black text-white">{item.key}</span><label className="flex items-center gap-2 text-xs text-white/60"><input type="checkbox" className="accent-yellow-400" checked={item.visible !== false} onChange={(event) => updateItem(item.key, { visible: event.target.checked })} />Visible</label></div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <div><span className={label}>Display name</span><input className={field} value={item.label || ''} onChange={(event) => updateItem(item.key, { label: event.target.value })} /></div>
+        <div><span className={label}>Order</span><input type="number" className={field} value={item.order ?? 0} onChange={(event) => updateItem(item.key, { order: Number(event.target.value) })} /></div>
+        <div><span className={label}>Icon</span><select className={field} value={item.icon || 'Home'} onChange={(event) => updateItem(item.key, { icon: event.target.value })}>{STUDIO_HOME_ICONS.map((icon) => <option key={icon} className="bg-black" value={icon}>{icon}</option>)}</select></div>
+        <div><span className={label}>Background image URL</span><input className={field} value={item.background_image || ''} onChange={(event) => updateItem(item.key, { background_image: event.target.value })} placeholder="https://..." /></div>
+      </div>
+      <div><span className={label}>Description</span><input className={field} value={item.description || ''} onChange={(event) => updateItem(item.key, { description: event.target.value })} /></div>
+    </div>)}
   </div>;
 }
 
