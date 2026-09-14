@@ -70,6 +70,17 @@ export default function Salons() {
     return salonLabels.find(l => l?.salon_id === salonId)?.name || '';
   };
 
+  const pageBackground = (() => {
+    const record = salonLabels.find(l => l?.salon_id === '_page_background');
+    if (!record?.description) return null;
+    try {
+      const parsed = JSON.parse(record.description);
+      return parsed?.image_url ? parsed : null;
+    } catch {
+      return null;
+    }
+  })();
+
   const { data: userProfile } = useQuery({
     queryKey: ['userProfile', sessionData?.sessionId],
     queryFn: () => sessionData?.userId 
@@ -189,7 +200,25 @@ export default function Salons() {
   }, [sessionData]);
 
   return (
-    <div className="min-h-screen bg-black pb-24">
+    <div className="relative min-h-screen bg-black pb-24">
+      {pageBackground && (
+        <>
+          <div
+            className="fixed inset-0 z-0 pointer-events-none"
+            style={{
+              backgroundImage: `url(${pageBackground.image_url})`,
+              backgroundSize: pageBackground.fit === 'contain' ? 'contain' : 'cover',
+              backgroundPosition: pageBackground.position === 'top' ? 'top center' : pageBackground.position === 'bottom' ? 'bottom center' : 'center center',
+              backgroundRepeat: 'no-repeat',
+            }}
+          />
+          <div
+            className="fixed inset-0 z-0 pointer-events-none bg-black"
+            style={{ opacity: pageBackground.overlay ?? 0.5 }}
+          />
+        </>
+      )}
+      <div className="relative z-10">
       {/* Header */}
       <div className="px-4 py-4 border-b border-white/10 flex items-center justify-between">
         <h1 className="text-white text-xl font-extralight tracking-widest">CHAT ROOMS</h1>
@@ -340,6 +369,7 @@ export default function Salons() {
         profile={userProfile?.[0]}
         onSave={(data) => updateProfileMutation.mutate(data)}
       />
+      </div>
     </div>
   );
 }

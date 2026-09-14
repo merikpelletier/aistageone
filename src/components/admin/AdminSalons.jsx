@@ -14,11 +14,14 @@ const SALON_IDS = [
   { id: 'commercial', defaultName: '🛍️ Salon Commercial', defaultDescription: 'Annonces officielles' },
 ];
 
+const PAGE_BACKGROUND_KEY = '_page_background';
+
 export default function AdminSalons() {
   const [editingSalon, setEditingSalon] = useState(null);
   const [editingName, setEditingName] = useState('');
   const [editingDesc, setEditingDesc] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [uploadingBg, setUploadingBg] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: salonStatuses = [] } = useQuery({
@@ -78,6 +81,57 @@ export default function AdminSalons() {
     }
   });
 
+  const backgroundRecord = salonLabels.find(s => s.salon_id === PAGE_BACKGROUND_KEY);
+  const backgroundSettings = (() => {
+    try {
+      return backgroundRecord?.description ? JSON.parse(backgroundRecord.description) : {};
+    } catch {
+      return {};
+    }
+  })();
+
+  const saveBackgroundMutation = useMutation({
+    mutationFn: async (settings) => {
+      const description = JSON.stringify(settings);
+      if (backgroundRecord) {
+        return base44.entities.SalonLabel.update(backgroundRecord.id, { name: 'Page Background', description });
+      } else {
+        return base44.entities.SalonLabel.create({ salon_id: PAGE_BACKGROUND_KEY, name: 'Page Background', description });
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['salonLabels'] })
+  });
+
+  const handleBackgroundUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBg(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      saveBackgroundMutation.mutate({ ...backgroundSettings, image_url: file_url });
+    } catch (err) {
+      console.error('Error uploading background:', err);
+    } finally {
+      setUploadingBg(false);
+    }
+  };
+
+  const handleRemoveBackground = () => {
+    saveBackgroundMutation.mutate({ ...backgroundSettings, image_url: '' });
+  };
+
+  const handleOverlayChange = (value) => {
+    saveBackgroundMutation.mutate({ ...backgroundSettings, overlay: value });
+  };
+
+  const handlePositionChange = (value) => {
+    saveBackgroundMutation.mutate({ ...backgroundSettings, position: value });
+  };
+
+  const handleFitChange = (value) => {
+    saveBackgroundMutation.mutate({ ...backgroundSettings, fit: value });
+  };
+
   const getSalonStatus = (salon) => salonStatuses.find(s => s.salon === salon) || { is_open: true, closed_message: '' };
 
   const getSalonInfo = (salonId) => {
@@ -110,6 +164,79 @@ export default function AdminSalons() {
   return (
     <div>
       <h2 className="text-white text-lg font-light mb-6">Salon Management</h2>
+
+      {/* Page Background */}
+      <div className="bg-neutral-950 border border-white/10 rounded-sm p-4 mb-8">
+        <h3 className="text-white font-light mb-4">Chat Rooms Page Background</h3>
+        <div className="flex flex-col md:flex-row gap-6">
+          <div className="flex-shrink-0">
+            <div className="w-48 h-28 bg-neutral-900 border border-white/10 rounded-sm overflow-hidden flex items-center justify-center">
+              {backgroundSettings.image_url ? (
+                <img src={backgroundSettings.image_url} alt="Background preview" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-white/40 text-xs">No background set</span>
+              )}
+            </div>
+            <div className="flex gap-2 mt-3">
+              <label className="cursor-pointer">
+                <input type="file" accept="image/*" onChange={handleBackgroundUpload} className="hidden" />
+                <span className="inline-block bg-white text-black hover:bg-white/90 text-xs font-light px-3 py-2 rounded-md">
+                  {uploadingBg ? 'Uploading...' : 'Upload image'}
+                </span>
+              </label>
+              {backgroundSettings.image_url && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRemoveBackground}
+                  className="border-red-900/50 text-red-400 hover:bg-red-900/20"
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 space-y-4">
+            <div>
+              <Label className="text-white text-sm mb-2 block">Overlay darkness ({Math.round((backgroundSettings.overlay ?? 0.5) * 100)}%)</Label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={backgroundSettings.overlay ?? 0.5}
+                onChange={(e) => handleOverlayChange(Number(e.target.value))}
+                className="w-full"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-white text-sm mb-2 block">Position</Label>
+                <select
+                  value={backgroundSettings.position || 'center'}
+                  onChange={(e) => handlePositionChange(e.target.value)}
+                  className="w-full bg-neutral-900 border border-white/10 text-white text-sm rounded-md px-3 py-2"
+                >
+                  <option value="center">Center</option>
+                  <option value="top">Top</option>
+                  <option value="bottom">Bottom</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-white text-sm mb-2 block">Fit</Label>
+                <select
+                  value={backgroundSettings.fit || 'cover'}
+                  onChange={(e) => handleFitChange(e.target.value)}
+                  className="w-full bg-neutral-900 border border-white/10 text-white text-sm rounded-md px-3 py-2"
+                >
+                  <option value="cover">Cover</option>
+                  <option value="contain">Contain</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Salon Controls */}
       <div className="space-y-4 mb-8">
