@@ -3,11 +3,20 @@ import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2, Package, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
+import { base44 } from '@/api/base44Client';
 import AssetCard from '@/components/catalog/AssetCard';
 import CatalogFilters from '@/components/catalog/CatalogFilters';
 import QuickViewModal from '@/components/catalog/QuickViewModal';
 
 const PAGE_SIZE = 20;
+
+const DEFAULT_CATALOG_SECTIONS = [
+  { key: 'hero', label: 'Marketplace Hero', visible: true, order: 0 },
+  { key: 'filters', label: 'Selection Tools', visible: true, order: 1 },
+  { key: 'grid', label: 'Asset Grid', visible: true, order: 2 },
+  { key: 'load_more', label: 'Load More', visible: true, order: 3 },
+  { key: 'quick_view', label: 'Quick View', visible: true, order: 4 },
+];
 
 const shuffle = (items) => {
   const result = [...items];
@@ -24,6 +33,27 @@ export default function Catalog() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [quickViewAsset, setQuickViewAsset] = useState(null);
   const [randomSeed, setRandomSeed] = useState(Date.now());
+
+  const { data: runtime } = useQuery({
+    queryKey: ['admin-surface-runtime'],
+    queryFn: async () => (await base44.functions.invoke('admin-pages-tools', { action: 'runtime' })).data,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const catalogSetting = runtime?.settings?.find((item) => item.surface_type === 'page' && item.surface_key === 'Catalog');
+  const catalogSections = useMemo(() => {
+    const saved = Array.isArray(catalogSetting?.configuration?.catalog_sections) ? catalogSetting.configuration.catalog_sections : [];
+    const merged = DEFAULT_CATALOG_SECTIONS.map((def) => ({ ...def, ...(saved.find((item) => item.key === def.key) || {}) }));
+    return merged.reduce((map, item) => { map[item.key] = item; return map; }, {});
+  }, [catalogSetting]);
+  const catalogBackground = catalogSetting?.configuration?.background_image || '';
+  const showHero = catalogSections.hero?.visible !== false;
+  const showFilters = catalogSections.filters?.visible !== false;
+  const showGrid = catalogSections.grid?.visible !== false;
+  const showLoadMore = catalogSections.load_more?.visible !== false;
+  const showQuickView = catalogSections.quick_view?.visible !== false;
+  const heroLabel = catalogSections.hero?.label || 'Marketplace Hero';
+  const filtersLabel = catalogSections.filters?.label || 'Selection Tools';
 
   const { data: assets = [], isLoading, error } = useQuery({
     queryKey: ['olo-catalog-assets'],
@@ -87,8 +117,8 @@ export default function Catalog() {
   const visibleAssets = filteredAssets.slice(0, visibleCount);
 
   return (
-    <div className="min-h-screen bg-zinc-950 pb-28 text-white">
-      <section className="relative overflow-hidden border-b border-white/10 bg-black">
+    <div className="min-h-screen bg-zinc-950 pb-28 text-white" style={catalogBackground ? { backgroundImage: `url(${catalogBackground})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' } : undefined}>
+      {showHero && <section className="relative overflow-hidden border-b border-white/10 bg-black">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(6,182,212,0.22),transparent_38%),radial-gradient(circle_at_85%_10%,rgba(37,99,235,0.18),transparent_35%)]" />
         <div className="relative mx-auto max-w-7xl px-6 py-14 md:py-20">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-300"><Sparkles size={14} /> AISTAGE.ONE Marketplace</div>
@@ -100,13 +130,15 @@ export default function Catalog() {
             <span className="rounded-lg border border-white/10 bg-white/5 px-4 py-2">Supabase secured</span>
           </div>
         </div>
-      </section>
+      </section>}
 
       <main className="mx-auto max-w-7xl px-6 py-9">
-        <div className="mb-5 flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-zinc-500"><SlidersHorizontal size={15} /> Selection tools</div>
-        <CatalogFilters filters={filters} onChange={setFilters} categories={categories} subcategories={subcategories} creators={creators} resultCount={filteredAssets.length} />
+        {showFilters && <>
+          <div className="mb-5 flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-zinc-500"><SlidersHorizontal size={15} /> {filtersLabel}</div>
+          <CatalogFilters filters={filters} onChange={setFilters} categories={categories} subcategories={subcategories} creators={creators} resultCount={filteredAssets.length} />
+        </>}
 
-        <div className="mt-9">
+        {showGrid && <div className="mt-9">
           {isLoading ? (
             <div className="flex items-center justify-center py-24"><Loader2 className="animate-spin text-cyan-400" size={36} /></div>
           ) : error ? (
@@ -120,13 +152,13 @@ export default function Catalog() {
                   {visibleAssets.map((asset) => <AssetCard key={asset.id} asset={asset} category={categories.find((item) => item.id === asset.category_id)} onQuickView={setQuickViewAsset} />)}
                 </AnimatePresence>
               </motion.div>
-              {visibleCount < filteredAssets.length && <div className="mt-10 flex justify-center"><button onClick={() => setVisibleCount((count) => count + PAGE_SIZE)} className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-8 py-3 font-black text-black transition hover:brightness-110">LOAD MORE ({visibleAssets.length} / {filteredAssets.length})</button></div>}
+              {showLoadMore && visibleCount < filteredAssets.length && <div className="mt-10 flex justify-center"><button onClick={() => setVisibleCount((count) => count + PAGE_SIZE)} className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-8 py-3 font-black text-black transition hover:brightness-110">LOAD MORE ({visibleAssets.length} / {filteredAssets.length})</button></div>}
             </>
           )}
-        </div>
+        </div>}
       </main>
 
-      <QuickViewModal asset={quickViewAsset} category={categories.find((item) => item.id === quickViewAsset?.category_id)} onClose={() => setQuickViewAsset(null)} />
+      {showQuickView && <QuickViewModal asset={quickViewAsset} category={categories.find((item) => item.id === quickViewAsset?.category_id)} onClose={() => setQuickViewAsset(null)} />}
     </div>
   );
 }

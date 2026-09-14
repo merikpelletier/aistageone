@@ -80,6 +80,16 @@ export const defaultSurfaceSettings = (surface) => ({
         { key: 'dossier_indicators', label: 'Side Dossier Indicators', visible: true, order: 3 },
       ],
     } : {}),
+    ...(surface.type === 'page' && surface.key === 'Catalog' ? {
+      background_image: '',
+      catalog_sections: [
+        { key: 'hero', label: 'Marketplace Hero', visible: true, order: 0 },
+        { key: 'filters', label: 'Selection Tools', visible: true, order: 1 },
+        { key: 'grid', label: 'Asset Grid', visible: true, order: 2 },
+        { key: 'load_more', label: 'Load More', visible: true, order: 3 },
+        { key: 'quick_view', label: 'Quick View', visible: true, order: 4 },
+      ],
+    } : {}),
     ...(surface.type === 'page' && surface.key === 'Plus' ? {
       plus_sections: [
         { key: 'asset_catalog', label: 'Asset Catalog', visible: true, order: 0 },

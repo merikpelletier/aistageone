@@ -102,6 +102,8 @@ function ConfigurationSection({ surface, draft, setDraft }) {
     </>}
     {surface.type === 'page' && surface.key === 'Plus' && <PlusPageBackgroundEditor value={config.background_image || ''} onChange={(url) => update('background_image', url)} />}
     {surface.type === 'page' && surface.key === 'Plus' && <PlusSectionsEditor sections={config.plus_sections || []} onChange={(sections) => update('plus_sections', sections)} />}
+    {surface.type === 'page' && surface.key === 'Catalog' && <PlusPageBackgroundEditor value={config.background_image || ''} onChange={(url) => update('background_image', url)} />}
+    {surface.type === 'page' && surface.key === 'Catalog' && <CatalogSectionsEditor sections={config.catalog_sections || []} onChange={(sections) => update('catalog_sections', sections)} />}
     {surface.type === 'tool' && surface.scope === 'studio' && <div className="grid gap-4 md:grid-cols-2"><div><span className={label}>Studio section</span><select className={field} value={config.group || ''} onChange={(event) => update('group', event.target.value)}><option className="bg-black" value="">Keep current section</option>{studioGroups.map((group) => <option key={group} className="bg-black" value={group}>{group}</option>)}</select></div><div><span className={label}>Description</span><input className={field} value={config.description || ''} onChange={(event) => update('description', event.target.value)} placeholder="Keep current description" /></div></div>}
     {surface.key === 'agent_bar' && <>
       <div className="grid gap-4 md:grid-cols-2"><div><span className={label}>Position</span><select className={field} value={config.position || 'top'} onChange={(event) => update('position', event.target.value)}><option className="bg-black" value="top">Top</option><option className="bg-black" value="bottom">Bottom</option></select></div><div><span className={label}>Label</span><input className={field} value={config.label || ''} onChange={(event) => update('label', event.target.value)} /></div><div><span className={label}>Input text</span><input className={field} value={config.placeholder || ''} onChange={(event) => update('placeholder', event.target.value)} /></div><div><span className={label}>Model</span><input className={field} value={config.model || ''} onChange={(event) => update('model', event.target.value)} placeholder="Configured Replicate model" /></div></div>
@@ -233,6 +235,30 @@ function PlusPageBackgroundEditor({ value, onChange }) {
     <p className={label}>Page background</p>
     <StudioImageUploadField label="Background image" value={value} onChange={onChange} uploading={uploading} setUploading={setUploading} />
     <p className="text-xs text-white/35">Covers the full Plus page behind all sections. Falls back to the existing yellow background when empty.</p>
+  </div>;
+}
+
+const DEFAULT_CATALOG_SECTIONS = [
+  { key: 'hero', label: 'Marketplace Hero', visible: true, order: 0 },
+  { key: 'filters', label: 'Selection Tools', visible: true, order: 1 },
+  { key: 'grid', label: 'Asset Grid', visible: true, order: 2 },
+  { key: 'load_more', label: 'Load More', visible: true, order: 3 },
+  { key: 'quick_view', label: 'Quick View', visible: true, order: 4 },
+];
+
+function CatalogSectionsEditor({ sections, onChange }) {
+  const merged = DEFAULT_CATALOG_SECTIONS.map((def) => ({ ...def, ...(sections.find((item) => item.key === def.key) || {}) }));
+  const sorted = [...merged].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const updateItem = (key, patch) => onChange(merged.map((item) => item.key === key ? { ...item, ...patch } : item));
+  return <div className="space-y-3">
+    <p className={label}>Fixed page sections</p>
+    {sorted.map((item) => <div key={item.key} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3"><span className="text-sm font-black text-white">{item.key}</span><label className="flex items-center gap-2 text-xs text-white/60"><input type="checkbox" className="accent-yellow-400" checked={item.visible !== false} onChange={(event) => updateItem(item.key, { visible: event.target.checked })} />Visible</label></div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <div><span className={label}>Displayed name</span><input className={field} value={item.label || ''} onChange={(event) => updateItem(item.key, { label: event.target.value })} /></div>
+        <div><span className={label}>Order</span><input type="number" className={field} value={item.order ?? 0} onChange={(event) => updateItem(item.key, { order: Number(event.target.value) })} /></div>
+      </div>
+    </div>)}
   </div>;
 }
 
