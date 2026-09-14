@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2, Package, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
-import { base44 } from '@/api/base44Client';
 import AssetCard from '@/components/catalog/AssetCard';
 import CatalogFilters from '@/components/catalog/CatalogFilters';
 import QuickViewModal from '@/components/catalog/QuickViewModal';
@@ -36,7 +35,11 @@ export default function Catalog() {
 
   const { data: runtime } = useQuery({
     queryKey: ['admin-surface-runtime'],
-    queryFn: async () => (await base44.functions.invoke('admin-pages-tools', { action: 'runtime' })).data,
+    queryFn: async () => {
+      const { data, error: runtimeError } = await supabase.functions.invoke('admin-pages-tools', { body: { action: 'runtime' } });
+      if (runtimeError) throw runtimeError;
+      return data;
+    },
     staleTime: 60_000,
     retry: false,
   });
