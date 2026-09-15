@@ -107,8 +107,9 @@ export default function PitchDeckEditor() {
     if (genError || !result?.url) setNotice(result?.error || genError?.message || 'Narration generation failed.');
     else {
       setNotice('Narration saved for this section.');
+      setLocalSection(selected.id, { narration_audio_url: result.url, narration_voice: result.voice || narrationVoice, narration_language: result.language_code || narrationLanguage });
+      if (narrationAudioRef.current) { narrationAudioRef.current.src = result.url; narrationAudioRef.current.load(); }
       await refresh();
-      if (narrationAudioRef.current) narrationAudioRef.current.load();
     }
     setGeneratingNarration(false);
   };
