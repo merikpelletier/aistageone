@@ -2,8 +2,8 @@ import { VOICE_NAMES, validateVoiceLanguage } from '../_shared/voiceCatalog.js';
 import { installModelControl } from '../_shared/modelControlRuntime.ts';
 installModelControl('generatePitchSpeech');
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { serveWithCors } from './_legacy/cors.ts';
-import { generateSpeech } from './_legacy/replicateAi.ts';
+import { serveWithCors } from '../_shared/cors.ts';
+import { generateSpeech } from '../_shared/replicateAi.ts';
 
 const ELEVENLABS_VOICES = new Set(VOICE_NAMES);
 
