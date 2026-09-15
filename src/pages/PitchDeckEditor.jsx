@@ -104,8 +104,11 @@ export default function PitchDeckEditor() {
     setGeneratingNarration(true); setNotice('');
     narrationAudioRef.current?.pause();
     setNarrationPlaying(false);
-    const { data: result, error: genError } = await supabase.functions.invoke('generatePitchSpeech', { body: { project_id: projectId, section_id: selected.id, voice: narrationVoice, language_code: narrationLanguage || 'en' } });
-    if (genError || !result?.url) {
+    const text = (selected.body || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 5000);
+    if (!text) { setNotice('Add body text to this section before generating narration.'); setGeneratingNarration(false); return; }
+    const { data: result, error: genError } = await supabase.functions.invoke('generateSpeech', { body: { text, voice: narrationVoice, language_code: narrationLanguage || 'en' } });
+    const audioUrl = result?.file_url || result?.url;
+    if (genError || !audioUrl) {
       let detail = result?.error || genError?.message || 'Narration generation failed.';
       const context = genError?.context;
       if (context) {
@@ -121,13 +124,15 @@ export default function PitchDeckEditor() {
     }
     else {
       setNotice('Narration saved for this section.');
-      const resolvedVoice = result.voice || narrationVoice;
-      const resolvedLanguage = result.language_code || narrationLanguage;
-      setLocalSection(selected.id, { narration_audio_url: result.url, narration_voice: resolvedVoice, narration_language: resolvedLanguage });
+      const resolvedVoice = narrationVoice;
+      const resolvedLanguage = narrationLanguage || 'en';
+      const { error: updateError } = await supabase.from('pitch_section').update({ narration_audio_url: audioUrl, narration_voice: resolvedVoice, narration_language: resolvedLanguage, narration_generated_at: new Date().toISOString() }).eq('id', selected.id);
+      if (updateError) setNotice(updateError.message);
+      setLocalSection(selected.id, { narration_audio_url: audioUrl, narration_voice: resolvedVoice, narration_language: resolvedLanguage });
       const audio = narrationAudioRef.current;
       if (audio) {
         audio.muted = narrationMuted;
-        audio.src = result.url;
+        audio.src = audioUrl;
         audio.load();
         audio.play().catch(() => setNarrationPlaying(false));
       }
