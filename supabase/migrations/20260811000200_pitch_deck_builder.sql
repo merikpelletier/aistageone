@@ -126,6 +126,11 @@ create table if not exists public.pitch_section (
   updated_at timestamptz not null default now()
 );
 
+alter table public.pitch_section add column if not exists narration_audio_url text;
+alter table public.pitch_section add column if not exists narration_voice text;
+alter table public.pitch_section add column if not exists narration_language text;
+alter table public.pitch_section add column if not exists narration_generated_at timestamptz;
+
 create table if not exists public.pitch_section_translation (
   id uuid primary key default gen_random_uuid(),
   pitch_section_id text not null references public.pitch_section(id) on delete cascade,
