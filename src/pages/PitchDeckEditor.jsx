@@ -123,11 +123,14 @@ export default function PitchDeckEditor() {
     setGeneratingNarration(false);
   };
 
+  // Reuses the same native <audio> playback pattern as StoryBlock's narration_audio_urls:
+  // one stored URL per unit (section here, segment there), loaded directly into a visible
+  // native audio element and controlled via its own play/pause/ended events.
   const toggleNarrationPlayback = () => {
     const audio = narrationAudioRef.current;
     if (!audio || !selected?.narration_audio_url) return;
-    if (narrationPlaying) { audio.pause(); setNarrationPlaying(false); }
-    else { audio.play().catch(() => {}); setNarrationPlaying(true); }
+    if (audio.paused) { audio.play().catch(() => { setNarrationPlaying(false); }); }
+    else { audio.pause(); }
   };
 
   const toggleNarrationMute = () => {
