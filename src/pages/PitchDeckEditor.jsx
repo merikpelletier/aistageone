@@ -105,7 +105,11 @@ export default function PitchDeckEditor() {
     setNarrationPlaying(false);
     const { data: result, error: genError } = await supabase.functions.invoke('generatePitchSpeech', { body: { project_id: projectId, section_id: selected.id, voice: narrationVoice, language_code: narrationLanguage || 'en' } });
     if (genError || !result?.url) setNotice(result?.error || genError?.message || 'Narration generation failed.');
-    else { setNotice('Narration saved for this section.'); refresh(); }
+    else {
+      setNotice('Narration saved for this section.');
+      await refresh();
+      if (narrationAudioRef.current) narrationAudioRef.current.load();
+    }
     setGeneratingNarration(false);
   };
 
