@@ -36,12 +36,14 @@ serveWithCors(async (request) => {
   const url = Deno.env.get('SUPABASE_URL')!;
   const service = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 
-  let projectQuery = service.from('pitch_project')
-    .select('id,owner_id,working_title,final_title,tagline,creator_name,company_name,original_language,share_slug,is_published,share_access_type,archived')
-    .eq('id', projectId);
+  let projectClient = service;
+  let projectQuery;
 
   if (shareSlug) {
-    projectQuery = projectQuery.eq('share_slug', shareSlug).eq('is_published', true).eq('share_access_type', 'link').eq('archived', false);
+    projectQuery = service.from('pitch_project')
+      .select('id,owner_id,working_title,final_title,tagline,creator_name,company_name,original_language,share_slug,is_published,share_access_type,archived')
+      .eq('id', projectId)
+      .eq('share_slug', shareSlug).eq('is_published', true).eq('share_access_type', 'link').eq('archived', false);
   } else {
     const authorization = request.headers.get('Authorization') || '';
     const scoped = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, {
@@ -50,7 +52,10 @@ serveWithCors(async (request) => {
     });
     const { data: authData } = await scoped.auth.getUser();
     if (!authData.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    projectQuery = projectQuery.eq('owner_id', authData.user.id);
+    projectClient = scoped;
+    projectQuery = scoped.from('pitch_project')
+      .select('id,owner_id,working_title,final_title,tagline,creator_name,company_name,original_language,share_slug,is_published,share_access_type,archived')
+      .eq('id', projectId);
   }
 
   const { data: project, error: projectError } = await projectQuery.single();
