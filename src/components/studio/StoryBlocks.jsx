@@ -1516,7 +1516,7 @@ function StoryBlockCard({ block, index, onRetry, onProduce, onBlockUpdated, onAd
           </>
         )}
 
-        {block.generation_status === 'completed' && segments.filter(Boolean).length === 0 && hasContent && <CheckCircle2 size={14} className="text-green-400 ml-auto" />}
+        {block.generation_status === 'completed' && segments.filter(Boolean).length === 0 && hasContent && <CheckCircle2 size={14} className="text-black ml-auto" />}
         {block.generation_status === 'pending' && !generating && (
           <button
             onClick={() => onProduce(block.id)}
