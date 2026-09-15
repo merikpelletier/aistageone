@@ -24,7 +24,7 @@ function Media({ url, type, title, className = '' }) {
   if (isVideo(url, type)) {
     const embed = embedUrl(url);
     if (embed) return <iframe src={embed} title={title || 'Pitch video'} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen className={className} />;
-    return <video src={url} controls playsInline preload="metadata" className={className} />;
+    return <video src={url} controls autoPlay muted loop playsInline preload="metadata" className={className} />;
   }
   return <img src={url} alt={title || ''} className={className} />;
 }
@@ -95,7 +95,7 @@ export default function PitchDeckPreview({ project, sections = [], media = [], c
       <button onClick={() => go(current - 1)} disabled={current === 0} aria-label="Previous section" className="rounded-full border border-zinc-700 p-2 disabled:opacity-25"><ChevronLeft size={18} /></button>
       <div className="flex flex-wrap items-center justify-center gap-2">
         <button onClick={() => setMenuOpen(!menuOpen)} className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 px-3 text-xs"><List size={15} /> {current + 1} / {visible.length}</button>
-        {(standalone || publicMode) && section.narration_audio_url && (
+        {section.narration_audio_url && (
           <div className="flex items-center gap-2">
             <button onClick={() => { if (!reader.isReading) reader.toggle(); else if (reader.isPaused) reader.resume(); }} disabled={reader.isReading && !reader.isPaused} aria-label="Play narration" title="Play narration" className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 text-xs font-bold text-cyan-300 disabled:opacity-40">{reader.isGenerating ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />} PLAY</button>
             <button onClick={() => { if (reader.isReading && !reader.isPaused) reader.pause(); }} disabled={!reader.isReading || reader.isPaused} aria-label="Pause narration" title="Pause narration" className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 text-xs font-bold text-zinc-300 disabled:opacity-40"><Pause size={15} /> PAUSE</button>
@@ -105,7 +105,7 @@ export default function PitchDeckPreview({ project, sections = [], media = [], c
       </div>
       <button onClick={() => go(current + 1)} disabled={current === visible.length - 1} aria-label="Next section" className="rounded-full border border-zinc-700 p-2 disabled:opacity-25"><ChevronRight size={18} /></button>
     </div>
-    {(standalone || publicMode) && reader.error && <p className="mt-2 text-center text-xs text-red-400">{reader.error}</p>}
+    {reader.error && <p className="mt-2 text-center text-xs text-red-400">{reader.error}</p>}
     {menuOpen && <div className="absolute bottom-12 left-1/2 z-40 w-72 -translate-x-1/2 rounded-xl border border-zinc-700 bg-zinc-950 p-2 shadow-2xl">{visible.map((item, index) => <button key={item.id} onClick={() => { go(index); setMenuOpen(false); }} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs ${index === current ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-300 hover:bg-zinc-800'}`}><span className="text-zinc-600">{index + 1}</span><span className="truncate">{item.title || item.section_type}</span></button>)}</div>}
   </div>;
 }
