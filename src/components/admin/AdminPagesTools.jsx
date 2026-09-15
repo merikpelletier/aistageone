@@ -106,6 +106,7 @@ function ConfigurationSection({ surface, draft, setDraft }) {
     {surface.type === 'page' && surface.key === 'Catalog' && <CatalogHeroEditor hero={config.hero || {}} onChange={(hero) => update('hero', hero)} />}
     {surface.type === 'page' && surface.key === 'Catalog' && <CatalogSectionsEditor sections={config.catalog_sections || []} onChange={(sections) => update('catalog_sections', sections)} />}
     {surface.type === 'tool' && surface.scope === 'studio' && <div className="grid gap-4 md:grid-cols-2"><div><span className={label}>Studio section</span><select className={field} value={config.group || ''} onChange={(event) => update('group', event.target.value)}><option className="bg-black" value="">Keep current section</option>{studioGroups.map((group) => <option key={group} className="bg-black" value={group}>{group}</option>)}</select></div><div><span className={label}>Description</span><input className={field} value={config.description || ''} onChange={(event) => update('description', event.target.value)} placeholder="Keep current description" /></div></div>}
+    {surface.type === 'tool' && surface.key === 'vault' && <VaultIconEditor value={config.icon_image || ''} onChange={(url) => update('icon_image', url)} />}
     {surface.key === 'agent_bar' && <>
       <div className="grid gap-4 md:grid-cols-2"><div><span className={label}>Position</span><select className={field} value={config.position || 'top'} onChange={(event) => update('position', event.target.value)}><option className="bg-black" value="top">Top</option><option className="bg-black" value="bottom">Bottom</option></select></div><div><span className={label}>Label</span><input className={field} value={config.label || ''} onChange={(event) => update('label', event.target.value)} /></div><div><span className={label}>Input text</span><input className={field} value={config.placeholder || ''} onChange={(event) => update('placeholder', event.target.value)} /></div><div><span className={label}>Model</span><input className={field} value={config.model || ''} onChange={(event) => update('model', event.target.value)} placeholder="Configured Replicate model" /></div></div>
       <div><span className={label}>Pages where it appears</span><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{pageKeys.map((page) => <label key={page.key} className="flex items-center gap-2 rounded-xl bg-white/5 p-3 text-xs text-white/70"><input type="checkbox" className="accent-yellow-400" checked={(config.pages || []).includes(page.key)} onChange={(event) => update('pages', event.target.checked ? [...new Set([...(config.pages || []), page.key])] : (config.pages || []).filter((key) => key !== page.key))} />{page.label}</label>)}</div></div>
@@ -116,6 +117,15 @@ function ConfigurationSection({ surface, draft, setDraft }) {
 }
 
 const STUDIO_HOME_ICONS = ['Home', 'Clapperboard', 'Theater', 'Wrench', 'Bookmark', 'BookOpen'];
+
+function VaultIconEditor({ value, onChange }) {
+  const [uploading, setUploading] = useState(false);
+  return <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
+    <p className={label}>Custom icon image</p>
+    <StudioImageUploadField label="Icon image" value={value} onChange={onChange} uploading={uploading} setUploading={setUploading} />
+    <p className="text-xs text-white/35">Replaces the existing Bookmark icon wherever Vault is shown. Falls back to the existing Bookmark icon when empty.</p>
+  </div>;
+}
 
 function StudioImageUploadField({ label: fieldLabel, value, onChange, uploading, setUploading }) {
   const inputId = `studio-upload-${fieldLabel}-${Math.random().toString(36).slice(2)}`;
