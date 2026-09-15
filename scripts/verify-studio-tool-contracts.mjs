@@ -95,12 +95,7 @@ const pitchReader = read('src/hooks/usePitchVoiceReader.js');
 for (const marker of ['section.narration_audio_url']) requireMarker('Pitch Deck reader', pitchReader, marker);
 for (const marker of ['speechSynthesis', 'generate-pitch-speech', "'honey'", "generatePitchSpeech"]) forbidMarker('Pitch Deck reader', pitchReader, marker);
 const pitchEditor = read('src/pages/PitchDeckEditor.jsx');
-for (const marker of ["supabase.functions.invoke('generatePitchSpeech'", 'voice: narrationVoice']) requireMarker('Pitch Deck editor narration generation', pitchEditor, marker);
-const pitchSpeech = read('supabase/functions/generatePitchSpeech/index.ts');
-for (const marker of ["from '../_shared/replicateAi.ts'", 'ELEVENLABS_VOICES.has(body.voice)', 'pitch-readers/elevenlabs-v3']) {
-  requireMarker('Pitch Deck speech', pitchSpeech, marker);
-}
-forbidMarker('Pitch Deck speech', pitchSpeech, "from '../_shared/openai.ts'");
+for (const marker of ["supabase.functions.invoke('generateSpeech'", 'voice: narrationVoice', 'narration_audio_url: audioUrl']) requireMarker('Pitch Deck editor narration generation', pitchEditor, marker);
 
 const authorStoryBlocks = read('src/components/studio/AuthorStoryBlocks.jsx');
 for (const marker of ["from '@/api/supabaseClient'", ".from('catalog_asset')", ".from('asset_category')", "source: 'olo_shop'", 'Select image from OLO Shop', 'Search OLO Shop', 'All categories', 'All creators', 'Clear filters']) requireMarker('Story Blocks Author shop selection', authorStoryBlocks, marker);
