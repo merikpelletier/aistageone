@@ -57,6 +57,17 @@ export default function StoryImageAdjustment({ userEmail, imageName = 'FotoPlay'
     finally { pending.current = false; setBusy(''); }
   };
 
+  const applyManualUpload = async (uploadedUrl, uploadTarget) => {
+    if (pending.current) return;
+    pending.current = true; setError(''); setBusy(`${segment.id}-adjust-save`);
+    try {
+      const fingerprint = adjustmentFingerprint(latest.current.segment, latest.current.ratio);
+      if (adjustmentFingerprint(segment, ratio) !== fingerprint) throw new Error('The image or its settings changed. Close this window and adjust the current image.');
+      await latest.current.onApply({ url: uploadedUrl, target: uploadTarget, instruction: 'Manual upload replacement', reference: '', restore: false, fingerprint });
+    } catch (failure) { if (alive.current) setError(failure.message || 'Unable to save the uploaded image. The original image was kept.'); throw failure; }
+    finally { pending.current = false; setBusy(''); }
+  };
+
   const panels = segment.visual_format === 'comic' ? (segment.comic_panels || []).slice(0, segment.comic_panel_count || 3) : [];
   if (!segment.image_url && !panels.some((panel) => panel.image_url)) return null;
   return <section className="rounded-2xl border border-yellow-400/30 bg-black p-4 text-white">
