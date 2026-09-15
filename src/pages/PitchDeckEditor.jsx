@@ -105,7 +105,20 @@ export default function PitchDeckEditor() {
     narrationAudioRef.current?.pause();
     setNarrationPlaying(false);
     const { data: result, error: genError } = await supabase.functions.invoke('generatePitchSpeech', { body: { project_id: projectId, section_id: selected.id, voice: narrationVoice, language_code: narrationLanguage || 'en' } });
-    if (genError || !result?.url) setNotice(result?.error || genError?.message || 'Narration generation failed.');
+    if (genError || !result?.url) {
+      let detail = result?.error || genError?.message || 'Narration generation failed.';
+      const context = genError?.context;
+      if (context) {
+        const status = context.status ? `HTTP ${context.status}` : '';
+        let bodyText = '';
+        try {
+          const raw = typeof context.json === 'function' ? await context.json() : (typeof context.text === 'function' ? await context.text() : null);
+          bodyText = raw && typeof raw === 'object' ? (raw.error || JSON.stringify(raw)) : (raw || '');
+        } catch { /* ignore body parse failure */ }
+        detail = [status, bodyText || detail].filter(Boolean).join(' - ');
+      }
+      setNotice(detail);
+    }
     else {
       setNotice('Narration saved for this section.');
       const resolvedVoice = result.voice || narrationVoice;
