@@ -103,6 +103,7 @@ function ConfigurationSection({ surface, draft, setDraft }) {
     {surface.type === 'page' && surface.key === 'Plus' && <PlusPageBackgroundEditor value={config.background_image || ''} onChange={(url) => update('background_image', url)} />}
     {surface.type === 'page' && surface.key === 'Plus' && <PlusSectionsEditor sections={config.plus_sections || []} onChange={(sections) => update('plus_sections', sections)} />}
     {surface.type === 'page' && surface.key === 'Catalog' && <PlusPageBackgroundEditor value={config.background_image || ''} onChange={(url) => update('background_image', url)} />}
+    {surface.type === 'page' && surface.key === 'Catalog' && <CatalogHeroEditor hero={config.hero || {}} onChange={(hero) => update('hero', hero)} />}
     {surface.type === 'page' && surface.key === 'Catalog' && <CatalogSectionsEditor sections={config.catalog_sections || []} onChange={(sections) => update('catalog_sections', sections)} />}
     {surface.type === 'tool' && surface.scope === 'studio' && <div className="grid gap-4 md:grid-cols-2"><div><span className={label}>Studio section</span><select className={field} value={config.group || ''} onChange={(event) => update('group', event.target.value)}><option className="bg-black" value="">Keep current section</option>{studioGroups.map((group) => <option key={group} className="bg-black" value={group}>{group}</option>)}</select></div><div><span className={label}>Description</span><input className={field} value={config.description || ''} onChange={(event) => update('description', event.target.value)} placeholder="Keep current description" /></div></div>}
     {surface.key === 'agent_bar' && <>
@@ -245,6 +246,25 @@ const DEFAULT_CATALOG_SECTIONS = [
   { key: 'load_more', label: 'Load More', visible: true, order: 3 },
   { key: 'quick_view', label: 'Quick View', visible: true, order: 4 },
 ];
+
+function CatalogHeroEditor({ hero, onChange }) {
+  const [uploading, setUploading] = useState(false);
+  const update = (key, value) => onChange({ ...hero, [key]: value });
+  return <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
+    <div className="flex items-center justify-between gap-3"><p className={label}>Hero</p><label className="flex items-center gap-2 text-xs text-white/60"><input type="checkbox" className="accent-yellow-400" checked={hero.visible !== false} onChange={(event) => update('visible', event.target.checked)} />Visible</label></div>
+    <div className="grid gap-3 md:grid-cols-2">
+      <div><span className={label}>Title</span><input className={field} value={hero.title || ''} onChange={(event) => update('title', event.target.value)} placeholder="OLO SHOP" /></div>
+      <div><span className={label}>Badge label</span><input className={field} value={hero.badge_label || ''} onChange={(event) => update('badge_label', event.target.value)} placeholder="AISTAGE.ONE Marketplace" /></div>
+    </div>
+    <div><span className={label}>Subtitle</span><textarea className={field} rows={3} value={hero.subtitle || ''} onChange={(event) => update('subtitle', event.target.value)} placeholder="Actors, characters, costumes, sets, props and production assets ready for your projects." /></div>
+    <div className="grid gap-3 md:grid-cols-2">
+      <div><span className={label}>Hero height</span><select className={field} value={hero.height || 'default'} onChange={(event) => update('height', event.target.value)}><option className="bg-black" value="compact">Compact</option><option className="bg-black" value="default">Default</option><option className="bg-black" value="tall">Tall</option></select></div>
+      <label className="flex items-center gap-2 self-end rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/70"><input type="checkbox" className="accent-yellow-400" checked={hero.show_stats !== false} onChange={(event) => update('show_stats', event.target.checked)} />Show stats row</label>
+    </div>
+    <StudioImageUploadField label="Hero background image" value={hero.background_image || ''} onChange={(url) => update('background_image', url)} uploading={uploading} setUploading={setUploading} />
+    <p className="text-xs text-white/35">Separate from the page background below; falls back to the existing dark hero background when empty.</p>
+  </div>;
+}
 
 function CatalogSectionsEditor({ sections, onChange }) {
   const merged = DEFAULT_CATALOG_SECTIONS.map((def) => ({ ...def, ...(sections.find((item) => item.key === def.key) || {}) }));

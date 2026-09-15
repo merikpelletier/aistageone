@@ -50,7 +50,15 @@ export default function Catalog() {
     return merged.reduce((map, item) => { map[item.key] = item; return map; }, {});
   }, [catalogSetting]);
   const catalogBackground = catalogSetting?.configuration?.background_image || '';
-  const showHero = catalogSections.hero?.visible !== false;
+  const heroConfig = catalogSetting?.configuration?.hero || {};
+  const heroVisible = heroConfig.visible !== false;
+  const heroTitle = heroConfig.title || 'OLO SHOP';
+  const heroSubtitle = heroConfig.subtitle || 'Actors, characters, costumes, sets, props and production assets ready for your projects.';
+  const heroBadgeLabel = heroConfig.badge_label || 'AISTAGE.ONE Marketplace';
+  const heroBackground = heroConfig.background_image || '';
+  const heroShowStats = heroConfig.show_stats !== false;
+  const heroHeightClass = heroConfig.height === 'compact' ? 'py-8 md:py-10' : heroConfig.height === 'tall' ? 'py-20 md:py-28' : 'py-14 md:py-20';
+  const showHero = catalogSections.hero?.visible !== false && heroVisible;
   const showFilters = catalogSections.filters?.visible !== false;
   const showGrid = catalogSections.grid?.visible !== false;
   const showLoadMore = catalogSections.load_more?.visible !== false;
@@ -121,17 +129,17 @@ export default function Catalog() {
 
   return (
     <div className="min-h-screen bg-zinc-950 pb-28 text-white" style={catalogBackground ? { backgroundImage: `url(${catalogBackground})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' } : undefined}>
-      {showHero && <section className="relative overflow-hidden border-b border-white/10 bg-black">
+      {showHero && <section className="relative overflow-hidden border-b border-white/10 bg-black" style={heroBackground ? { backgroundImage: `url(${heroBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(6,182,212,0.22),transparent_38%),radial-gradient(circle_at_85%_10%,rgba(37,99,235,0.18),transparent_35%)]" />
-        <div className="relative mx-auto max-w-7xl px-6 py-14 md:py-20">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-300"><Sparkles size={14} /> AISTAGE.ONE Marketplace</div>
-          <h1 className="text-5xl font-black tracking-tight md:text-7xl">OLO SHOP</h1>
-          <p className="mt-5 max-w-2xl text-base leading-relaxed text-zinc-300 md:text-lg">Actors, characters, costumes, sets, props and production assets ready for your projects.</p>
-          <div className="mt-8 flex flex-wrap gap-3 text-sm font-bold text-zinc-300">
+        <div className={`relative mx-auto max-w-7xl px-6 ${heroHeightClass}`}>
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-300"><Sparkles size={14} /> {heroBadgeLabel}</div>
+          <h1 className="text-5xl font-black tracking-tight md:text-7xl">{heroTitle}</h1>
+          <p className="mt-5 max-w-2xl text-base leading-relaxed text-zinc-300 md:text-lg">{heroSubtitle}</p>
+          {heroShowStats && <div className="mt-8 flex flex-wrap gap-3 text-sm font-bold text-zinc-300">
             <span className="rounded-lg border border-white/10 bg-white/5 px-4 py-2">{assets.length} assets</span>
             <span className="rounded-lg border border-white/10 bg-white/5 px-4 py-2">{categories.length} categories</span>
             <span className="rounded-lg border border-white/10 bg-white/5 px-4 py-2">Supabase secured</span>
-          </div>
+          </div>}
         </div>
       </section>}
 
