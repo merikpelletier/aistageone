@@ -95,7 +95,7 @@ const pitchReader = read('src/hooks/usePitchVoiceReader.js');
 for (const marker of ["supabase.functions.invoke('generatePitchSpeech'", 'voice,']) requireMarker('Pitch Deck reader', pitchReader, marker);
 for (const marker of ['speechSynthesis', 'generate-pitch-speech', "'honey'"]) forbidMarker('Pitch Deck reader', pitchReader, marker);
 const pitchSpeech = read('supabase/functions/generatePitchSpeech/index.ts');
-for (const marker of ["from './_legacy/replicateAi.ts'", 'ELEVENLABS_VOICES.has(body.voice)', 'pitch-readers/elevenlabs-v3']) {
+for (const marker of ["from '../_shared/replicateAi.ts'", 'ELEVENLABS_VOICES.has(body.voice)', 'pitch-readers/elevenlabs-v3']) {
   requireMarker('Pitch Deck speech', pitchSpeech, marker);
 }
 forbidMarker('Pitch Deck speech', pitchSpeech, "from '../_shared/openai.ts'");
