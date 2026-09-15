@@ -29,6 +29,7 @@ serveWithCors(async (request) => {
   const shareSlug = String(body.share_slug || '');
   const sectionId = String(body.section_id || '');
   const voice = body.voice || 'Rachel';
+  if (shareSlug) return Response.json({ error: 'Public playback cannot generate narration.' }, { status: 403 });
   if (body.voice && !ELEVENLABS_VOICES.has(body.voice)) return Response.json({ error: 'Unsupported voice' }, { status: 400 });
   if (!projectId || !sectionId) return Response.json({ error: 'Missing pitch section' }, { status: 400 });
 
@@ -91,5 +92,11 @@ serveWithCors(async (request) => {
   }
 
   const { data: publicUrl } = service.storage.from('media').getPublicUrl(objectPath);
+  await service.from('pitch_section').update({
+    narration_audio_url: publicUrl.publicUrl,
+    narration_voice: voice,
+    narration_language: languageCode,
+    narration_generated_at: new Date().toISOString(),
+  }).eq('id', section.id);
   return Response.json({ url: publicUrl.publicUrl, voice, language_code: languageCode, cached: true });
 });

@@ -50,12 +50,8 @@ export default function PitchDeckPreview({ project, sections = [], media = [], c
   const template = getPitchTemplate(project?.selected_template_id);
   const reader = usePitchVoiceReader({
     visibleSections: visible,
-    project,
-    voice,
-    language: speechLanguage,
     currentIndex: current,
     onSectionChange: setCurrent,
-    publicMode,
   });
 
   useEffect(() => {

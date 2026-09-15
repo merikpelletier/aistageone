@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/api/base44Client';
 
-export function usePitchVoiceReader({ visibleSections, project, voice, language, currentIndex, onSectionChange, publicMode = false }) {
+export function usePitchVoiceReader({ visibleSections, project: _project, voice: _voice, language: _language, currentIndex, onSectionChange, publicMode: _publicMode = false }) {
   const [isReading, setIsReading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -44,33 +44,11 @@ export function usePitchVoiceReader({ visibleSections, project, voice, language,
       if (index >= sections.length) { stop(); return; }
 
       const section = sections[index];
+      const url = section.narration_audio_url;
+      if (!url) { index += 1; playNext(); return; }
       setPlayingIndex(index);
       indexRef.current = index;
       onSectionChangeRef.current?.(index);
-
-      const cacheKey = `${section.id}|${voice}|${language}`;
-      let url = cacheRef.current[cacheKey];
-      if (!url) {
-        setIsGenerating(true);
-        const { data, error: requestError } = await supabase.functions.invoke('generatePitchSpeech', {
-          body: {
-            project_id: project?.id,
-            share_slug: publicMode ? project?.share_slug || null : null,
-            section_id: section.id,
-            voice,
-            language_code: language,
-          },
-        });
-        if (stoppedRef.current || run !== playbackRunRef.current) return;
-        setIsGenerating(false);
-        if (requestError || !data?.url) {
-          setError(data?.error || requestError?.message || 'Voice reader unavailable.');
-          stop();
-          return;
-        }
-        url = data.url;
-        cacheRef.current[cacheKey] = url;
-      }
 
       let audio = audioRef.current;
       if (!audio) {
@@ -92,7 +70,7 @@ export function usePitchVoiceReader({ visibleSections, project, voice, language,
     };
 
     await playNext();
-  }, [project?.id, project?.share_slug, publicMode, stop, voice, language]);
+  }, [stop]);
 
   const play = useCallback(() => {
     if (!visibleSections.length) return;
@@ -121,19 +99,6 @@ export function usePitchVoiceReader({ visibleSections, project, voice, language,
     else if (isPaused) resume();
     else pause();
   }, [isPaused, isReading, pause, play, resume]);
-
-  const previousVoiceRef = useRef(`${voice}|${language}`);
-  useEffect(() => {
-    if (previousVoiceRef.current === `${voice}|${language}`) return;
-    previousVoiceRef.current = `${voice}|${language}`;
-    cacheRef.current = {};
-    if (isReading) {
-      const restartAt = indexRef.current >= 0 ? indexRef.current : currentIndex;
-      stop();
-      setIsReading(true);
-      playFrom(restartAt);
-    }
-  }, [currentIndex, isReading, playFrom, stop, voice, language]);
 
   useEffect(() => () => {
     playbackRunRef.current += 1;

@@ -118,6 +118,10 @@ create table if not exists public.pitch_section (
   transition_type text,
   is_visible boolean not null default true,
   is_custom boolean not null default false,
+  narration_audio_url text,
+  narration_voice text,
+  narration_language text,
+  narration_generated_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
