@@ -1511,7 +1511,7 @@ function StoryBlockCard({ block, index, onRetry, onProduce, onBlockUpdated, onAd
               className="ml-auto flex items-center gap-1.5 bg-yellow-400 text-black px-3 py-1.5 rounded-lg text-xs font-bold active:scale-95 transition-transform"
             >
               <Play size={12} fill="black" />
-              Play Chapter
+              <span className="text-black">Play Chapter</span>
             </button>
           </>
         )}
