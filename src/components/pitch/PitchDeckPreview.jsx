@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Image as ImageIcon, List, Loader2, Monitor, Music, Pause, Play, Smartphone, Square, Tablet, Volume2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Image as ImageIcon, List, Loader2, Monitor, Music, Pause, Play, Smartphone, Square, Tablet, Volume2, VolumeX } from 'lucide-react';
 import { getPitchTemplate } from './pitchDeckTemplates';
 import { usePitchVoiceReader } from '@/hooks/usePitchVoiceReader';
 
@@ -96,9 +96,11 @@ export default function PitchDeckPreview({ project, sections = [], media = [], c
       <div className="flex flex-wrap items-center justify-center gap-2">
         <button onClick={() => setMenuOpen(!menuOpen)} className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 px-3 text-xs"><List size={15} /> {current + 1} / {visible.length}</button>
         {(standalone || publicMode) && section.narration_audio_url && (
-          reader.isReading
-            ? <button onClick={reader.toggle} aria-label={reader.isPaused ? 'Resume narration' : 'Pause narration'} title="Pause narration" className="inline-flex h-9 items-center gap-2 rounded-full border border-cyan-400 bg-cyan-500 px-3 text-xs font-bold text-white">{reader.isPaused ? <Play size={15} /> : <Pause size={15} />} {reader.isPaused ? 'RESUME' : 'PAUSE'}</button>
-            : <button onClick={reader.toggle} aria-label="Play narration" title="Play narration" className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 text-xs font-bold text-cyan-300">{reader.isGenerating ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />} PLAY</button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => { if (!reader.isReading) reader.toggle(); else if (reader.isPaused) reader.resume(); }} disabled={reader.isReading && !reader.isPaused} aria-label="Play narration" title="Play narration" className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 text-xs font-bold text-cyan-300 disabled:opacity-40">{reader.isGenerating ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />} PLAY</button>
+            <button onClick={() => { if (reader.isReading && !reader.isPaused) reader.pause(); }} disabled={!reader.isReading || reader.isPaused} aria-label="Pause narration" title="Pause narration" className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 text-xs font-bold text-zinc-300 disabled:opacity-40"><Pause size={15} /> PAUSE</button>
+            <button onClick={reader.toggleMute} aria-label={reader.isMuted ? 'Unmute narration' : 'Mute narration'} title={reader.isMuted ? 'Unmute narration' : 'Mute narration'} className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 text-xs font-bold text-zinc-300">{reader.isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}</button>
+          </div>
         )}
       </div>
       <button onClick={() => go(current + 1)} disabled={current === visible.length - 1} aria-label="Next section" className="rounded-full border border-zinc-700 p-2 disabled:opacity-25"><ChevronRight size={18} /></button>

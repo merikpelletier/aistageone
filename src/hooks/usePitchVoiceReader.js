@@ -5,9 +5,11 @@ export function usePitchVoiceReader({ visibleSections, project: _project, voice:
   const [isReading, setIsReading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [playingIndex, setPlayingIndex] = useState(-1);
   const [error, setError] = useState('');
   const audioRef = useRef(null);
+  const isMutedRef = useRef(false);
   const cacheRef = useRef({});
   const indexRef = useRef(-1);
   const stoppedRef = useRef(true);
@@ -56,6 +58,7 @@ export function usePitchVoiceReader({ visibleSections, project: _project, voice:
         audioRef.current = audio;
       }
       audio.src = url;
+      audio.muted = isMutedRef.current;
       audio.onended = () => { index += 1; playNext(); };
       audio.onerror = () => {
         setError('Voice audio could not be played.');
@@ -100,11 +103,17 @@ export function usePitchVoiceReader({ visibleSections, project: _project, voice:
     else pause();
   }, [isPaused, isReading, pause, play, resume]);
 
+  const toggleMute = useCallback(() => {
+    isMutedRef.current = !isMutedRef.current;
+    if (audioRef.current) audioRef.current.muted = isMutedRef.current;
+    setIsMuted(isMutedRef.current);
+  }, []);
+
   useEffect(() => () => {
     playbackRunRef.current += 1;
     stoppedRef.current = true;
     audioRef.current?.pause();
   }, []);
 
-  return { isReading, isPaused, isGenerating, playingIndex, error, toggle, stop };
+  return { isReading, isPaused, isGenerating, isMuted, playingIndex, error, toggle, pause, resume, toggleMute, stop };
 }
