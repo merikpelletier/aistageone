@@ -36,37 +36,29 @@ serveWithCors(async (request) => {
   const url = Deno.env.get('SUPABASE_URL')!;
   const service = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 
-  let projectClient = service;
-  let projectQuery;
+  // Same authentication pattern as StoryBlock's regenerateNarration: verify the
+  // requesting user via a scoped client, then perform all reads/writes with the
+  // service-role client (no separate RLS-gated query path for narration).
+  const authorization = request.headers.get('Authorization') || '';
+  const scoped = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, {
+    global: { headers: authorization ? { Authorization: authorization } : {} },
+    auth: { persistSession: false },
+  });
+  const { data: authData } = await scoped.auth.getUser();
+  if (!authData.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  if (shareSlug) {
-    projectQuery = service.from('pitch_project')
-      .select('id,owner_id,working_title,final_title,tagline,creator_name,company_name,original_language,share_slug,is_published,share_access_type,archived')
-      .eq('id', projectId)
-      .eq('share_slug', shareSlug).eq('is_published', true).eq('share_access_type', 'link').eq('archived', false);
-  } else {
-    const authorization = request.headers.get('Authorization') || '';
-    const scoped = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: authorization ? { Authorization: authorization } : {} },
-      auth: { persistSession: false },
-    });
-    const { data: authData } = await scoped.auth.getUser();
-    if (!authData.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    projectClient = scoped;
-    projectQuery = scoped.from('pitch_project')
-      .select('id,owner_id,working_title,final_title,tagline,creator_name,company_name,original_language,share_slug,is_published,share_access_type,archived')
-      .eq('id', projectId);
-  }
-
-  const { data: project, error: projectError } = await projectQuery.single();
+  const { data: project, error: projectError } = await service.from('pitch_project')
+    .select('id,owner_id,working_title,final_title,tagline,creator_name,company_name,original_language,share_slug,is_published,share_access_type,archived')
+    .eq('id', projectId)
+    .eq('owner_id', authData.user.id)
+    .single();
   if (projectError || !project) return Response.json({ error: 'Pitch unavailable' }, { status: 404 });
 
-  let sectionQuery = service.from('pitch_section')
+  const { data: section, error: sectionError } = await service.from('pitch_section')
     .select('id,section_type,title,subtitle,body,is_visible')
     .eq('id', sectionId)
-    .eq('pitch_project_id', project.id);
-  if (shareSlug) sectionQuery = sectionQuery.eq('is_visible', true);
-  const { data: section, error: sectionError } = await sectionQuery.single();
+    .eq('pitch_project_id', project.id)
+    .single();
   if (sectionError || !section) return Response.json({ error: 'Section unavailable' }, { status: 404 });
 
   const isCover = section.section_type === 'cover';
