@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Image as ImageIcon, List, Loader2, Monitor, Music, Pause, Play, Smartphone, Square, Tablet, Volume2 } from 'lucide-react';
 import { getPitchTemplate } from './pitchDeckTemplates';
-import PitchVoiceSelector from './PitchVoiceSelector';
 import { usePitchVoiceReader } from '@/hooks/usePitchVoiceReader';
 
 export const mediaUrl = (item) => item?.source_media_url || item?.media_url || item?.file_url || '';
@@ -44,8 +43,6 @@ export default function PitchDeckPreview({ project, sections = [], media = [], c
   const [current, setCurrent] = useState(0);
   const [device, setDevice] = useState('desktop');
   const [menuOpen, setMenuOpen] = useState(false);
-  const [voice, setVoice] = useState('Rachel');
-  const [speechLanguage, setSpeechLanguage] = useState(project?.original_language || 'en');
   const visible = useMemo(() => sections.filter((section) => section.is_visible !== false), [sections]);
   const template = getPitchTemplate(project?.selected_template_id);
   const reader = usePitchVoiceReader({
@@ -98,16 +95,15 @@ export default function PitchDeckPreview({ project, sections = [], media = [], c
       <button onClick={() => go(current - 1)} disabled={current === 0} aria-label="Previous section" className="rounded-full border border-zinc-700 p-2 disabled:opacity-25"><ChevronLeft size={18} /></button>
       <div className="flex flex-wrap items-center justify-center gap-2">
         <button onClick={() => setMenuOpen(!menuOpen)} className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 px-3 text-xs"><List size={15} /> {current + 1} / {visible.length}</button>
-        <PitchVoiceSelector value={voice} onChange={setVoice} language={speechLanguage} onLanguageChange={setSpeechLanguage} />
-        {reader.isReading && <button onClick={reader.stop} aria-label="Stop reader" title="Stop reader" className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-white"><Square size={15} /></button>}
-        <button onClick={reader.toggle} aria-label={reader.isReading ? (reader.isPaused ? 'Resume reader' : 'Pause reader') : 'Read pitch aloud'} title="Read pitch aloud" className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-bold ${reader.isReading ? 'border-cyan-400 bg-cyan-500 text-white' : 'border-zinc-700 bg-zinc-900 text-cyan-300'}`}>
-          {reader.isGenerating ? <Loader2 size={15} className="animate-spin" /> : reader.isReading ? (reader.isPaused ? <Play size={15} /> : <Pause size={15} />) : <Volume2 size={15} />}
-          {reader.isGenerating ? 'LOADING' : reader.isReading ? (reader.isPaused ? 'RESUME' : 'PAUSE') : 'READ'}
-        </button>
+        {(standalone || publicMode) && section.narration_audio_url && (
+          reader.isReading
+            ? <button onClick={reader.toggle} aria-label={reader.isPaused ? 'Resume narration' : 'Pause narration'} title="Pause narration" className="inline-flex h-9 items-center gap-2 rounded-full border border-cyan-400 bg-cyan-500 px-3 text-xs font-bold text-white">{reader.isPaused ? <Play size={15} /> : <Pause size={15} />} {reader.isPaused ? 'RESUME' : 'PAUSE'}</button>
+            : <button onClick={reader.toggle} aria-label="Play narration" title="Play narration" className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 text-xs font-bold text-cyan-300">{reader.isGenerating ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />} PLAY</button>
+        )}
       </div>
       <button onClick={() => go(current + 1)} disabled={current === visible.length - 1} aria-label="Next section" className="rounded-full border border-zinc-700 p-2 disabled:opacity-25"><ChevronRight size={18} /></button>
     </div>
-    {reader.error && <p className="mt-2 text-center text-xs text-red-400">{reader.error}</p>}
+    {(standalone || publicMode) && reader.error && <p className="mt-2 text-center text-xs text-red-400">{reader.error}</p>}
     {menuOpen && <div className="absolute bottom-12 left-1/2 z-40 w-72 -translate-x-1/2 rounded-xl border border-zinc-700 bg-zinc-950 p-2 shadow-2xl">{visible.map((item, index) => <button key={item.id} onClick={() => { go(index); setMenuOpen(false); }} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs ${index === current ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-300 hover:bg-zinc-800'}`}><span className="text-zinc-600">{index + 1}</span><span className="truncate">{item.title || item.section_type}</span></button>)}</div>}
   </div>;
 }
