@@ -214,7 +214,13 @@ export default function Studio() {
     retry: false,
   });
   const studioSurfaceSetting = studioRuntime?.settings?.find((item) => item.surface_type === 'page' && item.surface_key === 'Studio');
+  const vaultToolSetting = studioRuntime?.settings?.find((item) => item.surface_type === 'tool' && item.surface_key === 'vault');
   const homeItems = (studioSurfaceSetting?.configuration?.home_items?.length ? studioSurfaceSetting.configuration.home_items : DEFAULT_HOME_ITEMS)
+    .map((item) => item.key === 'my_vault' ? {
+      ...item,
+      label: vaultToolSetting?.label || item.label,
+      icon_image: vaultToolSetting?.configuration?.icon_image?.trim() ? vaultToolSetting.configuration.icon_image : item.icon_image,
+    } : item)
     .filter((item) => item.visible !== false)
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const homeItemActions = {
