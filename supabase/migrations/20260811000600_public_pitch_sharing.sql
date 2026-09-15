@@ -45,7 +45,8 @@ as $$
             'order_index', s.order_index,
             'layout_type', s.layout_type,
             'transition_type', s.transition_type,
-            'is_visible', s.is_visible
+            'is_visible', s.is_visible,
+            'narration_audio_url', s.narration_audio_url
           ) order by s.order_index
         ),
         '[]'::jsonb
