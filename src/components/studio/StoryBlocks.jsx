@@ -1568,6 +1568,7 @@ function StoryBlockCard({ block, index, onRetry, onProduce, onBlockUpdated, onAd
       {(segments.length > 0 || instructions.length > 0) && (
         <div className="px-5 pb-3">
           <div className="bg-white/5 rounded-2xl overflow-hidden relative">
+            <div className="relative w-full aspect-video overflow-hidden isolate" style={{ contain: 'strict' }}>
             {segments[playingSegment] ? (
               mediaType === 'video' ? (
                 <video
@@ -1575,18 +1576,18 @@ function StoryBlockCard({ block, index, onRetry, onProduce, onBlockUpdated, onAd
                   src={segments[playingSegment]}
                   controls
                   muted
-                  className="w-full aspect-video object-cover bg-black"
+                  className="absolute inset-0 w-full h-full object-cover bg-black"
                   onEnded={() => setPlayingSegment(prev => prev < segCount - 1 ? prev + 1 : prev)}
                 />
               ) : (
                 <img
                   src={segments[playingSegment]}
                   alt=""
-                  className="w-full aspect-video object-cover bg-black"
+                  className="absolute inset-0 w-full h-full object-cover bg-black"
                 />
               )
             ) : (
-              <div className="w-full aspect-video flex flex-col items-center justify-center bg-black gap-3">
+              <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-black gap-3">
                 {currentInstruction.manual_media_url ? (
                   <>
                     {currentInstruction.media_type === 'video' ? (
@@ -1595,14 +1596,14 @@ function StoryBlockCard({ block, index, onRetry, onProduce, onBlockUpdated, onAd
                         src={currentInstruction.manual_media_url}
                         controls
                         muted
-                        className="w-full aspect-video object-cover bg-black"
+                        className="absolute inset-0 w-full h-full object-cover bg-black"
                         onEnded={() => setPlayingSegment(prev => prev < segCount - 1 ? prev + 1 : prev)}
                       />
                     ) : (
                       <img
                         src={currentInstruction.manual_media_url}
                         alt=""
-                        className="w-full aspect-video object-cover bg-black"
+                        className="absolute inset-0 w-full h-full object-cover bg-black"
                       />
                     )}
                   </>
@@ -1614,6 +1615,7 @@ function StoryBlockCard({ block, index, onRetry, onProduce, onBlockUpdated, onAd
                 )}
               </div>
             )}
+            </div>
             {/* Redo this segment image with director's note */}
             {segments[playingSegment] && !generating && (
               <div className="absolute bottom-2 right-2 z-10">
