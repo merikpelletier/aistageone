@@ -52,7 +52,7 @@ export default function Catalog() {
   const catalogBackground = catalogSetting?.configuration?.background_image || '';
   const heroConfig = catalogSetting?.configuration?.hero || {};
   const heroVisible = heroConfig.visible !== false;
-  const heroTitle = heroConfig.title || 'OLO SHOP';
+  const heroTitle = heroConfig.title || 'Assets Shop';
   const heroSubtitle = heroConfig.subtitle || 'Actors, characters, costumes, sets, props and production assets ready for your projects.';
   const heroBadgeLabel = heroConfig.badge_label || 'AISTAGE.ONE Marketplace';
   const heroBackground = heroConfig.background_image || '';
