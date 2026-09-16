@@ -489,6 +489,11 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
                 <div className="space-y-3">
                   <p className="text-sm leading-relaxed text-white/55">Describe your character in detail (appearance, clothing, age, build, style, distinctive features). Actor Studio will generate a complete five-view reference sheet from your description alone.</p>
                   <textarea value={characterDescription} onChange={(event) => setCharacterDescription(event.target.value)} placeholder="e.g. A tall woman in her 30s with short black hair, wearing a dark green tactical jacket, cargo pants, and combat boots..." rows={6} className="w-full resize-none rounded-2xl border border-purple-300/25 bg-black/35 px-4 py-3.5 text-sm font-semibold normal-case tracking-normal text-white outline-none placeholder:text-white/20 focus:border-purple-300/60" />
+                  <button type="button" onClick={generate} disabled={!characterDescription.trim() || generating} className="flex w-full items-center justify-center gap-3 rounded-2xl bg-purple-300 px-6 py-4 font-black text-black transition hover:bg-purple-200 disabled:cursor-not-allowed disabled:opacity-35">
+                    {generating ? <Loader2 size={19} className="animate-spin" /> : <WandSparkles size={19} />}
+                    {generating ? 'Creating character...' : 'Generate reference sheet from description'}
+                    <span className="rounded-full bg-black/15 px-2.5 py-1 text-xs"><Coins size={11} className="mr-1 inline" />{tokenCost}</span>
+                  </button>
                 </div>
               ) : sourceMode === 'sheet' ? (
                 <div className="grid gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
