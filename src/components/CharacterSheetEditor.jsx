@@ -368,11 +368,13 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
     setGenerating(true);
     try {
       const angleUrls = PHOTO_SLOTS.map(({ key }) => photos[key]).filter(Boolean);
+      const primarySourceUrls = sourceMode === 'sheet' ? [sourceSheet.url] : angleUrls;
+      const additionalReferenceUrls = [costume?.url].filter(Boolean);
       const response = await base44.functions.invoke('generateCharacterSheet', {
         source_mode: sourceMode,
         reference_sheet_url: sourceMode === 'sheet' ? sourceSheet.url : null,
         angle_urls: sourceMode === 'angles' ? angleUrls : [],
-        image_urls: sourceMode === 'sheet' ? [sourceSheet.url] : angleUrls,
+        image_urls: [...primarySourceUrls, ...additionalReferenceUrls],
         costume_url: costume?.url || null,
         aspect_ratio: aspectRatio,
         reference_layout_url: referenceLayout,
