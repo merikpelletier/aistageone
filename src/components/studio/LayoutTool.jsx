@@ -58,7 +58,7 @@ export default function LayoutTool({ user, onClose }) {
   const [purpose, setPurpose] = useState('cover');
   const [imageMode, setImageMode] = useState('prompt');
   const [format, setFormat] = useState('2:3');
-  const [sourceUrl, setSourceUrl] = useState('');
+  const [sourceUrls, setSourceUrls] = useState([]);
   const [imageSources, setImageSources] = useState([]);
   const [exactText, setExactText] = useState('');
   const [direction, setDirection] = useState('');
@@ -69,21 +69,21 @@ export default function LayoutTool({ user, onClose }) {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const prompt = useMemo(() => buildPrompt({
-    purpose, format, exactText, direction, hasSource: !!sourceUrl,
+    purpose, format, exactText, direction, hasSource: sourceUrls.length > 0,
     imageMode, imageCount: imageSources.length, revision,
-  }), [purpose, format, exactText, direction, sourceUrl, imageMode, imageSources.length, revision]);
+  }), [purpose, format, exactText, direction, sourceUrls.length, imageMode, imageSources.length, revision]);
 
   const generate = async () => {
     if (purpose === 'image' && imageMode === 'prompt' && !direction.trim()) { toast.error('Describe the image to create'); return; }
     if (purpose === 'image' && imageMode === 'combine' && imageSources.length < 2) { toast.error('Choose at least 2 images to combine'); return; }
-    if (purpose !== 'image' && !sourceUrl && !direction.trim()) { toast.error('Choose an image or describe the art direction'); return; }
+    if (purpose !== 'image' && sourceUrls.length === 0 && !direction.trim()) { toast.error('Choose an image or describe the art direction'); return; }
     setGenerating(true);
     try {
       const references = purpose === 'image'
         ? imageMode === 'combine'
           ? [...new Set([...(revision.trim() ? [selectedUrl] : []), ...imageSources].filter(Boolean))].slice(0, 3)
           : [...new Set(revision.trim() ? [selectedUrl].filter(Boolean) : [])]
-        : [...new Set([selectedUrl, sourceUrl].filter(Boolean))].slice(0, 2);
+        : [...new Set([selectedUrl, ...sourceUrls].filter(Boolean))].slice(0, 4);
       const response = await base44.functions.invoke('replicateGenerate', {
         method: 'compose_scene', prompt,
         reference_image_urls: references.length ? references : undefined,
@@ -134,7 +134,7 @@ export default function LayoutTool({ user, onClose }) {
         {purpose === 'image' ? <>
           <Picker title="Image creation" items={IMAGE_MODES} value={imageMode} onChange={setImageMode} columns="grid-cols-2" />
           {imageMode === 'combine' && <div><Label>Images to combine · 2 to 3</Label><div className="grid grid-cols-3 gap-2">{imageSources.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-xl border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setImageSources((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-full bg-black/80 px-2 py-1 text-[10px] font-black text-red-400">Remove</button></div>)}{imageSources.length < 3 && <button onClick={() => setShowVault(true)} className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-yellow-400/60 bg-white/5 p-2 text-center text-xs font-black text-yellow-400"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button>}</div></div>}
-        </> : <div><Label>Source image</Label><button onClick={() => setShowVault(true)} className="flex min-h-36 w-full items-center justify-center overflow-hidden rounded-2xl border border-white/15 bg-white/5">{sourceUrl ? <img src={sourceUrl} alt="Source" className="max-h-64 w-full object-contain" /> : <span className="flex items-center gap-2 text-sm font-black text-yellow-400"><ImageIcon size={18} /> Choose from Vault</span>}</button>{sourceUrl && <button onClick={() => setSourceUrl('')} className="mt-2 text-xs font-bold text-red-400">Remove source image</button>}</div>}
+        </> : <div><Label>Source images</Label><div className="grid grid-cols-3 gap-2">{sourceUrls.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-xl border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setSourceUrls((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-full bg-black/80 px-2 py-1 text-[10px] font-black text-red-400">Remove</button></div>)}<button onClick={() => setShowVault(true)} className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-yellow-400/60 bg-white/5 p-2 text-center text-xs font-black text-yellow-400"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button></div></div>}
         {purpose !== 'image' && <div><Label>Exact text</Label><textarea value={exactText} onChange={(event) => setExactText(event.target.value)} rows={3} placeholder="Write the exact words and line breaks" className="w-full rounded-2xl bg-white p-3 text-sm font-bold text-black" /></div>}
         <div><Label>{purpose === 'image' ? 'Image prompt' : 'Art direction'}</Label><textarea value={direction} onChange={(event) => setDirection(event.target.value)} rows={5} placeholder={purpose === 'image' ? 'Describe the image to create, its subjects, setting, style, light and composition' : 'Describe the visual world, materials, lettering character, light and composition'} className="w-full rounded-2xl bg-white p-3 text-sm font-semibold text-black" /></div>
         {selectedUrl && <div><Label>Change this version</Label><textarea value={revision} onChange={(event) => setRevision(event.target.value)} rows={2} placeholder="Describe only what must change" className="w-full rounded-2xl bg-white p-3 text-sm font-semibold text-black" /></div>}
@@ -145,7 +145,7 @@ export default function LayoutTool({ user, onClose }) {
         {versions.length > 1 && <div className="mt-6"><Label>Versions</Label><div className="grid grid-cols-4 gap-2 sm:grid-cols-6">{versions.map((version) => <button key={version.id} onClick={() => setSelectedUrl(version.url)} className={`relative aspect-square overflow-hidden rounded-xl border-2 ${selectedUrl === version.url ? 'border-yellow-400' : 'border-transparent'}`}><img src={version.url} alt="" className="h-full w-full object-cover" />{selectedUrl === version.url && <span className="absolute right-1 top-1 rounded-full bg-yellow-400 p-1 text-black"><Check size={10} /></span>}</button>)}</div></div>}
       </section>
     </div>
-    {showVault && <AtelierAssetPicker userEmail={user?.email} onSelect={(url) => { if (purpose === 'image' && imageMode === 'combine') setImageSources((current) => [...new Set([...current, url])].slice(0, 3)); else setSourceUrl(url); setShowVault(false); }} onClose={() => setShowVault(false)} />}
+    {showVault && <AtelierAssetPicker userEmail={user?.email} onSelect={(url) => { if (purpose === 'image' && imageMode === 'combine') setImageSources((current) => [...new Set([...current, url])].slice(0, 3)); else setSourceUrls((current) => [...new Set([...current, url])]); setShowVault(false); }} onClose={() => setShowVault(false)} />}
   </div>;
 }
 
