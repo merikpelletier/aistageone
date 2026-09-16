@@ -333,26 +333,52 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
     setPicker(null);
   };
 
+  const generateSourceFromDescription = async () => {
+    if (!characterDescription.trim()) return toast.error('Describe your character first');
+    setGenerating(true);
+    try {
+      const sourcePrompt = `Photorealistic single character reference image, ${aspectRatio}. Character description: ${characterDescription.trim()}. Full-body, centered subject, seamless light grey studio background, even professional lighting, photorealistic rendering, no text, labels, or borders.`;
+      const response = await base44.functions.invoke('generateCharacterSheet', {
+        source_mode: 'angles',
+        angle_urls: [],
+        image_urls: [],
+        costume_url: null,
+        aspect_ratio: aspectRatio,
+        reference_layout_url: referenceLayout,
+        accessories: '',
+        character_description: characterDescription.trim(),
+        prompt_override: sourcePrompt,
+        replace_preset: true,
+      });
+      if (!response.data?.file_url) throw new Error(response.data?.error || 'Generation failed');
+      setSourceSheet({ url: response.data.file_url, title: 'Generated from description', source: 'generated', sourceAssetId: null });
+      setSourceMode('sheet');
+      setGeneratedSheet(null);
+      toast.success('Character source generated. Now create the reference sheet below.');
+    } catch (error) {
+      toast.error(error.message || 'Generation failed');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const generate = async () => {
     if (!hasCharacterSource) return toast.error(sourceMode === 'sheet' ? 'Choose a complete reference sheet' : sourceMode === 'description' ? 'Describe your character first' : 'Add at least one angle');
+    if (sourceMode === 'description') return generateSourceFromDescription();
     setGenerating(true);
     try {
       const angleUrls = PHOTO_SLOTS.map(({ key }) => photos[key]).filter(Boolean);
-      const descriptionPrompt = sourceMode === 'description'
-        ? `Photorealistic character reference sheet, ${aspectRatio}. Character description: ${characterDescription.trim()}. Create a clean character reference sheet composed of five consistent views: full-body front, full-body side, full-body back, portrait front, and portrait profile, all showing the exact same character. Use a seamless light grey studio background, even professional lighting, photorealistic rendering, centered subjects, and no text, labels, or borders.`
-        : null;
       const response = await base44.functions.invoke('generateCharacterSheet', {
-        source_mode: sourceMode === 'description' ? 'angles' : sourceMode,
+        source_mode: sourceMode,
         reference_sheet_url: sourceMode === 'sheet' ? sourceSheet.url : null,
         angle_urls: sourceMode === 'angles' ? angleUrls : [],
-        image_urls: sourceMode === 'sheet' ? [sourceSheet.url] : sourceMode === 'description' ? [] : angleUrls,
-        costume_url: sourceMode === 'description' ? null : costume?.url || null,
+        image_urls: sourceMode === 'sheet' ? [sourceSheet.url] : angleUrls,
+        costume_url: costume?.url || null,
         aspect_ratio: aspectRatio,
         reference_layout_url: referenceLayout,
-        accessories: sourceMode === 'description' ? '' : accessories,
-        character_description: sourceMode === 'description' ? characterDescription.trim() : undefined,
-        prompt_override: sourceMode === 'description' ? descriptionPrompt : (transformationPrompt.trim() || undefined),
-        replace_preset: sourceMode === 'description' ? true : (replacePreset && Boolean(transformationPrompt.trim())),
+        accessories,
+        prompt_override: transformationPrompt.trim() || undefined,
+        replace_preset: replacePreset && Boolean(transformationPrompt.trim()),
       });
       if (!response.data?.file_url) throw new Error(response.data?.error || 'Generation failed');
       setGeneratedSheet(response.data.file_url);
