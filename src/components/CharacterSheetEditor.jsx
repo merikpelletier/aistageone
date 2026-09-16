@@ -350,6 +350,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
         aspect_ratio: aspectRatio,
         reference_layout_url: referenceLayout,
         accessories: sourceMode === 'description' ? '' : accessories,
+        character_description: sourceMode === 'description' ? characterDescription.trim() : undefined,
         prompt_override: sourceMode === 'description' ? descriptionPrompt : (transformationPrompt.trim() || undefined),
         replace_preset: sourceMode === 'description' ? true : (replacePreset && Boolean(transformationPrompt.trim())),
       });
