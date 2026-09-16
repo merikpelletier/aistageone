@@ -82,7 +82,7 @@ const app = read('src/App.jsx');
 requireMarker('Pitch Deck public route', app, '<Route path="/PitchDeckShare"');
 const pitchWorkspace = read('src/components/studio/LabWorkspace.jsx');
 for (const marker of ["id: 'pitch_deck'", "navigate('/PitchDecks')"]) requireMarker('Pitch Deck workspace', pitchWorkspace, marker);
-for (const marker of ["id: 'olo_shop'", "label: 'OLO Shop'", "navigate('/Catalog')"]) requireMarker('OLO Shop workspace', pitchWorkspace, marker);
+for (const marker of ["id: 'olo_shop'", "label: 'Assets Shop'", "navigate('/Catalog')"]) requireMarker('OLO Shop workspace', pitchWorkspace, marker);
 const catalogPage = read('src/pages/Catalog.jsx');
 for (const marker of ["from '@/api/supabaseClient'", ".from('catalog_asset')", ".eq('status', 'published')", "from('asset_category')", "from('asset_subcategory')"]) requireMarker('OLO Shop catalog', catalogPage, marker);
 forbidMarker('OLO Shop catalog', catalogPage, 'base44');
