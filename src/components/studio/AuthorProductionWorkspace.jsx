@@ -120,8 +120,8 @@ function PanelLeafEditor({ panel, path, direction, ratio, disabled, onUpdate, re
       if (!drag) return;
       const dxPercent = ((moveEvent.clientX - drag.startX) / drag.rectWidth) * 100;
       const dyPercent = ((moveEvent.clientY - drag.startY) / drag.rectHeight) * 100;
-      const nextX = Math.max(0, Math.min(100, drag.start.x + dxPercent));
-      const nextY = Math.max(0, Math.min(100, drag.start.y + dyPercent));
+      const nextX = drag.start.x + dxPercent;
+      const nextY = drag.start.y + dyPercent;
       setLayerPositions((current) => ({ ...current, [drag.layerKey]: { x: nextX, y: nextY } }));
     };
     const stop = () => { imageDragRef.current = null; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', stop); window.removeEventListener('pointercancel', stop); };
