@@ -524,7 +524,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
             </section>
 
             <section className="rounded-[28px] border border-white/10 bg-[#121214] p-5 sm:p-7">
-              <StepTitle number="3" title="Wardrobe and details" description="Build the character's recognizable silhouette." />
+              <StepTitle number="3" title="Character design" description="Build your character look" />
               <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-black/35">
                   {costume ? (
