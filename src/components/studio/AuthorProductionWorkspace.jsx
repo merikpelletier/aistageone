@@ -38,7 +38,7 @@ function comicSlots(count, width, height, gutter) {
 // slot rectangle (relative to the parent slot), so generation, uploading and final
 // assembly all operate on the same real geometry.
 function flattenPanelLeaves(panel, slot, gutter, path = []) {
-  if (!panel?.split) return [{ panel, slot, path }];
+  if (!panel?.split) return [{ panel: { ...panel, position_x: Number.isFinite(Number(panel?.position_x)) ? Number(panel.position_x) : 50, position_y: Number.isFinite(Number(panel?.position_y)) ? Number(panel.position_y) : 50 }, slot, path }];
   const { direction, ratio, a, b } = panel.split;
   const r = Math.max(0.08, Math.min(0.92, Number(ratio) || 0.5));
   const half = gutter / 2;
@@ -69,7 +69,9 @@ async function assembleComicPage(panels, ratio) {
     const response = await fetch(panel.image_url); if (!response.ok) throw new Error(`Unable to load panel ${index + 1}`);
     const bitmap = await createImageBitmap(await response.blob());
     const scale = Math.max(slot.w / bitmap.width, slot.h / bitmap.height); const dw = bitmap.width * scale; const dh = bitmap.height * scale;
-    ctx.drawImage(bitmap, slot.x + (slot.w - dw) / 2, slot.y + (slot.h - dh) / 2, dw, dh); bitmap.close();
+    const posX = Number.isFinite(Number(panel.position_x)) ? Number(panel.position_x) : 50; const posY = Number.isFinite(Number(panel.position_y)) ? Number(panel.position_y) : 50;
+    const offsetX = slot.x + (slot.w - dw) * (posX / 100); const offsetY = slot.y + (slot.h - dh) * (posY / 100);
+    ctx.save(); ctx.beginPath(); ctx.rect(slot.x, slot.y, slot.w, slot.h); ctx.clip(); ctx.drawImage(bitmap, offsetX, offsetY, dw, dh); ctx.restore(); bitmap.close();
   }
   const blob = await new Promise((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Unable to assemble comic page')), 'image/png', 0.95));
   return new File([blob], `comic-page-${crypto.randomUUID()}.png`, { type: 'image/png' });
@@ -105,7 +107,10 @@ function PanelLeafEditor({ panel, path, direction, ratio, disabled, onUpdate, re
   const containerRef = useRef(null);
   const dragRef = useRef(null);
   const imageDragRef = useRef(null);
-  const [layerPositions, setLayerPositions] = useState({ a: { x: 50, y: 50 }, b: { x: 50, y: 50 } });
+  const layerPositions = {
+    a: { x: Number.isFinite(Number(panel?.split?.a?.position_x)) ? Number(panel.split.a.position_x) : 50, y: Number.isFinite(Number(panel?.split?.a?.position_y)) ? Number(panel.split.a.position_y) : 50 },
+    b: { x: Number.isFinite(Number(panel?.split?.b?.position_x)) ? Number(panel.split.b.position_x) : 50, y: Number.isFinite(Number(panel?.split?.b?.position_y)) ? Number(panel.split.b.position_y) : 50 },
+  };
   const beginImageDrag = (event, layerKey) => {
     if (disabled) return;
     event.preventDefault();
@@ -122,7 +127,7 @@ function PanelLeafEditor({ panel, path, direction, ratio, disabled, onUpdate, re
       const dyPercent = ((moveEvent.clientY - drag.startY) / drag.rectHeight) * 100;
       const nextX = drag.start.x + dxPercent;
       const nextY = drag.start.y + dyPercent;
-      setLayerPositions((current) => ({ ...current, [drag.layerKey]: { x: nextX, y: nextY } }));
+      onUpdate({ ...panel, split: { ...panel.split, [drag.layerKey]: { ...panel.split[drag.layerKey], position_x: nextX, position_y: nextY } } });
     };
     const stop = () => { imageDragRef.current = null; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', stop); window.removeEventListener('pointercancel', stop); };
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', stop); window.addEventListener('pointercancel', stop);
