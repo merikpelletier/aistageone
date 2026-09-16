@@ -506,55 +506,21 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
 
             <section className="rounded-[28px] border border-white/10 bg-[#121214] p-5 sm:p-7">
               <StepTitle number="2" title="Character source" description="Transform a complete reference sheet, or create one from separate angles." />
-              <div className="mb-5 grid grid-cols-1 gap-2 rounded-2xl border border-white/10 bg-black/30 p-1.5">
-                <button type="button" onClick={() => setSourceMode('sheet')} className={`rounded-xl px-4 py-3 text-sm font-black ${sourceMode === 'sheet' ? 'bg-cyan-300 text-black' : 'text-white/55 hover:text-white'}`}>Transform a reference sheet</button>
-              </div>
-              {sourceMode === 'sheet' ? (
-                <div className="grid gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-cyan-300/30 bg-black/35">
-                    {sourceSheet ? (
-                      <><img src={sourceSheet.url} alt={sourceSheet.title} className="h-full w-full object-contain" /><button type="button" onClick={() => setSourceSheet(null)} className="absolute right-2 top-2 rounded-full bg-black/75 p-1.5"><X size={14} /></button></>
-                    ) : <div className="flex h-full flex-col items-center justify-center px-6 text-center"><ImagePlus size={34} className="text-cyan-200/30" /><p className="mt-3 text-sm font-black">Complete character sheet</p><p className="mt-1 text-xs text-white/35">One composed image containing all character views.</p></div>}
-                  </div>
-                  <div className="flex flex-col justify-center">
-                    <p className="text-sm leading-relaxed text-white/55">This sheet becomes the character base. Actor Studio will transform it with the selected wardrobe and your prompt while preserving the character across every view.</p>
-                    <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-3 text-xs font-black hover:border-white/35"><Upload size={15} />Upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event, 'sourceSheet')} /></label>
-                      <SourceButton icon={Library} label="My Vault" tone="vault" onClick={() => setPicker({ purpose: 'sheet', label: 'reference sheet', source: 'vault' })} />
-                      <SourceButton icon={Store} label="OLOShop" tone="shop" onClick={() => setPicker({ purpose: 'sheet', label: 'reference sheet', source: 'shop' })} />
-                    </div>
+              <div className="grid gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-cyan-300/30 bg-black/35">
+                  {sourceSheet ? (
+                    <><img src={sourceSheet.url} alt={sourceSheet.title} className="h-full w-full object-contain" /><button type="button" onClick={() => setSourceSheet(null)} className="absolute right-2 top-2 rounded-full bg-black/75 p-1.5"><X size={14} /></button></>
+                  ) : <div className="flex h-full flex-col items-center justify-center px-6 text-center"><ImagePlus size={34} className="text-cyan-200/30" /><p className="mt-3 text-sm font-black">Complete character sheet</p><p className="mt-1 text-xs text-white/35">One composed image containing all character views.</p></div>}
+                </div>
+                <div className="flex flex-col justify-center">
+                  <p className="text-sm leading-relaxed text-white/55">This sheet becomes the character base. Actor Studio will transform it with the selected wardrobe and your prompt while preserving the character across every view.</p>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-3 text-xs font-black hover:border-white/35"><Upload size={15} />Upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event, 'sourceSheet')} /></label>
+                    <SourceButton icon={Library} label="My Vault" tone="vault" onClick={() => setPicker({ purpose: 'sheet', label: 'reference sheet', source: 'vault' })} />
+                    <SourceButton icon={Store} label="OLOShop" tone="shop" onClick={() => setPicker({ purpose: 'sheet', label: 'reference sheet', source: 'shop' })} />
                   </div>
                 </div>
-              ) : <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-                {PHOTO_SLOTS.map((slot) => (
-                  <div key={slot.key} className={`overflow-hidden rounded-2xl border bg-black/30 ${slot.accent}`}>
-                    <div className="relative aspect-[3/4] overflow-hidden bg-[#111216]">
-                      {photos[slot.key] ? (
-                        <><img src={photos[slot.key]} alt={slot.label} className="h-full w-full object-contain" /><button type="button" onClick={() => {
-                          setPhotos((current) => { const next = { ...current }; delete next[slot.key]; return next; });
-                          setPhotoSources((current) => { const next = { ...current }; delete next[slot.key]; return next; });
-                        }} className="absolute right-2 top-2 rounded-full bg-black/75 p-1.5"><X size={13} /></button></>
-                      ) : (
-                        <div className="group/guide relative h-full">
-                          <img src={slot.guide} alt={`Guide ${slot.label}`} className="h-full w-full object-contain" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
-                          <div className="absolute inset-x-0 bottom-3 flex justify-center">
-                            <span className="rounded-full border border-white/20 bg-black/65 px-3 py-1 text-[9px] font-black tracking-[0.24em] text-white/85 backdrop-blur-sm">{slot.short}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <p className="text-sm font-black">{slot.label}</p><p className="text-[11px] text-white/35">{slot.hint}</p>
-                      <div className="mt-3 grid grid-cols-3 gap-1.5">
-                        <label title="Upload" className="flex cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] py-2 hover:bg-white/10">{uploading === slot.key ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event, slot.key)} /></label>
-                        <button type="button" title="My Vault" onClick={() => setPicker({ purpose: 'reference', slot: slot.key, label: slot.label, source: 'vault' })} className="flex items-center justify-center rounded-lg border border-amber-300/20 bg-amber-300/[0.06] py-2 text-amber-200 hover:border-amber-300/60"><Library size={14} /></button>
-                        <button type="button" title="OLOShop" onClick={() => setPicker({ purpose: 'reference', slot: slot.key, label: slot.label, source: 'shop' })} className="flex items-center justify-center rounded-lg border border-cyan-300/20 bg-cyan-300/[0.06] py-2 text-cyan-200 hover:border-cyan-300/60"><Store size={14} /></button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>}
+              </div>
             </section>
 
             <section className="rounded-[28px] border border-white/10 bg-[#121214] p-5 sm:p-7">
