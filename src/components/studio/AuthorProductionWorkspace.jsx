@@ -79,7 +79,6 @@ async function assembleComicPage(panels, ratio) {
       if (a?.image_url) { ctx.save(); ctx.beginPath(); ctx.rect(slot.x, slot.y, slot.w, slot.h); ctx.clip(); await drawLayerImage(ctx, a.image_url, slot, a.position_x, a.position_y); ctx.restore(); }
       if (b?.image_url) {
         ctx.save(); ctx.beginPath(); ctx.rect(slot.x, slot.y, slot.w, slot.h); ctx.clip();
-        if (direction === 'vertical') ctx.beginPath().rect ? null : null;
         if (direction === 'vertical') { ctx.beginPath(); ctx.rect(slot.x + slot.w * r, slot.y, slot.w * (1 - r), slot.h); ctx.clip(); }
         else { ctx.beginPath(); ctx.rect(slot.x, slot.y + slot.h * r, slot.w, slot.h * (1 - r)); ctx.clip(); }
         await drawLayerImage(ctx, b.image_url, slot, b.position_x, b.position_y);
