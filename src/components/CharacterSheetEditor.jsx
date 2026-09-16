@@ -517,7 +517,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
                   <div className="mt-4 grid gap-2 sm:grid-cols-3">
                     <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-3 text-xs font-black hover:border-white/35"><Upload size={15} />Upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event, 'sourceSheet')} /></label>
                     <SourceButton icon={Library} label="My Vault" tone="vault" onClick={() => setPicker({ purpose: 'sheet', label: 'reference sheet', source: 'vault' })} />
-                    <SourceButton icon={Store} label="OLOShop" tone="shop" onClick={() => setPicker({ purpose: 'sheet', label: 'reference sheet', source: 'shop' })} />
+                    <SourceButton icon={Store} label="Assets Shop" tone="shop" onClick={() => setPicker({ purpose: 'sheet', label: 'reference sheet', source: 'shop' })} />
                   </div>
                 </div>
               </div>
@@ -535,7 +535,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
                   <div className="grid gap-2 sm:grid-cols-3">
                     <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-3 text-xs font-black hover:border-white/35"><Upload size={15} />Upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event, 'costume')} /></label>
                     <SourceButton icon={Library} label="My Vault" tone="vault" onClick={() => setPicker({ purpose: 'costume', label: 'costume', source: 'vault' })} />
-                    <SourceButton icon={Store} label="OLOShop" tone="shop" onClick={() => setPicker({ purpose: 'costume', label: 'costume', source: 'shop' })} />
+                    <SourceButton icon={Store} label="Assets Shop" tone="shop" onClick={() => setPicker({ purpose: 'costume', label: 'costume', source: 'shop' })} />
                   </div>
                   <label className="mt-4 block text-xs font-black uppercase tracking-wider text-white/60">Accessories and styling<textarea value={accessories} onChange={(event) => setAccessories(event.target.value)} placeholder="Silver earrings, worn leather boots, black gloves..." rows={3} className="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm font-semibold normal-case tracking-normal text-white outline-none placeholder:text-white/20 focus:border-amber-300/60" /></label>
                   <div className="mt-4 flex items-center justify-between gap-3">
