@@ -133,16 +133,23 @@ function PanelLeafEditor({ panel, path, direction, ratio, disabled, onUpdate, re
   };
   const ratioALabel = Math.round(currentRatio * 100);
   const ratioBLabel = 100 - ratioALabel;
+  const clipPath = isVertical ? `inset(0 0 0 ${ratioALabel}%)` : `inset(${ratioALabel}% 0 0 0)`;
   return <div className="space-y-2">
-    <div ref={containerRef} className={`flex ${isVertical ? 'flex-row' : 'flex-col'} gap-0 rounded-xl border border-yellow-400/20 bg-black/30 p-2`}>
-      <div className={isVertical ? 'min-w-0' : 'min-h-0'} style={isVertical ? { width: `${currentRatio * 100}%` } : { height: 'auto' }}>
-        <PanelLeafEditor panel={panel.split.a} path={[...path, 'a']} label="Panel A" disabled={disabled} onUpdate={(nextChild) => onUpdate({ ...panel, split: { ...panel.split, a: nextChild } })} renderLeaf={renderLeaf} />
+    <div ref={containerRef} className="relative overflow-hidden rounded-xl border border-yellow-400/20 bg-black/30">
+      <div className="relative aspect-square w-full overflow-hidden bg-white/5">
+        {panel.split.a?.image_url ? <img src={panel.split.a.image_url} alt="Panel A" className="absolute inset-0 h-full w-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center text-white/25"><ImageIcon /></div>}
+        {panel.split.b?.image_url && <img src={panel.split.b.image_url} alt="Panel B" className="absolute inset-0 h-full w-full object-cover" style={{ clipPath }} />}
+        <button type="button" aria-label="Drag to resize split" onPointerDown={begin} disabled={disabled} className={`absolute z-10 flex items-center justify-center bg-fuchsia-500 text-white shadow-[0_0_0_2px_rgba(0,0,0,0.6)] hover:bg-fuchsia-400 ${isVertical ? 'inset-y-0 w-5 cursor-col-resize rounded-lg' : 'inset-x-0 h-5 cursor-row-resize rounded-lg'}`} style={isVertical ? { left: `calc(${currentRatio * 100}% - 10px)` } : { top: `calc(${currentRatio * 100}% - 10px)` }}>
+          <span className={`pointer-events-none select-none whitespace-nowrap text-[9px] font-black ${isVertical ? '[writing-mode:vertical-rl]' : ''}`}>{ratioALabel} / {ratioBLabel}</span>
+        </button>
       </div>
-      <button type="button" aria-label="Drag to resize split" onPointerDown={begin} disabled={disabled} className={`relative z-10 flex shrink-0 items-center justify-center bg-fuchsia-500 text-white shadow-[0_0_0_2px_rgba(0,0,0,0.6)] hover:bg-fuchsia-400 ${isVertical ? 'mx-1 w-5 cursor-col-resize rounded-lg' : 'my-1 h-5 w-full cursor-row-resize rounded-lg'}`}>
-        <span className={`pointer-events-none select-none whitespace-nowrap text-[9px] font-black ${isVertical ? '[writing-mode:vertical-rl]' : ''}`}>{ratioALabel} / {ratioBLabel}</span>
-      </button>
-      <div className={isVertical ? 'min-w-0 flex-1' : 'min-h-0'} style={!isVertical ? {} : {}}>
-        <PanelLeafEditor panel={panel.split.b} path={[...path, 'b']} label="Panel B" disabled={disabled} onUpdate={(nextChild) => onUpdate({ ...panel, split: { ...panel.split, b: nextChild } })} renderLeaf={renderLeaf} />
+      <div className={`flex ${isVertical ? 'flex-row' : 'flex-col'} gap-0 p-2`}>
+        <div className={isVertical ? 'min-w-0' : 'min-h-0'} style={isVertical ? { width: `${currentRatio * 100}%` } : { height: 'auto' }}>
+          <PanelLeafEditor panel={panel.split.a} path={[...path, 'a']} label="Panel A" disabled={disabled} onUpdate={(nextChild) => onUpdate({ ...panel, split: { ...panel.split, a: nextChild } })} renderLeaf={renderLeaf} />
+        </div>
+        <div className={isVertical ? 'min-w-0 flex-1' : 'min-h-0'} style={!isVertical ? {} : {}}>
+          <PanelLeafEditor panel={panel.split.b} path={[...path, 'b']} label="Panel B" disabled={disabled} onUpdate={(nextChild) => onUpdate({ ...panel, split: { ...panel.split, b: nextChild } })} renderLeaf={renderLeaf} />
+        </div>
       </div>
     </div>
     <div className="flex gap-2">
