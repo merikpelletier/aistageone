@@ -71,7 +71,7 @@ const TOOL_GROUPS = [
     label: 'Marketplace',
     color: 'bg-amber-600',
     tools: [
-      { id: 'olo_shop', label: 'OLO Shop', icon: ShoppingBag, desc: 'Browse OLO.GRAPHICS production assets' },
+      { id: 'olo_shop', label: 'Assets Shop', icon: ShoppingBag, desc: 'Browse production assets in the Assets Shop' },
     ],
   },
 ];
