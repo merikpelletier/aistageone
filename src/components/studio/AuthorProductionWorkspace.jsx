@@ -31,20 +31,71 @@ function comicSlots(count, width, height, gutter) {
   const columns = 2; const rows = Math.ceil(count / columns); const cellW = innerW / columns; const cellH = innerH / rows;
   return Array.from({ length: count }, (_, index) => ({ x: gutter + (index % columns) * cellW, y: gutter + Math.floor(index / columns) * cellH, w: cellW - gutter, h: cellH - gutter }));
 }
+
+// A panel may carry a `split` node describing a real structural division into two
+// independent child panels: { direction: 'vertical'|'horizontal', ratio: 0..1, a, b }.
+// `flattenPanelLeaves` walks that tree and returns every leaf panel with its exact
+// slot rectangle (relative to the parent slot), so generation, uploading and final
+// assembly all operate on the same real geometry.
+function flattenPanelLeaves(panel, slot, gutter, path = []) {
+  if (!panel?.split) return [{ panel, slot, path }];
+  const { direction, ratio, a, b } = panel.split;
+  const r = Math.max(0.08, Math.min(0.92, Number(ratio) || 0.5));
+  const half = gutter / 2;
+  if (direction === 'vertical') {
+    const aw = slot.w * r - half; const bw = slot.w * (1 - r) - half;
+    const slotA = { x: slot.x, y: slot.y, w: aw, h: slot.h };
+    const slotB = { x: slot.x + slot.w * r + half, y: slot.y, w: bw, h: slot.h };
+    return [...flattenPanelLeaves(a, slotA, gutter, [...path, 'a']), ...flattenPanelLeaves(b, slotB, gutter, [...path, 'b'])];
+  }
+  const ah = slot.h * r - half; const bh = slot.h * (1 - r) - half;
+  const slotA = { x: slot.x, y: slot.y, w: slot.w, h: ah };
+  const slotB = { x: slot.x, y: slot.y + slot.h * r + half, w: slot.w, h: bh };
+  return [...flattenPanelLeaves(a, slotA, gutter, [...path, 'a']), ...flattenPanelLeaves(b, slotB, gutter, [...path, 'b'])];
+}
+function splitPanelSlots(panels, width, height, gutter) {
+  const slots = comicSlots(panels.length, width, height, gutter);
+  return panels.flatMap((panel, index) => flattenPanelLeaves(panel, slots[index], gutter, [index]));
+}
 async function assembleComicPage(panels, ratio) {
   const [rw, rh] = ratio.split(':').map(Number); const landscape = rw >= rh;
   const width = landscape ? 1600 : Math.round(1600 * rw / rh); const height = landscape ? Math.round(1600 * rh / rw) : 1600;
   const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
   const ctx = canvas.getContext('2d'); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height);
-  const slots = comicSlots(panels.length, width, height, 18);
-  for (let index = 0; index < panels.length; index++) {
-    const response = await fetch(panels[index].image_url); if (!response.ok) throw new Error(`Unable to load panel ${index + 1}`);
-    const bitmap = await createImageBitmap(await response.blob()); const slot = slots[index];
+  const leaves = splitPanelSlots(panels, width, height, 18);
+  for (let index = 0; index < leaves.length; index++) {
+    const { panel, slot } = leaves[index];
+    if (!panel.image_url) continue;
+    const response = await fetch(panel.image_url); if (!response.ok) throw new Error(`Unable to load panel ${index + 1}`);
+    const bitmap = await createImageBitmap(await response.blob());
     const scale = Math.max(slot.w / bitmap.width, slot.h / bitmap.height); const dw = bitmap.width * scale; const dh = bitmap.height * scale;
     ctx.drawImage(bitmap, slot.x + (slot.w - dw) / 2, slot.y + (slot.h - dh) / 2, dw, dh); bitmap.close();
   }
   const blob = await new Promise((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Unable to assemble comic page')), 'image/png', 0.95));
   return new File([blob], `comic-page-${crypto.randomUUID()}.png`, { type: 'image/png' });
+}
+
+// Read/write a leaf panel inside a possibly-split panel tree by its leaf path
+// (e.g. ['a'] or ['b','a']). The top-level panel array index is handled by the caller.
+function readLeaf(panel, path) {
+  let node = panel;
+  for (const step of path) node = node.split[step];
+  return node;
+}
+function writeLeaf(panel, path, values) {
+  if (!path.length) return { ...panel, ...values };
+  const [step, ...rest] = path;
+  const child = writeLeaf(panel.split[step], rest, values);
+  return { ...panel, split: { ...panel.split, [step]: child } };
+}
+function splitPanel(panel, direction) {
+  const a = { beat: panel.beat, shot: panel.shot, prompt: panel.prompt, image_url: panel.image_url, source_prompt: panel.source_prompt };
+  const b = { beat: '', shot: panel.shot, prompt: '', image_url: '', source_prompt: '' };
+  return { ...panel, split: { direction, ratio: 0.5, a, b } };
+}
+function unsplitPanel(panel, keep = 'a') {
+  const kept = panel.split?.[keep]; if (!kept) return panel;
+  return { ...panel, ...kept, split: undefined };
 }
 
 const normalizedTextBoxes = (boxes) => (Array.isArray(boxes) ? boxes : []).map((box) => ({
