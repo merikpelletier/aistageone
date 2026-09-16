@@ -220,6 +220,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
     sourceAssetId: initial.design.costume_source_asset_id || null,
   } : null);
   const [accessories, setAccessories] = useState(initial.design.accessories || sheet?.notes || '');
+  const [characterDescription, setCharacterDescription] = useState(initial.design.character_description || '');
   const [transformationPrompt, setTransformationPrompt] = useState(initial.design.transformation_prompt || '');
   const [replacePreset, setReplacePreset] = useState(Boolean(initial.design.replace_preset));
   const [referenceLayout] = useState(initial.design.reference_layout_url || null);
@@ -287,7 +288,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
   });
 
   const photoCount = PHOTO_SLOTS.filter(({ key }) => photos[key]).length;
-  const hasCharacterSource = sourceMode === 'sheet' ? Boolean(sourceSheet?.url) : photoCount > 0;
+  const hasCharacterSource = sourceMode === 'sheet' ? Boolean(sourceSheet?.url) : sourceMode === 'description' ? Boolean(characterDescription.trim()) : photoCount > 0;
   const preview = generatedSheet || sourceSheet?.url || photos.front || photos.portrait || Object.values(photos)[0] || null;
   const completion = [Boolean(name.trim()), hasCharacterSource, Boolean(costume || accessories.trim() || transformationPrompt.trim()), Boolean(generatedSheet)].filter(Boolean).length;
 
@@ -333,21 +334,24 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
   };
 
   const generate = async () => {
-    if (!hasCharacterSource) return toast.error(sourceMode === 'sheet' ? 'Choose a complete reference sheet' : 'Add at least one angle');
+    if (!hasCharacterSource) return toast.error(sourceMode === 'sheet' ? 'Choose a complete reference sheet' : sourceMode === 'description' ? 'Describe your character first' : 'Add at least one angle');
     setGenerating(true);
     try {
       const angleUrls = PHOTO_SLOTS.map(({ key }) => photos[key]).filter(Boolean);
+      const descriptionPrompt = sourceMode === 'description'
+        ? `Photorealistic character reference sheet, ${aspectRatio}. Character description: ${characterDescription.trim()}. Create a clean character reference sheet composed of five consistent views: full-body front, full-body side, full-body back, portrait front, and portrait profile, all showing the exact same character. Use a seamless light grey studio background, even professional lighting, photorealistic rendering, centered subjects, and no text, labels, or borders.`
+        : null;
       const response = await base44.functions.invoke('generateCharacterSheet', {
-        source_mode: sourceMode,
+        source_mode: sourceMode === 'description' ? 'angles' : sourceMode,
         reference_sheet_url: sourceMode === 'sheet' ? sourceSheet.url : null,
         angle_urls: sourceMode === 'angles' ? angleUrls : [],
-        image_urls: sourceMode === 'sheet' ? [sourceSheet.url] : angleUrls,
-        costume_url: costume?.url || null,
+        image_urls: sourceMode === 'sheet' ? [sourceSheet.url] : sourceMode === 'description' ? [] : angleUrls,
+        costume_url: sourceMode === 'description' ? null : costume?.url || null,
         aspect_ratio: aspectRatio,
         reference_layout_url: referenceLayout,
-        accessories,
-        prompt_override: transformationPrompt.trim() || undefined,
-        replace_preset: replacePreset && Boolean(transformationPrompt.trim()),
+        accessories: sourceMode === 'description' ? '' : accessories,
+        prompt_override: sourceMode === 'description' ? descriptionPrompt : (transformationPrompt.trim() || undefined),
+        replace_preset: sourceMode === 'description' ? true : (replacePreset && Boolean(transformationPrompt.trim())),
       });
       if (!response.data?.file_url) throw new Error(response.data?.error || 'Generation failed');
       setGeneratedSheet(response.data.file_url);
@@ -380,6 +384,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
         transformation_prompt: transformationPrompt.trim(),
         replace_preset: replacePreset,
         aspect_ratio: aspectRatio,
+        character_description: characterDescription.trim(),
       };
       const data = {
         user_email: userEmail,
@@ -474,11 +479,17 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
 
             <section className="rounded-[28px] border border-white/10 bg-[#121214] p-5 sm:p-7">
               <StepTitle number="2" title="Character source" description="Transform a complete reference sheet, or create one from separate angles." />
-              <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-black/30 p-1.5">
+              <div className="mb-5 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/30 p-1.5">
                 <button type="button" onClick={() => setSourceMode('sheet')} className={`rounded-xl px-4 py-3 text-sm font-black ${sourceMode === 'sheet' ? 'bg-cyan-300 text-black' : 'text-white/55 hover:text-white'}`}>Transform a reference sheet</button>
                 <button type="button" onClick={() => setSourceMode('angles')} className={`rounded-xl px-4 py-3 text-sm font-black ${sourceMode === 'angles' ? 'bg-amber-300 text-black' : 'text-white/55 hover:text-white'}`}>Create one from angles</button>
+                <button type="button" onClick={() => setSourceMode('description')} className={`rounded-xl px-4 py-3 text-sm font-black ${sourceMode === 'description' ? 'bg-purple-300 text-black' : 'text-white/55 hover:text-white'}`}>Generate from description</button>
               </div>
-              {sourceMode === 'sheet' ? (
+              {sourceMode === 'description' ? (
+                <div className="space-y-3">
+                  <p className="text-sm leading-relaxed text-white/55">Describe your character in detail (appearance, clothing, age, build, style, distinctive features). Actor Studio will generate a complete five-view reference sheet from your description alone.</p>
+                  <textarea value={characterDescription} onChange={(event) => setCharacterDescription(event.target.value)} placeholder="e.g. A tall woman in her 30s with short black hair, wearing a dark green tactical jacket, cargo pants, and combat boots..." rows={6} className="w-full resize-none rounded-2xl border border-purple-300/25 bg-black/35 px-4 py-3.5 text-sm font-semibold normal-case tracking-normal text-white outline-none placeholder:text-white/20 focus:border-purple-300/60" />
+                </div>
+              ) : sourceMode === 'sheet' ? (
                 <div className="grid gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
                   <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-cyan-300/30 bg-black/35">
                     {sourceSheet ? (
