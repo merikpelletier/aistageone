@@ -57,21 +57,40 @@ function splitPanelSlots(panels, width, height, gutter) {
   const slots = comicSlots(panels.length, width, height, gutter);
   return panels.flatMap((panel, index) => flattenPanelLeaves(panel, slots[index], gutter, [index]));
 }
+async function drawLayerImage(ctx, url, slot, posX, posY) {
+  const response = await fetch(url); if (!response.ok) throw new Error('Unable to load panel image');
+  const bitmap = await createImageBitmap(await response.blob());
+  const scale = Math.max(slot.w / bitmap.width, slot.h / bitmap.height); const dw = bitmap.width * scale; const dh = bitmap.height * scale;
+  const px = Number.isFinite(Number(posX)) ? Number(posX) : 50; const py = Number.isFinite(Number(posY)) ? Number(posY) : 50;
+  const offsetX = slot.x + (slot.w - dw) * (px / 100); const offsetY = slot.y + (slot.h - dh) * (py / 100);
+  ctx.drawImage(bitmap, offsetX, offsetY, dw, dh); bitmap.close();
+}
 async function assembleComicPage(panels, ratio) {
   const [rw, rh] = ratio.split(':').map(Number); const landscape = rw >= rh;
   const width = landscape ? 1600 : Math.round(1600 * rw / rh); const height = landscape ? Math.round(1600 * rh / rw) : 1600;
   const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
   const ctx = canvas.getContext('2d'); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height);
-  const leaves = splitPanelSlots(panels, width, height, 18);
-  for (let index = 0; index < leaves.length; index++) {
-    const { panel, slot } = leaves[index];
+  const slots = comicSlots(panels.length, width, height, 18);
+  for (let index = 0; index < panels.length; index++) {
+    const panel = panels[index]; const slot = slots[index];
+    if (panel?.split) {
+      const { direction, ratio: splitRatio, a, b } = panel.split;
+      const r = Math.max(0.08, Math.min(0.92, Number(splitRatio) || 0.5));
+      if (a?.image_url) { ctx.save(); ctx.beginPath(); ctx.rect(slot.x, slot.y, slot.w, slot.h); ctx.clip(); await drawLayerImage(ctx, a.image_url, slot, a.position_x, a.position_y); ctx.restore(); }
+      if (b?.image_url) {
+        ctx.save(); ctx.beginPath(); ctx.rect(slot.x, slot.y, slot.w, slot.h); ctx.clip();
+        if (direction === 'vertical') ctx.beginPath().rect ? null : null;
+        if (direction === 'vertical') { ctx.beginPath(); ctx.rect(slot.x + slot.w * r, slot.y, slot.w * (1 - r), slot.h); ctx.clip(); }
+        else { ctx.beginPath(); ctx.rect(slot.x, slot.y + slot.h * r, slot.w, slot.h * (1 - r)); ctx.clip(); }
+        await drawLayerImage(ctx, b.image_url, slot, b.position_x, b.position_y);
+        ctx.restore();
+      }
+      continue;
+    }
     if (!panel.image_url) continue;
-    const response = await fetch(panel.image_url); if (!response.ok) throw new Error(`Unable to load panel ${index + 1}`);
-    const bitmap = await createImageBitmap(await response.blob());
-    const scale = Math.max(slot.w / bitmap.width, slot.h / bitmap.height); const dw = bitmap.width * scale; const dh = bitmap.height * scale;
-    const posX = Number.isFinite(Number(panel.position_x)) ? Number(panel.position_x) : 50; const posY = Number.isFinite(Number(panel.position_y)) ? Number(panel.position_y) : 50;
-    const offsetX = slot.x + (slot.w - dw) * (posX / 100); const offsetY = slot.y + (slot.h - dh) * (posY / 100);
-    ctx.save(); ctx.beginPath(); ctx.rect(slot.x, slot.y, slot.w, slot.h); ctx.clip(); ctx.drawImage(bitmap, offsetX, offsetY, dw, dh); ctx.restore(); bitmap.close();
+    ctx.save(); ctx.beginPath(); ctx.rect(slot.x, slot.y, slot.w, slot.h); ctx.clip();
+    await drawLayerImage(ctx, panel.image_url, slot, panel.position_x, panel.position_y);
+    ctx.restore();
   }
   const blob = await new Promise((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Unable to assemble comic page')), 'image/png', 0.95));
   return new File([blob], `comic-page-${crypto.randomUUID()}.png`, { type: 'image/png' });
