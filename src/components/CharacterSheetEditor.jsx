@@ -119,7 +119,7 @@ function AssetPicker({
         <div className="flex flex-col gap-3 border-b border-white/10 p-4 sm:flex-row">
           <div className="grid grid-cols-2 gap-2 sm:w-80">
             <button type="button" onClick={() => setSource('vault')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black ${source === 'vault' ? 'bg-amber-300 text-black' : 'bg-white/[0.06] text-white'}`}><Library size={17} />My Vault</button>
-            <button type="button" onClick={() => setSource('shop')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black ${source === 'shop' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><Store size={17} />OLOShop</button>
+            <button type="button" onClick={() => setSource('shop')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black ${source === 'shop' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><Store size={17} />Assets Shop</button>
           </div>
           <label className="flex flex-1 items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4">
             <Search size={17} className="text-white/45" />
