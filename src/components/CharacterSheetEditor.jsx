@@ -189,6 +189,29 @@ function AssetPicker({
   );
 }
 
+const PROMPT_TEMPLATES = [
+  {
+    key: 'face_swap',
+    label: 'Face Swap',
+    prompt: 'Replace the character\u2019s face with the face from the STEP 3 reference image.\nUse the STEP 3 face reference as the new facial identity.\nDo not preserve the original face from the character sheet.\nKeep the original body, pose, age, clothing, proportions, and background unchanged.\nApply the new face consistently across all views.',
+  },
+  {
+    key: 'wardrobe_change',
+    label: 'Wardrobe Change',
+    prompt: 'Use the STEP 3 reference image as the clothing reference.\nKeep the character\u2019s identity, face, body, age, pose, and proportions unchanged.\nReplace only the clothing and related accessories.\nApply the new wardrobe consistently across all views.',
+  },
+  {
+    key: 'hair_change',
+    label: 'Hair Change',
+    prompt: 'Use the STEP 3 reference image as the hairstyle reference.\nKeep the character\u2019s face, body, age, clothing, pose, and proportions unchanged.\nChange only the hairstyle and hair color.\nApply the new hairstyle consistently across all views.',
+  },
+  {
+    key: 'full_look',
+    label: 'Full Look Transformation',
+    prompt: 'Use the STEP 3 reference image as the visual design reference.\nPreserve the character\u2019s core identity and body proportions.\nApply the reference look, styling, wardrobe, hair, and visual details consistently across all views.',
+  },
+];
+
 function StepTitle({ number, title, description }) {
   return (
     <div className="mb-5 flex items-center gap-3">
@@ -233,6 +256,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
   const [tokenCost, setTokenCost] = useState(10);
   const [picker, setPicker] = useState(null);
   const [vaultOpen, setVaultOpen] = useState(false);
+  const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
 
   useEffect(() => {
     if (sourceMode !== 'sheet' || !sourceSheet?.url || typeof window === 'undefined') {
@@ -542,7 +566,26 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose }) {
                   <label className="mt-4 block text-xs font-black uppercase tracking-wider text-white/60">Accessories and styling<textarea value={accessories} onChange={(event) => setAccessories(event.target.value)} placeholder="Silver earrings, worn leather boots, black gloves..." rows={3} className="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm font-semibold normal-case tracking-normal text-white outline-none placeholder:text-white/20 focus:border-amber-300/60" /></label>
                   <div className="mt-4 flex items-center justify-between gap-3">
                     <p className="text-xs font-black uppercase tracking-wider text-white/60">Transformation prompt</p>
-                    <button type="button" onClick={() => setReplacePreset((value) => !value)} className={`rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${replacePreset ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white/60'}`}>{replacePreset ? 'Custom prompt' : 'Add to preset'}</button>
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <button type="button" onClick={() => setTemplateMenuOpen((value) => !value)} className="rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white">Templates</button>
+                        {templateMenuOpen && (
+                          <div className="absolute right-0 z-10 mt-2 w-64 overflow-hidden rounded-xl border border-white/15 bg-[#161618] shadow-2xl">
+                            {PROMPT_TEMPLATES.map((template) => (
+                              <button
+                                type="button"
+                                key={template.key}
+                                onClick={() => { setTransformationPrompt(template.prompt); setTemplateMenuOpen(false); }}
+                                className="block w-full px-4 py-3 text-left text-xs font-bold text-white/80 hover:bg-white/10 hover:text-white"
+                              >
+                                {template.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <button type="button" onClick={() => setReplacePreset((value) => !value)} className={`rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${replacePreset ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white/60'}`}>{replacePreset ? 'Custom prompt' : 'Add to preset'}</button>
+                    </div>
                   </div>
                   <textarea value={transformationPrompt} onChange={(event) => setTransformationPrompt(event.target.value)} placeholder={replacePreset ? 'Write the complete transformation instruction...' : 'Describe how you want to transform the character...'} rows={3} className="mt-2 w-full resize-none rounded-2xl border border-cyan-300/20 bg-black/35 px-4 py-3.5 text-sm font-semibold text-white outline-none placeholder:text-white/20 focus:border-cyan-300/60" />
                 </div>
