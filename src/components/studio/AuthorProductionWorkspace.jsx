@@ -104,6 +104,29 @@ function unsplitPanel(panel, keep = 'a') {
 function PanelLeafEditor({ panel, path, direction, ratio, disabled, onUpdate, renderLeaf, label }) {
   const containerRef = useRef(null);
   const dragRef = useRef(null);
+  const imageDragRef = useRef(null);
+  const [layerPositions, setLayerPositions] = useState({ a: { x: 50, y: 50 }, b: { x: 50, y: 50 } });
+  const beginImageDrag = (event, layerKey) => {
+    if (disabled) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const start = layerPositions[layerKey] || { x: 50, y: 50 };
+    imageDragRef.current = { layerKey, startX: event.clientX, startY: event.clientY, start, rectWidth: rect.width, rectHeight: rect.height };
+    const move = (moveEvent) => {
+      const drag = imageDragRef.current;
+      if (!drag) return;
+      const dxPercent = ((moveEvent.clientX - drag.startX) / drag.rectWidth) * 100;
+      const dyPercent = ((moveEvent.clientY - drag.startY) / drag.rectHeight) * 100;
+      const nextX = Math.max(0, Math.min(100, drag.start.x + dxPercent));
+      const nextY = Math.max(0, Math.min(100, drag.start.y + dyPercent));
+      setLayerPositions((current) => ({ ...current, [drag.layerKey]: { x: nextX, y: nextY } }));
+    };
+    const stop = () => { imageDragRef.current = null; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', stop); window.removeEventListener('pointercancel', stop); };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', stop); window.addEventListener('pointercancel', stop);
+  };
   if (!panel?.split) {
     return <div className="space-y-2">
       {label && <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-300">{label}</p>}
@@ -137,8 +160,8 @@ function PanelLeafEditor({ panel, path, direction, ratio, disabled, onUpdate, re
   return <div className="space-y-2">
     <div ref={containerRef} className="relative overflow-hidden rounded-xl border border-yellow-400/20 bg-black/30">
       <div className="relative w-full overflow-hidden bg-white/5" style={{ aspectRatio: String(ratio || '1:1').replace(':', ' / ') }}>
-        {panel.split.a?.image_url ? <img src={panel.split.a.image_url} alt="Panel A" className="absolute inset-0 h-full w-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center text-white/25"><ImageIcon /></div>}
-        {panel.split.b?.image_url && <img src={panel.split.b.image_url} alt="Panel B" className="absolute inset-0 h-full w-full object-cover" style={{ clipPath }} />}
+        {panel.split.a?.image_url ? <img src={panel.split.a.image_url} alt="Panel A" onPointerDown={(event) => beginImageDrag(event, 'a')} className="absolute inset-0 h-full w-full cursor-move object-cover" style={{ objectPosition: `${layerPositions.a.x}% ${layerPositions.a.y}%` }} /> : <div className="absolute inset-0 flex items-center justify-center text-white/25"><ImageIcon /></div>}
+        {panel.split.b?.image_url && <img src={panel.split.b.image_url} alt="Panel B" onPointerDown={(event) => beginImageDrag(event, 'b')} className="absolute inset-0 h-full w-full cursor-move object-cover" style={{ clipPath, objectPosition: `${layerPositions.b.x}% ${layerPositions.b.y}%` }} />}
         <button type="button" aria-label="Drag to resize split" onPointerDown={begin} disabled={disabled} className={`absolute z-10 flex items-center justify-center bg-fuchsia-500 text-white shadow-[0_0_0_2px_rgba(0,0,0,0.6)] hover:bg-fuchsia-400 ${isVertical ? 'inset-y-0 w-5 cursor-col-resize rounded-lg' : 'inset-x-0 h-5 cursor-row-resize rounded-lg'}`} style={isVertical ? { left: `calc(${currentRatio * 100}% - 10px)` } : { top: `calc(${currentRatio * 100}% - 10px)` }}>
           <span className={`pointer-events-none select-none whitespace-nowrap text-[9px] font-black ${isVertical ? '[writing-mode:vertical-rl]' : ''}`}>{ratioALabel} / {ratioBLabel}</span>
         </button>
