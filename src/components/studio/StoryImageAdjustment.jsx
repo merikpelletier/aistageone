@@ -75,7 +75,7 @@ export default function StoryImageAdjustment({ userEmail, imageName = 'FotoPlay'
     <p className="mt-1 text-xs text-white/60">Choose an image, describe a correction, then review it before replacing the original.</p>
     <div className="mt-3 flex flex-wrap gap-3">
       {segment.visual_format !== 'comic' && segment.image_url && <button type="button" disabled={Boolean(busy)} onClick={() => open(null)} className={`${button} bg-yellow-400 text-black`}>Adjust image</button>}
-      {panels.map((panel, index) => panel.image_url && <button key={panel.id || index} type="button" disabled={Boolean(busy)} onClick={() => open(index)} className={`${button} flex items-center gap-3 bg-white/10`}><img src={panel.image_url} alt="" className="h-14 w-20 object-contain" />Adjust panel {index + 1}</button>)}
+      {panels.map((panel, index) => panel.image_url && <button key={panel.id || index} type="button" disabled={Boolean(busy)} onClick={() => open(index)} className={`${button} flex items-center gap-3 bg-white/10`}><img src={panel.image_url} alt="" className="h-14 w-20 object-cover object-center" />Adjust panel {index + 1}</button>)}
     </div>
     {target && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3" role="dialog" aria-modal="true" aria-labelledby="adjust-image-title">
       <div className="max-h-[95vh] w-full max-w-6xl overflow-auto rounded-2xl border border-white/20 bg-neutral-950 p-5">
