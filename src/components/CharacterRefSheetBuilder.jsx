@@ -20,7 +20,9 @@ const FORMATS = [
 ];
 
 export default function CharacterRefSheetBuilder({ onDone, onCancel }) {
+  const [mode, setMode] = useState('sheet'); // sheet | angles | description
   const [photos, setPhotos] = useState({}); // { front: { file, previewUrl }, ... }
+  const [description, setDescription] = useState('');
   const [format, setFormat] = useState('4:3');
   const [status, setStatus] = useState('idle'); // idle | uploading | generating | error
   const [errorMsg, setErrorMsg] = useState('');
@@ -33,7 +35,41 @@ export default function CharacterRefSheetBuilder({ onDone, onCancel }) {
     setPhotos(prev => { const n = { ...prev }; delete n[key]; return n; });
   };
 
+  const generateFromDescription = async () => {
+    if (!description.trim()) {
+      setErrorMsg('Describe the character first.');
+      return;
+    }
+    setStatus('generating');
+    setErrorMsg('');
+
+    const prompt = `Photorealistic character turnaround sheet, ${format}. Character description: ${description.trim()}. Show consistent full-body front, side, and back views of the same character. Clean light grey background, professional studio lighting.`;
+
+    try {
+      const res = await base44.functions.invoke('replicateGenerate', {
+        method: 'character_sheet',
+        photo_urls: [],
+        aspect_ratio: format,
+        prompt_override: prompt,
+      });
+      if (res.data?.file_url) {
+        setStatus('idle');
+        onDone(res.data.file_url);
+      } else {
+        setErrorMsg(res.data?.error || 'Generation failed. Try again.');
+        setStatus('error');
+      }
+    } catch (e) {
+      setErrorMsg(e.message || 'Generation failed. Try again.');
+      setStatus('error');
+    }
+  };
+
   const generate = async () => {
+    if (mode === 'description') {
+      await generateFromDescription();
+      return;
+    }
     const filled = VIEWS.filter(v => photos[v.key]);
     if (filled.length === 0) {
       setErrorMsg('Upload at least one photo.');
@@ -93,6 +129,42 @@ export default function CharacterRefSheetBuilder({ onDone, onCancel }) {
         </button>
       </div>
 
+      <div className="grid grid-cols-3 gap-1.5 bg-white/5 rounded-lg p-1">
+        <button
+          onClick={() => setMode('sheet')}
+          className={`px-2 py-1.5 rounded text-xs font-semibold transition-colors ${mode === 'sheet' ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}
+        >
+          Reference Sheet
+        </button>
+        <button
+          onClick={() => setMode('angles')}
+          className={`px-2 py-1.5 rounded text-xs font-semibold transition-colors ${mode === 'angles' ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}
+        >
+          From Angles
+        </button>
+        <button
+          onClick={() => setMode('description')}
+          className={`px-2 py-1.5 rounded text-xs font-semibold transition-colors ${mode === 'description' ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}
+        >
+          From Description
+        </button>
+      </div>
+
+      {mode === 'description' ? (
+        <div className="space-y-2">
+          <p className="text-white text-xs leading-relaxed">
+            Describe your character in detail (appearance, clothing, age, build, style). The AI will generate a turnaround reference sheet from your description alone.
+          </p>
+          <textarea
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            rows={5}
+            placeholder="e.g. A tall woman in her 30s with short black hair, wearing a dark green tactical jacket, cargo pants, and combat boots..."
+            className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white text-xs resize-none focus:outline-none focus:border-red-400/40"
+          />
+        </div>
+      ) : (
+      <>
       <p className="text-white text-xs leading-relaxed">
         Upload photos of yourself (or your character) from multiple angles. The AI will compose them into a single reference sheet.
       </p>
@@ -126,6 +198,8 @@ export default function CharacterRefSheetBuilder({ onDone, onCancel }) {
           </div>
         ))}
       </div>
+      </>
+      )}
 
       <div className="space-y-2">
         <p className="text-white text-xs">Output format</p>
@@ -152,7 +226,7 @@ export default function CharacterRefSheetBuilder({ onDone, onCancel }) {
 
       <Button
         onClick={generate}
-        disabled={Object.keys(photos).length === 0}
+        disabled={mode === 'description' ? !description.trim() : Object.keys(photos).length === 0}
         className="w-full bg-red-600 hover:bg-red-700 text-white disabled:opacity-40"
       >
         <Wand2 size={16} className="mr-2" />
