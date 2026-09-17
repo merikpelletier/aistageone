@@ -94,13 +94,14 @@ export default function Layout({ children, currentPageName }) {
   const showInstallPrompt = showNav && installPrompt?.visible !== false && installPrompt?.active !== false;
   const showAIBar = !isAdminPage && isAuthenticated && agentBar?.visible === true && agentBar?.active === true && (agentPages.length === 0 || agentPages.includes(currentPageName));
   const agentPosition = agentBar?.configuration?.position === 'bottom' ? 'bottom' : 'top';
-  const contentWidth = pageSetting?.look?.content_width;
-  const pageAccent = pageSetting?.look?.accent_color || '#facc15';
-  const pageText = pageSetting?.look?.text_color || '';
-  const pageIcon = pageSetting?.look?.icon_color || '';
-  const pageSpacing = pageSetting?.look?.spacing || 'default';
+  const isMagazinePage = currentPageName === 'Magazine';
+  const contentWidth = isMagazinePage ? undefined : pageSetting?.look?.content_width;
+  const pageAccent = isMagazinePage ? '#facc15' : (pageSetting?.look?.accent_color || '#facc15');
+  const pageText = isMagazinePage ? '' : (pageSetting?.look?.text_color || '');
+  const pageIcon = isMagazinePage ? '' : (pageSetting?.look?.icon_color || '');
+  const pageSpacing = isMagazinePage ? 'default' : (pageSetting?.look?.spacing || 'default');
   const pageStyle = {
-    backgroundColor: pageSetting?.look?.background_color || undefined,
+    backgroundColor: isMagazinePage ? undefined : (pageSetting?.look?.background_color || undefined),
     '--aistage-surface-accent': pageAccent,
     '--aistage-surface-text': pageText || undefined,
     '--aistage-surface-icon': pageIcon || undefined,
