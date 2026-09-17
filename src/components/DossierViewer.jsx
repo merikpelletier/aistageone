@@ -520,16 +520,6 @@ export default function DossierViewer({ pages, onClose, dossier }) {
             />
           )}
 
-          {/* Block Player page */}
-          {page?.page_type === 'block_player' && page?.block_player_episode_page_id && (
-            <BlockPlayerLoader
-              episodePageId={page.block_player_episode_page_id}
-              dossierId={dossier?.id}
-              blockIds={page.block_player_block_ids}
-              onPlay={(data) => setBlockPlayerData(data)}
-            />
-          )}
-
           {/* Episode page */}
           {page?.page_type === 'episode' && (
             <div className="absolute inset-0 flex flex-col overflow-y-auto pointer-events-auto bg-black">
