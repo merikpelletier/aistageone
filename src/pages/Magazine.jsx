@@ -126,19 +126,19 @@ export default function Magazine() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-yellow-400 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+      <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
   }
 
   if (dossiers.length === 0) {
     return (
-      <div className="min-h-screen bg-yellow-400 flex flex-col items-center justify-center text-center p-8">
-        <h1 className="text-black text-3xl font-extralight tracking-widest mb-4">
-          THE WISE PIG
+      <div className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center text-center p-8">
+        <h1 className="text-white text-3xl font-extralight tracking-widest mb-4">
+          <span className="text-teal-400">THE WISE PIG</span>
         </h1>
-        <p className="text-black text-sm">Coming soon...</p>
+        <p className="text-gray-300 text-sm">Coming soon...</p>
       </div>
     );
   }
@@ -155,7 +155,7 @@ export default function Magazine() {
   return (
     <div
       ref={containerRef}
-      className="min-h-screen bg-yellow-400 pb-16"
+      className="min-h-screen bg-neutral-900 pb-16"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
