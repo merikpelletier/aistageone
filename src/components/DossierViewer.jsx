@@ -877,7 +877,10 @@ export default function DossierViewer({ pages, onClose, dossier }) {
       <BlockPlayer
         blocks={blockPlayerData.blocks}
         characters={blockPlayerData.characters}
-        onClose={() => setBlockPlayerData(null)}
+        onClose={() => {
+          setBlockPlayerData(null);
+          onClose?.();
+        }}
       />
     )}
     </>
