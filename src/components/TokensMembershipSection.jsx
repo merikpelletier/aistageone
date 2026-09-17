@@ -102,7 +102,7 @@ export default function TokensMembershipSection({ userEmail }) {
         <div className="bg-white/5 rounded-2xl p-5 border border-white/10 flex flex-col items-center justify-center">
           <BadgeCheck size={22} className="text-blue-400 mb-2" />
           <p className="text-white text-lg font-bold text-center">{membershipType ? MEMBERSHIP_LABELS[membershipType] || membershipType : 'None'}</p>
-          <span className={`text-xs px-2 py-0.5 rounded-md border font-bold uppercase mt-1 ${statusInfo.bg} ${statusInfo.color} ${statusInfo.border}`}>
+          <span className={`text-xs px-2 py-0.5 rounded-md border font-bold uppercase mt-1 ${statusInfo.bg} ${statusInfo.border}`} style={{ color: '#1a1a1a' }}>
             {statusInfo.label}
           </span>
         </div>
