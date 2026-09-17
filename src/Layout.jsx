@@ -97,7 +97,7 @@ export default function Layout({ children, currentPageName }) {
   const isMagazinePage = currentPageName === 'Magazine';
   const contentWidth = isMagazinePage ? undefined : pageSetting?.look?.content_width;
   const pageAccent = isMagazinePage ? '#facc15' : (pageSetting?.look?.accent_color || '#facc15');
-  const pageText = isMagazinePage ? '' : (pageSetting?.look?.text_color || '');
+  const pageText = (isMagazinePage || currentPageName === 'Index') ? '' : (pageSetting?.look?.text_color || '');
   const pageIcon = isMagazinePage ? '' : (pageSetting?.look?.icon_color || '');
   const pageSpacing = isMagazinePage ? 'default' : (pageSetting?.look?.spacing || 'default');
   const pageStyle = {
