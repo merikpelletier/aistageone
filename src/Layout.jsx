@@ -114,8 +114,10 @@ export default function Layout({ children, currentPageName }) {
     paddingInline: pageSpacing === 'relaxed' ? 'clamp(12px, 2vw, 24px)' : pageSpacing === 'compact' ? 0 : undefined,
   };
 
+  const isMagazinePageWrapper = currentPageName === 'Magazine';
+
   return (
-    <div className="min-h-screen bg-yellow-400" style={pageStyle} data-admin-spacing={pageSpacing}>
+    <div className={`min-h-screen ${isMagazinePageWrapper ? 'bg-black' : 'bg-yellow-400'}`} style={pageStyle} data-admin-spacing={pageSpacing}>
       {showLandscapeBlock && (
         <div className="fixed inset-0 bg-yellow-400 z-[9999] flex flex-col items-center justify-center">
           <div className="text-black text-center px-8">
@@ -127,6 +129,27 @@ export default function Layout({ children, currentPageName }) {
       )}
       <style>{`
         :root {
+          ${isMagazinePageWrapper ? `
+          --background: 0 0% 4%;
+          --foreground: 0 0% 100%;
+          --card: 0 0% 10%;
+          --card-foreground: 0 0% 100%;
+          --popover: 0 0% 10%;
+          --popover-foreground: 0 0% 100%;
+          --primary: 0 0% 100%;
+          --primary-foreground: 0 0% 4%;
+          --secondary: 0 0% 14%;
+          --secondary-foreground: 0 0% 100%;
+          --muted: 0 0% 14%;
+          --muted-foreground: 0 0% 65%;
+          --accent: 0 72% 51%;
+          --accent-foreground: 0 0% 100%;
+          --destructive: 0 62% 30%;
+          --destructive-foreground: 0 0% 100%;
+          --border: 0 0% 20%;
+          --input: 0 0% 14%;
+          --ring: 0 72% 51%;
+          ` : `
           --background: 51 100% 50%;
           --foreground: 0 0% 0%;
           --card: 51 100% 45%;
@@ -146,6 +169,7 @@ export default function Layout({ children, currentPageName }) {
           --border: 0 0% 0%;
           --input: 51 100% 40%;
           --ring: 0 72% 51%;
+          `}
         }
         
         * {
