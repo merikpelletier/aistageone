@@ -612,9 +612,9 @@ function SegmentDirector({ userEmail, project, chapter, segment, previous, isCur
   const baseImageReady = isComic
     ? Boolean(segment.image_url && segment.comic_page_source === comicSignature && segment.image_source_aspect_ratio === (chapter.image_aspect_ratio || '16:9'))
     : Boolean(segment.image_url && segment.image_source_instruction === segment.image_instruction && segment.image_source_aspect_ratio === (chapter.image_aspect_ratio || '16:9'));
-  const pendingPanel = isComic ? comicPanels.findIndex((panel) => !panel.image_url || panel.source_prompt !== panel.prompt) : -1;
+  const pendingPanel = isComic ? comicPanels.findIndex((panel) => !panel.image_url) : -1;
   const approvalIssue = !voice ? 'Choose this segment’s voice.'
-    : pendingPanel >= 0 ? `Panel ${pendingPanel + 1} is missing or its image direction changed. Restore the direction used for that image or regenerate only this panel.`
+    : pendingPanel >= 0 ? `Panel ${pendingPanel + 1} is missing an image. Generate or upload an image for this panel.`
     : !baseImageReady ? (isComic ? 'Assemble final page: the page is missing or its layout/images changed. No AI credit is needed.' : 'The image is missing or does not match the current direction and format.')
     : !overlayReady ? 'Save text on final image: the current text boxes have not been saved. No AI credit is needed.'
     : !segment.narration_url ? 'Generate this segment’s audio.'
