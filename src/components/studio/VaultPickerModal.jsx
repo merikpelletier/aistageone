@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Folder, ChevronDown, Upload, Loader2 } from 'lucide-react';
@@ -47,17 +47,30 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
     }
   };
 
-  const { data: folders = [], isLoading: foldersLoading } = useQuery({
+  const { data: folders = [], isLoading: foldersLoading, refetch: refetchFolders } = useQuery({
     queryKey: ['vaultFoldersForPicker', userEmail],
     queryFn: () => base44.entities.VaultFolder.filter({ user_email: userEmail }, 'order', null),
     enabled: !!userEmail,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
-  const { data: vaultAssets = [], isLoading: assetsLoading } = useQuery({
+  const { data: vaultAssets = [], isLoading: assetsLoading, refetch: refetchAssets } = useQuery({
     queryKey: ['vaultAssetsForPicker', userEmail],
     queryFn: () => base44.entities.VaultAsset.filter({ user_email: userEmail }, '-created_date', null),
     enabled: !!userEmail,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
+
+  useEffect(() => {
+    if (!userEmail) return;
+    queryClient.invalidateQueries({ queryKey: ['vaultFoldersForPicker', userEmail] });
+    queryClient.invalidateQueries({ queryKey: ['vaultAssetsForPicker', userEmail] });
+    refetchFolders();
+    refetchAssets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userEmail]);
 
   const images = vaultAssets.filter(a => a.media_type === 'image');
   const unfiledImages = images.filter(a => !a.folder_id);
@@ -85,7 +98,7 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
         {/* Unfiled Images */}
         {unfiledImages.length > 0 && (
           <div className="space-y-2">
