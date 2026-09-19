@@ -101,11 +101,20 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
 
   const deleteFolder = async (folderId) => {
     const folderAssets = assets.filter(a => a.folder_id === folderId);
-    for (const asset of folderAssets) {
-      await base44.entities.VaultAsset.update(asset.id, { folder_id: null });
+    try {
+      for (const asset of folderAssets) {
+        await base44.entities.VaultAsset.update(asset.id, { folder_id: null });
+      }
+      await base44.entities.VaultFolder.delete(folderId);
+    } catch (error) {
+      toast.error(error.message || 'Unable to delete folder');
+      return;
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ['vaultFolders', userEmail] });
+      queryClient.invalidateQueries({ queryKey: ['vaultAssets', userEmail] });
+      queryClient.invalidateQueries({ queryKey: ['vaultFoldersForPicker', userEmail] });
+      queryClient.invalidateQueries({ queryKey: ['vaultAssetsForPicker', userEmail] });
     }
-    await base44.entities.VaultFolder.delete(folderId);
-    queryClient.invalidateQueries({ queryKey: ['vaultFolders', userEmail], queryKey: ['vaultAssets', userEmail] });
   };
 
   const deleteAsset = async (id) => {
