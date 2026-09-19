@@ -49,13 +49,13 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
 
   const { data: folders = [], isLoading: foldersLoading } = useQuery({
     queryKey: ['vaultFoldersForPicker', userEmail],
-    queryFn: () => base44.entities.VaultFolder.filter({ user_email: userEmail }, 'order'),
+    queryFn: () => base44.entities.VaultFolder.filter({ user_email: userEmail }, 'order', null),
     enabled: !!userEmail,
   });
 
   const { data: vaultAssets = [], isLoading: assetsLoading } = useQuery({
     queryKey: ['vaultAssetsForPicker', userEmail],
-    queryFn: () => base44.entities.VaultAsset.filter({ user_email: userEmail }, '-created_date'),
+    queryFn: () => base44.entities.VaultAsset.filter({ user_email: userEmail }, '-created_date', null),
     enabled: !!userEmail,
   });
 

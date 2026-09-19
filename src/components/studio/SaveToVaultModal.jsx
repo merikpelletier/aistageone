@@ -25,7 +25,7 @@ export default function SaveToVaultModal({ userEmail, imageUrl, mediaType = 'ima
   const [name, setName] = useState(defaultName);
 
   const loadFolders = async () => {
-    const f = await base44.entities.VaultFolder.filter({ user_email: userEmail }, 'order', 50).catch(() => []);
+    const f = await base44.entities.VaultFolder.filter({ user_email: userEmail }, 'order', null).catch(() => []);
     setFolders(f);
     setLoading(false);
   };
