@@ -52,9 +52,13 @@ serveWithCors(async (request) => {
     subtitle_languages: [], default_language: originalLanguage,
   };
 
-  const republished = Boolean(project.published_dossier_id);
+  let existingDossier = null;
+  if (project.published_dossier_id) {
+    existingDossier = await service.entities.Dossier.get(project.published_dossier_id).catch(() => null);
+  }
+  const republished = Boolean(existingDossier);
   let dossier;
-  if (republished) dossier = await service.entities.Dossier.update(project.published_dossier_id, dossierData);
+  if (existingDossier) dossier = await service.entities.Dossier.update(existingDossier.id, dossierData);
   else dossier = await service.entities.Dossier.create(dossierData);
 
   const existingStories = await service.entities.TimelineStory.filter({ dossier_id: dossier.id }, '-updated_date', 1);
