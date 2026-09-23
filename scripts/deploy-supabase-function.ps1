@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet('generateSpeech', 'generatePitchSpeech', 'regenerateNarration', 'generateBlockVideos', 'replicateGenerate', 'mixAudioVideo', 'admin-pages-tools', 'agent-conversations')]
+  [ValidateSet('generateSpeech', 'generatePitchSpeech', 'regenerateNarration', 'generateBlockVideos', 'replicateGenerate', 'mixAudioVideo', 'admin-pages-tools', 'agent-conversations', 'publishAuthorStory')]
   [string]$FunctionName
 )
 
