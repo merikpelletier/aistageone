@@ -431,6 +431,106 @@ export default function AdminDossiers() {
                 </div>
                 <p className="text-white text-xs mt-1.5">Lower = appears first</p>
               </div>
+
+              {/* Product Placements */}
+              <div className="pt-2 border-t border-white/10">
+                <label className="block text-white text-sm font-medium mb-2">Product Placements</label>
+                <p className="text-white text-xs mb-3">Brand/product mentions linked to this dossier (not tied to a specific page type).</p>
+                <div className="space-y-3">
+                  {(editingDossier.product_placements || []).map((placement, idx) => (
+                    <div key={placement.id || idx} className="p-3 bg-neutral-900/50 rounded border border-white/10 space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          value={placement.name || ''}
+                          onChange={(e) => {
+                            const updated = [...(editingDossier.product_placements || [])];
+                            updated[idx] = { ...updated[idx], name: e.target.value };
+                            setEditingDossier({ ...editingDossier, product_placements: updated });
+                          }}
+                          placeholder="Product / brand name"
+                          className="bg-neutral-900 border-white/10 text-white flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const updated = (editingDossier.product_placements || []).filter((_, i) => i !== idx);
+                            setEditingDossier({ ...editingDossier, product_placements: updated });
+                          }}
+                          className="text-white hover:text-red-500"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
+                      <Input
+                        value={placement.image_url || ''}
+                        onChange={(e) => {
+                          const updated = [...(editingDossier.product_placements || [])];
+                          updated[idx] = { ...updated[idx], image_url: e.target.value };
+                          setEditingDossier({ ...editingDossier, product_placements: updated });
+                        }}
+                        placeholder="Product image URL"
+                        className="bg-neutral-900 border-white/10 text-white text-sm"
+                      />
+                      <Textarea
+                        value={placement.description || ''}
+                        onChange={(e) => {
+                          const updated = [...(editingDossier.product_placements || [])];
+                          updated[idx] = { ...updated[idx], description: e.target.value };
+                          setEditingDossier({ ...editingDossier, product_placements: updated });
+                        }}
+                        placeholder="Optional short description"
+                        className="bg-neutral-900 border-white/10 text-white text-sm"
+                        rows={2}
+                      />
+                      <Input
+                        value={placement.url || ''}
+                        onChange={(e) => {
+                          const updated = [...(editingDossier.product_placements || [])];
+                          updated[idx] = { ...updated[idx], url: e.target.value };
+                          setEditingDossier({ ...editingDossier, product_placements: updated });
+                        }}
+                        placeholder="External product URL"
+                        className="bg-neutral-900 border-white/10 text-white text-sm"
+                      />
+                      <Input
+                        value={placement.page_reference || ''}
+                        onChange={(e) => {
+                          const updated = [...(editingDossier.product_placements || [])];
+                          updated[idx] = { ...updated[idx], page_reference: e.target.value };
+                          setEditingDossier({ ...editingDossier, product_placements: updated });
+                        }}
+                        placeholder="Optional scene/page reference"
+                        className="bg-neutral-900 border-white/10 text-white text-sm"
+                      />
+                      <Input
+                        type="number"
+                        value={placement.order ?? idx}
+                        onChange={(e) => {
+                          const updated = [...(editingDossier.product_placements || [])];
+                          updated[idx] = { ...updated[idx], order: parseInt(e.target.value) || 0 };
+                          setEditingDossier({ ...editingDossier, product_placements: updated });
+                        }}
+                        placeholder="Display order"
+                        className="bg-neutral-900 border-white/10 text-white text-sm"
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const updated = [...(editingDossier.product_placements || []), { id: `placement_${Date.now()}_${Math.random().toString(36).slice(2)}`, name: '', image_url: '', description: '', url: '', page_reference: '', order: (editingDossier.product_placements || []).length }];
+                      setEditingDossier({ ...editingDossier, product_placements: updated });
+                    }}
+                    className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"
+                  >
+                    <Plus size={14} className="mr-2" />
+                    Add Product
+                  </Button>
+                </div>
+              </div>
+
               <Button
                 onClick={handleSaveDossier}
                 className="w-full bg-white text-black hover:bg-white/90"

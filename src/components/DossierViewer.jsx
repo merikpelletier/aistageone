@@ -601,6 +601,29 @@ export default function DossierViewer({ pages, onClose, dossier }) {
         </button>
       )}
 
+      {/* Product Placements strip */}
+      {(dossier?.product_placements || []).length > 0 && (
+        <div className="absolute bottom-28 left-0 right-0 z-30 px-4 pointer-events-auto">
+          <div className="flex gap-2 overflow-x-auto pb-1" style={{ WebkitOverflowScrolling: 'touch' }}>
+            {[...dossier.product_placements].sort((a, b) => (a.order || 0) - (b.order || 0)).map((placement) => (
+              <a
+                key={placement.id}
+                href={placement.url || undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex-shrink-0 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-full pl-1 pr-3 py-1 border border-white/20"
+              >
+                {placement.image_url && (
+                  <img src={placement.image_url} alt={placement.name} className="w-7 h-7 rounded-full object-cover" />
+                )}
+                <span className="text-white text-xs font-medium whitespace-nowrap">{placement.name}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Save to Vault button */}
       {activeMediaUrl && !page?.is_product && (
         <button

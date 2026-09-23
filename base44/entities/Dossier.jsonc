@@ -131,6 +131,42 @@
     "description": {
       "type": "string",
       "description": "Description/pitch of the submitted content"
+    },
+    "product_placements": {
+      "type": "array",
+      "description": "Product/brand placements associated with this dossier (dossier-level, not tied to a specific DossierPage)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Product / brand name"
+          },
+          "image_url": {
+            "type": "string",
+            "description": "Product image URL"
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional short description"
+          },
+          "url": {
+            "type": "string",
+            "description": "External product URL"
+          },
+          "page_reference": {
+            "type": "string",
+            "description": "Optional scene/page reference"
+          },
+          "order": {
+            "type": "number",
+            "description": "Display order"
+          }
+        }
+      }
     }
   },
   "required": [
