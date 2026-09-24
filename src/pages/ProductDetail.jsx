@@ -93,9 +93,9 @@ export default function ProductDetail() {
         )}
 
         {/* Secondary Images Gallery */}
-        {product.secondary_images && product.secondary_images.length > 0 && (
+        {product.images && product.images.length > 0 && (
           <div className="mb-8 grid grid-cols-3 gap-2">
-            {product.secondary_images.map((img, idx) => (
+            {product.images.map((img, idx) => (
               <div key={idx} className="aspect-square rounded-sm overflow-hidden">
                 <img
                   src={img}
@@ -124,16 +124,16 @@ export default function ProductDetail() {
           </h1>
           <div className="w-12 h-0.5 bg-red-600 mb-8" />
 
-          {(product.product_type || product.inventory_status) && (
+          {(product.product_type || product.stock !== undefined) && (
             <div className="flex flex-wrap items-center gap-3 mb-4">
               {product.product_type && (
                 <span className="text-white text-xs tracking-wide">
                   {product.product_type}
                 </span>
               )}
-              {product.inventory_status && (
+              {product.stock !== undefined && product.stock !== null && (
                 <span className="text-white text-xs tracking-wide uppercase border border-white/20 rounded px-2 py-0.5">
-                  {product.inventory_status.replace(/_/g, ' ')}
+                  {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
                 </span>
               )}
             </div>

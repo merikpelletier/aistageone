@@ -84,8 +84,8 @@ export default function AdminProducts() {
     const file = e.target.files?.[0];
     if (!file) return;
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    const existing = editingProduct.secondary_images || [];
-    setEditingProduct({ ...editingProduct, secondary_images: [...existing, file_url] });
+    const existing = editingProduct.images || [];
+    setEditingProduct({ ...editingProduct, images: [...existing, file_url] });
   };
 
   const categories = {
@@ -248,9 +248,9 @@ export default function AdminProducts() {
               </div>
               <div>
                 <label className="block text-white text-sm mb-2">Secondary images (optional)</label>
-                {editingProduct.secondary_images && editingProduct.secondary_images.length > 0 && (
+                {editingProduct.images && editingProduct.images.length > 0 && (
                   <div className="flex gap-2 mb-2 flex-wrap">
-                    {editingProduct.secondary_images.map((img, idx) => (
+                    {editingProduct.images.map((img, idx) => (
                       <img key={idx} src={img} alt="" className="w-16 h-16 object-cover rounded-sm" />
                     ))}
                   </div>
@@ -281,20 +281,13 @@ export default function AdminProducts() {
                 placeholder="SKU (optional)"
                 className="bg-neutral-900 border-white/10 text-white"
               />
-              <Select
-                value={editingProduct.inventory_status || ''}
-                onValueChange={(value) => setEditingProduct({ ...editingProduct, inventory_status: value })}
-              >
-                <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
-                  <SelectValue placeholder="Inventory status (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="in_stock">In stock</SelectItem>
-                  <SelectItem value="low_stock">Low stock</SelectItem>
-                  <SelectItem value="out_of_stock">Out of stock</SelectItem>
-                  <SelectItem value="preorder">Preorder</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                type="number"
+                value={editingProduct.stock ?? ''}
+                onChange={(e) => setEditingProduct({ ...editingProduct, stock: e.target.value === '' ? '' : parseInt(e.target.value) })}
+                placeholder="Stock (optional)"
+                className="bg-neutral-900 border-white/10 text-white"
+              />
               <Select
                 value={editingProduct.category}
                 onValueChange={(value) => setEditingProduct({ ...editingProduct, category: value })}
