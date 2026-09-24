@@ -80,6 +80,14 @@ export default function AdminProducts() {
     setEditingProduct({ ...editingProduct, image_url: file_url });
   };
 
+  const handleSecondaryImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const existing = editingProduct.secondary_images || [];
+    setEditingProduct({ ...editingProduct, secondary_images: [...existing, file_url] });
+  };
+
   const categories = {
     product: 'Product',
     access: 'Access',
@@ -238,6 +246,55 @@ export default function AdminProducts() {
                   </Button>
                 </label>
               </div>
+              <div>
+                <label className="block text-white text-sm mb-2">Secondary images (optional)</label>
+                {editingProduct.secondary_images && editingProduct.secondary_images.length > 0 && (
+                  <div className="flex gap-2 mb-2 flex-wrap">
+                    {editingProduct.secondary_images.map((img, idx) => (
+                      <img key={idx} src={img} alt="" className="w-16 h-16 object-cover rounded-sm" />
+                    ))}
+                  </div>
+                )}
+                <label className="block">
+                  <input type="file" accept="image/*" onChange={handleSecondaryImageUpload} className="hidden" />
+                  <Button type="button" variant="outline" className="w-full border-white/20 text-white">
+                    <Upload size={16} className="mr-2" />
+                    Add a secondary image
+                  </Button>
+                </label>
+              </div>
+              <Input
+                value={editingProduct.dossier_id || ''}
+                onChange={(e) => setEditingProduct({ ...editingProduct, dossier_id: e.target.value })}
+                placeholder="Associated story/dossier ID (optional)"
+                className="bg-neutral-900 border-white/10 text-white"
+              />
+              <Input
+                value={editingProduct.product_type || ''}
+                onChange={(e) => setEditingProduct({ ...editingProduct, product_type: e.target.value })}
+                placeholder="Product type (optional)"
+                className="bg-neutral-900 border-white/10 text-white"
+              />
+              <Input
+                value={editingProduct.sku || ''}
+                onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value })}
+                placeholder="SKU (optional)"
+                className="bg-neutral-900 border-white/10 text-white"
+              />
+              <Select
+                value={editingProduct.inventory_status || ''}
+                onValueChange={(value) => setEditingProduct({ ...editingProduct, inventory_status: value })}
+              >
+                <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
+                  <SelectValue placeholder="Inventory status (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_stock">In stock</SelectItem>
+                  <SelectItem value="low_stock">Low stock</SelectItem>
+                  <SelectItem value="out_of_stock">Out of stock</SelectItem>
+                  <SelectItem value="preorder">Preorder</SelectItem>
+                </SelectContent>
+              </Select>
               <Select
                 value={editingProduct.category}
                 onValueChange={(value) => setEditingProduct({ ...editingProduct, category: value })}
