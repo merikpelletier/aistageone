@@ -168,6 +168,28 @@ export default function AdminProducts() {
     setEditingSection((current) => current ? { ...current, [field]: file_url } : current);
   };
 
+  const addProductOption = () => {
+    setEditingProduct((current) => ({
+      ...current,
+      product_options: [...(current.product_options || []), { name: '', values: [] }],
+    }));
+  };
+
+  const updateProductOption = (index, field, value) => {
+    setEditingProduct((current) => {
+      const options = [...(current.product_options || [])];
+      options[index] = { ...options[index], [field]: value };
+      return { ...current, product_options: options };
+    });
+  };
+
+  const removeProductOption = (index) => {
+    setEditingProduct((current) => ({
+      ...current,
+      product_options: (current.product_options || []).filter((_, optionIndex) => optionIndex !== index),
+    }));
+  };
+
   return (
     <div>
       {/* Categories & Subcategories Section */}
@@ -274,7 +296,7 @@ export default function AdminProducts() {
                     onChange={(e) => handleSectionImageUpload('banner_image', e)}
                     className="hidden"
                   />
-                  <Button type="button" variant="outline" className="w-full border-white/20 text-white">
+                  <Button type="button" variant="outline" className="w-full !bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800">
                     <Upload size={16} className="mr-2" />
                     Choose banner image
                   </Button>
@@ -305,7 +327,7 @@ export default function AdminProducts() {
                     onChange={(e) => handleSectionImageUpload('promo_image', e)}
                     className="hidden"
                   />
-                  <Button type="button" variant="outline" className="w-full border-white/20 text-white">
+                  <Button type="button" variant="outline" className="w-full !bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800">
                     <Upload size={16} className="mr-2" />
                     Choose promo image
                   </Button>
@@ -487,7 +509,7 @@ export default function AdminProducts() {
                 )}
                 <label className="block">
                   <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                  <Button type="button" variant="outline" className="w-full border-white/20 text-white">
+                  <Button type="button" variant="outline" className="w-full !bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800">
                     <Upload size={16} className="mr-2" />
                     Choose an image
                   </Button>
@@ -504,12 +526,73 @@ export default function AdminProducts() {
                 )}
                 <label className="block">
                   <input type="file" accept="image/*" onChange={handleSecondaryImageUpload} className="hidden" />
-                  <Button type="button" variant="outline" className="w-full border-white/20 text-white">
+                  <Button type="button" variant="outline" className="w-full !bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800">
                     <Upload size={16} className="mr-2" />
                     Add a secondary image
                   </Button>
                 </label>
               </div>
+              <div className="border border-white/10 bg-neutral-900/50 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-white text-sm">Product options</p>
+                    <p className="text-white/50 text-xs mt-1">Size, color, model, format, etc.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addProductOption}
+                    className="!bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800"
+                  >
+                    <Plus size={14} />
+                    Add option
+                  </Button>
+                </div>
+
+                {(editingProduct.product_options || []).map((option, index) => (
+                  <div key={index} className="border border-white/10 p-3 space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        value={option.name || ''}
+                        onChange={(e) => updateProductOption(index, 'name', e.target.value)}
+                        placeholder="Option name (e.g. Size)"
+                        className="bg-neutral-900 border-white/10 text-white flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeProductOption(index)}
+                        className="text-white hover:text-red-500"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                    <Input
+                      value={(option.values || []).join(', ')}
+                      onChange={(e) => updateProductOption(
+                        index,
+                        'values',
+                        e.target.value.split(',').map(value => value.trim()).filter(Boolean)
+                      )}
+                      placeholder="Values separated by commas (e.g. S, M, L, XL)"
+                      className="bg-neutral-900 border-white/10 text-white"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between border border-white/10 bg-neutral-900/50 p-4">
+                <div>
+                  <span className="text-white text-sm">Downloadable product</span>
+                  <p className="text-white/50 text-xs mt-1">Marks this item as a digital/downloadable product.</p>
+                </div>
+                <Switch
+                  checked={editingProduct.is_digital === true}
+                  onCheckedChange={(checked) => setEditingProduct({ ...editingProduct, is_digital: checked })}
+                />
+              </div>
+
               <Input
                 value={editingProduct.dossier_id || ''}
                 onChange={(e) => setEditingProduct({ ...editingProduct, dossier_id: e.target.value })}
