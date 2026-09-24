@@ -45,8 +45,13 @@ async function currentUserMetadata() {
   };
 }
 
+const ENTITY_TABLE_OVERRIDES = {
+  Product: 'products',
+  ShopSection: 'shop_sections',
+};
+
 function createEntityClient(entityName) {
-  const table = snakeCase(entityName);
+  const table = ENTITY_TABLE_OVERRIDES[entityName] || snakeCase(entityName);
 
   return {
     async list(sort, limit = 100) {

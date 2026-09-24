@@ -11,6 +11,7 @@ import { Plus, Edit2, Trash2, Upload, ExternalLink } from 'lucide-react';
 
 export default function AdminProducts() {
   const [editingProduct, setEditingProduct] = useState(null);
+  const [editingSection, setEditingSection] = useState(null);
   const [paymentLink, setPaymentLink] = useState('');
   const queryClient = useQueryClient();
 
@@ -18,6 +19,58 @@ export default function AdminProducts() {
     queryKey: ['adminProducts'],
     queryFn: () => base44.entities.Product.list('order'),
   });
+
+  const { data: sections = [] } = useQuery({
+    queryKey: ['shopSections'],
+    queryFn: () => base44.entities.ShopSection.list('order'),
+  });
+
+  const topLevelSections = sections.filter(s => !s.parent_section_id);
+  const getSubsections = (parentId) => sections.filter(s => s.parent_section_id === parentId);
+
+  const getSectionName = (id) => sections.find(s => s.id === id)?.name || '';
+
+  const getProductCategoryLabels = (product) => {
+    const section = sections.find(s => s.id === product.section_id);
+    if (!section) return { category: '', subcategory: '' };
+    if (section.parent_section_id) {
+      return { category: getSectionName(section.parent_section_id), subcategory: section.name };
+    }
+    return { category: section.name, subcategory: '' };
+  };
+
+  const createSectionMutation = useMutation({
+    mutationFn: (data) => base44.entities.ShopSection.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shopSections'] });
+      setEditingSection(null);
+    }
+  });
+
+  const updateSectionMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.ShopSection.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shopSections'] });
+      setEditingSection(null);
+    }
+  });
+
+  const deleteSectionMutation = useMutation({
+    mutationFn: (id) => base44.entities.ShopSection.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shopSections'] })
+  });
+
+  const handleSaveSection = () => {
+    if (editingSection.parent_section_id === editingSection.id) {
+      alert('A section cannot be its own parent');
+      return;
+    }
+    if (editingSection.id) {
+      updateSectionMutation.mutate({ id: editingSection.id, data: editingSection });
+    } else {
+      createSectionMutation.mutate(editingSection);
+    }
+  };
 
   const { data: shopSettings = [] } = useQuery({
     queryKey: ['shopSettings'],
@@ -88,14 +141,125 @@ export default function AdminProducts() {
     setEditingProduct({ ...editingProduct, images: [...existing, file_url] });
   };
 
-  const categories = {
-    product: 'Product',
-    access: 'Access',
-    support: 'Support'
-  };
-
   return (
     <div>
+      {/* Categories & Subcategories Section */}
+      <div className="mb-8 p-4 bg-neutral-950 border border-white/10 rounded-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-white text-sm font-light">Categories & Subcategories</h3>
+          <Button
+            onClick={() => setEditingSection({ name: '', description: '', parent_section_id: null, order: sections.length + 1, is_active: true })}
+            className="bg-white text-black hover:bg-white/90"
+            size="sm"
+          >
+            <Plus size={14} className="mr-2" />
+            New category
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {topLevelSections.map((section) => (
+            <div key={section.id} className={`border border-white/10 rounded-sm p-3 ${!section.is_active && 'opacity-50'}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-white text-sm font-light">{section.name}</span>
+                  <span className="text-white/40 text-xs ml-2">order: {section.order}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" onClick={() => setEditingSection(section)} className="text-white hover:text-white">
+                    <Edit2 size={14} />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => deleteSectionMutation.mutate(section.id)} className="text-white hover:text-red-500">
+                    <Trash2 size={14} />
+                  </Button>
+                </div>
+              </div>
+              {getSubsections(section.id).length > 0 && (
+                <div className="mt-2 ml-4 space-y-1">
+                  {getSubsections(section.id).map((sub) => (
+                    <div key={sub.id} className={`flex items-center justify-between border border-white/5 rounded-sm p-2 ${!sub.is_active && 'opacity-50'}`}>
+                      <div>
+                        <span className="text-white text-xs font-light">{sub.name}</span>
+                        <span className="text-white/40 text-xs ml-2">order: {sub.order}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => setEditingSection(sub)} className="text-white hover:text-white">
+                          <Edit2 size={12} />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => deleteSectionMutation.mutate(sub.id)} className="text-white hover:text-red-500">
+                          <Trash2 size={12} />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Edit Section Dialog */}
+      <Dialog open={!!editingSection} onOpenChange={() => setEditingSection(null)}>
+        <DialogContent className="bg-neutral-950 border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle className="font-light tracking-wide">
+              {editingSection?.id ? 'Edit' : 'New'} Section
+            </DialogTitle>
+          </DialogHeader>
+          {editingSection && (
+            <div className="space-y-4 mt-4">
+              <Input
+                value={editingSection.name}
+                onChange={(e) => setEditingSection({ ...editingSection, name: e.target.value })}
+                placeholder="Name"
+                className="bg-neutral-900 border-white/10 text-white"
+              />
+              <Textarea
+                value={editingSection.description || ''}
+                onChange={(e) => setEditingSection({ ...editingSection, description: e.target.value })}
+                placeholder="Description"
+                className="bg-neutral-900 border-white/10 text-white"
+                rows={2}
+              />
+              <Select
+                value={editingSection.parent_section_id || 'none'}
+                onValueChange={(value) => setEditingSection({ ...editingSection, parent_section_id: value === 'none' ? null : value })}
+              >
+                <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
+                  <SelectValue placeholder="Parent category (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No parent (top-level category)</SelectItem>
+                  {topLevelSections.filter(s => s.id !== editingSection.id).map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="number"
+                value={editingSection.order}
+                onChange={(e) => setEditingSection({ ...editingSection, order: parseInt(e.target.value) })}
+                placeholder="Order"
+                className="bg-neutral-900 border-white/10 text-white"
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-white text-sm">Active</span>
+                <Switch
+                  checked={editingSection.is_active !== false}
+                  onCheckedChange={(checked) => setEditingSection({ ...editingSection, is_active: checked })}
+                />
+              </div>
+              <Button
+                onClick={handleSaveSection}
+                className="w-full bg-white text-black hover:bg-white/90"
+              >
+                Save
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Payment Link Section */}
       <div className="mb-8 p-4 bg-neutral-950 border border-white/10 rounded-sm">
         <h3 className="text-white text-sm font-light mb-3">Cart payment link</h3>
@@ -162,9 +326,16 @@ export default function AdminProducts() {
                   )}
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-white">{product.price}</span>
-                    <span className="text-white text-xs px-2 py-0.5 bg-neutral-800 rounded">
-                      {categories[product.category]}
-                    </span>
+                    {getProductCategoryLabels(product).category && (
+                      <span className="text-white text-xs px-2 py-0.5 bg-neutral-800 rounded">
+                        {getProductCategoryLabels(product).category}
+                      </span>
+                    )}
+                    {getProductCategoryLabels(product).subcategory && (
+                      <span className="text-white text-xs px-2 py-0.5 bg-neutral-800 rounded">
+                        {getProductCategoryLabels(product).subcategory}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -289,18 +460,43 @@ export default function AdminProducts() {
                 className="bg-neutral-900 border-white/10 text-white"
               />
               <Select
-                value={editingProduct.category}
-                onValueChange={(value) => setEditingProduct({ ...editingProduct, category: value })}
+                value={(() => {
+                  const current = sections.find(s => s.id === editingProduct.section_id);
+                  if (!current) return '';
+                  return current.parent_section_id || current.id;
+                })()}
+                onValueChange={(value) => setEditingProduct({ ...editingProduct, section_id: value })}
               >
                 <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
-                  <SelectValue />
+                  <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="product">Product</SelectItem>
-                  <SelectItem value="access">Access</SelectItem>
-                  <SelectItem value="support">Support</SelectItem>
+                  {topLevelSections.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {(() => {
+                const current = sections.find(s => s.id === editingProduct.section_id);
+                const selectedCategoryId = current ? (current.parent_section_id || current.id) : null;
+                const subsections = selectedCategoryId ? getSubsections(selectedCategoryId) : [];
+                if (subsections.length === 0) return null;
+                return (
+                  <Select
+                    value={current && current.parent_section_id ? current.id : ''}
+                    onValueChange={(value) => setEditingProduct({ ...editingProduct, section_id: value })}
+                  >
+                    <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
+                      <SelectValue placeholder="Subcategory (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subsections.map((sub) => (
+                        <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
               <div className="flex items-center justify-between">
                 <span className="text-white text-sm">Active</span>
                 <Switch
