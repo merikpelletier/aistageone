@@ -13,6 +13,7 @@ export default function AdminProducts() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingSection, setEditingSection] = useState(null);
   const [paymentLink, setPaymentLink] = useState('');
+  const [digitalUploadPending, setDigitalUploadPending] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: products = [] } = useQuery({
@@ -159,6 +160,50 @@ export default function AdminProducts() {
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
     const existing = editingProduct.images || [];
     setEditingProduct({ ...editingProduct, images: [...existing, file_url] });
+  };
+
+  const handleDigitalFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setDigitalUploadPending(true);
+    try {
+      const response = await base44.functions.invoke('gift-shop-r2-upload', {
+        filename: file.name,
+        content_type: file.type || 'application/octet-stream',
+      });
+
+      const uploadUrl = response.data?.upload_url;
+      const objectKey = response.data?.object_key;
+      if (!uploadUrl || !objectKey) {
+        throw new Error('Unable to prepare digital file upload');
+      }
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Cloudflare R2 upload failed (${uploadResponse.status})`);
+      }
+
+      setEditingProduct((current) => ({
+        ...current,
+        is_digital: true,
+        r2_object_key: objectKey,
+        download_url: null,
+      }));
+    } catch (error) {
+      console.error('Digital file upload failed:', error);
+      alert(error?.message || 'Unable to upload digital file');
+    } finally {
+      setDigitalUploadPending(false);
+      e.target.value = '';
+    }
   };
 
   const handleSectionImageUpload = async (field, e) => {
@@ -582,15 +627,55 @@ export default function AdminProducts() {
                 ))}
               </div>
 
-              <div className="flex items-center justify-between border border-white/10 bg-neutral-900/50 p-4">
-                <div>
-                  <span className="text-white text-sm">Downloadable product</span>
-                  <p className="text-white/50 text-xs mt-1">Marks this item as a digital/downloadable product.</p>
+              <div className="border border-white/10 bg-neutral-900/50 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-white text-sm">Downloadable product</span>
+                    <p className="text-white/50 text-xs mt-1">Secure file delivered after a completed purchase.</p>
+                  </div>
+                  <Switch
+                    checked={editingProduct.is_digital === true}
+                    onCheckedChange={(checked) => setEditingProduct({
+                      ...editingProduct,
+                      is_digital: checked,
+                      ...(checked ? {} : { r2_object_key: null, download_url: null }),
+                    })}
+                  />
                 </div>
-                <Switch
-                  checked={editingProduct.is_digital === true}
-                  onCheckedChange={(checked) => setEditingProduct({ ...editingProduct, is_digital: checked })}
-                />
+
+                {editingProduct.is_digital && (
+                  <div className="space-y-2">
+                    {editingProduct.r2_object_key && (
+                      <div className="border border-white/10 bg-black/30 px-3 py-2">
+                        <p className="text-white/50 text-[11px] uppercase tracking-wider">Digital file attached</p>
+                        <p className="text-white text-xs mt-1 break-all">
+                          {editingProduct.r2_object_key.split('/').pop()}
+                        </p>
+                      </div>
+                    )}
+                    <label className="block">
+                      <input
+                        type="file"
+                        onChange={handleDigitalFileUpload}
+                        className="hidden"
+                        disabled={digitalUploadPending}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={digitalUploadPending}
+                        className="w-full !bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800"
+                      >
+                        <Upload size={16} className="mr-2" />
+                        {digitalUploadPending
+                          ? 'Uploading...'
+                          : editingProduct.r2_object_key
+                            ? 'Replace digital file'
+                            : 'Upload digital file'}
+                      </Button>
+                    </label>
+                  </div>
+                )}
               </div>
 
               <Input
