@@ -13,6 +13,8 @@ export default function Boutique() {
     return stored ? JSON.parse(stored) : [];
   });
 
+  const [activeFilter, setActiveFilter] = useState({ type: 'all', value: null });
+
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['products'],
     queryFn: () => base44.entities.Product.filter({ is_active: true }, 'order'),
@@ -25,7 +27,22 @@ export default function Boutique() {
     support: 'Support'
   };
 
-  const groupedProducts = products.reduce((acc, product) => {
+  const dossierOptions = Array.from(
+    new Set(products.filter(p => p.dossier_id).map(p => p.dossier_id))
+  );
+
+  const productTypeOptions = Array.from(
+    new Set(products.filter(p => p.product_type).map(p => p.product_type))
+  );
+
+  const filteredProducts = products.filter(product => {
+    if (activeFilter.type === 'all') return true;
+    if (activeFilter.type === 'dossier') return product.dossier_id === activeFilter.value;
+    if (activeFilter.type === 'product_type') return product.product_type === activeFilter.value;
+    return true;
+  });
+
+  const groupedProducts = filteredProducts.reduce((acc, product) => {
     const cat = product.category || 'product';
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(product);
@@ -68,6 +85,47 @@ export default function Boutique() {
           Add items to your cart and complete your order.
         </p>
       </div>
+
+      {(dossierOptions.length > 0 || productTypeOptions.length > 0) && (
+        <div className="px-6 mb-8 flex flex-wrap gap-2">
+          <button
+            onClick={() => setActiveFilter({ type: 'all', value: null })}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+              activeFilter.type === 'all'
+                ? 'bg-white text-black border-white'
+                : 'border-white/20 text-white hover:border-white/40'
+            }`}
+          >
+            All Products
+          </button>
+          {dossierOptions.map(dossierId => (
+            <button
+              key={`dossier-${dossierId}`}
+              onClick={() => setActiveFilter({ type: 'dossier', value: dossierId })}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                activeFilter.type === 'dossier' && activeFilter.value === dossierId
+                  ? 'bg-white text-black border-white'
+                  : 'border-white/20 text-white hover:border-white/40'
+              }`}
+            >
+              {dossierId}
+            </button>
+          ))}
+          {productTypeOptions.map(type => (
+            <button
+              key={`type-${type}`}
+              onClick={() => setActiveFilter({ type: 'product_type', value: type })}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                activeFilter.type === 'product_type' && activeFilter.value === type
+                  ? 'bg-white text-black border-white'
+                  : 'border-white/20 text-white hover:border-white/40'
+              }`}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+      )}
 
       {Object.entries(groupedProducts).map(([category, categoryProducts], catIdx) => (
         <div key={category} className="mb-12">
