@@ -63,18 +63,35 @@ serveWithCors(async (req) => {
       // Extract customer info
       const billTo = payload.billTo || {};
       const shipTo = payload.shipTo || {};
-      const customerEmail = payload.customer?.email || billTo.email || '';
+      let customerEmail = payload.customer?.email || billTo.email || '';
 
-      // Extract cart data from userFields if available
+      // Resolve the full cart from the server-side checkout session.
       let cartItems = [];
       const userFields = payload.userFields || [];
-      const cartDataField = userFields.find(f => f.name === 'cart_data');
-      
-      if (cartDataField) {
+      const checkoutSessionField = userFields.find(f => f.name === 'checkout_session_id');
+      const legacyCartDataField = userFields.find(f => f.name === 'cart_data');
+
+      if (checkoutSessionField?.value) {
         try {
-          cartItems = JSON.parse(cartDataField.value);
+          const sessions = await base44.asServiceRole.entities.GiftShopCheckoutSession.filter({
+            id: checkoutSessionField.value
+          });
+          const session = sessions[0];
+          if (session) {
+            cartItems = Array.isArray(session.cart) ? session.cart : [];
+            if (!customerEmail && session.user_email) customerEmail = session.user_email;
+            await base44.asServiceRole.entities.GiftShopCheckoutSession.update(session.id, {
+              consumed_at: new Date().toISOString()
+            });
+          }
         } catch (e) {
-          console.log('Could not parse cart data from userFields');
+          console.log('Could not load Gift Shop checkout session');
+        }
+      } else if (legacyCartDataField) {
+        try {
+          cartItems = JSON.parse(legacyCartDataField.value);
+        } catch (e) {
+          console.log('Could not parse legacy cart data from userFields');
         }
       }
 
