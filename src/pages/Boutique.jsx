@@ -9,7 +9,7 @@ import { createPageUrl } from '@/utils';
 
 export default function Boutique() {
   const [cart, setCart] = useState(() => {
-    const stored = sessionStorage.getItem('cochon_cart');
+    const stored = sessionStorage.getItem('aistage_giftshop_cart');
     return stored ? JSON.parse(stored) : [];
   });
 
@@ -47,10 +47,10 @@ export default function Boutique() {
       <div className="px-6 mb-12">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-white text-3xl font-extralight tracking-widest">SHOP</h1>
+            <h1 className="text-white text-3xl font-extralight tracking-widest">AISTAGE ONE Gift Shop</h1>
             <div className="w-12 h-0.5 bg-red-600 mt-4" />
           </div>
-          <Link to={createPageUrl('Checkout')}>
+          <Link to={createPageUrl('Cart')}>
             <Button 
               variant="outline" 
               className="border-white/20 text-white hover:bg-white hover:text-black relative"
