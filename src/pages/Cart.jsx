@@ -4,11 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Trash2, ExternalLink, ShoppingBag, FileText } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
 export default function Cart() {
+  const [searchParams] = useSearchParams();
   const [cart, setCart] = useState([]);
+  const paymentSucceeded = searchParams.get('payment') === 'success';
 
   const { data: shopSettings = [] } = useQuery({
     queryKey: ['shopSettings'],
@@ -102,6 +104,16 @@ export default function Cart() {
       <h1 className="text-white text-3xl font-extralight tracking-widest">CART</h1>
       <div className="w-12 h-0.5 bg-red-600 mt-4" />
       <p className="text-white text-sm mt-4">{getTotalItems()} item(s)</p>
+      {paymentSucceeded && (
+        <div className="mt-5 border border-white/15 bg-neutral-950 p-4">
+          <p className="text-white text-sm mb-3">Payment completed.</p>
+          <Link to={createPageUrl('Downloads')}>
+            <Button className="bg-white text-black hover:bg-white/90">
+              My downloads
+            </Button>
+          </Link>
+        </div>
+      )}
     </div>
 
       {/* Cart Items */}
