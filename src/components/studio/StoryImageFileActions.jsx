@@ -11,7 +11,7 @@ export default function StoryImageFileActions({ url, userEmail, name = 'FotoPlay
   const [error, setError] = useState('');
   const lock = useRef(false);
   const fileInputRef = useRef(null);
-  if (!url) return null;
+  if (!url && !onUploaded) return null;
   const run = async (kind) => {
     if (lock.current) return;
     lock.current = true; setBusy(kind); setError('');
