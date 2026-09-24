@@ -41,7 +41,6 @@ async function currentUserMetadata() {
   if (error || !data.user) return {};
   return {
     created_by_id: data.user.id,
-    created_by: data.user.email,
   };
 }
 
