@@ -20,6 +20,13 @@ serveWithCors(async (req) => {
       return Response.json({ error: 'Totals missing' }, { status: 400 });
     }
 
+    const checkoutSession = await base44.asServiceRole.entities.GiftShopCheckoutSession.create({
+      user_id: user.id,
+      user_email: user.email,
+      cart,
+      totals,
+    });
+
     const apiLoginId = Deno.env.get('AUTHORIZENET_API_LOGIN_ID');
     const transactionKey = Deno.env.get('AUTHORIZENET_TRANSACTION_KEY');
     const isSandbox = Deno.env.get('AUTHORIZENET_SANDBOX') === 'true';
@@ -94,8 +101,8 @@ serveWithCors(async (req) => {
           userFields: {
             userField: [
               {
-                name: 'cart_data',
-                value: JSON.stringify(cart).substring(0, 255)
+                name: 'checkout_session_id',
+                value: checkoutSession.id
               },
               {
                 name: 'user_email',
