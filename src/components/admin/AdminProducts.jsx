@@ -14,6 +14,10 @@ export default function AdminProducts() {
   const [editingSection, setEditingSection] = useState(null);
   const [paymentLink, setPaymentLink] = useState('');
   const [digitalUploadPending, setDigitalUploadPending] = useState(false);
+  const [productSource, setProductSource] = useState('manual');
+  const [printfulProducts, setPrintfulProducts] = useState([]);
+  const [printfulLoading, setPrintfulLoading] = useState(false);
+  const [selectedPrintfulProductId, setSelectedPrintfulProductId] = useState('');
   const queryClient = useQueryClient();
 
   const { data: products = [] } = useQuery({
@@ -144,6 +148,57 @@ export default function AdminProducts() {
       updateProductMutation.mutate({ id: editingProduct.id, data: editingProduct });
     } else {
       createProductMutation.mutate(editingProduct);
+    }
+  };
+
+  const loadPrintfulProducts = async () => {
+    setPrintfulLoading(true);
+    try {
+      const response = await fetch('/api/printful/products');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'Unable to load Printful products');
+      setPrintfulProducts(data?.result || []);
+    } catch (error) {
+      console.error('Printful product list failed:', error);
+      alert(error?.message || 'Unable to load Printful products');
+    } finally {
+      setPrintfulLoading(false);
+    }
+  };
+
+  const importPrintfulProduct = async (productId) => {
+    if (!productId) return;
+    setPrintfulLoading(true);
+    try {
+      const response = await fetch(`/api/printful/products?id=${encodeURIComponent(productId)}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'Unable to load Printful product');
+
+      const syncProduct = data?.result?.sync_product;
+      const syncVariants = data?.result?.sync_variants || [];
+      const variantNames = [...new Set(syncVariants.map((variant) => variant.name).filter(Boolean))];
+      const prices = syncVariants.map((variant) => Number(variant.retail_price)).filter(Number.isFinite);
+      const retailPrice = prices.length ? Math.min(...prices).toFixed(2) : '';
+      const previewImage =
+        syncProduct?.thumbnail_url ||
+        syncVariants.flatMap((variant) => variant.files || []).find((file) => file?.preview_url)?.preview_url ||
+        '';
+
+      setEditingProduct((current) => ({
+        ...current,
+        name: syncProduct?.name || current?.name || '',
+        price: retailPrice ? `${retailPrice}` : (current?.price || ''),
+        image_url: previewImage || current?.image_url || '',
+        sku: syncVariants[0]?.sku || current?.sku || '',
+        product_options: variantNames.length
+          ? [{ name: 'Printful variant', values: variantNames }]
+          : (current?.product_options || []),
+      }));
+    } catch (error) {
+      console.error('Printful product import failed:', error);
+      alert(error?.message || 'Unable to import Printful product');
+    } finally {
+      setPrintfulLoading(false);
     }
   };
 
@@ -429,14 +484,18 @@ export default function AdminProducts() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-white text-lg font-light">Shop</h2>
         <Button
-          onClick={() => setEditingProduct({ 
-            name: '', 
-            description: '', 
-            price: '', 
-            category: 'product',
-            is_active: true, 
-            order: products.length + 1 
-          })}
+          onClick={() => {
+            setProductSource('manual');
+            setSelectedPrintfulProductId('');
+            setEditingProduct({ 
+              name: '', 
+              description: '', 
+              price: '', 
+              category: 'product',
+              is_active: true, 
+              order: products.length + 1 
+            });
+          }}
           className="bg-white text-black hover:bg-white/90"
         >
           <Plus size={16} className="mr-2" />
@@ -522,6 +581,63 @@ export default function AdminProducts() {
           </DialogHeader>
           {editingProduct && (
             <div className="space-y-4 mt-4 pb-4">
+              {!editingProduct.id && (
+                <div className="border border-white/10 bg-neutral-900/50 p-4 space-y-3">
+                  <div>
+                    <p className="text-white text-sm">Product source</p>
+                    <p className="text-white/50 text-xs mt-1">Create manually or import an existing product from Printful.</p>
+                  </div>
+                  <Select
+                    value={productSource}
+                    onValueChange={(value) => {
+                      setProductSource(value);
+                      setSelectedPrintfulProductId('');
+                      if (value === 'printful' && printfulProducts.length === 0) loadPrintfulProducts();
+                    }}
+                  >
+                    <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manual">Manual</SelectItem>
+                      <SelectItem value="printful">Printful</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {productSource === 'printful' && (
+                    <div className="space-y-2">
+                      <Select
+                        value={selectedPrintfulProductId}
+                        onValueChange={(value) => {
+                          setSelectedPrintfulProductId(value);
+                          importPrintfulProduct(value);
+                        }}
+                        disabled={printfulLoading}
+                      >
+                        <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
+                          <SelectValue placeholder={printfulLoading ? 'Loading Printful…' : 'Choose a Printful product'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {printfulProducts.map((product) => (
+                            <SelectItem key={product.id} value={String(product.id)}>
+                              {product.name} ({product.variants || 0} variants)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={loadPrintfulProducts}
+                        disabled={printfulLoading}
+                        className="w-full !bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800"
+                      >
+                        {printfulLoading ? 'Loading…' : 'Refresh Printful products'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
               <Input
                 value={editingProduct.name}
                 onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
