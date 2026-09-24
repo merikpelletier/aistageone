@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Clapperboard, MessageCircle, MoreHorizontal, Settings, User, UsersRound, Wand2, Handshake } from 'lucide-react';
+import { ShoppingCart, ShoppingBag, Clapperboard, MessageCircle, MoreHorizontal, Settings, User, UsersRound, Wand2, Handshake } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -41,7 +41,7 @@ export default function BottomNav() {
 
   useEffect(() => {
     const updateCartCount = () => {
-      const cart = JSON.parse(sessionStorage.getItem('cochon_cart') || '[]');
+      const cart = JSON.parse(sessionStorage.getItem('aistage_giftshop_cart') || '[]');
       const total = cart.reduce((sum, item) => sum + item.quantity, 0);
       setCartCount(total);
     };
@@ -142,6 +142,14 @@ export default function BottomNav() {
             )}
           </Link>
         )}
+
+        {/* Gift Shop */}
+        <Link to="/Boutique" className="relative flex-1 flex items-center justify-center h-14 md:h-16">
+          <ShoppingBag size={20} className={`${currentPath === '/Boutique' ? 'text-black' : 'text-black'} hover:text-black transition-colors`} />
+          {currentPath === '/Boutique' && (
+            <motion.div layoutId="nav-indicator" className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-red-600 rounded-full" transition={{ type: 'spring', stiffness: 500, damping: 30 }} />
+          )}
+        </Link>
 
         {/* Cart */}
         <Link to={createPageUrl('Cart')} className="relative flex-1 flex items-center justify-center h-14 md:h-16">

@@ -8,7 +8,7 @@ export default function CartExport() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const stored = JSON.parse(sessionStorage.getItem('cochon_cart') || '[]');
+    const stored = JSON.parse(sessionStorage.getItem('aistage_giftshop_cart') || '[]');
     setCart(stored);
   }, []);
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clapperboard, Handshake, MessageCircle, MoreHorizontal, Settings, ShoppingCart, User, UsersRound, Wand2 } from 'lucide-react';
+import { Clapperboard, Handshake, MessageCircle, MoreHorizontal, Settings, ShoppingBag, ShoppingCart, User, UsersRound, Wand2 } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { key: 'SponsorRequest', label: 'Sponsor', icon: Handshake },
   { key: 'MemberDashboard', label: 'Account', icon: User, account: true },
   { key: 'Admin', label: 'Admin', icon: Settings, adminOnly: true },
+  { key: 'Boutique', label: 'Gift Shop', icon: ShoppingBag },
   { key: 'Cart', label: 'Cart', icon: ShoppingCart, cart: true },
 ];
 
@@ -33,7 +34,7 @@ export default function ConfigurableBottomNav({ settings = [] }) {
 
   useEffect(() => {
     const updateCartCount = () => {
-      const cart = JSON.parse(sessionStorage.getItem('cochon_cart') || '[]');
+      const cart = JSON.parse(sessionStorage.getItem('aistage_giftshop_cart') || '[]');
       setCartCount(cart.reduce((sum, item) => sum + item.quantity, 0));
     };
     updateCartCount();

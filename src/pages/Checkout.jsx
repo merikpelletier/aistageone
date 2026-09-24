@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Trash2, Plus, Minus, ExternalLink } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Link } from 'react-router-dom';
+import React from 'react';
+import { Navigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
 export default function Checkout() {
-  const [cart, setCart] = useState([]);
+  return <Navigate to={createPageUrl('Cart')} replace />;
+}
+
+function LegacyCheckout() {
+  const [cart, setCart] = React.useState([]);
 
   useEffect(() => {
     // Get cart from sessionStorage
