@@ -92,16 +92,58 @@ export default function ProductDetail() {
           </motion.div>
         )}
 
+        {/* Secondary Images Gallery */}
+        {product.secondary_images && product.secondary_images.length > 0 && (
+          <div className="mb-8 grid grid-cols-3 gap-2">
+            {product.secondary_images.map((img, idx) => (
+              <div key={idx} className="aspect-square rounded-sm overflow-hidden">
+                <img
+                  src={img}
+                  alt={`${product.name} ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Product Info */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
+          {product.dossier_id && (
+            <span className="inline-block text-white text-[10px] tracking-widest uppercase bg-neutral-900 border border-white/10 rounded-full px-3 py-1 mb-3">
+              Collection: {product.dossier_id}
+            </span>
+          )}
+
           <h1 className="text-white text-3xl font-extralight tracking-widest mb-4">
             {product.name}
           </h1>
           <div className="w-12 h-0.5 bg-red-600 mb-8" />
+
+          {(product.product_type || product.inventory_status) && (
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              {product.product_type && (
+                <span className="text-white text-xs tracking-wide">
+                  {product.product_type}
+                </span>
+              )}
+              {product.inventory_status && (
+                <span className="text-white text-xs tracking-wide uppercase border border-white/20 rounded px-2 py-0.5">
+                  {product.inventory_status.replace(/_/g, ' ')}
+                </span>
+              )}
+            </div>
+          )}
+
+          {product.sku && (
+            <p className="text-white/40 text-[11px] tracking-wide mb-4">
+              SKU: {product.sku}
+            </p>
+          )}
 
           {product.description && (
             <p className="text-white font-light leading-relaxed mb-8">
