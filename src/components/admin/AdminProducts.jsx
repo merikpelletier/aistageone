@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, supabase } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,12 +17,12 @@ export default function AdminProducts() {
 
   const { data: products = [] } = useQuery({
     queryKey: ['adminProducts'],
-    queryFn: () => base44.entities.Product.list('order'),
+    queryFn: async () => { const { data, error } = await supabase.from('gift_shop_products').select('*').order('order', { ascending: true }); if (error) throw error; return data || []; },
   });
 
   const { data: sections = [] } = useQuery({
     queryKey: ['shopSections'],
-    queryFn: () => base44.entities.ShopSection.list('order'),
+    queryFn: async () => { const { data, error } = await supabase.from('gift_shop_sections').select('*').order('order', { ascending: true }); if (error) throw error; return data || []; },
   });
 
   const topLevelSections = sections.filter(s => !s.parent_section_id);
@@ -40,24 +40,36 @@ export default function AdminProducts() {
   };
 
   const createSectionMutation = useMutation({
-    mutationFn: (data) => base44.entities.ShopSection.create(data),
+    mutationFn: async (data) => { const { data: saved, error } = await supabase.from('gift_shop_sections').insert(data).select('*').single(); if (error) throw error; return saved; },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shopSections'] });
       setEditingSection(null);
+    },
+    onError: (error) => {
+      console.error('Gift Shop section create failed:', error);
+      alert(error?.message || 'Unable to save category');
     }
   });
 
   const updateSectionMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.ShopSection.update(id, data),
+    mutationFn: async ({ id, data }) => { const payload = { ...data }; delete payload.id; delete payload.created_date; delete payload.updated_date; delete payload.created_by_id; const { data: saved, error } = await supabase.from('gift_shop_sections').update(payload).eq('id', id).select('*').single(); if (error) throw error; return saved; },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shopSections'] });
       setEditingSection(null);
+    },
+    onError: (error) => {
+      console.error('Gift Shop section update failed:', error);
+      alert(error?.message || 'Unable to save category');
     }
   });
 
   const deleteSectionMutation = useMutation({
-    mutationFn: (id) => base44.entities.ShopSection.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shopSections'] })
+    mutationFn: async (id) => { const { error } = await supabase.from('gift_shop_sections').delete().eq('id', id); if (error) throw error; },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shopSections'] }),
+    onError: (error) => {
+      console.error('Gift Shop section delete failed:', error);
+      alert(error?.message || 'Unable to delete category');
+    }
   });
 
   const handleSaveSection = () => {
@@ -74,7 +86,7 @@ export default function AdminProducts() {
 
   const { data: shopSettings = [] } = useQuery({
     queryKey: ['shopSettings'],
-    queryFn: () => base44.entities.ShopSettings.list(),
+    queryFn: async () => { const { data, error } = await supabase.from('gift_shop_settings').select('*').order('created_date', { ascending: true }); if (error) throw error; return data || []; },
   });
 
   React.useEffect(() => {
@@ -84,32 +96,40 @@ export default function AdminProducts() {
   }, [shopSettings]);
 
   const createProductMutation = useMutation({
-    mutationFn: (data) => base44.entities.Product.create(data),
+    mutationFn: async (data) => { const { data: saved, error } = await supabase.from('gift_shop_products').insert(data).select('*').single(); if (error) throw error; return saved; },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
       setEditingProduct(null);
+    },
+    onError: (error) => {
+      console.error('Gift Shop product create failed:', error);
+      alert(error?.message || 'Unable to save product');
     }
   });
 
   const updateProductMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Product.update(id, data),
+    mutationFn: async ({ id, data }) => { const payload = { ...data }; delete payload.id; delete payload.created_date; delete payload.updated_date; delete payload.created_by_id; const { data: saved, error } = await supabase.from('gift_shop_products').update(payload).eq('id', id).select('*').single(); if (error) throw error; return saved; },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
       setEditingProduct(null);
+    },
+    onError: (error) => {
+      console.error('Gift Shop product update failed:', error);
+      alert(error?.message || 'Unable to save product');
     }
   });
 
   const deleteProductMutation = useMutation({
-    mutationFn: (id) => base44.entities.Product.delete(id),
+    mutationFn: async (id) => { const { error } = await supabase.from('gift_shop_products').delete().eq('id', id); if (error) throw error; },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['adminProducts'] })
   });
 
   const savePaymentLinkMutation = useMutation({
     mutationFn: async (link) => {
       if (shopSettings.length > 0) {
-        return base44.entities.ShopSettings.update(shopSettings[0].id, { payment_link: link });
+        const { data, error } = await supabase.from('gift_shop_settings').update({ payment_link: link }).eq('id', shopSettings[0].id).select('*').single(); if (error) throw error; return data;
       } else {
-        return base44.entities.ShopSettings.create({ payment_link: link });
+        const { data, error } = await supabase.from('gift_shop_settings').insert({ payment_link: link }).select('*').single(); if (error) throw error; return data;
       }
     },
     onSuccess: () => {
