@@ -148,7 +148,7 @@ export default function Boutique() {
           <Link to={createPageUrl('Cart')}>
             <Button
               variant="outline"
-              className="border-white/20 text-white hover:bg-white hover:text-black relative"
+              className="border-white/20 text-white bg-neutral-800 hover:bg-neutral-700 relative"
             >
               <ShoppingCart size={18} />
               {cartItemsCount > 0 && (
