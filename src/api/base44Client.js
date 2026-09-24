@@ -45,9 +45,9 @@ async function currentUserMetadata() {
 }
 
 const ENTITY_TABLE_OVERRIDES = {
-  Product: 'gift_shop_products',
-  ShopSection: 'gift_shop_sections',
-  ShopSettings: 'gift_shop_settings',
+  Product: 'products',
+  ShopSection: 'shop_sections',
+  ShopSettings: 'shop_settings',
 };
 
 function createEntityClient(entityName) {
