@@ -161,6 +161,13 @@ export default function AdminProducts() {
     setEditingProduct({ ...editingProduct, images: [...existing, file_url] });
   };
 
+  const handleSectionImageUpload = async (field, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setEditingSection((current) => current ? { ...current, [field]: file_url } : current);
+  };
+
   return (
     <div>
       {/* Categories & Subcategories Section */}
@@ -255,6 +262,55 @@ export default function AdminProducts() {
                   ))}
                 </SelectContent>
               </Select>
+              <div>
+                <label className="block text-white text-sm mb-2">Banner image</label>
+                {editingSection.banner_image && (
+                  <img src={editingSection.banner_image} alt="" className="w-full h-32 object-cover rounded-sm mb-2" />
+                )}
+                <label className="block">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleSectionImageUpload('banner_image', e)}
+                    className="hidden"
+                  />
+                  <Button type="button" variant="outline" className="w-full border-white/20 text-white">
+                    <Upload size={16} className="mr-2" />
+                    Choose banner image
+                  </Button>
+                </label>
+              </div>
+              <Input
+                value={editingSection.banner_video || ''}
+                onChange={(e) => setEditingSection({ ...editingSection, banner_video: e.target.value })}
+                placeholder="Banner video URL (optional)"
+                className="bg-neutral-900 border-white/10 text-white"
+              />
+              <Textarea
+                value={editingSection.promo_text || ''}
+                onChange={(e) => setEditingSection({ ...editingSection, promo_text: e.target.value })}
+                placeholder="Promo text (optional)"
+                className="bg-neutral-900 border-white/10 text-white"
+                rows={2}
+              />
+              <div>
+                <label className="block text-white text-sm mb-2">Promo image</label>
+                {editingSection.promo_image && (
+                  <img src={editingSection.promo_image} alt="" className="w-full h-32 object-cover rounded-sm mb-2" />
+                )}
+                <label className="block">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleSectionImageUpload('promo_image', e)}
+                    className="hidden"
+                  />
+                  <Button type="button" variant="outline" className="w-full border-white/20 text-white">
+                    <Upload size={16} className="mr-2" />
+                    Choose promo image
+                  </Button>
+                </label>
+              </div>
               <Input
                 type="number"
                 value={editingSection.order}
