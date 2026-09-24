@@ -12,6 +12,7 @@ export default function ProductDetail() {
   const productId = searchParams.get('id');
   
   const [added, setAdded] = useState(false);
+  const [selectedOptions, setSelectedOptions] = useState({});
   
   const { data: rawProducts = [], isLoading } = useQuery({
     queryKey: ['products'],
@@ -28,19 +29,26 @@ export default function ProductDetail() {
 
   const product = rawProducts.find(p => p.id === productId);
 
+  const productOptions = product?.product_options || [];
+  const allOptionsSelected = productOptions.every(option => selectedOptions[option.name]);
+
   const addToCart = () => {
+    if (!allOptionsSelected) return;
     const cart = JSON.parse(sessionStorage.getItem('aistage_giftshop_cart') || '[]');
-    const existing = cart.find(item => item.id === product.id);
+    const optionKey = JSON.stringify(selectedOptions);
+    const existing = cart.find(item =>
+      item.id === product.id && JSON.stringify(item.options || {}) === optionKey
+    );
     
     let newCart;
     if (existing) {
       newCart = cart.map(item => 
-        item.id === product.id 
+        item.id === product.id && JSON.stringify(item.options || {}) === optionKey
           ? { ...item, quantity: item.quantity + 1 }
           : item
       );
     } else {
-      newCart = [...cart, { ...product, quantity: 1 }];
+      newCart = [...cart, { ...product, options: selectedOptions, quantity: 1 }];
     }
     
     sessionStorage.setItem('aistage_giftshop_cart', JSON.stringify(newCart));
@@ -157,11 +165,46 @@ export default function ProductDetail() {
             </span>
           </div>
 
+          {productOptions.length > 0 && (
+            <div className="space-y-6 mb-8">
+              {productOptions.map((option) => (
+                <div key={option.name}>
+                  <p className="text-white text-xs uppercase tracking-widest mb-3">{option.name}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(option.values || []).map((value) => {
+                      const selected = selectedOptions[option.name] === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setSelectedOptions((current) => ({ ...current, [option.name]: value }))}
+                          className={`px-4 py-2 border text-sm transition-colors ${
+                            selected
+                              ? 'bg-white text-black border-white'
+                              : 'bg-neutral-900 text-white border-white/20 hover:border-white/50'
+                          }`}
+                        >
+                          {value}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {product.is_digital && (
+            <p className="text-white/60 text-xs uppercase tracking-widest mb-6">
+              Digital / downloadable product
+            </p>
+          )}
+
           {/* Add to Cart Button */}
           <Button
             onClick={addToCart}
             className="w-full bg-white text-black hover:bg-white/90 font-light tracking-widest h-12"
-            disabled={added}
+            disabled={added || !allOptionsSelected}
           >
             {added ? (
               <>
@@ -171,7 +214,7 @@ export default function ProductDetail() {
             ) : (
               <>
                 <ShoppingCart size={18} className="mr-2" />
-                Ajouter au panier
+                {allOptionsSelected ? 'Ajouter au panier' : 'Sélectionnez les options'}
               </>
             )}
           </Button>
