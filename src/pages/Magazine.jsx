@@ -243,10 +243,11 @@ export default function Magazine() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
               onClick={(e) => { e.stopPropagation(); openDossier(currentDossier); }}
-              className="group flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/30 rounded-full px-7 py-3.5 hover:bg-white/20 transition-all"
+              className="group flex items-center gap-3 rounded-full px-7 py-3.5 transition-all"
+              style={{ background: 'rgba(255,255,255,0.90)', color: '#111', border: '1px solid rgba(0,0,0,0.18)', boxShadow: '0 4px 18px rgba(0,0,0,0.30)', backdropFilter: 'blur(10px)', fontWeight: 700 }}
             >
-              <span className="text-white text-sm font-light tracking-[0.2em] uppercase">Explore</span>
-              <span className="text-white group-hover:translate-x-1 transition-transform text-base">→</span>
+              <span className="text-sm tracking-[0.2em] uppercase">Explore</span>
+              <span className="group-hover:translate-x-1 transition-transform text-base">→</span>
             </motion.button>
           </div>
 
