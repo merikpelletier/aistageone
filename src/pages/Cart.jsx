@@ -16,13 +16,13 @@ export default function Cart() {
   });
 
   useEffect(() => {
-    const stored = JSON.parse(sessionStorage.getItem('cochon_cart') || '[]');
+    const stored = JSON.parse(sessionStorage.getItem('aistage_giftshop_cart') || '[]');
     setCart(stored);
   }, []);
 
   const updateCart = (newCart) => {
     setCart(newCart);
-    sessionStorage.setItem('cochon_cart', JSON.stringify(newCart));
+    sessionStorage.setItem('aistage_giftshop_cart', JSON.stringify(newCart));
   };
 
   const removeItem = (id, options) => {
