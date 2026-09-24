@@ -17,12 +17,12 @@ export default function AdminProducts() {
 
   const { data: products = [] } = useQuery({
     queryKey: ['adminProducts'],
-    queryFn: async () => { const { data, error } = await supabase.from('gift_shop_products').select('*').order('order', { ascending: true }); if (error) throw error; return data || []; },
+    queryFn: async () => { const { data, error } = await supabase.from('products').select('*').order('order', { ascending: true }); if (error) throw error; return data || []; },
   });
 
   const { data: sections = [] } = useQuery({
     queryKey: ['shopSections'],
-    queryFn: async () => { const { data, error } = await supabase.from('gift_shop_sections').select('*').order('order', { ascending: true }); if (error) throw error; return data || []; },
+    queryFn: async () => { const { data, error } = await supabase.from('shop_sections').select('*').order('order', { ascending: true }); if (error) throw error; return data || []; },
   });
 
   const topLevelSections = sections.filter(s => !s.parent_section_id);
@@ -40,7 +40,7 @@ export default function AdminProducts() {
   };
 
   const createSectionMutation = useMutation({
-    mutationFn: async (data) => { const { data: saved, error } = await supabase.from('gift_shop_sections').insert(data).select('*').single(); if (error) throw error; return saved; },
+    mutationFn: async (data) => { const { data: saved, error } = await supabase.from('shop_sections').insert(data).select('*').single(); if (error) throw error; return saved; },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shopSections'] });
       setEditingSection(null);
@@ -52,7 +52,7 @@ export default function AdminProducts() {
   });
 
   const updateSectionMutation = useMutation({
-    mutationFn: async ({ id, data }) => { const payload = { ...data }; delete payload.id; delete payload.created_date; delete payload.updated_date; delete payload.created_by_id; const { data: saved, error } = await supabase.from('gift_shop_sections').update(payload).eq('id', id).select('*').single(); if (error) throw error; return saved; },
+    mutationFn: async ({ id, data }) => { const payload = { ...data }; delete payload.id; delete payload.created_date; delete payload.updated_date; delete payload.created_by_id; const { data: saved, error } = await supabase.from('shop_sections').update(payload).eq('id', id).select('*').single(); if (error) throw error; return saved; },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shopSections'] });
       setEditingSection(null);
@@ -64,7 +64,7 @@ export default function AdminProducts() {
   });
 
   const deleteSectionMutation = useMutation({
-    mutationFn: async (id) => { const { error } = await supabase.from('gift_shop_sections').delete().eq('id', id); if (error) throw error; },
+    mutationFn: async (id) => { const { error } = await supabase.from('shop_sections').delete().eq('id', id); if (error) throw error; },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shopSections'] }),
     onError: (error) => {
       console.error('Gift Shop section delete failed:', error);
@@ -86,7 +86,7 @@ export default function AdminProducts() {
 
   const { data: shopSettings = [] } = useQuery({
     queryKey: ['shopSettings'],
-    queryFn: async () => { const { data, error } = await supabase.from('gift_shop_settings').select('*').order('created_date', { ascending: true }); if (error) throw error; return data || []; },
+    queryFn: async () => { const { data, error } = await supabase.from('shop_settings').select('*').order('created_date', { ascending: true }); if (error) throw error; return data || []; },
   });
 
   React.useEffect(() => {
@@ -96,7 +96,7 @@ export default function AdminProducts() {
   }, [shopSettings]);
 
   const createProductMutation = useMutation({
-    mutationFn: async (data) => { const { data: saved, error } = await supabase.from('gift_shop_products').insert(data).select('*').single(); if (error) throw error; return saved; },
+    mutationFn: async (data) => { const { data: saved, error } = await supabase.from('products').insert(data).select('*').single(); if (error) throw error; return saved; },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
       setEditingProduct(null);
@@ -108,7 +108,7 @@ export default function AdminProducts() {
   });
 
   const updateProductMutation = useMutation({
-    mutationFn: async ({ id, data }) => { const payload = { ...data }; delete payload.id; delete payload.created_date; delete payload.updated_date; delete payload.created_by_id; const { data: saved, error } = await supabase.from('gift_shop_products').update(payload).eq('id', id).select('*').single(); if (error) throw error; return saved; },
+    mutationFn: async ({ id, data }) => { const payload = { ...data }; delete payload.id; delete payload.created_date; delete payload.updated_date; delete payload.created_by_id; const { data: saved, error } = await supabase.from('products').update(payload).eq('id', id).select('*').single(); if (error) throw error; return saved; },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
       setEditingProduct(null);
@@ -120,16 +120,16 @@ export default function AdminProducts() {
   });
 
   const deleteProductMutation = useMutation({
-    mutationFn: async (id) => { const { error } = await supabase.from('gift_shop_products').delete().eq('id', id); if (error) throw error; },
+    mutationFn: async (id) => { const { error } = await supabase.from('products').delete().eq('id', id); if (error) throw error; },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['adminProducts'] })
   });
 
   const savePaymentLinkMutation = useMutation({
     mutationFn: async (link) => {
       if (shopSettings.length > 0) {
-        const { data, error } = await supabase.from('gift_shop_settings').update({ payment_link: link }).eq('id', shopSettings[0].id).select('*').single(); if (error) throw error; return data;
+        const { data, error } = await supabase.from('shop_settings').update({ payment_link: link }).eq('id', shopSettings[0].id).select('*').single(); if (error) throw error; return data;
       } else {
-        const { data, error } = await supabase.from('gift_shop_settings').insert({ payment_link: link }).select('*').single(); if (error) throw error; return data;
+        const { data, error } = await supabase.from('shop_settings').insert({ payment_link: link }).select('*').single(); if (error) throw error; return data;
       }
     },
     onSuccess: () => {
