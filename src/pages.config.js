@@ -8,6 +8,7 @@ import Checkout from './pages/Checkout';
 import Content from './pages/Content';
 import ContentDebug from './pages/ContentDebug';
 import DataDebug from './pages/DataDebug';
+import Downloads from './pages/Downloads';
 import Index from './pages/Index';
 import Magazine from './pages/Magazine';
 import Plus from './pages/Plus';
@@ -32,6 +33,7 @@ export const PAGES = {
     "Content": Content,
     "ContentDebug": ContentDebug,
     "DataDebug": DataDebug,
+    "Downloads": Downloads,
     "Index": Index,
     "Magazine": Magazine,
     "Plus": Plus,
