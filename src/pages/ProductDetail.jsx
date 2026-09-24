@@ -29,7 +29,7 @@ export default function ProductDetail() {
   const product = rawProducts.find(p => p.id === productId);
 
   const addToCart = () => {
-    const cart = JSON.parse(sessionStorage.getItem('cochon_cart') || '[]');
+    const cart = JSON.parse(sessionStorage.getItem('aistage_giftshop_cart') || '[]');
     const existing = cart.find(item => item.id === product.id);
     
     let newCart;
@@ -43,7 +43,7 @@ export default function ProductDetail() {
       newCart = [...cart, { ...product, quantity: 1 }];
     }
     
-    sessionStorage.setItem('cochon_cart', JSON.stringify(newCart));
+    sessionStorage.setItem('aistage_giftshop_cart', JSON.stringify(newCart));
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
@@ -135,7 +135,7 @@ export default function ProductDetail() {
           </Button>
 
           {/* View Cart Link */}
-          <Link to={createPageUrl('Checkout')}>
+          <Link to={createPageUrl('Cart')}>
             <Button
               variant="outline"
               className="w-full mt-4 border-white/20 text-white hover:bg-white hover:text-black"
