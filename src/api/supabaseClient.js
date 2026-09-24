@@ -1,11 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://zbfjexzxkvufcqvtsafu.supabase.co';
-const supabasePublishableKey = 'sb_publishable_5W5CB1vcnU6_9N0qxhTbUw_NDnakzhN';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+if (!supabaseUrl || !supabasePublishableKey) {
+  console.warn(
+    'Supabase n’est pas configuré. Définir VITE_SUPABASE_URL et VITE_SUPABASE_PUBLISHABLE_KEY.',
+  );
+}
 
 export const supabase = createClient(
-  supabaseUrl,
-  supabasePublishableKey,
+  supabaseUrl || 'https://invalid.supabase.local',
+  supabasePublishableKey || 'missing-publishable-key',
   {
     auth: {
       persistSession: true,
