@@ -101,6 +101,44 @@ export default function AdminProducts() {
     }
   }, [shopSettings]);
 
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const loadExistingPrintfulReference = async () => {
+      if (!editingProduct?.id || !editingProduct?.sku) {
+        return;
+      }
+
+      const isPrintfulProduct = (editingProduct.product_options || [])
+        .some((option) => option?.name === 'Printful variant');
+
+      if (!isPrintfulProduct) {
+        setPrintfulReference(null);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/printful/products?sku=${encodeURIComponent(editingProduct.sku)}`
+        );
+        const data = await response.json();
+        if (!response.ok) return;
+
+        if (!cancelled) {
+          setPrintfulReference(data?.result?.catalog_product || null);
+        }
+      } catch (error) {
+        console.warn('Unable to load Printful technical reference:', error);
+      }
+    };
+
+    loadExistingPrintfulReference();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editingProduct?.id, editingProduct?.sku]);
+
   const createProductMutation = useMutation({
     mutationFn: async (data) => { const { data: saved, error } = await supabase.from('products').insert(data).select('*').single(); if (error) throw error; return saved; },
     onSuccess: () => {
