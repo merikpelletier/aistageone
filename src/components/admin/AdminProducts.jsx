@@ -18,6 +18,7 @@ export default function AdminProducts() {
   const [printfulProducts, setPrintfulProducts] = useState([]);
   const [printfulLoading, setPrintfulLoading] = useState(false);
   const [selectedPrintfulProductId, setSelectedPrintfulProductId] = useState('');
+  const [printfulReference, setPrintfulReference] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: products = [] } = useQuery({
@@ -176,7 +177,9 @@ export default function AdminProducts() {
 
       const syncProduct = data?.result?.sync_product;
       const syncVariants = data?.result?.sync_variants || [];
+      const catalogProduct = data?.result?.catalog_product || null;
       const gallery = (data?.result?.gallery || []).filter(Boolean);
+      setPrintfulReference(catalogProduct);
       const variantNames = [...new Set(syncVariants.map((variant) => variant.name).filter(Boolean))];
       const prices = syncVariants.map((variant) => Number(variant.retail_price)).filter(Number.isFinite);
       const retailPrice = prices.length ? Math.min(...prices).toFixed(2) : '';
@@ -518,6 +521,7 @@ export default function AdminProducts() {
           onClick={() => {
             setProductSource('manual');
             setSelectedPrintfulProductId('');
+            setPrintfulReference(null);
             setEditingProduct({ 
               name: '', 
               description: '', 
