@@ -427,7 +427,7 @@ export default function AdminProducts() {
 
       {/* Edit Section Dialog */}
       <Dialog open={!!editingSection} onOpenChange={() => setEditingSection(null)}>
-        <DialogContent className="bg-neutral-950 border-white/10 text-white">
+        <DialogContent className="bg-neutral-950 border-white/10 text-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-light tracking-wide">
               {editingSection?.id ? 'Edit' : 'New'} Section
