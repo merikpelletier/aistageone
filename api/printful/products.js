@@ -31,10 +31,18 @@ async function enrichSyncProduct(data, token) {
       const catalogProductId = variantData?.result?.variant?.product_id;
 
       if (catalogProductId) {
-        const productData = await printfulFetch(
-          `/v2/catalog-products/${encodeURIComponent(catalogProductId)}?selling_region_name=canada`,
-          token
-        );
+        let productData = null;
+        try {
+          productData = await printfulFetch(
+            `/v2/catalog-products/${encodeURIComponent(catalogProductId)}?selling_region_name=canada`,
+            token
+          );
+        } catch (regionError) {
+          productData = await printfulFetch(
+            `/v2/catalog-products/${encodeURIComponent(catalogProductId)}?selling_region_name=all`,
+            token
+          );
+        }
         catalogProduct = productData?.data || null;
       }
     } catch (catalogError) {
