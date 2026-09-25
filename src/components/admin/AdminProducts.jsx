@@ -764,23 +764,23 @@ export default function AdminProducts() {
                   ))}
                 </div>
 
-                <label className="block">
+                <div>
                   <input
+                    id="product-gallery-upload"
                     type="file"
                     accept="image/*"
                     multiple
                     onChange={handleSecondaryImageUpload}
                     className="hidden"
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full !bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800"
+                  <label
+                    htmlFor="product-gallery-upload"
+                    className="w-full h-10 px-4 border border-white/20 bg-neutral-900 text-white hover:bg-neutral-800 inline-flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <Upload size={16} className="mr-2" />
+                    <Upload size={16} />
                     Add gallery images
-                  </Button>
-                </label>
+                  </label>
+                </div>
               </div>
               <div className="border border-white/10 bg-neutral-900/50 p-4 space-y-3">
                 <div className="flex items-center justify-between gap-3">
