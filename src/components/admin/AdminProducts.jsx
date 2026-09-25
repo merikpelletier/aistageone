@@ -176,20 +176,22 @@ export default function AdminProducts() {
 
       const syncProduct = data?.result?.sync_product;
       const syncVariants = data?.result?.sync_variants || [];
+      const catalogProduct = data?.result?.catalog_product;
+      const gallery = (data?.result?.gallery || []).filter(Boolean);
       const variantNames = [...new Set(syncVariants.map((variant) => variant.name).filter(Boolean))];
       const prices = syncVariants.map((variant) => Number(variant.retail_price)).filter(Number.isFinite);
       const retailPrice = prices.length ? Math.min(...prices).toFixed(2) : '';
-      const previewImage =
-        syncProduct?.thumbnail_url ||
-        syncVariants.flatMap((variant) => variant.files || []).find((file) => file?.preview_url)?.preview_url ||
-        '';
+      const previewImage = gallery[0] || syncProduct?.thumbnail_url || '';
 
       setEditingProduct((current) => ({
         ...current,
         name: syncProduct?.name || current?.name || '',
-        price: retailPrice ? `${retailPrice}` : (current?.price || ''),
+        description: catalogProduct?.description || current?.description || '',
+        price: retailPrice ? `$${retailPrice}` : (current?.price || ''),
         image_url: previewImage || current?.image_url || '',
+        images: gallery.filter((url) => url !== previewImage),
         sku: syncVariants[0]?.sku || current?.sku || '',
+        stock: null,
         product_options: variantNames.length
           ? [{ name: 'Printful variant', values: variantNames }]
           : (current?.product_options || []),
