@@ -137,13 +137,18 @@ export default async function handler(req, res) {
     for (const variant of usableVariants) {
       for (const file of variant?.files || []) {
         const type = file?.type || 'default';
-        const url = file?.url;
+        const imageUrl = file?.url || file?.preview_url || file?.thumbnail_url;
 
-        if (!url || type === 'preview' || type === 'mockup') continue;
-        if (!filesByPlacement.has(type)) {
-          filesByPlacement.set(type, {
-            placement: type === 'default' ? 'front' : type,
-            image_url: url,
+        if (!imageUrl || type === 'preview' || type === 'mockup' || type.startsWith('label_')) continue;
+
+        const placement = (type === 'default' ? 'front' : type)
+          .replace(/_dtf$/, '')
+          .replace(/_dtg$/, '');
+
+        if (!filesByPlacement.has(placement)) {
+          filesByPlacement.set(placement, {
+            placement,
+            image_url: imageUrl,
           });
         }
       }
