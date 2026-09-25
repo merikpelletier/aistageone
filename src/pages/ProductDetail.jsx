@@ -50,10 +50,12 @@ export default function ProductDetail() {
   const allOptionsSelected = productOptions.every((option) => selectedOptions[option.name]);
 
   const livePrintfulGallery = printfulData?.gallery || [];
+  const secondaryImages = livePrintfulGallery.length > 0
+    ? livePrintfulGallery
+    : (product?.images || []);
   const galleryImages = [
     product?.image_url,
-    ...(product?.images || []),
-    ...livePrintfulGallery,
+    ...secondaryImages,
   ].filter((url, index, list) => url && list.indexOf(url) === index);
 
   const productDescription =
