@@ -18,7 +18,6 @@ export default function AdminProducts() {
   const [printfulProducts, setPrintfulProducts] = useState([]);
   const [printfulLoading, setPrintfulLoading] = useState(false);
   const [selectedPrintfulProductId, setSelectedPrintfulProductId] = useState('');
-  const [printfulGalleryLoading, setPrintfulGalleryLoading] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: products = [] } = useQuery({
@@ -177,7 +176,6 @@ export default function AdminProducts() {
 
       const syncProduct = data?.result?.sync_product;
       const syncVariants = data?.result?.sync_variants || [];
-      const catalogProduct = data?.result?.catalog_product;
       const gallery = (data?.result?.gallery || []).filter(Boolean);
       const variantNames = [...new Set(syncVariants.map((variant) => variant.name).filter(Boolean))];
       const prices = syncVariants.map((variant) => Number(variant.retail_price)).filter(Number.isFinite);
@@ -187,7 +185,7 @@ export default function AdminProducts() {
       setEditingProduct((current) => ({
         ...current,
         name: syncProduct?.name || current?.name || '',
-        description: catalogProduct?.description || current?.description || '',
+        description: current?.description || '',
         price: retailPrice ? `$${retailPrice}` : (current?.price || ''),
         image_url: previewImage || current?.image_url || '',
         images: gallery.filter((url) => url !== previewImage),
@@ -248,63 +246,6 @@ export default function AdminProducts() {
           : remaining,
       };
     });
-  };
-
-  const generatePrintfulGallery = async () => {
-    if (!editingProduct?.sku) {
-      alert('This product has no Printful SKU');
-      return;
-    }
-
-    setPrintfulGalleryLoading(true);
-    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-    try {
-      const startResponse = await fetch('/api/printful/mockups', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sku: editingProduct.sku }),
-      });
-      const startData = await startResponse.json();
-      if (!startResponse.ok) throw new Error(startData?.error || 'Unable to start Printful gallery');
-
-      let urls = Array.isArray(startData?.urls) ? startData.urls : [];
-
-      if (!urls.length && startData?.task_id) {
-        for (let attempt = 0; attempt < 10; attempt += 1) {
-          if (attempt > 0) await sleep(1500);
-
-          const statusResponse = await fetch(
-            `/api/printful/mockups?task_id=${encodeURIComponent(startData.task_id)}`
-          );
-          const statusData = await statusResponse.json();
-          if (!statusResponse.ok) {
-            throw new Error(statusData?.error || 'Unable to load Printful gallery');
-          }
-
-          urls = Array.isArray(statusData?.urls) ? statusData.urls : [];
-          if (statusData?.status === 'completed' || urls.length > 0) break;
-          if (statusData?.status === 'failed') {
-            throw new Error(statusData?.error || 'Printful gallery generation failed');
-          }
-        }
-      }
-
-      if (!urls.length) {
-        throw new Error('Printful did not return gallery images');
-      }
-
-      setEditingProduct((current) => {
-        const primary = current.image_url;
-        const unique = [...new Set(urls.filter((url) => url && url !== primary))];
-        return { ...current, images: unique };
-      });
-    } catch (error) {
-      console.error('Printful gallery generation failed:', error);
-      alert(error?.message || 'Unable to generate Printful gallery');
-    } finally {
-      setPrintfulGalleryLoading(false);
-    }
   };
 
   const handleDigitalFileUpload = async (e) => {
@@ -734,13 +675,21 @@ export default function AdminProducts() {
                 placeholder="Name"
                 className="bg-neutral-900 border-white/10 text-white"
               />
-              <Textarea
-                value={editingProduct.description || ''}
-                onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
-                placeholder="Description"
-                className="bg-neutral-900 border-white/10 text-white"
-                rows={3}
-              />
+              <div>
+                <label className="block text-white text-sm mb-2">Store description</label>
+                <Textarea
+                  value={editingProduct.description || ''}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                  placeholder="Write the product description shown in AISTAGE.ONE"
+                  className="bg-neutral-900 border-white/10 text-white"
+                  rows={5}
+                />
+                {(editingProduct.product_options || []).some((option) => option?.name === 'Printful variant') && (
+                  <p className="text-white/40 text-xs mt-2">
+                    This description is managed in AISTAGE.ONE. Printful remains the fulfillment source.
+                  </p>
+                )}
+              </div>
               <Input
                 value={editingProduct.price}
                 onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })}
@@ -767,24 +716,11 @@ export default function AdminProducts() {
                 </label>
               </div>
               <div className="border border-white/10 bg-neutral-900/50 p-4 space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-white text-sm">Product gallery</p>
-                    <p className="text-white/50 text-xs mt-1">
-                      Main image plus additional storefront images.
-                    </p>
-                  </div>
-                  {(editingProduct.product_options || []).some((option) => option?.name === 'Printful variant') && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={generatePrintfulGallery}
-                      disabled={printfulGalleryLoading}
-                      className="!bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800"
-                    >
-                      {printfulGalleryLoading ? 'Generating…' : 'Generate Printful gallery'}
-                    </Button>
-                  )}
+                <div>
+                  <p className="text-white text-sm">Product gallery</p>
+                  <p className="text-white/50 text-xs mt-1">
+                    Storefront images are managed here in AISTAGE.ONE.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
