@@ -13,6 +13,7 @@ export default function ProductDetail() {
   const [added, setAdded] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState({});
   const [activeImage, setActiveImage] = useState('');
+  const [printfulData, setPrintfulData] = useState(null);
 
   const { data: rawProducts = [], isLoading } = useQuery({
     queryKey: ['products'],
@@ -20,13 +21,45 @@ export default function ProductDetail() {
   });
 
   const product = rawProducts.find((item) => item.id === productId);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPrintfulData = async () => {
+      if (!product?.sku || (product.description && (product.images || []).length > 0)) {
+        setPrintfulData(null);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/printful/products?sku=${encodeURIComponent(product.sku)}`);
+        const data = await response.json();
+        if (!response.ok) return;
+        if (!cancelled) setPrintfulData(data?.result || null);
+      } catch (error) {
+        console.warn('Unable to load Printful product details:', error);
+      }
+    };
+
+    loadPrintfulData();
+    return () => {
+      cancelled = true;
+    };
+  }, [product?.id, product?.sku, product?.description, product?.images]);
   const productOptions = product?.product_options || [];
   const allOptionsSelected = productOptions.every((option) => selectedOptions[option.name]);
 
+  const livePrintfulGallery = printfulData?.gallery || [];
   const galleryImages = [
     product?.image_url,
     ...(product?.images || []),
+    ...livePrintfulGallery,
   ].filter((url, index, list) => url && list.indexOf(url) === index);
+
+  const productDescription =
+    product?.description ||
+    printfulData?.catalog_product?.description ||
+    '';
 
   useEffect(() => {
     if (product?.image_url) setActiveImage(product.image_url);
@@ -169,13 +202,9 @@ export default function ProductDetail() {
               </p>
             )}
 
-            {product.description ? (
+            {productDescription && (
               <p className="text-white/80 font-light leading-relaxed mb-8 whitespace-pre-line">
-                {product.description}
-              </p>
-            ) : (
-              <p className="text-white/40 font-light leading-relaxed mb-8">
-                Description non renseignée.
+                {productDescription}
               </p>
             )}
 
