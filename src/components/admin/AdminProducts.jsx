@@ -109,13 +109,7 @@ export default function AdminProducts() {
         return;
       }
 
-      const isPrintfulProduct = (editingProduct.product_options || [])
-        .some((option) => option?.name === 'Printful variant');
-
-      if (!isPrintfulProduct) {
-        setPrintfulReference(null);
-        return;
-      }
+      setPrintfulReference(null);
 
       try {
         const response = await fetch(
@@ -730,6 +724,24 @@ export default function AdminProducts() {
                   <p className="text-white/40 text-xs mt-2">
                     This description is managed in AISTAGE.ONE. Printful remains the fulfillment source.
                   </p>
+                )}
+
+                {printfulReference && (
+                  <div className="mt-4 border border-white/10 bg-neutral-900/50 p-4 space-y-2">
+                    <p className="text-white text-xs uppercase tracking-wider">
+                      Printful technical reference
+                    </p>
+                    {(printfulReference.brand || printfulReference.model) && (
+                      <p className="text-white/60 text-xs">
+                        {[printfulReference.brand, printfulReference.model].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                    {printfulReference.description && (
+                      <p className="text-white/80 text-sm leading-relaxed whitespace-pre-line">
+                        {printfulReference.description}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
               <Input
