@@ -18,6 +18,7 @@ export default function AdminProducts() {
   const [printfulProducts, setPrintfulProducts] = useState([]);
   const [printfulLoading, setPrintfulLoading] = useState(false);
   const [selectedPrintfulProductId, setSelectedPrintfulProductId] = useState('');
+  const [printfulGalleryLoading, setPrintfulGalleryLoading] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: products = [] } = useQuery({
@@ -212,11 +213,98 @@ export default function AdminProducts() {
   };
 
   const handleSecondaryImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    const existing = editingProduct.images || [];
-    setEditingProduct({ ...editingProduct, images: [...existing, file_url] });
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const uploaded = [];
+    for (const file of files) {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      if (file_url) uploaded.push(file_url);
+    }
+
+    setEditingProduct((current) => ({
+      ...current,
+      images: [...(current.images || []), ...uploaded],
+    }));
+    e.target.value = '';
+  };
+
+  const removeGalleryImage = (url) => {
+    setEditingProduct((current) => ({
+      ...current,
+      images: (current.images || []).filter((image) => image !== url),
+    }));
+  };
+
+  const setGalleryImageAsPrimary = (url) => {
+    setEditingProduct((current) => {
+      const previousPrimary = current.image_url;
+      const remaining = (current.images || []).filter((image) => image !== url);
+      return {
+        ...current,
+        image_url: url,
+        images: previousPrimary
+          ? [previousPrimary, ...remaining.filter((image) => image !== previousPrimary)]
+          : remaining,
+      };
+    });
+  };
+
+  const generatePrintfulGallery = async () => {
+    if (!editingProduct?.sku) {
+      alert('This product has no Printful SKU');
+      return;
+    }
+
+    setPrintfulGalleryLoading(true);
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    try {
+      const startResponse = await fetch('/api/printful/mockups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sku: editingProduct.sku }),
+      });
+      const startData = await startResponse.json();
+      if (!startResponse.ok) throw new Error(startData?.error || 'Unable to start Printful gallery');
+
+      let urls = Array.isArray(startData?.urls) ? startData.urls : [];
+
+      if (!urls.length && startData?.task_id) {
+        for (let attempt = 0; attempt < 10; attempt += 1) {
+          if (attempt > 0) await sleep(1500);
+
+          const statusResponse = await fetch(
+            `/api/printful/mockups?task_id=${encodeURIComponent(startData.task_id)}`
+          );
+          const statusData = await statusResponse.json();
+          if (!statusResponse.ok) {
+            throw new Error(statusData?.error || 'Unable to load Printful gallery');
+          }
+
+          urls = Array.isArray(statusData?.urls) ? statusData.urls : [];
+          if (statusData?.status === 'completed' || urls.length > 0) break;
+          if (statusData?.status === 'failed') {
+            throw new Error(statusData?.error || 'Printful gallery generation failed');
+          }
+        }
+      }
+
+      if (!urls.length) {
+        throw new Error('Printful did not return gallery images');
+      }
+
+      setEditingProduct((current) => {
+        const primary = current.image_url;
+        const unique = [...new Set(urls.filter((url) => url && url !== primary))];
+        return { ...current, images: unique };
+      });
+    } catch (error) {
+      console.error('Printful gallery generation failed:', error);
+      alert(error?.message || 'Unable to generate Printful gallery');
+    } finally {
+      setPrintfulGalleryLoading(false);
+    }
   };
 
   const handleDigitalFileUpload = async (e) => {
@@ -678,20 +766,83 @@ export default function AdminProducts() {
                   </Button>
                 </label>
               </div>
-              <div>
-                <label className="block text-white text-sm mb-2">Secondary images (optional)</label>
-                {editingProduct.images && editingProduct.images.length > 0 && (
-                  <div className="flex gap-2 mb-2 flex-wrap">
-                    {editingProduct.images.map((img, idx) => (
-                      <img key={idx} src={img} alt="" className="w-16 h-16 object-cover rounded-sm" />
-                    ))}
+              <div className="border border-white/10 bg-neutral-900/50 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-white text-sm">Product gallery</p>
+                    <p className="text-white/50 text-xs mt-1">
+                      Main image plus additional storefront images.
+                    </p>
                   </div>
-                )}
+                  {(editingProduct.product_options || []).some((option) => option?.name === 'Printful variant') && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={generatePrintfulGallery}
+                      disabled={printfulGalleryLoading}
+                      className="!bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800"
+                    >
+                      {printfulGalleryLoading ? 'Generating…' : 'Generate Printful gallery'}
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {editingProduct.image_url && (
+                    <div className="border border-white/20 bg-black p-2">
+                      <div className="aspect-square bg-neutral-950 flex items-center justify-center overflow-hidden">
+                        <img
+                          src={editingProduct.image_url}
+                          alt=""
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <p className="text-white/50 text-[10px] uppercase tracking-wider mt-2">
+                        Main image
+                      </p>
+                    </div>
+                  )}
+
+                  {(editingProduct.images || []).map((img, idx) => (
+                    <div key={`${img}-${idx}`} className="border border-white/10 bg-black p-2">
+                      <div className="aspect-square bg-neutral-950 flex items-center justify-center overflow-hidden">
+                        <img src={img} alt="" className="w-full h-full object-contain" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setGalleryImageAsPrimary(img)}
+                          className="h-8 border border-white/20 bg-neutral-900 text-white text-[11px] hover:bg-neutral-800"
+                        >
+                          Set main
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeGalleryImage(img)}
+                          className="h-8 border border-white/20 bg-neutral-900 text-white text-[11px] hover:text-red-400"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 <label className="block">
-                  <input type="file" accept="image/*" onChange={handleSecondaryImageUpload} className="hidden" />
-                  <Button type="button" variant="outline" className="w-full !bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleSecondaryImageUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full !bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800"
+                  >
                     <Upload size={16} className="mr-2" />
-                    Add a secondary image
+                    Add gallery images
                   </Button>
                 </label>
               </div>
