@@ -330,8 +330,20 @@ export default function AdminProducts() {
   const handleSectionImageUpload = async (field, e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setEditingSection((current) => current ? { ...current, [field]: file_url } : current);
+
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      if (!file_url) throw new Error('Image upload did not return a file URL');
+
+      setEditingSection((current) =>
+        current ? { ...current, [field]: file_url } : current
+      );
+    } catch (error) {
+      console.error(`Section ${field} upload failed:`, error);
+      alert(error?.message || 'Unable to upload image');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const addProductOption = () => {
@@ -455,17 +467,19 @@ export default function AdminProducts() {
                 {editingSection.banner_image && (
                   <img src={editingSection.banner_image} alt="" className="w-full h-32 object-cover rounded-sm mb-2" />
                 )}
-                <label className="block">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleSectionImageUpload('banner_image', e)}
-                    className="hidden"
-                  />
-                  <Button type="button" variant="outline" className="w-full !bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800">
-                    <Upload size={16} className="mr-2" />
-                    Choose banner image
-                  </Button>
+                <input
+                  id="section-banner-image-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleSectionImageUpload('banner_image', e)}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="section-banner-image-upload"
+                  className="w-full h-10 px-4 border border-white/20 bg-neutral-900 text-white hover:bg-neutral-800 inline-flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Upload size={16} />
+                  Choose banner image
                 </label>
               </div>
               <Input
@@ -486,17 +500,19 @@ export default function AdminProducts() {
                 {editingSection.promo_image && (
                   <img src={editingSection.promo_image} alt="" className="w-full h-32 object-cover rounded-sm mb-2" />
                 )}
-                <label className="block">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleSectionImageUpload('promo_image', e)}
-                    className="hidden"
-                  />
-                  <Button type="button" variant="outline" className="w-full !bg-neutral-900 !text-white !border-white/20 hover:!bg-neutral-800">
-                    <Upload size={16} className="mr-2" />
-                    Choose promo image
-                  </Button>
+                <input
+                  id="section-promo-image-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleSectionImageUpload('promo_image', e)}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="section-promo-image-upload"
+                  className="w-full h-10 px-4 border border-white/20 bg-neutral-900 text-white hover:bg-neutral-800 inline-flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Upload size={16} />
+                  Choose promo image
                 </label>
               </div>
               <Input
