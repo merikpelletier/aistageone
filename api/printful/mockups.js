@@ -11,14 +11,25 @@ async function pf(path, token, options = {}) {
     },
   });
 
-  const data = await response.json();
+  const contentType = response.headers.get('content-type') || '';
+  let data = null;
+
+  if (contentType.includes('application/json')) {
+    data = await response.json();
+  } else {
+    const text = await response.text();
+    const error = new Error(text || `Printful request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
+  }
+
   if (!response.ok) {
     const message =
+      data?.detail ||
       data?.error?.message ||
-      data?.result ||
       data?.message ||
-      `Printful request failed (${response.status})`;
-    const error = new Error(typeof message === 'string' ? message : JSON.stringify(message));
+      JSON.stringify(data);
+    const error = new Error(message);
     error.status = response.status;
     throw error;
   }
@@ -43,19 +54,87 @@ async function findSyncProductBySku(sku, token) {
   return null;
 }
 
-function collectMockupUrls(result) {
+function collectTaskUrls(task) {
   const urls = [];
 
-  const add = (url) => {
-    if (url && !urls.includes(url)) urls.push(url);
-  };
-
-  for (const mockup of result?.mockups || []) {
-    add(mockup?.mockup_url);
-    for (const extra of mockup?.extra || []) add(extra?.url);
+  for (const variantMockup of task?.catalog_variant_mockups || []) {
+    for (const mockup of variantMockup?.mockups || []) {
+      if (mockup?.mockup_url && !urls.includes(mockup.mockup_url)) {
+        urls.push(mockup.mockup_url);
+      }
+    }
   }
 
   return urls;
+}
+
+function normalizePlacement(type) {
+  const raw = type === 'default' ? 'front' : type;
+  return raw
+    .replace(/_dtf$/i, '')
+    .replace(/_dtg$/i, '');
+}
+
+function buildPlacements(syncVariants, origin) {
+  const map = new Map();
+
+  for (const variant of syncVariants) {
+    for (const file of variant?.files || []) {
+      const type = file?.type || 'default';
+
+      if (
+        type === 'preview' ||
+        type === 'mockup' ||
+        type.startsWith('label_')
+      ) {
+        continue;
+      }
+
+      const sourceUrl = file?.url || file?.preview_url || file?.thumbnail_url;
+      if (!sourceUrl) continue;
+
+      const placement = normalizePlacement(type);
+      if (map.has(placement)) continue;
+
+      const proxiedUrl =
+        `${origin}/api/printful/file-proxy?url=${encodeURIComponent(sourceUrl)}`;
+
+      map.set(placement, {
+        placement,
+        layers: [
+          {
+            type: 'file',
+            url: proxiedUrl,
+          },
+        ],
+      });
+    }
+  }
+
+  return [...map.values()];
+}
+
+async function loadMockupStyleIds(catalogProductId, token) {
+  const stylesData = await pf(
+    `/v2/catalog-products/${encodeURIComponent(
+      catalogProductId
+    )}/mockup-styles?default_mockup_styles=true&limit=100`,
+    token
+  );
+
+  const styleIds = [];
+
+  for (const placement of stylesData?.data || []) {
+    for (const style of placement?.mockup_styles || []) {
+      if (style?.id && !styleIds.includes(style.id)) {
+        styleIds.push(style.id);
+      }
+      if (styleIds.length >= 6) break;
+    }
+    if (styleIds.length >= 6) break;
+  }
+
+  return styleIds;
 }
 
 export default async function handler(req, res) {
@@ -68,27 +147,33 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const taskKey = Array.isArray(req.query?.task_id)
+      const taskId = Array.isArray(req.query?.task_id)
         ? req.query.task_id[0]
         : req.query?.task_id;
 
-      if (!taskKey) {
+      if (!taskId) {
         res.status(400).json({ error: 'task_id is required' });
         return;
       }
 
-      const data = await pf(
-        `/mockup-generator/task?task_key=${encodeURIComponent(taskKey)}`,
+      const result = await pf(
+        `/v2/mockup-tasks?id=${encodeURIComponent(taskId)}`,
         token
       );
-      const result = data?.result || {};
+
+      const task = Array.isArray(result?.data) ? result.data[0] : null;
+
+      if (!task) {
+        res.status(404).json({ error: 'Mockup task not found' });
+        return;
+      }
 
       res.setHeader('Cache-Control', 'no-store');
       res.status(200).json({
-        task_id: result.task_key || taskKey,
-        status: result.status || 'pending',
-        urls: collectMockupUrls(result),
-        error: result.error || null,
+        task_id: task.id,
+        status: task.status,
+        urls: collectTaskUrls(task),
+        failure_reasons: task.failure_reasons || [],
       });
       return;
     }
@@ -107,138 +192,101 @@ export default async function handler(req, res) {
     }
 
     const sync = await findSyncProductBySku(sku, token);
-
     if (!sync) {
       res.status(404).json({ error: 'Printful product not found for this SKU' });
       return;
     }
 
-    const syncVariants = sync?.result?.sync_variants || [];
-    const usableVariants = syncVariants.filter((variant) => variant?.variant_id);
+    const syncVariants = (sync?.result?.sync_variants || [])
+      .filter((variant) => variant?.variant_id);
 
-    if (!usableVariants.length) {
-      res.status(400).json({ error: 'Printful product has no usable variants' });
+    if (!syncVariants.length) {
+      res.status(400).json({ error: 'No usable Printful variants found' });
       return;
     }
 
-    const catalogVariant = await pf(
-      `/products/variant/${encodeURIComponent(usableVariants[0].variant_id)}`,
+    const firstVariantId = syncVariants[0].variant_id;
+    const variantData = await pf(
+      `/products/variant/${encodeURIComponent(firstVariantId)}`,
       token
     );
-    const catalogProductId = catalogVariant?.result?.variant?.product_id;
+    const catalogProductId = variantData?.result?.variant?.product_id;
 
     if (!catalogProductId) {
       res.status(400).json({ error: 'Unable to resolve Printful catalog product' });
       return;
     }
 
-    const printfileInfo = await pf(
-      `/mockup-generator/printfiles/${encodeURIComponent(catalogProductId)}`,
-      token
-    );
-    const printfileResult = printfileInfo?.result || {};
-    const printfileById = new Map(
-      (printfileResult.printfiles || []).map((item) => [String(item.printfile_id), item])
-    );
-    const variantPrintfiles = new Map(
-      (printfileResult.variant_printfiles || []).map((item) => [String(item.variant_id), item.placements || {}])
-    );
+    const catalogVariantIds = [
+      ...new Set(syncVariants.map((variant) => variant.variant_id)),
+    ];
 
-    const filesByPlacement = new Map();
+    const styleIds = await loadMockupStyleIds(catalogProductId, token);
 
-    for (const variant of usableVariants) {
-      const placementMap = variantPrintfiles.get(String(variant.variant_id)) || {};
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    const protocol = Array.isArray(forwardedProto)
+      ? forwardedProto[0]
+      : (forwardedProto || 'https');
 
-      for (const file of variant?.files || []) {
-        const type = file?.type || 'default';
-        const imageUrl = file?.url || file?.preview_url || file?.thumbnail_url;
+    const origin = `${protocol}://${req.headers.host}`;
+    const placements = buildPlacements(syncVariants, origin);
 
-        if (!imageUrl || type === 'preview' || type === 'mockup' || type.startsWith('label_')) continue;
-
-        const placement = type === 'default' ? 'default' : type;
-
-        // Printful can expose the sync-file type as front_dtf/front_dtg while
-        // the print-area map uses the generic key front. Use the generic key
-        // only to resolve print-area dimensions, but keep the exact DTF/DTG
-        // placement when submitting the mockup task.
-        const genericPlacement = placement
-          .replace(/_dtf$/, '')
-          .replace(/_dtg$/, '');
-
-        const printfileId =
-          placementMap[placement] ??
-          placementMap[genericPlacement];
-
-        const printfile = printfileById.get(String(printfileId));
-
-        if (!printfile) continue;
-
-        const areaWidth = Number(printfile.width);
-        const areaHeight = Number(printfile.height);
-        const sourceWidth = Number(file.width) || areaWidth;
-        const sourceHeight = Number(file.height) || areaHeight;
-
-        let width = areaWidth;
-        let height = Math.round(width * sourceHeight / sourceWidth);
-
-        if (height > areaHeight) {
-          height = areaHeight;
-          width = Math.round(height * sourceWidth / sourceHeight);
-        }
-
-        const left = Math.max(0, Math.round((areaWidth - width) / 2));
-        const top = Math.max(0, Math.round((areaHeight - height) / 2));
-
-        if (!filesByPlacement.has(placement)) {
-          filesByPlacement.set(placement, {
-            placement,
-            image_url: imageUrl,
-            position: {
-              area_width: areaWidth,
-              area_height: areaHeight,
-              width,
-              height,
-              top,
-              left,
-            },
-          });
-        }
-      }
-    }
-
-    const files = [...filesByPlacement.values()];
-
-    if (!files.length) {
+    if (!placements.length) {
       res.status(400).json({
-        error: 'No compatible Printful print area was found for this product design',
+        error: 'No usable design files were found for this Printful product',
       });
       return;
     }
 
-    const variantIds = [...new Set(usableVariants.map((variant) => variant.variant_id))];
+    if (!styleIds.length) {
+      res.status(400).json({
+        error: 'No compatible Printful mockup styles were found',
+      });
+      return;
+    }
 
-    const created = await pf(
-      `/mockup-generator/create-task/${encodeURIComponent(catalogProductId)}`,
-      token,
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          variant_ids: variantIds,
-          format: 'jpg',
-          width: 1200,
-          files,
-        }),
-      }
-    );
+    const payload = {
+      format: 'jpg',
+      mockup_width_px: 1200,
+      products: [
+        {
+          source: 'catalog',
+          catalog_product_id: catalogProductId,
+          catalog_variant_ids: catalogVariantIds.slice(0, 10),
+          mockup_style_ids: styleIds.slice(0, 4),
+          placements,
+        },
+      ],
+    };
 
-    const result = created?.result || {};
+    console.log('Printful v2 mockup payload', JSON.stringify({
+      catalog_product_id: catalogProductId,
+      catalog_variant_ids: payload.products[0].catalog_variant_ids,
+      mockup_style_ids: payload.products[0].mockup_style_ids,
+      placements: placements.map((placement) => ({
+        placement: placement.placement,
+        layer_count: placement.layers.length,
+      })),
+    }));
+
+    const created = await pf('/v2/mockup-tasks', token, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    const task = Array.isArray(created?.data) ? created.data[0] : null;
+
+    if (!task?.id) {
+      res.status(502).json({ error: 'Printful did not return a mockup task ID' });
+      return;
+    }
 
     res.setHeader('Cache-Control', 'no-store');
     res.status(200).json({
-      task_id: result.task_key,
-      status: result.status || 'pending',
-      urls: collectMockupUrls(result),
-      error: result.error || null,
+      task_id: task.id,
+      status: task.status || 'pending',
+      urls: collectTaskUrls(task),
+      failure_reasons: task.failure_reasons || [],
     });
   } catch (error) {
     console.error('Printful mockup generation failed:', error);
