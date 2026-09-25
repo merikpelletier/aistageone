@@ -14,6 +14,8 @@ export default function ProductDetail() {
   const [selectedOptions, setSelectedOptions] = useState({});
   const [activeImage, setActiveImage] = useState('');
   const [printfulData, setPrintfulData] = useState(null);
+  const [generatedGallery, setGeneratedGallery] = useState([]);
+  const [mockupLoading, setMockupLoading] = useState(false);
 
   const { data: rawProducts = [], isLoading } = useQuery({
     queryKey: ['products'],
@@ -47,11 +49,14 @@ export default function ProductDetail() {
     };
   }, [product?.id, product?.sku, product?.description, product?.images]);
   const productOptions = product?.product_options || [];
+  const isPrintfulProduct = productOptions.some((option) => option?.name === 'Printful variant');
   const allOptionsSelected = productOptions.every((option) => selectedOptions[option.name]);
 
   const livePrintfulGallery = printfulData?.gallery || [];
-  const secondaryImages = livePrintfulGallery.length > 0
-    ? livePrintfulGallery
+  const secondaryImages = isPrintfulProduct
+    ? (generatedGallery.length > 0
+        ? generatedGallery
+        : (livePrintfulGallery.length > 1 ? livePrintfulGallery : []))
     : (product?.images || []);
   const galleryImages = [
     product?.image_url,
@@ -62,6 +67,73 @@ export default function ProductDetail() {
     product?.description ||
     printfulData?.catalog_product?.description ||
     '';
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const loadGeneratedMockups = async () => {
+      if (!isPrintfulProduct || !product?.sku) {
+        setGeneratedGallery([]);
+        return;
+      }
+
+      const cacheKey = `aistage_printful_mockups_${product.sku}`;
+      try {
+        const cached = JSON.parse(sessionStorage.getItem(cacheKey) || '[]');
+        if (Array.isArray(cached) && cached.length > 0) {
+          setGeneratedGallery(cached);
+          return;
+        }
+      } catch {
+        // Ignore invalid session cache.
+      }
+
+      if (livePrintfulGallery.length > 1) return;
+
+      setMockupLoading(true);
+      try {
+        const startResponse = await fetch('/api/printful/mockups', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sku: product.sku }),
+        });
+        const startData = await startResponse.json();
+        if (!startResponse.ok || !startData?.task_id) return;
+
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          if (attempt > 0) await sleep(1500);
+          const statusResponse = await fetch(
+            `/api/printful/mockups?task_id=${encodeURIComponent(startData.task_id)}`
+          );
+          const statusData = await statusResponse.json();
+          if (!statusResponse.ok) break;
+
+          if (statusData?.status === 'completed') {
+            const urls = Array.isArray(statusData?.urls) ? statusData.urls : [];
+            if (!cancelled && urls.length > 0) {
+              setGeneratedGallery(urls);
+              sessionStorage.setItem(cacheKey, JSON.stringify(urls));
+            }
+            break;
+          }
+
+          if (statusData?.status === 'failed') break;
+        }
+      } catch (error) {
+        console.warn('Unable to generate Printful mockup gallery:', error);
+      } finally {
+        if (!cancelled) setMockupLoading(false);
+      }
+    };
+
+    loadGeneratedMockups();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPrintfulProduct, product?.sku, livePrintfulGallery.length]);
 
   useEffect(() => {
     if (product?.image_url) setActiveImage(product.image_url);
@@ -139,6 +211,12 @@ export default function ProductDetail() {
                   className="block max-w-full max-h-[720px] w-auto h-auto object-contain"
                 />
               </motion.div>
+            )}
+
+            {mockupLoading && galleryImages.length <= 1 && (
+              <p className="mt-4 text-white/40 text-xs tracking-wide">
+                Préparation de la galerie…
+              </p>
             )}
 
             {galleryImages.length > 1 && (
