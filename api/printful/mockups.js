@@ -141,9 +141,9 @@ export default async function handler(req, res) {
 
         if (!imageUrl || type === 'preview' || type === 'mockup' || type.startsWith('label_')) continue;
 
-        const placement = (type === 'default' ? 'front' : type)
-          .replace(/_dtf$/, '')
-          .replace(/_dtg$/, '');
+        // Use Printful's exact print-file type as the placement identifier.
+        // DTF products can reject generic "front" and require "front_dtf".
+        const placement = type === 'default' ? 'default' : type;
 
         if (!filesByPlacement.has(placement)) {
           filesByPlacement.set(placement, {
