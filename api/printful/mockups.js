@@ -156,7 +156,19 @@ export default async function handler(req, res) {
         if (!imageUrl || type === 'preview' || type === 'mockup' || type.startsWith('label_')) continue;
 
         const placement = type === 'default' ? 'default' : type;
-        const printfileId = placementMap[placement];
+
+        // Printful can expose the sync-file type as front_dtf/front_dtg while
+        // the print-area map uses the generic key front. Use the generic key
+        // only to resolve print-area dimensions, but keep the exact DTF/DTG
+        // placement when submitting the mockup task.
+        const genericPlacement = placement
+          .replace(/_dtf$/, '')
+          .replace(/_dtg$/, '');
+
+        const printfileId =
+          placementMap[placement] ??
+          placementMap[genericPlacement];
+
         const printfile = printfileById.get(String(printfileId));
 
         if (!printfile) continue;
