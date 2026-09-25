@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ShoppingCart } from 'lucide-react';
+import { ArrowRight, ShoppingCart } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -13,8 +13,8 @@ export default function Boutique() {
     return stored ? JSON.parse(stored) : [];
   });
 
-  const [activeFilter, setActiveFilter] = useState({ type: 'all', value: null });
-  const [activeSectionId, setActiveSectionId] = useState(null);
+  const [activeCollectionId, setActiveCollectionId] = useState(null);
+  const [activeProductType, setActiveProductType] = useState(null);
 
   const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ['products'],
@@ -29,118 +29,81 @@ export default function Boutique() {
   });
 
   const topLevelSections = sections.filter(section => !section.parent_section_id);
-  const getSubsections = (parentId) =>
-    sections.filter(section => section.parent_section_id === parentId);
-
-  React.useEffect(() => {
-    if (!activeSectionId && topLevelSections.length > 0) {
-      setActiveSectionId(topLevelSections[0].id);
-    } else if (
-      activeSectionId &&
-      topLevelSections.length > 0 &&
-      !topLevelSections.some(section => section.id === activeSectionId)
-    ) {
-      setActiveSectionId(topLevelSections[0].id);
-    }
-  }, [activeSectionId, topLevelSections]);
-
-  const dossierOptions = Array.from(
-    new Set(products.filter(p => p.dossier_id).map(p => p.dossier_id))
+  const productTypes = Array.from(
+    new Set(products.map(product => product.product_type).filter(Boolean))
   );
 
-  const productTypeOptions = Array.from(
-    new Set(products.filter(p => p.product_type).map(p => p.product_type))
-  );
+  const sortedByOrder = [...products].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+  const featuredProducts = sortedByOrder.slice(0, 4);
+  const popularProducts = sortedByOrder.slice(4, 8).length
+    ? sortedByOrder.slice(4, 8)
+    : sortedByOrder.slice(0, 4);
+  const newArrivals = [...products]
+    .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))
+    .slice(0, 4);
 
-  const filteredProducts = products.filter(product => {
-    if (activeFilter.type === 'all') return true;
-    if (activeFilter.type === 'dossier') return product.dossier_id === activeFilter.value;
-    if (activeFilter.type === 'product_type') return product.product_type === activeFilter.value;
-    return true;
-  });
+  const heroSection = topLevelSections.find(section => section.banner_image) || topLevelSections[0];
+  const heroImage =
+    heroSection?.banner_image ||
+    products.find(product => product.image_url)?.image_url ||
+    '';
 
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const isLoading = productsLoading || sectionsLoading;
 
-  const renderSectionMedia = (section) => (
-    <>
-      {section.banner_image && (
-        <div className="px-6 mb-5">
-          <img
-            src={section.banner_image}
-            alt=""
-            className="w-full max-h-[240px] object-cover rounded-sm"
-          />
-        </div>
-      )}
-      {section.banner_video && (
-        <div className="px-6 mb-5">
-          <video
-            src={section.banner_video}
-            className="w-full max-h-[420px] object-cover rounded-sm"
-            controls
-            playsInline
-          />
-        </div>
-      )}
-      {section.promo_text && (
-        <p className="px-6 text-white/80 text-sm font-light leading-relaxed mb-5">
-          {section.promo_text}
-        </p>
-      )}
-      {section.promo_image && (
-        <div className="px-6 mb-5">
-          <img
-            src={section.promo_image}
-            alt=""
-            className="w-full max-h-[320px] object-cover rounded-sm"
-          />
-        </div>
-      )}
-    </>
-  );
+  const getCollectionProducts = (sectionId) =>
+    products.filter(product => product.section_id === sectionId);
 
-  const renderProducts = (sectionProducts, animationOffset = 0) => (
-    <div className="px-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-      {sectionProducts.map((product, idx) => (
+  const getCollectionImage = (section) =>
+    section.banner_image ||
+    section.promo_image ||
+    getCollectionProducts(section.id).find(product => product.image_url)?.image_url ||
+    '';
+
+  const getTypeImage = (type) =>
+    products.find(product => product.product_type === type && product.image_url)?.image_url || '';
+
+  const renderProductCards = (items) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+      {items.map((product, idx) => (
         <Link
           key={product.id}
           to={`${createPageUrl('ProductDetail')}?id=${product.id}`}
           className="block"
         >
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
+          <motion.article
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: (animationOffset * 0.1) + (idx * 0.1) }}
-            className="bg-neutral-950 border border-white/10 rounded-sm overflow-hidden group hover:border-white/30 transition-colors cursor-pointer"
+            transition={{ delay: idx * 0.05 }}
+            className="h-full bg-neutral-950 border border-white/10 overflow-hidden group hover:border-white/30 transition-colors"
           >
             {product.image_url && (
-              <div className="aspect-[4/3] overflow-hidden">
+              <div className="aspect-square bg-white overflow-hidden">
                 <img
                   src={product.image_url}
-                  alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  alt={product.name || ''}
+                  className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
                 />
               </div>
             )}
-            <div className="p-6">
-              <h3 className="text-white text-lg font-extralight tracking-wide mb-2">
+            <div className="p-4">
+              <p className="text-white/45 text-[11px] uppercase tracking-[0.18em] mb-2">
+                {product.product_type || 'Gift Shop'}
+              </p>
+              <h3 className="text-white text-base font-light leading-snug">
                 {product.name}
               </h3>
-              {product.description && (
-                <p className="text-white text-sm mb-4 font-light leading-relaxed line-clamp-2">
-                  {product.description}
-                </p>
-              )}
-              <div className="flex items-center justify-between mt-4">
-                <span className="text-white text-xl font-light">{product.price}</span>
-              </div>
+              <div className="mt-3 text-white text-lg font-light">{product.price}</div>
             </div>
-          </motion.div>
+          </motion.article>
         </Link>
       ))}
     </div>
   );
+
+  const scrollToCollections = () => {
+    document.getElementById('shop-collections')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   if (isLoading) {
     return (
@@ -151,156 +114,209 @@ export default function Boutique() {
   }
 
   return (
-    <div className="min-h-screen bg-black pb-20 pt-8">
-      <div className="px-6 mb-12">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-white text-3xl font-extralight tracking-widest">AISTAGE ONE Gift Shop</h1>
-            <div className="w-12 h-0.5 bg-red-600 mt-4" />
-          </div>
-          <Link to={createPageUrl('Cart')}>
-            <Button
-              variant="outline"
-              className="border-white/20 text-white bg-neutral-800 hover:bg-neutral-700 relative"
-            >
-              <ShoppingCart size={18} />
-              {cartItemsCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {cartItemsCount}
-                </span>
-              )}
-            </Button>
-          </Link>
+    <div className="min-h-screen bg-black text-white pb-24">
+      <header className="px-6 pt-6 pb-5 flex items-center justify-between border-b border-white/10">
+        <div>
+          <p className="text-white/45 text-[11px] uppercase tracking-[0.28em]">AISTAGE.ONE</p>
+          <h1 className="text-2xl md:text-3xl font-extralight tracking-widest mt-1">Gift Shop</h1>
         </div>
-        <p className="text-white text-sm mt-4 font-light">
-          Add items to your cart and complete your order.
-        </p>
-      </div>
-
-      {(dossierOptions.length > 0 || productTypeOptions.length > 0) && (
-        <div className="px-6 mb-8 flex flex-wrap gap-2">
-          <button
-            onClick={() => setActiveFilter({ type: 'all', value: null })}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-              activeFilter.type === 'all'
-                ? 'bg-white text-black border-white'
-                : 'border-white/20 text-white hover:border-white/40'
-            }`}
+        <Link to={createPageUrl('Cart')}>
+          <Button
+            variant="outline"
+            className="border-white/20 text-white bg-neutral-900 hover:bg-neutral-800 relative"
           >
-            All Products
-          </button>
-          {dossierOptions.map(dossierId => (
-            <button
-              key={`dossier-${dossierId}`}
-              onClick={() => setActiveFilter({ type: 'dossier', value: dossierId })}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                activeFilter.type === 'dossier' && activeFilter.value === dossierId
-                  ? 'bg-white text-black border-white'
-                  : 'border-white/20 text-white hover:border-white/40'
-              }`}
-            >
-              {dossierId}
-            </button>
-          ))}
-          {productTypeOptions.map(type => (
-            <button
-              key={`type-${type}`}
-              onClick={() => setActiveFilter({ type: 'product_type', value: type })}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                activeFilter.type === 'product_type' && activeFilter.value === type
-                  ? 'bg-white text-black border-white'
-                  : 'border-white/20 text-white hover:border-white/40'
-              }`}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
-      )}
+            <ShoppingCart size={18} />
+            {cartItemsCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs w-5 h-5 flex items-center justify-center">
+                {cartItemsCount}
+              </span>
+            )}
+          </Button>
+        </Link>
+      </header>
 
-      {topLevelSections.length > 0 && (
-        <>
-          <div className="px-6 mb-8">
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {topLevelSections.map((section) => (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => setActiveSectionId(section.id)}
-                  className={`shrink-0 px-4 py-2 border text-sm tracking-wide transition-colors ${
-                    activeSectionId === section.id
-                      ? 'bg-white text-black border-white'
-                      : 'bg-neutral-950 text-white border-white/15 hover:border-white/40'
-                  }`}
-                >
-                  {section.name}
-                </button>
-              ))}
+      <section className="px-6 pt-6">
+        <div className="relative min-h-[360px] md:min-h-[460px] overflow-hidden border border-white/10 bg-neutral-950">
+          {heroImage && (
+            <img
+              src={heroImage}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/15" />
+          <div className="relative z-10 min-h-[360px] md:min-h-[460px] flex items-center">
+            <div className="max-w-2xl p-8 md:p-12">
+              <p className="text-white/60 text-xs uppercase tracking-[0.24em] mb-4">
+                Official merchandise
+              </p>
+              <h2 className="text-4xl md:text-6xl font-extralight leading-[1.02] tracking-tight">
+                Wear the stories.
+                <br />
+                Collect the worlds.
+              </h2>
+              <p className="text-white/75 text-sm md:text-base leading-relaxed mt-5 max-w-xl">
+                Discover apparel, objects and collectibles inspired by AISTAGE.ONE series,
+                characters and original worlds.
+              </p>
+              <button
+                type="button"
+                onClick={scrollToCollections}
+                className="mt-7 h-11 px-5 bg-white text-black text-sm inline-flex items-center gap-2 hover:bg-white/90"
+              >
+                Explore the shop
+                <ArrowRight size={16} />
+              </button>
             </div>
           </div>
+        </div>
+      </section>
 
-          {topLevelSections
-            .filter((section) => section.id === activeSectionId)
-            .map((section) => {
-              const directProducts = filteredProducts.filter(
-                product => product.section_id === section.id
-              );
-              const subsections = getSubsections(section.id);
+      {topLevelSections.length > 0 && (
+        <section id="shop-collections" className="px-6 pt-14">
+          <div className="flex items-end justify-between gap-4 mb-6">
+            <div>
+              <p className="text-white/40 text-xs uppercase tracking-[0.22em]">Stories & worlds</p>
+              <h2 className="text-2xl font-light mt-1">Shop by Collection</h2>
+            </div>
+            {activeCollectionId && (
+              <button
+                type="button"
+                onClick={() => setActiveCollectionId(null)}
+                className="text-white/55 text-xs hover:text-white"
+              >
+                Show all
+              </button>
+            )}
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {topLevelSections.map((section) => {
+              const image = getCollectionImage(section);
+              const productCount = getCollectionProducts(section.id).length;
               return (
-                <section key={section.id} className="mb-14">
-                  <div className="px-6 mb-5">
-                    <h2 className="text-white text-xl font-light tracking-widest">
-                      {section.name}
-                    </h2>
-                    {section.description && (
-                      <p className="text-white/60 text-sm font-light mt-2 max-w-4xl">
-                        {section.description}
-                      </p>
-                    )}
+                <button
+                  type="button"
+                  key={section.id}
+                  onClick={() =>
+                    setActiveCollectionId(
+                      activeCollectionId === section.id ? null : section.id
+                    )
+                  }
+                  className={`relative text-left min-h-[220px] overflow-hidden border transition-colors ${
+                    activeCollectionId === section.id
+                      ? 'border-white'
+                      : 'border-white/10 hover:border-white/35'
+                  }`}
+                >
+                  {image && (
+                    <img
+                      src={image}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-transparent" />
+                  <div className="relative z-10 min-h-[220px] flex flex-col justify-end p-5">
+                    <h3 className="text-xl font-light">{section.name}</h3>
+                    <p className="text-white/60 text-xs mt-1">
+                      {productCount} {productCount === 1 ? 'product' : 'products'}
+                    </p>
                   </div>
-
-                  {renderSectionMedia(section)}
-                  {directProducts.length > 0 && renderProducts(directProducts)}
-
-                  {subsections.map((subsection, subsectionIndex) => {
-                    const subsectionProducts = filteredProducts.filter(
-                      product => product.section_id === subsection.id
-                    );
-
-                    if (
-                      subsectionProducts.length === 0 &&
-                      !subsection.banner_image &&
-                      !subsection.banner_video &&
-                      !subsection.promo_text &&
-                      !subsection.promo_image
-                    ) {
-                      return null;
-                    }
-
-                    return (
-                      <div key={subsection.id} className="mt-10">
-                        <h3 className="px-6 text-white text-sm tracking-widest mb-5">
-                          {subsection.name}
-                        </h3>
-                        {renderSectionMedia(subsection)}
-                        {subsectionProducts.length > 0 &&
-                          renderProducts(subsectionProducts, subsectionIndex + 1)}
-                      </div>
-                    );
-                  })}
-                </section>
+                </button>
               );
             })}
-        </>
+          </div>
+
+          {activeCollectionId && (
+            <div className="mt-8 border-t border-white/10 pt-8">
+              {renderProductCards(getCollectionProducts(activeCollectionId))}
+            </div>
+          )}
+        </section>
       )}
 
-      {filteredProducts.filter(product => !product.section_id).length > 0 && (
-        <section className="mb-14">
-          <h2 className="px-6 text-white text-xl font-light tracking-widest mb-5">
-            Other products
-          </h2>
-          {renderProducts(filteredProducts.filter(product => !product.section_id), topLevelSections.length)}
+      {productTypes.length > 0 && (
+        <section className="px-6 pt-14">
+          <div className="flex items-end justify-between gap-4 mb-6">
+            <div>
+              <p className="text-white/40 text-xs uppercase tracking-[0.22em]">Browse the shop</p>
+              <h2 className="text-2xl font-light mt-1">Shop by Product Type</h2>
+            </div>
+            {activeProductType && (
+              <button
+                type="button"
+                onClick={() => setActiveProductType(null)}
+                className="text-white/55 text-xs hover:text-white"
+              >
+                Show all
+              </button>
+            )}
+          </div>
+
+          <div className="flex gap-4 overflow-x-auto pb-3">
+            {productTypes.map((type) => {
+              const image = getTypeImage(type);
+              return (
+                <button
+                  type="button"
+                  key={type}
+                  onClick={() => setActiveProductType(activeProductType === type ? null : type)}
+                  className={`relative shrink-0 w-[210px] h-[170px] overflow-hidden border text-left ${
+                    activeProductType === type
+                      ? 'border-white'
+                      : 'border-white/10 hover:border-white/35'
+                  }`}
+                >
+                  {image && (
+                    <img src={image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+                  <div className="relative z-10 h-full flex items-end p-4">
+                    <span className="text-base font-light">{type}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {activeProductType && (
+            <div className="mt-6">
+              {renderProductCards(
+                products.filter(product => product.product_type === activeProductType)
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      {featuredProducts.length > 0 && (
+        <section className="px-6 pt-14">
+          <div className="mb-6">
+            <p className="text-white/40 text-xs uppercase tracking-[0.22em]">Curated for the shop</p>
+            <h2 className="text-2xl font-light mt-1">Featured Products</h2>
+          </div>
+          {renderProductCards(featuredProducts)}
+        </section>
+      )}
+
+      {popularProducts.length > 0 && products.length > 4 && (
+        <section className="px-6 pt-14">
+          <div className="mb-6">
+            <p className="text-white/40 text-xs uppercase tracking-[0.22em]">More to discover</p>
+            <h2 className="text-2xl font-light mt-1">Popular Picks</h2>
+          </div>
+          {renderProductCards(popularProducts)}
+        </section>
+      )}
+
+      {newArrivals.length > 0 && (
+        <section className="px-6 pt-14">
+          <div className="mb-6">
+            <p className="text-white/40 text-xs uppercase tracking-[0.22em]">Recently added</p>
+            <h2 className="text-2xl font-light mt-1">New Arrivals</h2>
+          </div>
+          {renderProductCards(newArrivals)}
         </section>
       )}
 
