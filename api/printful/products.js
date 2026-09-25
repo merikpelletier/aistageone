@@ -21,7 +21,6 @@ async function enrichSyncProduct(data, token) {
   const firstCatalogVariantId = syncVariants.find((variant) => variant?.variant_id)?.variant_id;
 
   let catalogProduct = null;
-  let catalogImages = [];
 
   if (firstCatalogVariantId) {
     try {
@@ -37,18 +36,6 @@ async function enrichSyncProduct(data, token) {
           token
         );
         catalogProduct = productData?.data || null;
-
-        try {
-          const imagesData = await printfulFetch(
-            `/v2/catalog-products/${encodeURIComponent(catalogProductId)}/images`,
-            token
-          );
-          catalogImages = (imagesData?.data || [])
-            .map((item) => item?.image_url || item?.background_image)
-            .filter(Boolean);
-        } catch (imageError) {
-          console.warn('Unable to load Printful catalog images:', imageError?.message);
-        }
       }
     } catch (catalogError) {
       console.warn('Unable to enrich Printful catalog product:', catalogError?.message);
@@ -60,17 +47,12 @@ async function enrichSyncProduct(data, token) {
     if (url && !gallery.includes(url)) gallery.push(url);
   };
 
+  // Storefront gallery must only contain mockups of this customized Sync Product.
+  // Do not mix in blank catalog photography or print-file previews.
   addImage(data?.result?.sync_product?.thumbnail_url);
   syncVariants.forEach((variant) => {
     addImage(variant?.mockup_file_url);
-    (variant?.files || []).forEach((file) => {
-      addImage(file?.preview_url);
-      addImage(file?.thumbnail_url);
-    });
   });
-  catalogImages.forEach(addImage);
-  addImage(catalogProduct?.image);
-  (catalogProduct?.images || []).forEach((image) => addImage(image?.image_url || image?.background_image));
 
   data.result.catalog_product = catalogProduct;
   data.result.gallery = gallery;
