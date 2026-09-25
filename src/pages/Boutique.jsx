@@ -14,6 +14,7 @@ export default function Boutique() {
   });
 
   const [activeFilter, setActiveFilter] = useState({ type: 'all', value: null });
+  const [activeSectionId, setActiveSectionId] = useState(null);
 
   const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ['products'],
@@ -30,6 +31,18 @@ export default function Boutique() {
   const topLevelSections = sections.filter(section => !section.parent_section_id);
   const getSubsections = (parentId) =>
     sections.filter(section => section.parent_section_id === parentId);
+
+  React.useEffect(() => {
+    if (!activeSectionId && topLevelSections.length > 0) {
+      setActiveSectionId(topLevelSections[0].id);
+    } else if (
+      activeSectionId &&
+      topLevelSections.length > 0 &&
+      !topLevelSections.some(section => section.id === activeSectionId)
+    ) {
+      setActiveSectionId(topLevelSections[0].id);
+    }
+  }, [activeSectionId, topLevelSections]);
 
   const dossierOptions = Array.from(
     new Set(products.filter(p => p.dossier_id).map(p => p.dossier_id))
@@ -56,7 +69,7 @@ export default function Boutique() {
           <img
             src={section.banner_image}
             alt=""
-            className="w-full max-h-[360px] object-cover rounded-sm"
+            className="w-full max-h-[240px] object-cover rounded-sm"
           />
         </div>
       )}
@@ -205,44 +218,82 @@ export default function Boutique() {
         </div>
       )}
 
-      {topLevelSections.map((section, sectionIndex) => {
-        const directProducts = filteredProducts.filter(product => product.section_id === section.id);
-        const subsections = getSubsections(section.id);
+      {topLevelSections.length > 0 && (
+        <>
+          <div className="px-6 mb-8">
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {topLevelSections.map((section) => (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => setActiveSectionId(section.id)}
+                  className={`shrink-0 px-4 py-2 border text-sm tracking-wide transition-colors ${
+                    activeSectionId === section.id
+                      ? 'bg-white text-black border-white'
+                      : 'bg-neutral-950 text-white border-white/15 hover:border-white/40'
+                  }`}
+                >
+                  {section.name}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        return (
-          <section key={section.id} className="mb-14">
-            <h2 className="px-6 text-white text-xl font-light tracking-widest mb-5">
-              {section.name}
-            </h2>
-            {renderSectionMedia(section)}
-            {directProducts.length > 0 && renderProducts(directProducts, sectionIndex)}
-
-            {subsections.map((subsection, subsectionIndex) => {
-              const subsectionProducts = filteredProducts.filter(product => product.section_id === subsection.id);
-              if (
-                subsectionProducts.length === 0 &&
-                !subsection.banner_image &&
-                !subsection.banner_video &&
-                !subsection.promo_text &&
-                !subsection.promo_image
-              ) {
-                return null;
-              }
+          {topLevelSections
+            .filter((section) => section.id === activeSectionId)
+            .map((section) => {
+              const directProducts = filteredProducts.filter(
+                product => product.section_id === section.id
+              );
+              const subsections = getSubsections(section.id);
 
               return (
-                <div key={subsection.id} className="mt-10">
-                  <h3 className="px-6 text-white text-sm tracking-widest mb-5">
-                    {subsection.name}
-                  </h3>
-                  {renderSectionMedia(subsection)}
-                  {subsectionProducts.length > 0 &&
-                    renderProducts(subsectionProducts, sectionIndex + subsectionIndex + 1)}
-                </div>
+                <section key={section.id} className="mb-14">
+                  <div className="px-6 mb-5">
+                    <h2 className="text-white text-xl font-light tracking-widest">
+                      {section.name}
+                    </h2>
+                    {section.description && (
+                      <p className="text-white/60 text-sm font-light mt-2 max-w-4xl">
+                        {section.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {renderSectionMedia(section)}
+                  {directProducts.length > 0 && renderProducts(directProducts)}
+
+                  {subsections.map((subsection, subsectionIndex) => {
+                    const subsectionProducts = filteredProducts.filter(
+                      product => product.section_id === subsection.id
+                    );
+
+                    if (
+                      subsectionProducts.length === 0 &&
+                      !subsection.banner_image &&
+                      !subsection.banner_video &&
+                      !subsection.promo_text &&
+                      !subsection.promo_image
+                    ) {
+                      return null;
+                    }
+
+                    return (
+                      <div key={subsection.id} className="mt-10">
+                        <h3 className="px-6 text-white text-sm tracking-widest mb-5">
+                          {subsection.name}
+                        </h3>
+                        {renderSectionMedia(subsection)}
+                        {subsectionProducts.length > 0 &&
+                          renderProducts(subsectionProducts, subsectionIndex + 1)}
+                      </div>
+                    );
+                  })}
+                </section>
               );
             })}
-          </section>
-        );
-      })}
+        </>
+      )}
 
       {filteredProducts.filter(product => !product.section_id).length > 0 && (
         <section className="mb-14">
