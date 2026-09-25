@@ -132,12 +132,11 @@ export default async function handler(req, res) {
       return;
     }
 
-    const productsV2 = await pf('/v2/products?limit=100', token);
-    const myProduct = (productsV2?.data || []).find((product) =>
-      (product?.published_to_stores || []).some((published) =>
-        String(published?.sync_product_id) === String(syncProduct.id)
-      )
+    const productsV2 = await pf(
+      `/v2/products?store_product_ids=${encodeURIComponent(syncProduct.id)}&limit=10`,
+      token
     );
+    const myProduct = (productsV2?.data || [])[0] || null;
 
     if (!myProduct?.id) {
       res.status(404).json({
@@ -188,6 +187,7 @@ export default async function handler(req, res) {
           product_id: myProduct.id,
           variant_ids: productVariantIds.slice(0, 10),
           mockup_style_ids: styleIds,
+          placements: myProduct.placements || [],
         }],
       }),
     });
