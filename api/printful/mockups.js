@@ -132,23 +132,63 @@ export default async function handler(req, res) {
       return;
     }
 
+    const printfileInfo = await pf(
+      `/mockup-generator/printfiles/${encodeURIComponent(catalogProductId)}`,
+      token
+    );
+    const printfileResult = printfileInfo?.result || {};
+    const printfileById = new Map(
+      (printfileResult.printfiles || []).map((item) => [String(item.printfile_id), item])
+    );
+    const variantPrintfiles = new Map(
+      (printfileResult.variant_printfiles || []).map((item) => [String(item.variant_id), item.placements || {}])
+    );
+
     const filesByPlacement = new Map();
 
     for (const variant of usableVariants) {
+      const placementMap = variantPrintfiles.get(String(variant.variant_id)) || {};
+
       for (const file of variant?.files || []) {
         const type = file?.type || 'default';
         const imageUrl = file?.url || file?.preview_url || file?.thumbnail_url;
 
         if (!imageUrl || type === 'preview' || type === 'mockup' || type.startsWith('label_')) continue;
 
-        // Use Printful's exact print-file type as the placement identifier.
-        // DTF products can reject generic "front" and require "front_dtf".
         const placement = type === 'default' ? 'default' : type;
+        const printfileId = placementMap[placement];
+        const printfile = printfileById.get(String(printfileId));
+
+        if (!printfile) continue;
+
+        const areaWidth = Number(printfile.width);
+        const areaHeight = Number(printfile.height);
+        const sourceWidth = Number(file.width) || areaWidth;
+        const sourceHeight = Number(file.height) || areaHeight;
+
+        let width = areaWidth;
+        let height = Math.round(width * sourceHeight / sourceWidth);
+
+        if (height > areaHeight) {
+          height = areaHeight;
+          width = Math.round(height * sourceWidth / sourceHeight);
+        }
+
+        const left = Math.max(0, Math.round((areaWidth - width) / 2));
+        const top = Math.max(0, Math.round((areaHeight - height) / 2));
 
         if (!filesByPlacement.has(placement)) {
           filesByPlacement.set(placement, {
             placement,
             image_url: imageUrl,
+            position: {
+              area_width: areaWidth,
+              area_height: areaHeight,
+              width,
+              height,
+              top,
+              left,
+            },
           });
         }
       }
@@ -158,7 +198,7 @@ export default async function handler(req, res) {
 
     if (!files.length) {
       res.status(400).json({
-        error: 'No printable design files were returned for this Printful product',
+        error: 'No compatible Printful print area was found for this product design',
       });
       return;
     }
