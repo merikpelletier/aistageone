@@ -280,16 +280,11 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
   );
 }
 
-function StudioWorkspaceTool({ title, onClose, children }) {
+function StudioWorkspaceTool({ title, children }) {
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-yellow-400 text-black">
-      <div className="sticky top-14 z-30 h-12 flex items-center justify-between px-4 md:px-6 border-b border-black/15 bg-yellow-400/95 backdrop-blur">
+      <div className="sticky top-14 z-30 h-12 flex items-center px-4 md:px-6 border-b border-black/15 bg-yellow-400/95 backdrop-blur">
         <div className="font-bold text-sm uppercase tracking-wide">{title}</div>
-        {onClose && (
-          <button type="button" onClick={onClose} className="w-9 h-9 bg-black text-yellow-400 flex items-center justify-center" aria-label={`Close ${title}`}>
-            <X size={18} />
-          </button>
-        )}
       </div>
       <div className="min-h-[calc(100vh-6.5rem)] overflow-y-auto">
         {children}
