@@ -30,7 +30,7 @@ const RESOLUTIONS = [
   { id: '720p', label: '720p', quality: 'HD' },
 ];
 
-export default function VideoTools({ onComplete, onClose, recommendedTools = [], referenceMedia = [], productionMethod = null, block = null, character = null, initialMode = null, episodePageId, blockId, user }) {
+export default function VideoTools({ onComplete, onClose, recommendedTools = [], referenceMedia = [], productionMethod = null, block = null, character = null, initialMode = null, episodePageId, blockId, user, embedded = false }) {
   // Only show production context if coming from a Dossier production
   const showContext = productionMethod && block;
   const [mode, setMode] = useState(initialMode || 'text'); // 'text', 'image', or 'video'
@@ -155,7 +155,7 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+    <div className={`fixed bg-black/80 z-[100] flex items-center justify-center p-4 ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)]' : 'inset-0'}`}>
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
