@@ -121,9 +121,11 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
             </h3>
             <p className="text-black text-sm">Bring a still image to life with AI motion</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
-            <X size={20} className="text-black" />
-          </button>
+          {!embedded && (
+            <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
+              <X size={20} className="text-black" />
+            </button>
+          )}
         </div>
 
         {/* Image Upload */}
