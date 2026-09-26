@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useAppContext } from '@/lib/AppContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Layers, Camera, ChevronRight, ChevronLeft, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench, PanelLeft, FolderOpen, Video, ListVideo, Wand2, Presentation, ShoppingBag, LayoutTemplate, MoreHorizontal, Volume2 } from 'lucide-react';
+import { Users, Layers, Camera, ChevronRight, ChevronLeft, ChevronDown, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench, PanelLeft, FolderOpen, Video, ListVideo, Wand2, Presentation, ShoppingBag, LayoutTemplate, MoreHorizontal, Volume2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const HOME_ICON_MAP = { Home, Clapperboard, Theater, Wrench, Bookmark: undefined, BookOpen, Users, Layers, Film };
@@ -37,26 +37,59 @@ import LayoutTool from '@/components/studio/LayoutTool';
 import { Bookmark } from 'lucide-react';
 HOME_ICON_MAP.Bookmark = Bookmark;
 
-const STUDIO_SHELL_TOOLS = [
-  { key: 'actor', label: 'Actor', icon: Users, action: 'actor' },
-  { key: 'set', label: 'Set', icon: Layers, action: 'set' },
-  { key: 'vault', label: 'Vault', icon: Bookmark, action: 'panel' },
-  { key: 'voice', label: 'Voice', icon: Mic, action: 'voice' },
-  { key: 'dubbing', label: 'Dubbing', icon: Video, action: 'dubbing' },
-  { key: 'tts', label: 'TTS', icon: Type, action: 'tts' },
-  { key: 'music', label: 'Music', icon: Music, action: 'lab', labTool: 'music' },
-  { key: 'sound_fx', label: 'Sound FX', icon: Volume2, action: 'lab', labTool: 'sound_fx' },
-  { key: 'lip_sync', label: 'Lip Sync', icon: Mic, action: 'lip_sync' },
-  { key: 'animate', label: 'Animate', icon: Film, action: 'animate' },
-  { key: 'ai_video', label: 'AI Video', icon: Camera, action: 'ai_video' },
-  { key: 'video_tools', label: 'Video Ref', icon: Video, action: 'video_ref' },
-  { key: 'timeline', label: 'Timeline', icon: ListVideo, action: 'timeline' },
-  { key: 'compose', label: 'Compose', icon: Wand2, action: 'lab', labTool: 'compose' },
-  { key: 'layout', label: 'Layout', icon: LayoutTemplate, action: 'layout' },
-  { key: 'stages', label: 'Stages', icon: Theater, action: 'panel' },
-  { key: 'pitch', label: 'Pitch Deck', icon: Presentation, action: 'route', path: '/PitchDecks' },
-  { key: 'shop', label: 'Assets Shop', icon: ShoppingBag, action: 'route', path: '/Catalog' },
+const STUDIO_TOOL_SECTIONS = [
+  {
+    key: 'create',
+    label: 'Create',
+    tools: [
+      { key: 'fotoplay', label: 'FotoPlay', icon: BookOpen, action: 'fotoplay' },
+      { key: 'actor', label: 'Actor', icon: Users, action: 'actor' },
+      { key: 'set', label: 'Set', icon: Layers, action: 'set' },
+      { key: 'compose', label: 'Compose Scene', icon: Wand2, action: 'lab', labTool: 'compose' },
+      { key: 'stages', label: 'Stages', icon: Theater, action: 'workspace' },
+    ],
+  },
+  {
+    key: 'image_video',
+    label: 'Image & Video',
+    tools: [
+      { key: 'animate', label: 'Animate Image', icon: Film, action: 'animate' },
+      { key: 'ai_video', label: 'AI Video', icon: Camera, action: 'ai_video' },
+      { key: 'video_tools', label: 'Video Reference', icon: Video, action: 'video_ref' },
+      { key: 'lip_sync', label: 'Lip Sync', icon: Mic, action: 'lip_sync' },
+    ],
+  },
+  {
+    key: 'sound',
+    label: 'Sound & Voice',
+    tools: [
+      { key: 'voice', label: 'Record Voice', icon: Mic, action: 'voice' },
+      { key: 'dubbing', label: 'Dubbing Studio', icon: Video, action: 'dubbing' },
+      { key: 'tts', label: 'Text to Speech', icon: Type, action: 'tts' },
+      { key: 'music', label: 'Music', icon: Music, action: 'lab', labTool: 'music' },
+      { key: 'sound_fx', label: 'Sound FX', icon: Volume2, action: 'lab', labTool: 'sound_fx' },
+    ],
+  },
+  {
+    key: 'assemble',
+    label: 'Assemble',
+    tools: [
+      { key: 'timeline', label: 'Timeline', icon: ListVideo, action: 'timeline' },
+      { key: 'layout', label: 'Layout', icon: LayoutTemplate, action: 'layout' },
+      { key: 'pitch', label: 'Pitch Deck', icon: Presentation, action: 'route', path: '/PitchDecks' },
+    ],
+  },
+  {
+    key: 'library',
+    label: 'Library & Assets',
+    tools: [
+      { key: 'vault', label: 'Vault', icon: Bookmark, action: 'workspace' },
+      { key: 'shop', label: 'Assets Shop', icon: ShoppingBag, action: 'route', path: '/Catalog' },
+    ],
+  },
 ];
+
+const STUDIO_SHELL_TOOLS = STUDIO_TOOL_SECTIONS.flatMap((section) => section.tools);
 
 function StudioShellButton({ tool, active, onClick, compact = false }) {
   const Icon = tool.icon;
@@ -66,22 +99,60 @@ function StudioShellButton({ tool, active, onClick, compact = false }) {
       onClick={onClick}
       title={tool.label}
       aria-label={tool.label}
-      className={`group flex items-center justify-center transition-colors ${compact ? 'min-w-[58px] h-14 px-2 flex-col gap-1' : 'w-14 h-14 flex-col gap-1'} ${
+      className={`group flex items-center transition-colors ${compact ? 'min-h-[54px] px-3 gap-2 w-full' : 'w-full min-h-[42px] px-3 gap-2'} ${
         active ? 'bg-yellow-400 text-black' : 'text-white/75 hover:bg-white/10 hover:text-white'
       }`}
     >
-      <Icon size={compact ? 19 : 21} strokeWidth={2} />
-      <span className="text-[9px] font-semibold leading-none text-center">{tool.label}</span>
+      <Icon size={compact ? 19 : 17} strokeWidth={2} className="flex-shrink-0" />
+      <span className={`${compact ? 'text-xs' : 'text-[11px]'} font-semibold leading-tight text-left`}>{tool.label}</span>
     </button>
+  );
+}
+
+function ToolAccordionSection({ section, activeKey, onTool, defaultOpen = false }) {
+  const containsActive = section.tools.some((tool) => tool.key === activeKey);
+  const [open, setOpen] = useState(defaultOpen || containsActive);
+
+  useEffect(() => {
+    if (containsActive) setOpen(true);
+  }, [containsActive]);
+
+  return (
+    <div className="border-b border-white/10">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="w-full h-10 px-3 flex items-center justify-between text-white/55 hover:text-white text-[10px] font-bold uppercase tracking-[0.16em]"
+      >
+        <span>{section.label}</span>
+        <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden pb-1"
+          >
+            {section.tools.map((tool) => (
+              <StudioShellButton key={tool.key} tool={tool} active={activeKey === tool.key} onClick={() => onTool(tool)} />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
 function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
   const [showMobileTools, setShowMobileTools] = useState(false);
-  const primaryMobile = STUDIO_SHELL_TOOLS.slice(0, 5);
+  const mobilePrimaryKeys = ['fotoplay', 'actor', 'vault', 'ai_video'];
+  const primaryMobile = mobilePrimaryKeys.map((key) => STUDIO_SHELL_TOOLS.find((tool) => tool.key === key)).filter(Boolean);
+
   return (
     <div className="min-h-screen bg-[#202328] text-white">
-      <div className="sticky top-0 z-40 h-14 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-3 md:px-4 gap-3">
+      <div className="sticky top-0 z-[210] h-14 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-3 md:px-4 gap-3">
         <div className="w-8 h-8 bg-yellow-400 text-black flex items-center justify-center flex-shrink-0">
           <PanelLeft size={18} />
         </div>
@@ -93,23 +164,44 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
       </div>
 
       <div className="flex min-h-[calc(100vh-3.5rem)]">
-        <aside className="hidden lg:flex sticky top-14 self-start h-[calc(100vh-3.5rem)] w-[64px] flex-shrink-0 bg-[#17191d] border-r border-white/10 flex-col items-center py-2 overflow-y-auto">
-          {STUDIO_SHELL_TOOLS.map((tool) => (
-            <StudioShellButton key={tool.key} tool={tool} active={activeKey === tool.key} onClick={() => onTool(tool)} />
+        <aside className="hidden lg:block sticky z-[210] top-14 self-start h-[calc(100vh-3.5rem)] w-[210px] flex-shrink-0 bg-[#17191d] border-r border-white/10 overflow-y-auto">
+          {STUDIO_TOOL_SECTIONS.map((section, index) => (
+            <ToolAccordionSection
+              key={section.key}
+              section={section}
+              activeKey={activeKey}
+              onTool={onTool}
+              defaultOpen={index === 0}
+            />
           ))}
         </aside>
 
-        <main className="min-w-0 flex-1 bg-yellow-400 text-black pb-[72px] lg:pb-0">
+        <main className="min-w-0 flex-1 bg-yellow-400 text-black pb-[64px] lg:pb-0">
           {children}
         </main>
       </div>
 
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 h-[64px] bg-[#17191d] border-t border-white/10">
-        <div className="h-full grid grid-cols-6">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[210] h-[64px] bg-[#17191d] border-t border-white/10">
+        <div className="h-full grid grid-cols-5">
           {primaryMobile.map((tool) => (
-            <StudioShellButton key={tool.key} tool={tool} compact active={activeKey === tool.key} onClick={() => { setShowMobileTools(false); onTool(tool); }} />
+            <button
+              key={tool.key}
+              type="button"
+              onClick={() => { setShowMobileTools(false); onTool(tool); }}
+              className={`flex flex-col items-center justify-center gap-1 px-1 ${activeKey === tool.key ? 'bg-yellow-400 text-black' : 'text-white/75'}`}
+            >
+              <tool.icon size={19} />
+              <span className="text-[9px] font-semibold">{tool.label}</span>
+            </button>
           ))}
-          <StudioShellButton tool={{ key: 'more', label: 'More', icon: MoreHorizontal }} compact active={showMobileTools} onClick={() => setShowMobileTools((v) => !v)} />
+          <button
+            type="button"
+            onClick={() => setShowMobileTools((value) => !value)}
+            className={`flex flex-col items-center justify-center gap-1 px-1 ${showMobileTools ? 'bg-yellow-400 text-black' : 'text-white/75'}`}
+          >
+            <MoreHorizontal size={20} />
+            <span className="text-[9px] font-semibold">Tools</span>
+          </button>
         </div>
       </nav>
 
@@ -119,21 +211,17 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 18 }}
-            className="lg:hidden fixed z-[49] left-0 right-0 bottom-16 max-h-[62vh] overflow-y-auto bg-[#202328] border-t border-white/10 p-3"
+            className="lg:hidden fixed z-[205] left-0 right-0 bottom-16 max-h-[72vh] overflow-y-auto bg-[#202328] border-t border-white/10"
           >
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {STUDIO_SHELL_TOOLS.slice(5).map((tool) => (
-                <button
-                  key={tool.key}
-                  type="button"
-                  onClick={() => { setShowMobileTools(false); onTool(tool); }}
-                  className={`min-h-[74px] px-2 py-3 flex flex-col items-center justify-center gap-2 border border-white/10 ${activeKey === tool.key ? 'bg-yellow-400 text-black' : 'bg-[#17191d] text-white'}`}
-                >
-                  <tool.icon size={21} />
-                  <span className="text-[10px] font-semibold text-center leading-tight">{tool.label}</span>
-                </button>
-              ))}
-            </div>
+            {STUDIO_TOOL_SECTIONS.map((section, index) => (
+              <ToolAccordionSection
+                key={section.key}
+                section={section}
+                activeKey={activeKey}
+                onTool={(tool) => { setShowMobileTools(false); onTool(tool); }}
+                defaultOpen={index === 0}
+              />
+            ))}
           </motion.div>
         )}
       </AnimatePresence>
@@ -141,30 +229,20 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
   );
 }
 
-function StudioToolPanel({ title, onClose, children }) {
+function StudioWorkspaceTool({ title, onClose, children }) {
   return (
-    <div className="fixed z-[45] inset-x-0 bottom-16 top-14 lg:inset-y-14 lg:right-0 lg:left-auto lg:w-[min(520px,44vw)] lg:bottom-0 bg-transparent pointer-events-none">
-      <motion.div
-        initial={{ opacity: 0, y: 24, x: 0 }}
-        animate={{ opacity: 1, y: 0, x: 0 }}
-        exit={{ opacity: 0, y: 24, x: 0 }}
-        className="pointer-events-auto absolute inset-x-0 bottom-0 max-h-[78vh] lg:inset-0 lg:max-h-none bg-white text-black shadow-2xl border-t lg:border-t-0 lg:border-l border-black/15 flex flex-col"
-      >
-        <div className="h-12 flex items-center justify-between px-4 border-b border-black/10 bg-[#f3f3f1] flex-shrink-0">
-          <div className="font-bold text-sm uppercase tracking-wide">{title}</div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-9 h-9 bg-black text-yellow-400 flex items-center justify-center"
-            aria-label={`Close ${title}`}
-          >
+    <div className="min-h-[calc(100vh-3.5rem)] bg-yellow-400 text-black">
+      <div className="sticky top-14 z-30 h-12 flex items-center justify-between px-4 md:px-6 border-b border-black/15 bg-yellow-400/95 backdrop-blur">
+        <div className="font-bold text-sm uppercase tracking-wide">{title}</div>
+        {onClose && (
+          <button type="button" onClick={onClose} className="w-9 h-9 bg-black text-yellow-400 flex items-center justify-center" aria-label={`Close ${title}`}>
             <X size={18} />
           </button>
-        </div>
-        <div className="flex-1 overflow-y-auto overscroll-contain">
-          {children}
-        </div>
-      </motion.div>
+        )}
+      </div>
+      <div className="min-h-[calc(100vh-6.5rem)] overflow-y-auto">
+        {children}
+      </div>
     </div>
   );
 }
@@ -583,10 +661,29 @@ export default function Studio() {
     return <LayoutTool user={user} onClose={() => setShowLayout(false)} />;
   }
 
-  const activeShellKey = editingActor !== null ? 'actor' : editingSet !== null ? 'set' : (activeToolPanel?.startsWith?.('lab:') ? activeToolPanel.slice(4) : activeToolPanel);
-  const activeShellTitle = 'FotoPlay Studio';
+  const activeShellKey = editingActor !== null
+    ? 'actor'
+    : editingSet !== null
+      ? 'set'
+      : activeToolPanel?.startsWith?.('lab:')
+        ? activeToolPanel.slice(4)
+        : activeToolPanel || (activeTab === 'stories' ? 'fotoplay' : null);
+  const activeShellTitle = 'AISTAGE Studio';
 
   const handleShellTool = (tool) => {
+    if (tool.action === 'fotoplay') {
+      setEditingActor(null);
+      setEditingSet(null);
+      setActiveToolPanel(null);
+      setActiveTab('stories');
+      return;
+    }
+    if (tool.action === 'workspace') {
+      setEditingActor(null);
+      setEditingSet(null);
+      setActiveToolPanel(tool.key);
+      return;
+    }
     if (tool.action === 'actor') {
       setActiveToolPanel(null);
       setEditingSet(null);
@@ -677,7 +774,7 @@ export default function Studio() {
       activeKey={activeShellKey}
       onTool={handleShellTool}
       title={activeShellTitle}
-      subtitle="FotoPlay stays open while you call the tools you need"
+      subtitle="Choose a tool — it uses the full workspace while the toolbar stays available"
     >
       <div className="min-h-[calc(100vh-4rem)] relative" style={activeViewBg ? { backgroundImage: `url(${activeViewBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : undefined}>
       {activeViewBg && <div className="absolute inset-0 bg-black/40 pointer-events-none z-0" />}
@@ -806,7 +903,7 @@ export default function Studio() {
             <p className="text-black/60 text-[10px] tracking-[0.22em] uppercase font-bold mb-1">
               {user?.full_name || 'CREATOR'}
             </p>
-            <h1 className="text-black text-3xl md:text-4xl font-bold tracking-tight">FotoPlay</h1>
+            <h1 className="text-black text-3xl md:text-4xl font-bold tracking-tight">{STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeShellKey)?.label || 'Studio'}</h1>
           </div>
           <div className="hidden md:flex items-center gap-2 text-black/60 text-xs font-semibold">
             <FolderOpen size={15} />
@@ -954,36 +1051,39 @@ export default function Studio() {
         </motion.div>
       )}
 
-      <AnimatePresence>
-        {activeToolPanel === 'vault' && (
-          <StudioToolPanel title="Vault" onClose={() => setActiveToolPanel(null)}>
-            <div className="p-4">
+      {activeToolPanel === 'vault' && (
+        <div className="absolute inset-0 z-20 bg-yellow-400">
+          <StudioWorkspaceTool title="Vault" onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }}>
+            <div className="p-4 md:p-6">
               <VaultSection
                 userEmail={user?.email}
                 onUsePrompt={(text) => {
                   setPendingPrompt(text);
-                  setActiveToolPanel(null);
                   setShowAnimateImage(true);
                 }}
               />
             </div>
-          </StudioToolPanel>
-        )}
+          </StudioWorkspaceTool>
+        </div>
+      )}
 
-        {activeToolPanel === 'stages' && (
-          <StudioToolPanel title="Stages" onClose={() => setActiveToolPanel(null)}>
-            <div className="p-4">
+      {activeToolPanel === 'stages' && (
+        <div className="absolute inset-0 z-20 bg-yellow-400">
+          <StudioWorkspaceTool title="Stages" onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }}>
+            <div className="p-4 md:p-6">
               <SketchStudio user={user} />
             </div>
-          </StudioToolPanel>
-        )}
+          </StudioWorkspaceTool>
+        </div>
+      )}
 
-        {activeToolPanel?.startsWith?.('lab:') && (
-          <StudioToolPanel
+      {activeToolPanel?.startsWith?.('lab:') && (
+        <div className="absolute inset-0 z-20 bg-yellow-400">
+          <StudioWorkspaceTool
             title={STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeToolPanel.slice(4))?.label || 'Tool'}
-            onClose={() => setActiveToolPanel(null)}
+            onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }}
           >
-            <div className="p-4">
+            <div className="p-4 md:p-6">
               <LabWorkspace
                 user={user}
                 directTool={activeToolPanel.slice(4)}
@@ -1003,9 +1103,9 @@ export default function Studio() {
                 hideProjects={true}
               />
             </div>
-          </StudioToolPanel>
-        )}
-      </AnimatePresence>
+          </StudioWorkspaceTool>
+        </div>
+      )}
 
       {/* ── Editors ── */}
       <AnimatePresence>
