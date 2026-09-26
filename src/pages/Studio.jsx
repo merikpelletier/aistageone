@@ -692,34 +692,42 @@ export default function Studio() {
         : activeToolPanel || (activeTab === 'stories' ? 'fotoplay' : null);
   const activeShellTitle = 'AISTAGE Studio';
 
+  const closeAllStudioTools = () => {
+    setActiveToolPanel(null);
+    setEditingActor(null);
+    setEditingSet(null);
+    setShowVoiceRecorder(false);
+    setShowAudioUploader(false);
+    setShowDubbingStudio(false);
+    setShowTextToSpeech(false);
+    setShowVideoTools(false);
+    setVideoInitialMode(null);
+    setShowLipSync(false);
+    setShowAnimateImage(false);
+    setPendingPrompt(null);
+    setShowFreeTimeline(false);
+    setShowLayout(false);
+  };
+
   const handleShellTool = (tool) => {
+    closeAllStudioTools();
     if (tool.action === 'fotoplay') {
-      setEditingActor(null);
-      setEditingSet(null);
-      setActiveToolPanel(null);
       setActiveTab('stories');
       return;
     }
     if (tool.action === 'workspace') {
-      setEditingActor(null);
-      setEditingSet(null);
       setActiveToolPanel(tool.key);
       return;
     }
     if (tool.action === 'actor') {
-      setActiveToolPanel(null);
-      setEditingSet(null);
       setEditingActor(false);
       return;
     }
     if (tool.action === 'set') {
-      setActiveToolPanel(null);
-      setEditingActor(null);
       setEditingSet(false);
       return;
     }
     if (tool.action === 'image') {
-      setActiveToolPanel(null);
       setShowAnimateImage(true);
       return;
     }
@@ -730,51 +738,40 @@ export default function Studio() {
       return;
     }
     if (tool.action === 'voice') {
-      setActiveToolPanel(null);
       setShowVoiceRecorder(true);
       return;
     }
     if (tool.action === 'dubbing') {
-      setActiveToolPanel(null);
       setShowDubbingStudio(true);
       return;
     }
     if (tool.action === 'tts') {
-      setActiveToolPanel(null);
       setShowTextToSpeech(true);
       return;
     }
     if (tool.action === 'lip_sync') {
-      setActiveToolPanel(null);
       setShowLipSync(true);
       return;
     }
     if (tool.action === 'animate') {
-      setActiveToolPanel(null);
       setShowAnimateImage(true);
       return;
     }
     if (tool.action === 'ai_video') {
-      setActiveToolPanel(null);
       setVideoInitialMode('text');
       setShowVideoTools(true);
       return;
     }
     if (tool.action === 'video_ref') {
-      setActiveToolPanel(null);
       setVideoInitialMode('video');
       setShowVideoTools(true);
       return;
     }
     if (tool.action === 'timeline') {
-      setEditingActor(null);
-      setEditingSet(null);
       setActiveToolPanel('timeline');
       return;
     }
     if (tool.action === 'lab') {
-      setEditingActor(null);
-      setEditingSet(null);
       setActiveToolPanel(`lab:${tool.labTool}`);
       return;
     }
@@ -788,8 +785,6 @@ export default function Studio() {
       setActiveToolPanel('layout');
       return;
     }
-    setEditingActor(null);
-    setEditingSet(null);
     setActiveToolPanel(tool.key);
   };
 
