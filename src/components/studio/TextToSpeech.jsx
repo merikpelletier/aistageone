@@ -20,7 +20,7 @@ const EMOTIONS = [
 ];
 
 
-export default function TextToSpeech({ onComplete, onClose, productionMethod = null, block = null, character = null, episodePageId, blockId, user }) {
+export default function TextToSpeech({ onComplete, onClose, productionMethod = null, block = null, character = null, episodePageId, blockId, user, embedded = false }) {
   // Only show production context if coming from a Dossier production
   const showContext = productionMethod && block;
   const [voice, setVoice] = useState('Rachel');
@@ -103,7 +103,7 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+    <div className={`fixed bg-black/80 z-[100] flex items-center justify-center p-4 ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)]' : 'inset-0'}`}>
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
