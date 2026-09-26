@@ -119,9 +119,11 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
             </h3>
             <p className="text-black text-sm">ElevenLabs v3 with emotions</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
-            <X size={20} className="text-black" />
-          </button>
+          {!embedded && (
+            <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
+              <X size={20} className="text-black" />
+            </button>
+          )}
         </div>
 
         {/* Production Context Info - Only show when in Dossier production mode */}
