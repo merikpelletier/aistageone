@@ -806,6 +806,7 @@ export default function Studio() {
       {/* Voice Recorder Modal */}
       {showVoiceRecorder && (
         <VoiceRecorder
+          embedded
           onRecordingComplete={(file_url) => {
             setProducedMedia({ url: file_url, type: 'audio' });
             setShowVoiceRecorder(false);
@@ -837,6 +838,7 @@ export default function Studio() {
       {/* Dubbing Studio Modal */}
       {showDubbingStudio && (
         <DubbingStudio
+          embedded
           onComplete={(file_url) => {
             setProducedMedia({ url: file_url, type: 'video' });
             setShowDubbingStudio(false);
@@ -854,6 +856,7 @@ export default function Studio() {
       {/* Text to Speech Modal */}
       {showTextToSpeech && (
         <TextToSpeech
+          embedded
           onComplete={(file_url) => {
             setProducedMedia({ url: file_url, type: 'audio' });
             setShowTextToSpeech(false);
@@ -871,6 +874,7 @@ export default function Studio() {
       {/* Animate Image Modal */}
       {showAnimateImage && (
         <AnimateImage
+          embedded
           initialPrompt={pendingPrompt}
           onComplete={(url, type) => {
             setProducedMedia({ url, type });
@@ -887,6 +891,7 @@ export default function Studio() {
       {/* Lip Sync Modal */}
       {showLipSync && (
         <LipSync
+          embedded
           onComplete={(url, type) => {
             setProducedMedia({ url, type });
             setShowLipSync(false);
@@ -901,6 +906,7 @@ export default function Studio() {
       {/* Video Tools Modal */}
       {showVideoTools && (
         <VideoTools
+          embedded
           onComplete={(file_url) => {
             setProducedMedia({ url: file_url, type: 'video' });
             setShowVideoTools(false);
@@ -1167,6 +1173,7 @@ export default function Studio() {
       <AnimatePresence>
         {editingActor !== null && (
           <CharacterSheetEditor
+            embedded
             key="actor-editor"
             sheet={editingActor || null}
             userEmail={user?.email}
@@ -1175,6 +1182,7 @@ export default function Studio() {
         )}
         {editingSet !== null && (
           <SetAssetEditor
+            embedded
             key="set-editor"
             asset={editingSet || null}
             userEmail={user?.email}
