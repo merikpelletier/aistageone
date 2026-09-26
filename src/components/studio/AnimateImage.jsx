@@ -9,7 +9,7 @@ import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 const DURATIONS = ['5s', '10s'];
 const RATIOS = ['9:16', '16:9', '1:1', '4:3'];
 
-export default function AnimateImage({ onComplete, onClose, episodePageId, blockId, user, initialPrompt }) {
+export default function AnimateImage({ onComplete, onClose, episodePageId, blockId, user, initialPrompt, embedded = false }) {
   const [imageUrl, setImageUrl] = useState(null);
   const [imageName, setImageName] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -105,7 +105,7 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+    <div className={`fixed bg-black/80 z-[100] flex items-center justify-center p-4 ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)]' : 'inset-0'}`}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
