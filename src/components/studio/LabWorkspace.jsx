@@ -679,39 +679,6 @@ function InlineCompose({ userEmail, onDone }) {
         )}
       </div>
 
-      {/* Character picker - Library characters */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-white/80 text-xs font-bold uppercase tracking-wider">Character (Library)</p>
-          <button onClick={() => {
-            if (!userEmail) return;
-            base44.entities.CharacterSheet.filter({ user_email: userEmail }).then(chars => { console.log('Characters loaded:', chars.length, chars); setCharacters(chars); }).catch(console.error);
-          }} className="text-white hover:text-white text-xs">↻ Refresh</button>
-        </div>
-        {characters.length === 0 ? (
-          <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-xl p-4 text-center">
-            <p className="text-yellow-400 text-sm font-bold">⚠ No actors in your library</p>
-            <p className="text-white text-xs mt-1">Go to Library tab → New Actor to create one</p>
-          </div>
-        ) : (
-          <div className="flex gap-2 overflow-x-auto pb-2" style={{scrollbarWidth:'none'}}>
-            {characters.map(c => {
-              const photo = c.character_photos?.[0];
-              const sel = selectedChar?.id === c.id;
-              return (
-                <button key={c.id} onClick={() => setSelectedChar(sel ? null : c)}
-                  className={`min-w-0 flex flex-col items-center gap-1 p-2 rounded-2xl border-2 transition-all cursor-pointer ${sel ? 'border-yellow-400 bg-yellow-400/20' : 'border-white/20 bg-white/10 hover:border-white/40'}`}>
-                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/10">
-                    {photo ? <img src={photo} alt="" className="w-full h-full object-cover" /> : <Users size={20} className="m-auto mt-3 text-white" />}
-                  </div>
-                  <span className="text-white text-[10px] font-semibold w-full text-center truncate">{c.character_name || 'Actor'}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       {/* Vault folders for sets */}
       {vaultFolders.length > 0 && (
         <div className="space-y-2">
