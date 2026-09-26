@@ -167,22 +167,23 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
       <div className="sticky top-0 z-[5000] h-14 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-3 md:px-4 gap-3">
         <button
           type="button"
-          onClick={() => setMenuCollapsed((value) => !value)}
-          className="hidden lg:flex w-8 h-8 bg-yellow-400 text-black items-center justify-center flex-shrink-0"
-          title={menuCollapsed ? 'Expand tools' : 'Collapse tools'}
-          aria-label={menuCollapsed ? 'Expand tools' : 'Collapse tools'}
-        >
-          {menuCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-        </button>
-        <button
-          type="button"
           onClick={() => window.location.assign('/')}
-          className="lg:hidden h-8 px-2 bg-yellow-400 text-black flex items-center justify-center gap-1.5 flex-shrink-0 font-bold text-[11px]"
+          className="h-8 px-2.5 bg-yellow-400 text-black flex items-center justify-center gap-1.5 flex-shrink-0 font-bold text-[11px]"
           aria-label="Exit Studio"
           title="Exit Studio"
         >
           <ChevronLeft size={16} />
-          <span>AISTAGE.ONE</span>
+          <span className="hidden sm:inline">AISTAGE.ONE</span>
+          <span className="sm:hidden">Exit</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMenuCollapsed((value) => !value)}
+          className="hidden lg:flex w-8 h-8 bg-white/10 text-white items-center justify-center flex-shrink-0"
+          title={menuCollapsed ? 'Expand tools' : 'Collapse tools'}
+          aria-label={menuCollapsed ? 'Expand tools' : 'Collapse tools'}
+        >
+          {menuCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
         <div className="min-w-0 flex-1">
           <div className="text-[9px] uppercase tracking-[0.22em] text-white/50 font-semibold">AISTAGE.ONE</div>
