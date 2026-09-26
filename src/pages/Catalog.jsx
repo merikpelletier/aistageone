@@ -26,7 +26,7 @@ const shuffle = (items) => {
   return result;
 };
 
-export default function Catalog() {
+export default function Catalog({ embedded = false, onOpenAsset = null }) {
   const initialCategory = new URLSearchParams(window.location.search).get('category') || 'all';
   const [filters, setFilters] = useState({ category: initialCategory, subcategory: 'all', creator: 'all', search: '', sort: 'random' });
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -128,7 +128,7 @@ export default function Catalog() {
   const visibleAssets = filteredAssets.slice(0, visibleCount);
 
   return (
-    <div className="min-h-screen bg-zinc-950 pb-28 text-white" style={catalogBackground ? { backgroundImage: `url(${catalogBackground})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' } : undefined}>
+    <div className={`${embedded ? 'min-h-[calc(100vh-3.5rem)]' : 'min-h-screen'} bg-zinc-950 pb-28 text-white`} style={catalogBackground ? { backgroundImage: `url(${catalogBackground})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' } : undefined}>
       {showHero && <section className="relative overflow-hidden border-b border-white/10 bg-black" style={heroBackground ? { backgroundImage: `url(${heroBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(6,182,212,0.22),transparent_38%),radial-gradient(circle_at_85%_10%,rgba(37,99,235,0.18),transparent_35%)]" />
         <div className={`relative mx-auto max-w-7xl px-6 ${heroHeightClass}`}>
@@ -160,7 +160,7 @@ export default function Catalog() {
             <>
               <motion.div layout className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <AnimatePresence>
-                  {visibleAssets.map((asset) => <AssetCard key={asset.id} asset={asset} category={categories.find((item) => item.id === asset.category_id)} onQuickView={setQuickViewAsset} />)}
+                  {visibleAssets.map((asset) => <AssetCard key={asset.id} asset={asset} category={categories.find((item) => item.id === asset.category_id)} onQuickView={setQuickViewAsset} onOpenAsset={onOpenAsset} />)}
                 </AnimatePresence>
               </motion.div>
               {showLoadMore && visibleCount < filteredAssets.length && <div className="mt-10 flex justify-center"><button onClick={() => setVisibleCount((count) => count + PAGE_SIZE)} className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-8 py-3 font-black text-black transition hover:brightness-110">LOAD MORE ({visibleAssets.length} / {filteredAssets.length})</button></div>}
