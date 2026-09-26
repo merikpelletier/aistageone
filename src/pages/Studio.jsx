@@ -682,25 +682,6 @@ export default function Studio() {
     );
   }
 
-  // Free timeline — blank KitProductionRoom with no project context
-  if (showFreeTimeline) {
-    const blankKit = { id: 'free_timeline', title: 'Free Timeline', kit_characters: [], kit_sets: [], kit_costumes: [] };
-    return (
-      <KitProductionRoom
-        kitPage={blankKit}
-        dossier={null}
-        onClose={() => setShowFreeTimeline(false)}
-        producedMedia={producedMedia}
-        onMediaProduced={setProducedMedia}
-        referenceMedia={[]}
-      />
-    );
-  }
-
-  // Layout view
-  if (showLayout) {
-    return <LayoutTool user={user} onClose={() => setShowLayout(false)} />;
-  }
 
   const activeShellKey = editingActor !== null
     ? 'actor'
@@ -786,8 +767,9 @@ export default function Studio() {
       return;
     }
     if (tool.action === 'timeline') {
-      setActiveToolPanel(null);
-      setShowFreeTimeline(true);
+      setEditingActor(null);
+      setEditingSet(null);
+      setActiveToolPanel('timeline');
       return;
     }
     if (tool.action === 'lab') {
@@ -801,8 +783,9 @@ export default function Studio() {
       return;
     }
     if (tool.action === 'layout') {
-      setActiveToolPanel(null);
-      setShowLayout(true);
+      setEditingActor(null);
+      setEditingSet(null);
+      setActiveToolPanel('layout');
       return;
     }
     setEditingActor(null);
@@ -1158,6 +1141,25 @@ export default function Studio() {
               />
             </div>
           </StudioWorkspaceTool>
+        </div>
+      )}
+
+      {activeToolPanel === 'timeline' && (
+        <div className="absolute inset-0 z-20 bg-black">
+          <KitProductionRoom
+            kitPage={{ id: 'free_timeline', title: 'Free Timeline', kit_characters: [], kit_sets: [], kit_costumes: [] }}
+            dossier={null}
+            onClose={() => { setActiveToolPanel(null); setActiveTab(null); }}
+            producedMedia={producedMedia}
+            onMediaProduced={setProducedMedia}
+            referenceMedia={[]}
+          />
+        </div>
+      )}
+
+      {activeToolPanel === 'layout' && (
+        <div className="absolute inset-0 z-20 bg-zinc-900">
+          <LayoutTool user={user} onClose={() => { setActiveToolPanel(null); setActiveTab(null); }} />
         </div>
       )}
 
