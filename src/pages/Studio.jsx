@@ -147,13 +147,34 @@ function ToolAccordionSection({ section, activeKey, onTool, defaultOpen = false 
 
 function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
   const [showMobileTools, setShowMobileTools] = useState(false);
+  const [menuCollapsed, setMenuCollapsed] = useState(false);
   const mobilePrimaryKeys = ['fotoplay', 'actor', 'vault', 'ai_video'];
+
+  useEffect(() => {
+    const updateToolbarMetrics = () => {
+      const desktop = window.innerWidth >= 1024;
+      document.documentElement.style.setProperty('--studio-toolbar-width', desktop ? (menuCollapsed ? '64px' : '210px') : '0px');
+      document.documentElement.style.setProperty('--studio-toolbar-bottom', desktop ? '0px' : '64px');
+    };
+    updateToolbarMetrics();
+    window.addEventListener('resize', updateToolbarMetrics);
+    return () => window.removeEventListener('resize', updateToolbarMetrics);
+  }, [menuCollapsed]);
   const primaryMobile = mobilePrimaryKeys.map((key) => STUDIO_SHELL_TOOLS.find((tool) => tool.key === key)).filter(Boolean);
 
   return (
     <div className="min-h-screen bg-[#202328] text-white">
-      <div className="sticky top-0 z-[210] h-14 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-3 md:px-4 gap-3">
-        <div className="w-8 h-8 bg-yellow-400 text-black flex items-center justify-center flex-shrink-0">
+      <div className="sticky top-0 z-[5000] h-14 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-3 md:px-4 gap-3">
+        <button
+          type="button"
+          onClick={() => setMenuCollapsed((value) => !value)}
+          className="hidden lg:flex w-8 h-8 bg-yellow-400 text-black items-center justify-center flex-shrink-0"
+          title={menuCollapsed ? 'Expand tools' : 'Collapse tools'}
+          aria-label={menuCollapsed ? 'Expand tools' : 'Collapse tools'}
+        >
+          {menuCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        </button>
+        <div className="lg:hidden w-8 h-8 bg-yellow-400 text-black flex items-center justify-center flex-shrink-0">
           <PanelLeft size={18} />
         </div>
         <div className="min-w-0 flex-1">
@@ -164,16 +185,36 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
       </div>
 
       <div className="flex min-h-[calc(100vh-3.5rem)]">
-        <aside className="hidden lg:block sticky z-[210] top-14 self-start h-[calc(100vh-3.5rem)] w-[210px] flex-shrink-0 bg-[#17191d] border-r border-white/10 overflow-y-auto">
-          {STUDIO_TOOL_SECTIONS.map((section, index) => (
-            <ToolAccordionSection
-              key={section.key}
-              section={section}
-              activeKey={activeKey}
-              onTool={onTool}
-              defaultOpen={index === 0}
-            />
-          ))}
+        <aside className={`hidden lg:block sticky z-[5000] top-14 self-start h-[calc(100vh-3.5rem)] flex-shrink-0 bg-[#17191d] border-r border-white/10 overflow-y-auto transition-[width] duration-200 ${menuCollapsed ? 'w-[64px]' : 'w-[210px]'}`}>
+          {menuCollapsed ? (
+            <div className="py-2">
+              {STUDIO_SHELL_TOOLS.map((tool) => {
+                const Icon = tool.icon;
+                return (
+                  <button
+                    key={tool.key}
+                    type="button"
+                    onClick={() => onTool(tool)}
+                    title={tool.label}
+                    aria-label={tool.label}
+                    className={`w-16 h-12 flex items-center justify-center transition-colors ${activeKey === tool.key ? 'bg-yellow-400 text-black' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+                  >
+                    <Icon size={19} />
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            STUDIO_TOOL_SECTIONS.map((section, index) => (
+              <ToolAccordionSection
+                key={section.key}
+                section={section}
+                activeKey={activeKey}
+                onTool={onTool}
+                defaultOpen={index === 0}
+              />
+            ))
+          )}
         </aside>
 
         <main className="min-w-0 flex-1 bg-yellow-400 text-black pb-[64px] lg:pb-0">
@@ -181,7 +222,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
         </main>
       </div>
 
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[210] h-[64px] bg-[#17191d] border-t border-white/10">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[5000] h-[64px] bg-[#17191d] border-t border-white/10">
         <div className="h-full grid grid-cols-5">
           {primaryMobile.map((tool) => (
             <button
@@ -211,7 +252,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 18 }}
-            className="lg:hidden fixed z-[205] left-0 right-0 bottom-16 max-h-[72vh] overflow-y-auto bg-[#202328] border-t border-white/10"
+            className="lg:hidden fixed z-[4990] left-0 right-0 bottom-16 max-h-[72vh] overflow-y-auto bg-[#202328] border-t border-white/10"
           >
             {STUDIO_TOOL_SECTIONS.map((section, index) => (
               <ToolAccordionSection
@@ -348,7 +389,7 @@ export default function Studio() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState('stories');
+  const [activeTab, setActiveTab] = useState(null);
   const [activeToolPanel, setActiveToolPanel] = useState(null);
   const [libraryTab, setLibraryTab] = useState('kits');
   const [editingActor, setEditingActor] = useState(null);  // null=closed, false=new, obj=edit
@@ -896,8 +937,21 @@ export default function Studio() {
 
 
 
+      {!activeShellKey && (
+        <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-6 bg-[#d8d8d3]">
+          <div className="max-w-2xl text-center">
+            <div className="mx-auto mb-6 w-16 h-16 bg-black text-yellow-400 flex items-center justify-center">
+              <Sparkles size={28} />
+            </div>
+            <p className="text-black/45 text-xs font-bold uppercase tracking-[0.28em]">AISTAGE.ONE</p>
+            <h1 className="mt-3 text-4xl md:text-6xl font-black tracking-tight text-black">Creative Studio</h1>
+            <p className="mt-4 text-sm md:text-base text-black/55">Choose a tool from the toolbar to begin.</p>
+          </div>
+        </div>
+      )}
+
       {/* Workspace header */}
-      <div className="px-5 md:px-7 pt-6 pb-5 relative">
+      {activeShellKey && <div className="px-5 md:px-7 pt-6 pb-5 relative">
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between gap-4">
           <div>
             <p className="text-black/60 text-[10px] tracking-[0.22em] uppercase font-bold mb-1">
@@ -910,7 +964,7 @@ export default function Studio() {
             Creative workspace
           </div>
         </motion.div>
-      </div>
+      </div>}
 
       {/* ── HOME TAB ── */}
       {activeTab === 'home' && (
