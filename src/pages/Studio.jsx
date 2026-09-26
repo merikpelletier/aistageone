@@ -36,6 +36,9 @@ import VaultSection from '@/components/VaultSection';
 import LayoutTool from '@/components/studio/LayoutTool';
 import Catalog from '@/pages/Catalog';
 import AssetDetail from '@/pages/AssetDetail';
+import PitchDecks from '@/pages/PitchDecks';
+import PitchDeckEditor from '@/pages/PitchDeckEditor';
+import PitchDeckDetail from '@/pages/PitchDeckDetail';
 import { Bookmark } from 'lucide-react';
 HOME_ICON_MAP.Bookmark = Bookmark;
 
@@ -78,7 +81,7 @@ const STUDIO_TOOL_SECTIONS = [
     tools: [
       { key: 'timeline', label: 'Timeline', icon: ListVideo, action: 'timeline' },
       { key: 'layout', label: 'Layout', icon: LayoutTemplate, action: 'layout' },
-      { key: 'pitch', label: 'Pitch Deck', icon: Presentation, action: 'route', path: '/PitchDecks' },
+      { key: 'pitch', label: 'Pitch Deck', icon: Presentation, action: 'workspace' },
     ],
   },
   {
@@ -397,6 +400,8 @@ export default function Studio() {
   const [activeTab, setActiveTab] = useState(null);
   const [activeToolPanel, setActiveToolPanel] = useState(null);
   const [activeAssetId, setActiveAssetId] = useState(null);
+  const [pitchView, setPitchView] = useState('list');
+  const [pitchProjectId, setPitchProjectId] = useState(null);
   const [libraryTab, setLibraryTab] = useState('kits');
   const [editingActor, setEditingActor] = useState(null);  // null=closed, false=new, obj=edit
   const [editingSet, setEditingSet] = useState(null);      // null=closed, false=new, obj=edit
@@ -701,6 +706,8 @@ export default function Studio() {
   const closeAllStudioTools = () => {
     setActiveToolPanel(null);
     setActiveAssetId(null);
+    setPitchView('list');
+    setPitchProjectId(null);
     setEditingActor(null);
     setEditingSet(null);
     setShowVoiceRecorder(false);
@@ -1183,6 +1190,36 @@ export default function Studio() {
             <Catalog
               embedded
               onOpenAsset={(assetId) => setActiveAssetId(assetId)}
+            />
+          )}
+        </div>
+      )}
+
+      {activeToolPanel === 'pitch' && (
+        <div className="absolute inset-0 z-20 bg-zinc-950">
+          {pitchView === 'list' && (
+            <PitchDecks
+              embedded
+              onNew={() => { setPitchProjectId(null); setPitchView('edit'); }}
+              onEdit={(projectId) => { setPitchProjectId(projectId); setPitchView('edit'); }}
+              onView={(projectId) => { setPitchProjectId(projectId); setPitchView('view'); }}
+            />
+          )}
+          {pitchView === 'edit' && (
+            <PitchDeckEditor
+              embedded
+              projectId={pitchProjectId}
+              onBack={() => setPitchView('list')}
+              onView={() => setPitchView('view')}
+              onProjectCreated={(projectId) => { setPitchProjectId(projectId); }}
+            />
+          )}
+          {pitchView === 'view' && pitchProjectId && (
+            <PitchDeckDetail
+              embedded
+              projectId={pitchProjectId}
+              onBack={() => setPitchView('list')}
+              onEdit={() => setPitchView('edit')}
             />
           )}
         </div>
