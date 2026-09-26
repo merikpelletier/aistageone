@@ -82,7 +82,7 @@ function OloShopSetPicker({ selectedImages, onToggle, onClose }) {
   );
 }
 
-export default function SetAssetEditor({ asset, userEmail, onClose }) {
+export default function SetAssetEditor({ asset, userEmail, onClose, embedded = false }) {
   const qc = useQueryClient();
   const [name, setName] = useState(asset?.name || '');
   const [description, setDescription] = useState(asset?.description || '');
@@ -155,7 +155,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose }) {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[100] flex flex-col bg-black text-white overflow-y-auto"
+      className={`fixed z-[100] flex flex-col bg-black text-white overflow-y-auto ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)]' : 'inset-0'}`}
       initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 30, stiffness: 300 }}
     >
