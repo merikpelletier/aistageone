@@ -107,9 +107,11 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
             <h3 className="text-black text-xl font-bold">Dubbing Studio</h3>
             <p className="text-black text-sm">Add your voice to a video</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
-            <X size={20} className="text-black" />
-          </button>
+          {!embedded && (
+            <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
+              <X size={20} className="text-black" />
+            </button>
+          )}
         </div>
 
         {showContext && (
