@@ -160,9 +160,11 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-black text-xl font-bold">Voice Recorder</h3>
-          <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
-            <X size={20} className="text-black" />
-          </button>
+          {!embedded && (
+            <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
+              <X size={20} className="text-black" />
+            </button>
+          )}
         </div>
 
         {/* Production Context Info - Only show when in Dossier production mode */}
