@@ -34,6 +34,8 @@ import LabWorkspace from '@/components/studio/LabWorkspace';
 import StoryBlocks from '@/components/studio/StoryBlocks';
 import VaultSection from '@/components/VaultSection';
 import LayoutTool from '@/components/studio/LayoutTool';
+import Catalog from '@/pages/Catalog';
+import AssetDetail from '@/pages/AssetDetail';
 import { Bookmark } from 'lucide-react';
 HOME_ICON_MAP.Bookmark = Bookmark;
 
@@ -84,7 +86,7 @@ const STUDIO_TOOL_SECTIONS = [
     label: 'Library & Assets',
     tools: [
       { key: 'vault', label: 'Vault', icon: Bookmark, action: 'workspace' },
-      { key: 'shop', label: 'Assets Shop', icon: ShoppingBag, action: 'route', path: '/Catalog' },
+      { key: 'shop', label: 'Assets Shop', icon: ShoppingBag, action: 'workspace' },
     ],
   },
 ];
@@ -399,6 +401,7 @@ export default function Studio() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(null);
   const [activeToolPanel, setActiveToolPanel] = useState(null);
+  const [activeAssetId, setActiveAssetId] = useState(null);
   const [libraryTab, setLibraryTab] = useState('kits');
   const [editingActor, setEditingActor] = useState(null);  // null=closed, false=new, obj=edit
   const [editingSet, setEditingSet] = useState(null);      // null=closed, false=new, obj=edit
@@ -702,6 +705,7 @@ export default function Studio() {
 
   const closeAllStudioTools = () => {
     setActiveToolPanel(null);
+    setActiveAssetId(null);
     setEditingActor(null);
     setEditingSet(null);
     setShowVoiceRecorder(false);
@@ -1169,6 +1173,23 @@ export default function Studio() {
       {activeToolPanel === 'layout' && (
         <div className="absolute inset-0 z-20 bg-zinc-900">
           <LayoutTool user={user} onClose={() => { setActiveToolPanel(null); setActiveTab(null); }} />
+        </div>
+      )}
+
+      {activeToolPanel === 'shop' && (
+        <div className="absolute inset-0 z-20 bg-zinc-950">
+          {activeAssetId ? (
+            <AssetDetail
+              embedded
+              assetId={activeAssetId}
+              onBack={() => setActiveAssetId(null)}
+            />
+          ) : (
+            <Catalog
+              embedded
+              onOpenAsset={(assetId) => setActiveAssetId(assetId)}
+            />
+          )}
         </div>
       )}
 
