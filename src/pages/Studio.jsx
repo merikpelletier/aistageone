@@ -173,13 +173,12 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
         <button
           type="button"
           onClick={() => window.location.assign('/')}
-          className="h-8 px-2.5 bg-yellow-400 text-black flex items-center justify-center gap-1.5 flex-shrink-0 font-bold text-[11px]"
+          className="hidden lg:flex h-8 px-2.5 bg-yellow-400 text-black items-center justify-center gap-1.5 flex-shrink-0 font-bold text-[11px]"
           aria-label="Exit Studio"
           title="Exit Studio"
         >
           <ChevronLeft size={16} />
-          <span className="hidden sm:inline">AISTAGE.ONE</span>
-          <span className="sm:hidden">Exit</span>
+          <span>AISTAGE.ONE</span>
         </button>
         <button
           type="button"
@@ -276,6 +275,16 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
                 defaultOpen={index === 0}
               />
             ))}
+            <div className="border-t border-white/10 p-3">
+              <button
+                type="button"
+                onClick={() => window.location.assign('/')}
+                className="w-full min-h-[48px] flex items-center gap-3 px-3 bg-yellow-400 text-black font-bold text-sm"
+              >
+                <ChevronLeft size={18} />
+                Exit Studio
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
