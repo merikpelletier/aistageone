@@ -165,7 +165,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
           <h2 className="text-white text-lg font-light tracking-widest">
             {asset?.id ? 'Edit Set' : 'New Set'}
           </h2>
-          <button onClick={onClose} className="p-2 text-white hover:text-white/80"><X size={20} /></button>
+          {!embedded && <button onClick={onClose} className="p-2 text-white hover:text-white/80"><X size={20} /></button>}
         </div>
 
         <div className="flex-1 px-5 py-6 space-y-5 pb-24">
