@@ -38,13 +38,14 @@ import { Bookmark } from 'lucide-react';
 HOME_ICON_MAP.Bookmark = Bookmark;
 
 const STUDIO_SHELL_TOOLS = [
-  { key: 'home', label: 'Home', icon: Home, action: 'view' },
-  { key: 'stories', label: 'FotoPlay', icon: BookOpen, action: 'view' },
-  { key: 'actor', label: 'Actor Creator', icon: Users, action: 'actor' },
-  { key: 'set', label: 'Set Creator', icon: Layers, action: 'set' },
-  { key: 'lab', label: 'Stages', icon: Theater, action: 'view' },
-  { key: 'tools', label: 'AI Tools', icon: Wrench, action: 'view' },
-  { key: 'vault', label: 'Vault', icon: Bookmark, action: 'view' },
+  { key: 'actor', label: 'Actor', icon: Users, action: 'actor' },
+  { key: 'set', label: 'Set', icon: Layers, action: 'set' },
+  { key: 'vault', label: 'Vault', icon: Bookmark, action: 'panel' },
+  { key: 'image', label: 'Image', icon: Camera, action: 'image' },
+  { key: 'video', label: 'Video', icon: Film, action: 'video' },
+  { key: 'voice', label: 'Voice', icon: Mic, action: 'voice' },
+  { key: 'stages', label: 'Stages', icon: Theater, action: 'panel' },
+  { key: 'layout', label: 'Layout', icon: Layers, action: 'layout' },
 ];
 
 function StudioShellButton({ tool, active, onClick, compact = false }) {
@@ -55,45 +56,49 @@ function StudioShellButton({ tool, active, onClick, compact = false }) {
       onClick={onClick}
       title={tool.label}
       aria-label={tool.label}
-      className={`group flex flex-col items-center justify-center gap-1.5 transition-colors ${compact ? 'min-w-[64px] px-2 py-2' : 'w-full px-2 py-3'} ${
+      className={`group flex items-center justify-center transition-colors ${compact ? 'min-w-[58px] h-14 px-2 flex-col gap-1' : 'w-14 h-14 flex-col gap-1'} ${
         active ? 'bg-yellow-400 text-black' : 'text-white/75 hover:bg-white/10 hover:text-white'
       }`}
     >
-      <Icon size={compact ? 20 : 22} strokeWidth={2} />
-      <span className={`${compact ? 'text-[9px]' : 'text-[10px]'} font-semibold leading-tight text-center`}>{tool.label}</span>
+      <Icon size={compact ? 19 : 21} strokeWidth={2} />
+      <span className="text-[9px] font-semibold leading-none text-center">{tool.label}</span>
     </button>
   );
 }
 
 function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
+  const primaryMobile = STUDIO_SHELL_TOOLS.slice(0, 6);
   return (
     <div className="min-h-screen bg-[#202328] text-white">
-      <div className="sticky top-0 z-40 h-16 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-4 md:px-5 gap-3">
-        <div className="w-9 h-9 bg-yellow-400 text-black flex items-center justify-center flex-shrink-0">
-          <PanelLeft size={20} />
+      <div className="sticky top-0 z-40 h-14 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-3 md:px-4 gap-3">
+        <div className="w-8 h-8 bg-yellow-400 text-black flex items-center justify-center flex-shrink-0">
+          <PanelLeft size={18} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-semibold">AISTAGE.ONE</div>
+          <div className="text-[9px] uppercase tracking-[0.22em] text-white/50 font-semibold">AISTAGE.ONE</div>
           <div className="font-semibold text-sm truncate">{title || 'Studio'}</div>
         </div>
-        {subtitle && <div className="hidden lg:block text-xs text-white/50 truncate max-w-[38vw]">{subtitle}</div>}
+        {subtitle && <div className="hidden xl:block text-xs text-white/45 truncate max-w-[34vw]">{subtitle}</div>}
       </div>
 
-      <div className="flex min-h-[calc(100vh-4rem)]">
-        <aside className="hidden md:flex sticky top-16 self-start h-[calc(100vh-4rem)] w-[88px] flex-shrink-0 bg-[#17191d] border-r border-white/10 flex-col overflow-y-auto">
+      <div className="flex min-h-[calc(100vh-3.5rem)]">
+        <aside className="hidden lg:flex sticky top-14 self-start h-[calc(100vh-3.5rem)] w-[64px] flex-shrink-0 bg-[#17191d] border-r border-white/10 flex-col items-center py-2 overflow-y-auto">
           {STUDIO_SHELL_TOOLS.map((tool) => (
             <StudioShellButton key={tool.key} tool={tool} active={activeKey === tool.key} onClick={() => onTool(tool)} />
           ))}
         </aside>
 
-        <main className="min-w-0 flex-1 bg-yellow-400 text-black pb-24 md:pb-8">
+        <main className="min-w-0 flex-1 bg-yellow-400 text-black pb-[72px] lg:pb-0">
           {children}
         </main>
       </div>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-[74px] bg-[#17191d] border-t border-white/10 overflow-x-auto">
-        <div className="h-full flex items-stretch min-w-max">
-          {STUDIO_SHELL_TOOLS.map((tool) => (
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 h-[64px] bg-[#17191d] border-t border-white/10 overflow-x-auto">
+        <div className="h-full flex items-center min-w-max px-1">
+          {primaryMobile.map((tool) => (
+            <StudioShellButton key={tool.key} tool={tool} compact active={activeKey === tool.key} onClick={() => onTool(tool)} />
+          ))}
+          {STUDIO_SHELL_TOOLS.slice(6).map((tool) => (
             <StudioShellButton key={tool.key} tool={tool} compact active={activeKey === tool.key} onClick={() => onTool(tool)} />
           ))}
         </div>
@@ -102,27 +107,27 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
   );
 }
 
-function StudioToolOverlay({ title, onClose, children }) {
+function StudioToolPanel({ title, onClose, children }) {
   return (
-    <div className="fixed inset-0 z-[45] bg-black/45 backdrop-blur-[1px] md:pl-[88px] md:pt-16">
+    <div className="fixed z-[45] inset-x-0 bottom-16 top-14 lg:inset-y-14 lg:right-0 lg:left-auto lg:w-[min(520px,44vw)] lg:bottom-0 bg-transparent pointer-events-none">
       <motion.div
-        initial={{ opacity: 0, x: 28 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 28 }}
-        className="h-full w-full bg-yellow-400 text-black shadow-2xl overflow-hidden flex flex-col"
+        initial={{ opacity: 0, y: 24, x: 0 }}
+        animate={{ opacity: 1, y: 0, x: 0 }}
+        exit={{ opacity: 0, y: 24, x: 0 }}
+        className="pointer-events-auto absolute inset-x-0 bottom-0 max-h-[78vh] lg:inset-0 lg:max-h-none bg-white text-black shadow-2xl border-t lg:border-t-0 lg:border-l border-black/15 flex flex-col"
       >
-        <div className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-black/15 bg-yellow-400 flex-shrink-0">
-          <div className="font-bold text-lg">{title}</div>
+        <div className="h-12 flex items-center justify-between px-4 border-b border-black/10 bg-[#f3f3f1] flex-shrink-0">
+          <div className="font-bold text-sm uppercase tracking-wide">{title}</div>
           <button
             type="button"
             onClick={onClose}
             className="w-9 h-9 bg-black text-yellow-400 flex items-center justify-center"
             aria-label={`Close ${title}`}
           >
-            <X size={19} />
+            <X size={18} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto pb-20 md:pb-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain">
           {children}
         </div>
       </motion.div>
@@ -231,7 +236,7 @@ export default function Studio() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('stories');
   const [activeToolPanel, setActiveToolPanel] = useState(null);
   const [libraryTab, setLibraryTab] = useState('kits');
   const [editingActor, setEditingActor] = useState(null);  // null=closed, false=new, obj=edit
@@ -323,7 +328,7 @@ export default function Studio() {
     stages: () => setActiveToolPanel('lab'),
     tools: () => setActiveToolPanel('tools'),
     my_vault: () => setActiveToolPanel('vault'),
-    fotoplay: () => setActiveToolPanel('stories'),
+    fotoplay: () => { setActiveToolPanel(null); setActiveTab('stories'); },
   };
   const homeItemBadges = {
     my_projects: projectsInProductionCount,
@@ -455,7 +460,7 @@ export default function Studio() {
 
   // Broadcast Studio section context
   useEffect(() => {
-    const sectionLabels = { home: 'Home overview', library: 'Production Kits library', lab: 'Stages (sketch generators)', tools: 'AI Tools workspace', stories: 'FotoPlay', vault: 'Vault' };
+    const sectionLabels = { home: 'Home overview', library: 'Production Kits library', lab: 'Stages (sketch generators)', stages: 'Stages (sketch generators)', tools: 'AI Tools workspace', stories: 'FotoPlay', vault: 'Vault' };
     const openTools = [];
     if (showVoiceRecorder) openTools.push('Voice Recorder');
     if (showAudioUploader) openTools.push('Audio Uploader');
@@ -544,21 +549,10 @@ export default function Studio() {
     return <LayoutTool user={user} onClose={() => setShowLayout(false)} />;
   }
 
-  const activeShellKey = editingActor !== null ? 'actor' : editingSet !== null ? 'set' : (activeToolPanel || activeTab);
-  const activeShellTitle = editingActor !== null
-    ? (editingActor?.character_name || 'Actor Creator')
-    : editingSet !== null
-      ? (editingSet?.name || 'Set Creator')
-      : 'Studio';
+  const activeShellKey = editingActor !== null ? 'actor' : editingSet !== null ? 'set' : activeToolPanel;
+  const activeShellTitle = 'FotoPlay Studio';
 
   const handleShellTool = (tool) => {
-    if (tool.key === 'home') {
-      setEditingActor(null);
-      setEditingSet(null);
-      setActiveToolPanel(null);
-      setActiveTab('home');
-      return;
-    }
     if (tool.action === 'actor') {
       setActiveToolPanel(null);
       setEditingSet(null);
@@ -571,6 +565,27 @@ export default function Studio() {
       setEditingSet(false);
       return;
     }
+    if (tool.action === 'image') {
+      setActiveToolPanel(null);
+      setShowAnimateImage(true);
+      return;
+    }
+    if (tool.action === 'video') {
+      setActiveToolPanel(null);
+      setVideoInitialMode(null);
+      setShowVideoTools(true);
+      return;
+    }
+    if (tool.action === 'voice') {
+      setActiveToolPanel(null);
+      setShowVoiceRecorder(true);
+      return;
+    }
+    if (tool.action === 'layout') {
+      setActiveToolPanel(null);
+      setShowLayout(true);
+      return;
+    }
     setEditingActor(null);
     setEditingSet(null);
     setActiveToolPanel(tool.key);
@@ -581,7 +596,7 @@ export default function Studio() {
       activeKey={activeShellKey}
       onTool={handleShellTool}
       title={activeShellTitle}
-      subtitle="Open tools without leaving your current workspace"
+      subtitle="FotoPlay stays open while you call the tools you need"
     >
       <div className="min-h-[calc(100vh-4rem)] relative" style={activeViewBg ? { backgroundImage: `url(${activeViewBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : undefined}>
       {activeViewBg && <div className="absolute inset-0 bg-black/40 pointer-events-none z-0" />}
@@ -710,7 +725,7 @@ export default function Studio() {
             <p className="text-black/60 text-[10px] tracking-[0.22em] uppercase font-bold mb-1">
               {user?.full_name || 'CREATOR'}
             </p>
-            <h1 className="text-black text-3xl md:text-4xl font-bold tracking-tight">Studio</h1>
+            <h1 className="text-black text-3xl md:text-4xl font-bold tracking-tight">FotoPlay</h1>
           </div>
           <div className="hidden md:flex items-center gap-2 text-black/60 text-xs font-semibold">
             <FolderOpen size={15} />
@@ -841,7 +856,7 @@ export default function Studio() {
       )}
 
       {/* ── STORIES TAB ── */}
-      {false && activeTab === 'stories' && (
+      {activeTab === 'stories' && (
         <StoryBlocks user={user} onBack={() => setActiveTab('home')} />
       )}
 
@@ -859,53 +874,27 @@ export default function Studio() {
       )}
 
       <AnimatePresence>
-        {activeToolPanel === 'stories' && (
-          <StudioToolOverlay title="FotoPlay" onClose={() => setActiveToolPanel(null)}>
-            <StoryBlocks user={user} onBack={() => setActiveToolPanel(null)} />
-          </StudioToolOverlay>
-        )}
-
-        {activeToolPanel === 'lab' && (
-          <StudioToolOverlay title="Stages" onClose={() => setActiveToolPanel(null)}>
-            <div className="px-5 md:px-7 py-5">
-              <SketchStudio user={user} />
-            </div>
-          </StudioToolOverlay>
-        )}
-
-        {activeToolPanel === 'tools' && (
-          <StudioToolOverlay title="AI Tools" onClose={() => setActiveToolPanel(null)}>
-            <LabWorkspace
-              user={user}
-              onOpenActor={() => { setActiveToolPanel(null); setEditingActor(false); }}
-              onOpenSet={() => { setActiveToolPanel(null); setEditingSet(false); }}
-              onOpenVoiceRecorder={() => setShowVoiceRecorder(true)}
-              onOpenAudioUploader={() => setShowAudioUploader(true)}
-              onOpenDubbing={() => setShowDubbingStudio(true)}
-              onOpenTTS={() => setShowTextToSpeech(true)}
-              onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }}
-              onOpenLipSync={() => setShowLipSync(true)}
-              onOpenAnimateImage={() => setShowAnimateImage(true)}
-              onJoinProject={handleJoinProject}
-              onOpenFreeTimeline={() => setShowFreeTimeline(true)}
-              onOpenLayout={() => setShowLayout(true)}
-              hideProjects={true}
-            />
-          </StudioToolOverlay>
-        )}
-
         {activeToolPanel === 'vault' && (
-          <StudioToolOverlay title="Vault" onClose={() => setActiveToolPanel(null)}>
-            <div className="px-5 md:px-7 py-5">
+          <StudioToolPanel title="Vault" onClose={() => setActiveToolPanel(null)}>
+            <div className="p-4">
               <VaultSection
                 userEmail={user?.email}
                 onUsePrompt={(text) => {
                   setPendingPrompt(text);
+                  setActiveToolPanel(null);
                   setShowAnimateImage(true);
                 }}
               />
             </div>
-          </StudioToolOverlay>
+          </StudioToolPanel>
+        )}
+
+        {activeToolPanel === 'stages' && (
+          <StudioToolPanel title="Stages" onClose={() => setActiveToolPanel(null)}>
+            <div className="p-4">
+              <SketchStudio user={user} />
+            </div>
+          </StudioToolPanel>
         )}
       </AnimatePresence>
 
