@@ -171,9 +171,11 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
             </h3>
             <p className="text-black text-sm">Replicate • Kling/Seedance models</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
-            <X size={20} className="text-black" />
-          </button>
+          {!embedded && (
+            <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
+              <X size={20} className="text-black" />
+            </button>
+          )}
         </div>
 
         {/* Production Context Info - Only show when in Dossier production mode */}
