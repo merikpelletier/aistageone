@@ -193,16 +193,16 @@ function InlineDressActor({ userEmail, onDone }) {
   const folderColors = { red:'bg-red-500', orange:'bg-orange-500', yellow:'bg-yellow-400', green:'bg-green-500', blue:'bg-blue-500', purple:'bg-purple-500', pink:'bg-pink-500' };
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto w-full max-w-[1600px] space-y-6 px-1 sm:px-2">
       {/* Actor Reference — CharacterSheets first, then vault folders */}
       <div>
         <p className="text-white text-xs font-bold uppercase tracking-wider mb-2">Actor Reference</p>
 
         {/* CharacterSheet actors */}
         {characters.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-2" style={{scrollbarWidth:'none'}}>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10">
             {characters.map(c => {
-              const photo = c.character_photos?.[0];
+              const photo = getCharacterReferenceImage(c);
               const sel = selectedChar?.id === c.id && !selectedChar?.url;
               return (
                 <button key={`cs-${c.id}`} onClick={() => setSelectedChar(sel ? null : c)}
@@ -210,7 +210,7 @@ function InlineDressActor({ userEmail, onDone }) {
                   <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/10">
                     {photo ? <img src={photo} alt="" className="w-full h-full object-cover" /> : <Users size={20} className="m-auto mt-3 text-white" />}
                   </div>
-                  <span className="text-white text-[10px] font-semibold w-16 text-center truncate">{c.character_name || 'Actor'}</span>
+                  <span className="text-white text-[10px] font-semibold w-full text-center truncate">{c.character_name || 'Actor'}</span>
                 </button>
               );
             })}
@@ -229,7 +229,7 @@ function InlineDressActor({ userEmail, onDone }) {
         {vaultFolders.length > 0 && (
           <div className="space-y-2 mt-2">
             <p className="text-white text-[10px] uppercase tracking-widest font-semibold">Vault Folders</p>
-            <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
+            <div className="flex flex-wrap gap-2 pb-1">
               <button onClick={() => handleSelectFolder(null)}
                 className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition-all text-sm font-semibold ${selectedFolder?.__id === '__unfiled__' ? 'border-rose-500 bg-rose-500/20 text-white' : 'border-white/10 bg-white/5 text-white'}`}>
                 <Bookmark size={12} className="text-white flex-shrink-0" />
@@ -256,7 +256,7 @@ function InlineDressActor({ userEmail, onDone }) {
                 ) : folderAssets.length === 0 ? (
                   <p className="text-white text-xs italic">No images in this folder</p>
                 ) : (
-                  <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
+                  <div className="flex flex-wrap gap-2 pb-1">
                     {folderAssets.map(v => {
                       const sel = selectedChar?.id === v.id;
                       return (
@@ -296,7 +296,7 @@ function InlineDressActor({ userEmail, onDone }) {
         {vaultFolders.length > 0 && (
           <div className="space-y-2 mb-3">
             <p className="text-white text-[10px] uppercase tracking-widest font-semibold">Pick from Vault</p>
-            <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
+            <div className="flex flex-wrap gap-2 pb-1">
               <button onClick={() => handleSelectCostumeFolder(null)}
                 className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition-all text-sm font-semibold ${costumeFolder?.__id === '__unfiled__' ? 'border-rose-500 bg-rose-500/20 text-white' : 'border-white/10 bg-white/5 text-white'}`}>
                 <Bookmark size={12} className="text-white flex-shrink-0" />
@@ -322,7 +322,7 @@ function InlineDressActor({ userEmail, onDone }) {
                 ) : costumeFolderAssets.length === 0 ? (
                   <p className="text-white text-xs italic">No images in this folder</p>
                 ) : (
-                  <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
+                  <div className="flex flex-wrap gap-2 pb-1">
                     {costumeFolderAssets.map(v => {
                       const sel = costumeUrls.includes(v.url);
                       return (
@@ -447,6 +447,21 @@ function InlineDressActor({ userEmail, onDone }) {
   );
 }
 
+const getCharacterReferenceImage = (character) => {
+  const first = character?.character_photos?.[0];
+  if (!first) return null;
+  if (typeof first === 'string' && /^https?:\/\//i.test(first)) return first;
+  if (typeof first === 'string') {
+    try {
+      const parsed = JSON.parse(first);
+      return parsed?.portrait || parsed?.front || parsed?.profile || parsed?.side || parsed?.back || null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
 // ── Inline Compose Scene ──────────────────────────────────────────────────────
 function InlineCompose({ userEmail, onDone }) {
   const [characters, setCharacters] = useState([]);
@@ -519,7 +534,8 @@ function InlineCompose({ userEmail, onDone }) {
     });
   }, [oloAssets, oloCategory, oloSearch]);
 
-  const fixedReferenceCount = Number(Boolean(selectedChar?.character_photos?.[0])) + Number(Boolean(selectedSet?.images?.[0])) + Number(Boolean(uploadedPhoto));
+  const selectedCharacterImage = getCharacterReferenceImage(selectedChar);
+  const fixedReferenceCount = Number(Boolean(selectedCharacterImage)) + Number(Boolean(selectedSet?.images?.[0])) + Number(Boolean(uploadedPhoto));
   const availableOloSlots = Math.max(0, 3 - fixedReferenceCount);
   const tooManyOloReferences = selectedOloAssets.length > availableOloSlots;
 
@@ -577,7 +593,7 @@ function InlineCompose({ userEmail, onDone }) {
     const charName = selectedChar?.character_name || 'a person';
     const setName = selectedSet?.name || 'a cinematic set';
     const refImages = [];
-    if (selectedChar?.character_photos?.[0]) refImages.push(selectedChar.character_photos[0]);
+    if (selectedCharacterImage) refImages.push(selectedCharacterImage);
     if (selectedSet?.images?.[0]) refImages.push(selectedSet.images[0]);
     if (uploadedPhoto) refImages.unshift(uploadedPhoto);
     selectedOloAssets.forEach(asset => {
@@ -612,13 +628,6 @@ function InlineCompose({ userEmail, onDone }) {
 
   return (
     <div className="space-y-4">
-      {/* Debug info */}
-      <div className="bg-white/5 rounded-lg p-3 text-xs text-white">
-        <p>User: {userEmail || 'none'}</p>
-        <p>Characters: {characters.length} | Sets: {sets.length} | Vault Folders: {vaultFolders.length} | OLOSHOP: {oloAssets.length}</p>
-        <p>Selected: {selectedChar?.character_name || selectedChar?.label || 'none'} | {selectedSet?.name || 'none'} | OLOSHOP: {selectedOloAssets.length}</p>
-      </div>
-
       {/* Vault folders for picking characters */}
       <div className="space-y-2">
         <p className="text-white text-xs font-bold uppercase tracking-wider">Pick Character from Vault</p>
@@ -626,7 +635,7 @@ function InlineCompose({ userEmail, onDone }) {
           <p className="text-white text-xs italic">No vault folders yet</p>
         ) : (
           <>
-            <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
+            <div className="flex flex-wrap gap-2 pb-1">
               {vaultFolders.map(f => {
                 const folderColors = { red:'bg-red-500', orange:'bg-orange-500', yellow:'bg-yellow-400', green:'bg-green-500', blue:'bg-blue-500', purple:'bg-purple-500', pink:'bg-pink-500' };
                 const isOpen = selectedCharFolder?.id === f.id;
@@ -649,7 +658,7 @@ function InlineCompose({ userEmail, onDone }) {
                 ) : folderAssets.length === 0 ? (
                   <p className="text-white text-xs italic">No images in this folder</p>
                 ) : (
-                  <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
+                  <div className="flex flex-wrap gap-2 pb-1">
                     {folderAssets.map(v => {
                       const sel = selectedChar?.id === v.id;
                       return (
@@ -691,11 +700,11 @@ function InlineCompose({ userEmail, onDone }) {
               const sel = selectedChar?.id === c.id;
               return (
                 <button key={c.id} onClick={() => setSelectedChar(sel ? null : c)}
-                  className={`flex-shrink-0 flex flex-col items-center gap-1 p-2 rounded-2xl border-2 transition-all cursor-pointer ${sel ? 'border-yellow-400 bg-yellow-400/20' : 'border-white/20 bg-white/10 hover:border-white/40'}`}>
+                  className={`min-w-0 flex flex-col items-center gap-1 p-2 rounded-2xl border-2 transition-all cursor-pointer ${sel ? 'border-yellow-400 bg-yellow-400/20' : 'border-white/20 bg-white/10 hover:border-white/40'}`}>
                   <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/10">
                     {photo ? <img src={photo} alt="" className="w-full h-full object-cover" /> : <Users size={20} className="m-auto mt-3 text-white" />}
                   </div>
-                  <span className="text-white text-[10px] font-semibold w-16 text-center truncate">{c.character_name || 'Actor'}</span>
+                  <span className="text-white text-[10px] font-semibold w-full text-center truncate">{c.character_name || 'Actor'}</span>
                 </button>
               );
             })}
@@ -707,7 +716,7 @@ function InlineCompose({ userEmail, onDone }) {
       {vaultFolders.length > 0 && (
         <div className="space-y-2">
           <p className="text-white text-xs font-bold uppercase tracking-wider">Pick Set from Vault Folders</p>
-          <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
+          <div className="flex flex-wrap gap-2 pb-1">
             {vaultFolders.map(f => {
               const folderColors = { red:'bg-red-500', orange:'bg-orange-500', yellow:'bg-yellow-400', green:'bg-green-500', blue:'bg-blue-500', purple:'bg-purple-500', pink:'bg-pink-500' };
               const isOpen = selectedSetFolder?.id === f.id;
@@ -730,7 +739,7 @@ function InlineCompose({ userEmail, onDone }) {
               ) : folderAssets.length === 0 ? (
                 <p className="text-white text-xs italic">No images in this folder</p>
               ) : (
-                <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
+                <div className="flex flex-wrap gap-2 pb-1">
                   {folderAssets.map(v => {
                     const sel = selectedSet?.id === v.id;
                     return (
@@ -765,17 +774,17 @@ function InlineCompose({ userEmail, onDone }) {
             <p className="text-white text-xs mt-1">Create one in Library tab, or pick from Vault below</p>
           </div>
         ) : (
-          <div className="flex gap-2 overflow-x-auto pb-2" style={{scrollbarWidth:'none'}}>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10">
             {sets.map(s => {
               const img = s.images?.[0];
               const sel = selectedSet?.id === s.id;
               return (
                 <button key={s.id} onClick={() => setSelectedSet(sel ? null : s)}
-                  className={`flex-shrink-0 flex flex-col items-center gap-1 p-2 rounded-2xl border-2 transition-all cursor-pointer ${sel ? 'border-yellow-400 bg-yellow-400/20' : 'border-white/20 bg-white/10 hover:border-white/40'}`}>
+                  className={`min-w-0 flex flex-col items-center gap-1 p-2 rounded-2xl border-2 transition-all cursor-pointer ${sel ? 'border-yellow-400 bg-yellow-400/20' : 'border-white/20 bg-white/10 hover:border-white/40'}`}>
                   <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/10">
                     {img ? <img src={img} alt="" className="w-full h-full object-cover" /> : <MapPin size={20} className="m-auto mt-3 text-white" />}
                   </div>
-                  <span className="text-white text-[10px] font-semibold w-16 text-center truncate">{s.name || 'Set'}</span>
+                  <span className="text-white text-[10px] font-semibold w-full text-center truncate">{s.name || 'Set'}</span>
                 </button>
               );
             })}
@@ -793,7 +802,7 @@ function InlineCompose({ userEmail, onDone }) {
           <span className={`rounded-full px-3 py-1 text-[10px] font-black ${tooManyOloReferences ? 'bg-red-500/20 text-red-300' : 'bg-black/40 text-cyan-100'}`}>{selectedOloAssets.length}/{availableOloSlots} reference slots</span>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
+        <div className="flex flex-wrap gap-2 pb-1">
           <button onClick={() => setOloCategory('all')} className={`flex-shrink-0 rounded-full px-3 py-2 text-[10px] font-black ${oloCategory === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>All</button>
           {oloCategories.map(category => <button key={category.id} onClick={() => setOloCategory(category.id)} className={`flex-shrink-0 rounded-full px-3 py-2 text-[10px] font-black ${oloCategory === category.id ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{category.label_en || category.label_fr || category.key}</button>)}
         </div>
