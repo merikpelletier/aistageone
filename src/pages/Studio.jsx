@@ -102,6 +102,34 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
   );
 }
 
+function StudioToolOverlay({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-[45] bg-black/45 backdrop-blur-[1px] md:pl-[88px] md:pt-16">
+      <motion.div
+        initial={{ opacity: 0, x: 28 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: 28 }}
+        className="h-full w-full bg-yellow-400 text-black shadow-2xl overflow-hidden flex flex-col"
+      >
+        <div className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-black/15 bg-yellow-400 flex-shrink-0">
+          <div className="font-bold text-lg">{title}</div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-9 h-9 bg-black text-yellow-400 flex items-center justify-center"
+            aria-label={`Close ${title}`}
+          >
+            <X size={19} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto pb-20 md:pb-6">
+          {children}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
@@ -204,6 +232,7 @@ export default function Studio() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('home');
+  const [activeToolPanel, setActiveToolPanel] = useState(null);
   const [libraryTab, setLibraryTab] = useState('kits');
   const [editingActor, setEditingActor] = useState(null);  // null=closed, false=new, obj=edit
   const [editingSet, setEditingSet] = useState(null);      // null=closed, false=new, obj=edit
@@ -291,10 +320,10 @@ export default function Studio() {
   const homeItemActions = {
     my_projects: () => navigate('/MyProjects'),
     production_kits: () => setActiveTab('library'),
-    stages: () => setActiveTab('lab'),
-    tools: () => setActiveTab('tools'),
-    my_vault: () => setActiveTab('vault'),
-    fotoplay: () => setActiveTab('stories'),
+    stages: () => setActiveToolPanel('lab'),
+    tools: () => setActiveToolPanel('tools'),
+    my_vault: () => setActiveToolPanel('vault'),
+    fotoplay: () => setActiveToolPanel('stories'),
   };
   const homeItemBadges = {
     my_projects: projectsInProductionCount,
@@ -437,10 +466,10 @@ export default function Studio() {
     if (showAnimateImage) openTools.push('Animate Image');
     setAppContext({
       page: 'My Studio',
-      section: sectionLabels[activeTab] || activeTab,
+      section: activeToolPanel ? (sectionLabels[activeToolPanel] || activeToolPanel) : (sectionLabels[activeTab] || activeTab),
       detail: openTools.length > 0 ? `Tool open: ${openTools.join(', ')}` : (editingActor !== null ? 'Actor editor open' : editingSet !== null ? 'Set editor open' : null),
     });
-  }, [activeTab, showVoiceRecorder, showAudioUploader, showDubbingStudio, showTextToSpeech, showVideoTools, showLipSync, showAnimateImage, editingActor, editingSet]);
+  }, [activeTab, activeToolPanel, showVoiceRecorder, showAudioUploader, showDubbingStudio, showTextToSpeech, showVideoTools, showLipSync, showAnimateImage, editingActor, editingSet]);
 
   const DEFAULT_STUDIO_TABS = [
     { key: 'home', label: 'Home', icon: 'Home', visible: true, order: 0 },
@@ -515,27 +544,36 @@ export default function Studio() {
     return <LayoutTool user={user} onClose={() => setShowLayout(false)} />;
   }
 
-  const activeShellKey = editingActor !== null ? 'actor' : editingSet !== null ? 'set' : activeTab;
+  const activeShellKey = editingActor !== null ? 'actor' : editingSet !== null ? 'set' : (activeToolPanel || activeTab);
   const activeShellTitle = editingActor !== null
     ? (editingActor?.character_name || 'Actor Creator')
     : editingSet !== null
       ? (editingSet?.name || 'Set Creator')
-      : ({ home: 'Studio Home', library: 'Production Kits', lab: 'Stages', tools: 'AI Tools', stories: 'FotoPlay', vault: 'Vault' }[activeTab] || 'Studio');
+      : 'Studio';
 
   const handleShellTool = (tool) => {
+    if (tool.key === 'home') {
+      setEditingActor(null);
+      setEditingSet(null);
+      setActiveToolPanel(null);
+      setActiveTab('home');
+      return;
+    }
     if (tool.action === 'actor') {
+      setActiveToolPanel(null);
       setEditingSet(null);
       setEditingActor(false);
       return;
     }
     if (tool.action === 'set') {
+      setActiveToolPanel(null);
       setEditingActor(null);
       setEditingSet(false);
       return;
     }
     setEditingActor(null);
     setEditingSet(null);
-    setActiveTab(tool.key);
+    setActiveToolPanel(tool.key);
   };
 
   return (
@@ -543,7 +581,7 @@ export default function Studio() {
       activeKey={activeShellKey}
       onTool={handleShellTool}
       title={activeShellTitle}
-      subtitle="One creative workspace — tools, assets and FotoPlay stay together"
+      subtitle="Open tools without leaving your current workspace"
     >
       <div className="min-h-[calc(100vh-4rem)] relative" style={activeViewBg ? { backgroundImage: `url(${activeViewBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : undefined}>
       {activeViewBg && <div className="absolute inset-0 bg-black/40 pointer-events-none z-0" />}
@@ -672,7 +710,7 @@ export default function Studio() {
             <p className="text-black/60 text-[10px] tracking-[0.22em] uppercase font-bold mb-1">
               {user?.full_name || 'CREATOR'}
             </p>
-            <h1 className="text-black text-3xl md:text-4xl font-bold tracking-tight">{activeShellTitle}</h1>
+            <h1 className="text-black text-3xl md:text-4xl font-bold tracking-tight">Studio</h1>
           </div>
           <div className="hidden md:flex items-center gap-2 text-black/60 text-xs font-semibold">
             <FolderOpen size={15} />
@@ -776,14 +814,14 @@ export default function Studio() {
       )}
 
       {/* ── STAGES TAB ── */}
-      {activeTab === 'lab' && (
+      {false && activeTab === 'lab' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5">
           <SketchStudio user={user} />
         </motion.div>
       )}
 
       {/* ── TOOLS TAB ── */}
-      {activeTab === 'tools' && (
+      {false && activeTab === 'tools' && (
         <LabWorkspace
           user={user}
           onOpenActor={() => setEditingActor(false)}
@@ -803,12 +841,12 @@ export default function Studio() {
       )}
 
       {/* ── STORIES TAB ── */}
-      {activeTab === 'stories' && (
+      {false && activeTab === 'stories' && (
         <StoryBlocks user={user} onBack={() => setActiveTab('home')} />
       )}
 
       {/* ── VAULT WORKSPACE ── */}
-      {activeTab === 'vault' && (
+      {false && activeTab === 'vault' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 md:px-7">
           <VaultSection
             userEmail={user?.email}
@@ -819,6 +857,57 @@ export default function Studio() {
           />
         </motion.div>
       )}
+
+      <AnimatePresence>
+        {activeToolPanel === 'stories' && (
+          <StudioToolOverlay title="FotoPlay" onClose={() => setActiveToolPanel(null)}>
+            <StoryBlocks user={user} onBack={() => setActiveToolPanel(null)} />
+          </StudioToolOverlay>
+        )}
+
+        {activeToolPanel === 'lab' && (
+          <StudioToolOverlay title="Stages" onClose={() => setActiveToolPanel(null)}>
+            <div className="px-5 md:px-7 py-5">
+              <SketchStudio user={user} />
+            </div>
+          </StudioToolOverlay>
+        )}
+
+        {activeToolPanel === 'tools' && (
+          <StudioToolOverlay title="AI Tools" onClose={() => setActiveToolPanel(null)}>
+            <LabWorkspace
+              user={user}
+              onOpenActor={() => { setActiveToolPanel(null); setEditingActor(false); }}
+              onOpenSet={() => { setActiveToolPanel(null); setEditingSet(false); }}
+              onOpenVoiceRecorder={() => setShowVoiceRecorder(true)}
+              onOpenAudioUploader={() => setShowAudioUploader(true)}
+              onOpenDubbing={() => setShowDubbingStudio(true)}
+              onOpenTTS={() => setShowTextToSpeech(true)}
+              onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }}
+              onOpenLipSync={() => setShowLipSync(true)}
+              onOpenAnimateImage={() => setShowAnimateImage(true)}
+              onJoinProject={handleJoinProject}
+              onOpenFreeTimeline={() => setShowFreeTimeline(true)}
+              onOpenLayout={() => setShowLayout(true)}
+              hideProjects={true}
+            />
+          </StudioToolOverlay>
+        )}
+
+        {activeToolPanel === 'vault' && (
+          <StudioToolOverlay title="Vault" onClose={() => setActiveToolPanel(null)}>
+            <div className="px-5 md:px-7 py-5">
+              <VaultSection
+                userEmail={user?.email}
+                onUsePrompt={(text) => {
+                  setPendingPrompt(text);
+                  setShowAnimateImage(true);
+                }}
+              />
+            </div>
+          </StudioToolOverlay>
+        )}
+      </AnimatePresence>
 
       {/* ── Editors ── */}
       <AnimatePresence>
