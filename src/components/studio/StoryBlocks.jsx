@@ -730,14 +730,9 @@ export default function StoryBlocks({ user, onBack }) {
           const authorView = getFotoplayView('author');
           return (
             <>
-              <div className="mb-8 flex items-center gap-3" style={gatewayView.background_image ? { backgroundImage: `url(${gatewayView.background_image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
-                <button onClick={onBack} className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-black">
-                  <ArrowLeft size={20} className="text-yellow-400" />
-                </button>
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.22em] text-black/55">{gatewayView.description || 'Choose your experience'}</p>
-                  <h2 className="text-3xl font-black text-black lg:text-5xl">{gatewayView.label || 'FotoPlay'}</h2>
-                </div>
+              <div className="mb-8" style={gatewayView.background_image ? { backgroundImage: `url(${gatewayView.background_image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-black/55">{gatewayView.description || 'Choose your experience'}</p>
+                <h2 className="text-3xl font-black text-black lg:text-5xl">{gatewayView.label || 'FotoPlay'}</h2>
               </div>
 
               {authorView.visible !== false && (
