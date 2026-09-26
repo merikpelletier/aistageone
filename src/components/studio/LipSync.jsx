@@ -109,9 +109,11 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
             </h3>
             <p className="text-black text-sm">Sync audio to a video automatically</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
-            <X size={20} className="text-black" />
-          </button>
+          {!embedded && (
+            <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
+              <X size={20} className="text-black" />
+            </button>
+          )}
         </div>
 
         {/* Video Upload */}
