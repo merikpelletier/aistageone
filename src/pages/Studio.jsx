@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useAppContext } from '@/lib/AppContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Layers, Camera, ChevronRight, ChevronLeft, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench, PanelLeft, FolderOpen } from 'lucide-react';
+import { Users, Layers, Camera, ChevronRight, ChevronLeft, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench, PanelLeft, FolderOpen, Video, ListVideo, Wand2, Presentation, ShoppingBag, LayoutTemplate, MoreHorizontal, Volume2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const HOME_ICON_MAP = { Home, Clapperboard, Theater, Wrench, Bookmark: undefined, BookOpen, Users, Layers, Film };
@@ -41,11 +41,21 @@ const STUDIO_SHELL_TOOLS = [
   { key: 'actor', label: 'Actor', icon: Users, action: 'actor' },
   { key: 'set', label: 'Set', icon: Layers, action: 'set' },
   { key: 'vault', label: 'Vault', icon: Bookmark, action: 'panel' },
-  { key: 'image', label: 'Image', icon: Camera, action: 'image' },
-  { key: 'video', label: 'Video', icon: Film, action: 'video' },
   { key: 'voice', label: 'Voice', icon: Mic, action: 'voice' },
+  { key: 'dubbing', label: 'Dubbing', icon: Video, action: 'dubbing' },
+  { key: 'tts', label: 'TTS', icon: Type, action: 'tts' },
+  { key: 'music', label: 'Music', icon: Music, action: 'lab', labTool: 'music' },
+  { key: 'sound_fx', label: 'Sound FX', icon: Volume2, action: 'lab', labTool: 'sound_fx' },
+  { key: 'lip_sync', label: 'Lip Sync', icon: Mic, action: 'lip_sync' },
+  { key: 'animate', label: 'Animate', icon: Film, action: 'animate' },
+  { key: 'ai_video', label: 'AI Video', icon: Camera, action: 'ai_video' },
+  { key: 'video_tools', label: 'Video Ref', icon: Video, action: 'video_ref' },
+  { key: 'timeline', label: 'Timeline', icon: ListVideo, action: 'timeline' },
+  { key: 'compose', label: 'Compose', icon: Wand2, action: 'lab', labTool: 'compose' },
+  { key: 'layout', label: 'Layout', icon: LayoutTemplate, action: 'layout' },
   { key: 'stages', label: 'Stages', icon: Theater, action: 'panel' },
-  { key: 'layout', label: 'Layout', icon: Layers, action: 'layout' },
+  { key: 'pitch', label: 'Pitch Deck', icon: Presentation, action: 'route', path: '/PitchDecks' },
+  { key: 'shop', label: 'Assets Shop', icon: ShoppingBag, action: 'route', path: '/Catalog' },
 ];
 
 function StudioShellButton({ tool, active, onClick, compact = false }) {
@@ -67,7 +77,8 @@ function StudioShellButton({ tool, active, onClick, compact = false }) {
 }
 
 function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
-  const primaryMobile = STUDIO_SHELL_TOOLS.slice(0, 6);
+  const [showMobileTools, setShowMobileTools] = useState(false);
+  const primaryMobile = STUDIO_SHELL_TOOLS.slice(0, 5);
   return (
     <div className="min-h-screen bg-[#202328] text-white">
       <div className="sticky top-0 z-40 h-14 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-3 md:px-4 gap-3">
@@ -93,16 +104,39 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
         </main>
       </div>
 
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 h-[64px] bg-[#17191d] border-t border-white/10 overflow-x-auto">
-        <div className="h-full flex items-center min-w-max px-1">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 h-[64px] bg-[#17191d] border-t border-white/10">
+        <div className="h-full grid grid-cols-6">
           {primaryMobile.map((tool) => (
-            <StudioShellButton key={tool.key} tool={tool} compact active={activeKey === tool.key} onClick={() => onTool(tool)} />
+            <StudioShellButton key={tool.key} tool={tool} compact active={activeKey === tool.key} onClick={() => { setShowMobileTools(false); onTool(tool); }} />
           ))}
-          {STUDIO_SHELL_TOOLS.slice(6).map((tool) => (
-            <StudioShellButton key={tool.key} tool={tool} compact active={activeKey === tool.key} onClick={() => onTool(tool)} />
-          ))}
+          <StudioShellButton tool={{ key: 'more', label: 'More', icon: MoreHorizontal }} compact active={showMobileTools} onClick={() => setShowMobileTools((v) => !v)} />
         </div>
       </nav>
+
+      <AnimatePresence>
+        {showMobileTools && (
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 18 }}
+            className="lg:hidden fixed z-[49] left-0 right-0 bottom-16 max-h-[62vh] overflow-y-auto bg-[#202328] border-t border-white/10 p-3"
+          >
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {STUDIO_SHELL_TOOLS.slice(5).map((tool) => (
+                <button
+                  key={tool.key}
+                  type="button"
+                  onClick={() => { setShowMobileTools(false); onTool(tool); }}
+                  className={`min-h-[74px] px-2 py-3 flex flex-col items-center justify-center gap-2 border border-white/10 ${activeKey === tool.key ? 'bg-yellow-400 text-black' : 'bg-[#17191d] text-white'}`}
+                >
+                  <tool.icon size={21} />
+                  <span className="text-[10px] font-semibold text-center leading-tight">{tool.label}</span>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -549,7 +583,7 @@ export default function Studio() {
     return <LayoutTool user={user} onClose={() => setShowLayout(false)} />;
   }
 
-  const activeShellKey = editingActor !== null ? 'actor' : editingSet !== null ? 'set' : activeToolPanel;
+  const activeShellKey = editingActor !== null ? 'actor' : editingSet !== null ? 'set' : (activeToolPanel?.startsWith?.('lab:') ? activeToolPanel.slice(4) : activeToolPanel);
   const activeShellTitle = 'FotoPlay Studio';
 
   const handleShellTool = (tool) => {
@@ -579,6 +613,53 @@ export default function Studio() {
     if (tool.action === 'voice') {
       setActiveToolPanel(null);
       setShowVoiceRecorder(true);
+      return;
+    }
+    if (tool.action === 'dubbing') {
+      setActiveToolPanel(null);
+      setShowDubbingStudio(true);
+      return;
+    }
+    if (tool.action === 'tts') {
+      setActiveToolPanel(null);
+      setShowTextToSpeech(true);
+      return;
+    }
+    if (tool.action === 'lip_sync') {
+      setActiveToolPanel(null);
+      setShowLipSync(true);
+      return;
+    }
+    if (tool.action === 'animate') {
+      setActiveToolPanel(null);
+      setShowAnimateImage(true);
+      return;
+    }
+    if (tool.action === 'ai_video') {
+      setActiveToolPanel(null);
+      setVideoInitialMode('text');
+      setShowVideoTools(true);
+      return;
+    }
+    if (tool.action === 'video_ref') {
+      setActiveToolPanel(null);
+      setVideoInitialMode('video');
+      setShowVideoTools(true);
+      return;
+    }
+    if (tool.action === 'timeline') {
+      setActiveToolPanel(null);
+      setShowFreeTimeline(true);
+      return;
+    }
+    if (tool.action === 'lab') {
+      setEditingActor(null);
+      setEditingSet(null);
+      setActiveToolPanel(`lab:${tool.labTool}`);
+      return;
+    }
+    if (tool.action === 'route') {
+      navigate(tool.path);
       return;
     }
     if (tool.action === 'layout') {
@@ -893,6 +974,34 @@ export default function Studio() {
           <StudioToolPanel title="Stages" onClose={() => setActiveToolPanel(null)}>
             <div className="p-4">
               <SketchStudio user={user} />
+            </div>
+          </StudioToolPanel>
+        )}
+
+        {activeToolPanel?.startsWith?.('lab:') && (
+          <StudioToolPanel
+            title={STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeToolPanel.slice(4))?.label || 'Tool'}
+            onClose={() => setActiveToolPanel(null)}
+          >
+            <div className="p-4">
+              <LabWorkspace
+                user={user}
+                directTool={activeToolPanel.slice(4)}
+                directMode={true}
+                onOpenActor={() => { setActiveToolPanel(null); setEditingActor(false); }}
+                onOpenSet={() => { setActiveToolPanel(null); setEditingSet(false); }}
+                onOpenVoiceRecorder={() => setShowVoiceRecorder(true)}
+                onOpenAudioUploader={() => setShowAudioUploader(true)}
+                onOpenDubbing={() => setShowDubbingStudio(true)}
+                onOpenTTS={() => setShowTextToSpeech(true)}
+                onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }}
+                onOpenLipSync={() => setShowLipSync(true)}
+                onOpenAnimateImage={() => setShowAnimateImage(true)}
+                onJoinProject={handleJoinProject}
+                onOpenFreeTimeline={() => setShowFreeTimeline(true)}
+                onOpenLayout={() => setShowLayout(true)}
+                hideProjects={true}
+              />
             </div>
           </StudioToolPanel>
         )}
