@@ -1007,14 +1007,17 @@ function TokenBalance({ userEmail, onBuyTokens }) {
 }
 
 // ── Main LabWorkspace ─────────────────────────────────────────────────────────
-export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoiceRecorder, onOpenAudioUploader, onOpenDubbing, onOpenTTS, onOpenVideo, onOpenLipSync, onOpenAnimateImage, onJoinProject, onOpenFreeTimeline, onOpenLayout, hideProjects = false }) {
+export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoiceRecorder, onOpenAudioUploader, onOpenDubbing, onOpenTTS, onOpenVideo, onOpenLipSync, onOpenAnimateImage, onJoinProject, onOpenFreeTimeline, onOpenLayout, hideProjects = false, directTool = null, directMode = false }) {
   const navigate = useNavigate();
-  const [activeTool, setActiveTool] = useState(null);
+  const [activeTool, setActiveTool] = useState(directTool || null);
   const [balance, setBalance] = useState(null);
   const [showBuyTokens, setShowBuyTokens] = useState(false);
   const [toolPricing, setToolPricing] = useState({});
   const [animateRatio, setAnimateRatio] = useState('16:9');
   const VIDEO_RATIOS = ['16:9', '9:16', '1:1', '4:3'];
+  useEffect(() => {
+    if (directTool) setActiveTool(directTool);
+  }, [directTool]);
   const { data: adminRuntime } = useQuery({
     queryKey: ['admin-surface-runtime'],
     queryFn: async () => (await base44.functions.invoke('admin-pages-tools', { action: 'runtime' })).data,
@@ -1242,6 +1245,7 @@ export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoice
       </AnimatePresence>
 
       {/* Tool groups */}
+      {!directMode && (
       <div className="space-y-5">
         {configuredToolGroups.map(group => (
           <div key={group.label}>
@@ -1290,6 +1294,7 @@ export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoice
           </div>
         ))}
       </div>
+      )}
 
       {/* Buy Tokens Modal */}
       {showBuyTokens && <TokenPurchaseModal onClose={() => setShowBuyTokens(false)} onPurchased={refreshBalance} />}

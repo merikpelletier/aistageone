@@ -9,7 +9,7 @@ import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 const DURATIONS = ['5s', '10s'];
 const RATIOS = ['9:16', '16:9', '1:1', '4:3'];
 
-export default function AnimateImage({ onComplete, onClose, episodePageId, blockId, user, initialPrompt }) {
+export default function AnimateImage({ onComplete, onClose, episodePageId, blockId, user, initialPrompt, embedded = false }) {
   const [imageUrl, setImageUrl] = useState(null);
   const [imageName, setImageName] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -105,12 +105,12 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+    <div className={`fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] bg-yellow-400 overflow-y-auto' : 'inset-0 bg-black/80 flex items-center justify-center p-4'}`}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-yellow-400 rounded-3xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto"
+        className={embedded ? 'bg-yellow-400 min-h-full w-full p-5 md:p-8 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto'}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-5">

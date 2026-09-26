@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 
-export default function LipSync({ onComplete, onClose, episodePageId, blockId, user }) {
+export default function LipSync({ onComplete, onClose, episodePageId, blockId, user, embedded = false }) {
   const [videoUrl, setVideoUrl] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   const [videoName, setVideoName] = useState('');
@@ -93,12 +93,12 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+    <div className={`fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] bg-yellow-400 overflow-y-auto' : 'inset-0 bg-black/80 flex items-center justify-center p-4'}`}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-yellow-400 rounded-3xl p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto"
+        className={embedded ? 'bg-yellow-400 min-h-full w-full p-5 md:p-8 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto'}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

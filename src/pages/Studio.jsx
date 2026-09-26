@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useAppContext } from '@/lib/AppContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Layers, Camera, ChevronRight, ChevronLeft, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench } from 'lucide-react';
+import { Users, Layers, Camera, ChevronRight, ChevronLeft, ChevronDown, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench, PanelLeft, FolderOpen, Video, ListVideo, Wand2, Presentation, ShoppingBag, LayoutTemplate, MoreHorizontal, Volume2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const HOME_ICON_MAP = { Home, Clapperboard, Theater, Wrench, Bookmark: undefined, BookOpen, Users, Layers, Film };
@@ -36,6 +36,265 @@ import VaultSection from '@/components/VaultSection';
 import LayoutTool from '@/components/studio/LayoutTool';
 import { Bookmark } from 'lucide-react';
 HOME_ICON_MAP.Bookmark = Bookmark;
+
+const STUDIO_TOOL_SECTIONS = [
+  {
+    key: 'create',
+    label: 'Create',
+    tools: [
+      { key: 'fotoplay', label: 'FotoPlay', icon: BookOpen, action: 'fotoplay' },
+      { key: 'actor', label: 'Actor', icon: Users, action: 'actor' },
+      { key: 'set', label: 'Set', icon: Layers, action: 'set' },
+      { key: 'compose', label: 'Compose Scene', icon: Wand2, action: 'lab', labTool: 'compose' },
+      { key: 'stages', label: 'Stages', icon: Theater, action: 'workspace' },
+    ],
+  },
+  {
+    key: 'image_video',
+    label: 'Image & Video',
+    tools: [
+      { key: 'animate', label: 'Animate Image', icon: Film, action: 'animate' },
+      { key: 'ai_video', label: 'AI Video', icon: Camera, action: 'ai_video' },
+      { key: 'video_tools', label: 'Video Reference', icon: Video, action: 'video_ref' },
+      { key: 'lip_sync', label: 'Lip Sync', icon: Mic, action: 'lip_sync' },
+    ],
+  },
+  {
+    key: 'sound',
+    label: 'Sound & Voice',
+    tools: [
+      { key: 'voice', label: 'Record Voice', icon: Mic, action: 'voice' },
+      { key: 'dubbing', label: 'Dubbing Studio', icon: Video, action: 'dubbing' },
+      { key: 'tts', label: 'Text to Speech', icon: Type, action: 'tts' },
+      { key: 'music', label: 'Music', icon: Music, action: 'lab', labTool: 'music' },
+      { key: 'sound_fx', label: 'Sound FX', icon: Volume2, action: 'lab', labTool: 'sound_fx' },
+    ],
+  },
+  {
+    key: 'assemble',
+    label: 'Assemble',
+    tools: [
+      { key: 'timeline', label: 'Timeline', icon: ListVideo, action: 'timeline' },
+      { key: 'layout', label: 'Layout', icon: LayoutTemplate, action: 'layout' },
+      { key: 'pitch', label: 'Pitch Deck', icon: Presentation, action: 'route', path: '/PitchDecks' },
+    ],
+  },
+  {
+    key: 'library',
+    label: 'Library & Assets',
+    tools: [
+      { key: 'vault', label: 'Vault', icon: Bookmark, action: 'workspace' },
+      { key: 'shop', label: 'Assets Shop', icon: ShoppingBag, action: 'route', path: '/Catalog' },
+    ],
+  },
+];
+
+const STUDIO_SHELL_TOOLS = STUDIO_TOOL_SECTIONS.flatMap((section) => section.tools);
+
+function StudioShellButton({ tool, active, onClick, compact = false }) {
+  const Icon = tool.icon;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={tool.label}
+      aria-label={tool.label}
+      className={`group flex items-center transition-colors ${compact ? 'min-h-[54px] px-3 gap-2 w-full' : 'w-full min-h-[42px] px-3 gap-2'} ${
+        active ? 'bg-yellow-400 text-black' : 'text-white/75 hover:bg-white/10 hover:text-white'
+      }`}
+    >
+      <Icon size={compact ? 19 : 17} strokeWidth={2} className="flex-shrink-0" />
+      <span className={`${compact ? 'text-xs' : 'text-[11px]'} font-semibold leading-tight text-left`}>{tool.label}</span>
+    </button>
+  );
+}
+
+function ToolAccordionSection({ section, activeKey, onTool, defaultOpen = false }) {
+  const containsActive = section.tools.some((tool) => tool.key === activeKey);
+  const [open, setOpen] = useState(defaultOpen || containsActive);
+
+  useEffect(() => {
+    if (containsActive) setOpen(true);
+  }, [containsActive]);
+
+  return (
+    <div className="border-b border-white/10">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="w-full h-10 px-3 flex items-center justify-between text-white/55 hover:text-white text-[10px] font-bold uppercase tracking-[0.16em]"
+      >
+        <span>{section.label}</span>
+        <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden pb-1"
+          >
+            {section.tools.map((tool) => (
+              <StudioShellButton key={tool.key} tool={tool} active={activeKey === tool.key} onClick={() => onTool(tool)} />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
+  const [showMobileTools, setShowMobileTools] = useState(false);
+  const [menuCollapsed, setMenuCollapsed] = useState(false);
+  const mobilePrimaryKeys = ['fotoplay', 'actor', 'vault', 'ai_video'];
+
+  useEffect(() => {
+    const updateToolbarMetrics = () => {
+      const desktop = window.innerWidth >= 1024;
+      document.documentElement.style.setProperty('--studio-toolbar-width', desktop ? (menuCollapsed ? '64px' : '210px') : '0px');
+      document.documentElement.style.setProperty('--studio-toolbar-bottom', desktop ? '0px' : '64px');
+    };
+    updateToolbarMetrics();
+    window.addEventListener('resize', updateToolbarMetrics);
+    return () => window.removeEventListener('resize', updateToolbarMetrics);
+  }, [menuCollapsed]);
+  const primaryMobile = mobilePrimaryKeys.map((key) => STUDIO_SHELL_TOOLS.find((tool) => tool.key === key)).filter(Boolean);
+
+  return (
+    <div className="min-h-screen bg-[#202328] text-white">
+      <div className="sticky top-0 z-[5000] h-14 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-3 md:px-4 gap-3">
+        <button
+          type="button"
+          onClick={() => window.location.assign('/')}
+          className="h-8 px-2.5 bg-yellow-400 text-black flex items-center justify-center gap-1.5 flex-shrink-0 font-bold text-[11px]"
+          aria-label="Exit Studio"
+          title="Exit Studio"
+        >
+          <ChevronLeft size={16} />
+          <span className="hidden sm:inline">AISTAGE.ONE</span>
+          <span className="sm:hidden">Exit</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMenuCollapsed((value) => !value)}
+          className="hidden lg:flex w-8 h-8 bg-white/10 text-white items-center justify-center flex-shrink-0"
+          title={menuCollapsed ? 'Expand tools' : 'Collapse tools'}
+          aria-label={menuCollapsed ? 'Expand tools' : 'Collapse tools'}
+        >
+          {menuCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className="text-[9px] uppercase tracking-[0.22em] text-white/50 font-semibold">AISTAGE.ONE</div>
+          <div className="font-semibold text-sm truncate">{title || 'Studio'}</div>
+        </div>
+        {subtitle && <div className="hidden xl:block text-xs text-white/45 truncate max-w-[34vw]">{subtitle}</div>}
+      </div>
+
+      <div className="flex min-h-[calc(100vh-3.5rem)]">
+        <aside className={`hidden lg:block sticky z-[5000] top-14 self-start h-[calc(100vh-3.5rem)] flex-shrink-0 bg-[#17191d] border-r border-white/10 overflow-y-auto transition-[width] duration-200 ${menuCollapsed ? 'w-[64px]' : 'w-[210px]'}`}>
+          {menuCollapsed ? (
+            <div className="py-2">
+              {STUDIO_SHELL_TOOLS.map((tool) => {
+                const Icon = tool.icon;
+                return (
+                  <button
+                    key={tool.key}
+                    type="button"
+                    onClick={() => onTool(tool)}
+                    title={tool.label}
+                    aria-label={tool.label}
+                    className={`w-16 h-12 flex items-center justify-center transition-colors ${activeKey === tool.key ? 'bg-yellow-400 text-black' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+                  >
+                    <Icon size={19} />
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            STUDIO_TOOL_SECTIONS.map((section, index) => (
+              <ToolAccordionSection
+                key={section.key}
+                section={section}
+                activeKey={activeKey}
+                onTool={onTool}
+                defaultOpen={index === 0}
+              />
+            ))
+          )}
+        </aside>
+
+        <main className="min-w-0 flex-1 bg-yellow-400 text-black pb-[64px] lg:pb-0">
+          {children}
+        </main>
+      </div>
+
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[5000] h-[64px] bg-[#17191d] border-t border-white/10">
+        <div className="h-full grid grid-cols-5">
+          {primaryMobile.map((tool) => (
+            <button
+              key={tool.key}
+              type="button"
+              onClick={() => { setShowMobileTools(false); onTool(tool); }}
+              className={`flex flex-col items-center justify-center gap-1 px-1 ${activeKey === tool.key ? 'bg-yellow-400 text-black' : 'text-white/75'}`}
+            >
+              <tool.icon size={19} />
+              <span className="text-[9px] font-semibold">{tool.label}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setShowMobileTools((value) => !value)}
+            className={`flex flex-col items-center justify-center gap-1 px-1 ${showMobileTools ? 'bg-yellow-400 text-black' : 'text-white/75'}`}
+          >
+            <MoreHorizontal size={20} />
+            <span className="text-[9px] font-semibold">Tools</span>
+          </button>
+        </div>
+      </nav>
+
+      <AnimatePresence>
+        {showMobileTools && (
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 18 }}
+            className="lg:hidden fixed z-[4990] left-0 right-0 bottom-16 max-h-[72vh] overflow-y-auto bg-[#202328] border-t border-white/10"
+          >
+            {STUDIO_TOOL_SECTIONS.map((section, index) => (
+              <ToolAccordionSection
+                key={section.key}
+                section={section}
+                activeKey={activeKey}
+                onTool={(tool) => { setShowMobileTools(false); onTool(tool); }}
+                defaultOpen={index === 0}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function StudioWorkspaceTool({ title, onClose, children }) {
+  return (
+    <div className="min-h-[calc(100vh-3.5rem)] bg-yellow-400 text-black">
+      <div className="sticky top-14 z-30 h-12 flex items-center justify-between px-4 md:px-6 border-b border-black/15 bg-yellow-400/95 backdrop-blur">
+        <div className="font-bold text-sm uppercase tracking-wide">{title}</div>
+        {onClose && (
+          <button type="button" onClick={onClose} className="w-9 h-9 bg-black text-yellow-400 flex items-center justify-center" aria-label={`Close ${title}`}>
+            <X size={18} />
+          </button>
+        )}
+      </div>
+      <div className="min-h-[calc(100vh-6.5rem)] overflow-y-auto">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 
 // ── Sub-components ──────────────────────────────────────────────────────────
@@ -138,7 +397,8 @@ export default function Studio() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState(null);
+  const [activeToolPanel, setActiveToolPanel] = useState(null);
   const [libraryTab, setLibraryTab] = useState('kits');
   const [editingActor, setEditingActor] = useState(null);  // null=closed, false=new, obj=edit
   const [editingSet, setEditingSet] = useState(null);      // null=closed, false=new, obj=edit
@@ -226,10 +486,10 @@ export default function Studio() {
   const homeItemActions = {
     my_projects: () => navigate('/MyProjects'),
     production_kits: () => setActiveTab('library'),
-    stages: () => setActiveTab('lab'),
-    tools: () => setActiveTab('tools'),
-    my_vault: () => setShowVault(true),
-    fotoplay: () => setActiveTab('stories'),
+    stages: () => setActiveToolPanel('lab'),
+    tools: () => setActiveToolPanel('tools'),
+    my_vault: () => setActiveToolPanel('vault'),
+    fotoplay: () => { setActiveToolPanel(null); setActiveTab('stories'); },
   };
   const homeItemBadges = {
     my_projects: projectsInProductionCount,
@@ -361,7 +621,7 @@ export default function Studio() {
 
   // Broadcast Studio section context
   useEffect(() => {
-    const sectionLabels = { home: 'Home overview', library: 'Production Kits library', lab: 'Stages (sketch generators)', tools: 'AI Tools workspace', stories: 'FotoPlay' };
+    const sectionLabels = { home: 'Home overview', library: 'Production Kits library', lab: 'Stages (sketch generators)', stages: 'Stages (sketch generators)', tools: 'AI Tools workspace', stories: 'FotoPlay', vault: 'Vault' };
     const openTools = [];
     if (showVoiceRecorder) openTools.push('Voice Recorder');
     if (showAudioUploader) openTools.push('Audio Uploader');
@@ -372,10 +632,10 @@ export default function Studio() {
     if (showAnimateImage) openTools.push('Animate Image');
     setAppContext({
       page: 'My Studio',
-      section: sectionLabels[activeTab] || activeTab,
+      section: activeToolPanel ? (sectionLabels[activeToolPanel] || activeToolPanel) : (sectionLabels[activeTab] || activeTab),
       detail: openTools.length > 0 ? `Tool open: ${openTools.join(', ')}` : (editingActor !== null ? 'Actor editor open' : editingSet !== null ? 'Set editor open' : null),
     });
-  }, [activeTab, showVoiceRecorder, showAudioUploader, showDubbingStudio, showTextToSpeech, showVideoTools, showLipSync, showAnimateImage, editingActor, editingSet]);
+  }, [activeTab, activeToolPanel, showVoiceRecorder, showAudioUploader, showDubbingStudio, showTextToSpeech, showVideoTools, showLipSync, showAnimateImage, editingActor, editingSet]);
 
   const DEFAULT_STUDIO_TABS = [
     { key: 'home', label: 'Home', icon: 'Home', visible: true, order: 0 },
@@ -430,57 +690,126 @@ export default function Studio() {
     );
   }
 
-  // Free timeline — blank KitProductionRoom with no project context
-  if (showFreeTimeline) {
-    const blankKit = { id: 'free_timeline', title: 'Free Timeline', kit_characters: [], kit_sets: [], kit_costumes: [] };
-    return (
-      <KitProductionRoom
-        kitPage={blankKit}
-        dossier={null}
-        onClose={() => setShowFreeTimeline(false)}
-        producedMedia={producedMedia}
-        onMediaProduced={setProducedMedia}
-        referenceMedia={[]}
-      />
-    );
-  }
 
-  // Vault view
-  if (showVault) {
-    return (
-      <div className="min-h-screen bg-yellow-400 pb-20">
-        <div className="px-5 pt-12 pb-6">
-          <button onClick={() => setShowVault(false)} className="flex items-center gap-2 text-black text-sm font-bold">
-            <ChevronLeft size={20} />
-            Back to Studio
-          </button>
-        </div>
-        <div className="px-5">
-          <VaultSection
-            userEmail={user?.email}
-            onUsePrompt={(text) => {
-              setPendingPrompt(text);
-              setShowVault(false);
-              setShowAnimateImage(true);
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
+  const activeShellKey = editingActor !== null
+    ? 'actor'
+    : editingSet !== null
+      ? 'set'
+      : activeToolPanel?.startsWith?.('lab:')
+        ? activeToolPanel.slice(4)
+        : activeToolPanel || (activeTab === 'stories' ? 'fotoplay' : null);
+  const activeShellTitle = 'AISTAGE Studio';
 
-  // Layout view
-  if (showLayout) {
-    return <LayoutTool user={user} onClose={() => setShowLayout(false)} />;
-  }
+  const closeAllStudioTools = () => {
+    setActiveToolPanel(null);
+    setEditingActor(null);
+    setEditingSet(null);
+    setShowVoiceRecorder(false);
+    setShowAudioUploader(false);
+    setShowDubbingStudio(false);
+    setShowTextToSpeech(false);
+    setShowVideoTools(false);
+    setVideoInitialMode(null);
+    setShowLipSync(false);
+    setShowAnimateImage(false);
+    setPendingPrompt(null);
+    setShowFreeTimeline(false);
+    setShowLayout(false);
+  };
+
+  const handleShellTool = (tool) => {
+    closeAllStudioTools();
+    if (tool.action === 'fotoplay') {
+      setActiveTab('stories');
+      return;
+    }
+    if (tool.action === 'workspace') {
+      setActiveToolPanel(tool.key);
+      return;
+    }
+    if (tool.action === 'actor') {
+      setEditingActor(false);
+      return;
+    }
+    if (tool.action === 'set') {
+      setEditingSet(false);
+      return;
+    }
+    if (tool.action === 'image') {
+      setShowAnimateImage(true);
+      return;
+    }
+    if (tool.action === 'video') {
+      setActiveToolPanel(null);
+      setVideoInitialMode(null);
+      setShowVideoTools(true);
+      return;
+    }
+    if (tool.action === 'voice') {
+      setShowVoiceRecorder(true);
+      return;
+    }
+    if (tool.action === 'dubbing') {
+      setShowDubbingStudio(true);
+      return;
+    }
+    if (tool.action === 'tts') {
+      setShowTextToSpeech(true);
+      return;
+    }
+    if (tool.action === 'lip_sync') {
+      setShowLipSync(true);
+      return;
+    }
+    if (tool.action === 'animate') {
+      setShowAnimateImage(true);
+      return;
+    }
+    if (tool.action === 'ai_video') {
+      setVideoInitialMode('text');
+      setShowVideoTools(true);
+      return;
+    }
+    if (tool.action === 'video_ref') {
+      setVideoInitialMode('video');
+      setShowVideoTools(true);
+      return;
+    }
+    if (tool.action === 'timeline') {
+      setActiveToolPanel('timeline');
+      return;
+    }
+    if (tool.action === 'lab') {
+      setActiveToolPanel(`lab:${tool.labTool}`);
+      return;
+    }
+    if (tool.action === 'route') {
+      navigate(tool.path);
+      return;
+    }
+    if (tool.action === 'layout') {
+      setEditingActor(null);
+      setEditingSet(null);
+      setActiveToolPanel('layout');
+      return;
+    }
+    setActiveToolPanel(tool.key);
+  };
 
   return (
-    <div className="min-h-screen bg-yellow-400 pb-20" style={activeViewBg ? { backgroundImage: `url(${activeViewBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : undefined}>
-      {activeViewBg && <div className="fixed inset-0 bg-black/40 pointer-events-none z-0" />}
+    <UnifiedStudioShell
+      activeKey={activeShellKey}
+      onTool={handleShellTool}
+      title={activeShellTitle}
+      subtitle="Choose a tool — it uses the full workspace while the toolbar stays available"
+    >
+      <div className="min-h-[calc(100vh-4rem)] relative" style={activeViewBg ? { backgroundImage: `url(${activeViewBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : undefined}>
+      {activeViewBg && <div className="absolute inset-0 bg-black/40 pointer-events-none z-0" />}
       <div className="relative z-10">
       {/* Voice Recorder Modal */}
       {showVoiceRecorder && (
         <VoiceRecorder
+          embedded
           onRecordingComplete={(file_url) => {
             setProducedMedia({ url: file_url, type: 'audio' });
             setShowVoiceRecorder(false);
@@ -512,6 +841,7 @@ export default function Studio() {
       {/* Dubbing Studio Modal */}
       {showDubbingStudio && (
         <DubbingStudio
+          embedded
           onComplete={(file_url) => {
             setProducedMedia({ url: file_url, type: 'video' });
             setShowDubbingStudio(false);
@@ -529,6 +859,7 @@ export default function Studio() {
       {/* Text to Speech Modal */}
       {showTextToSpeech && (
         <TextToSpeech
+          embedded
           onComplete={(file_url) => {
             setProducedMedia({ url: file_url, type: 'audio' });
             setShowTextToSpeech(false);
@@ -546,6 +877,7 @@ export default function Studio() {
       {/* Animate Image Modal */}
       {showAnimateImage && (
         <AnimateImage
+          embedded
           initialPrompt={pendingPrompt}
           onComplete={(url, type) => {
             setProducedMedia({ url, type });
@@ -562,6 +894,7 @@ export default function Studio() {
       {/* Lip Sync Modal */}
       {showLipSync && (
         <LipSync
+          embedded
           onComplete={(url, type) => {
             setProducedMedia({ url, type });
             setShowLipSync(false);
@@ -576,6 +909,7 @@ export default function Studio() {
       {/* Video Tools Modal */}
       {showVideoTools && (
         <VideoTools
+          embedded
           onComplete={(file_url) => {
             setProducedMedia({ url: file_url, type: 'video' });
             setShowVideoTools(false);
@@ -595,42 +929,34 @@ export default function Studio() {
 
 
 
-      {/* Header */}
-      <div className="px-5 pt-12 pb-6 relative">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <p className="text-black text-xs tracking-[0.25em] uppercase font-bold mb-2">
-            {user?.full_name || 'CREATOR'}
-          </p>
-          <h1 className="text-black text-5xl font-bold tracking-tight">My Studio</h1>
-        </motion.div>
-
-        {activeTab !== 'home' && (
-          <div className="flex items-center justify-evenly mt-8">
-            {tabs.map(tab => {
-              const TabIcon = tab.icon;
-              const tabCfg = studioViewsSource.find((item) => item.key === tab.key);
-              const tabIconImage = tabCfg?.icon_image?.trim() ? tabCfg.icon_image : null;
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`w-16 h-16 flex items-center justify-center rounded-2xl transition-all overflow-hidden flex-shrink-0 ${
-                    activeTab === tab.key
-                      ? 'bg-black text-yellow-400 shadow-xl ring-2 ring-yellow-400/60 scale-105'
-                      : 'bg-black/20 text-black hover:bg-black/30'
-                  }`}
-                >
-                  {tabIconImage ? (
-                    <img src={tabIconImage} alt="" className="w-[68px] h-[68px] object-contain" />
-                  ) : (
-                    <TabIcon className="w-[44px] h-[44px] stroke-[2.5]" />
-                  )}
-                </button>
-              );
-            })}
+      {!activeShellKey && (
+        <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-6 bg-[#d8d8d3]">
+          <div className="max-w-2xl text-center">
+            <div className="mx-auto mb-6 w-16 h-16 bg-black text-yellow-400 flex items-center justify-center">
+              <Sparkles size={28} />
+            </div>
+            <p className="text-black/45 text-xs font-bold uppercase tracking-[0.28em]">AISTAGE.ONE</p>
+            <h1 className="mt-3 text-4xl md:text-6xl font-black tracking-tight text-black">Creative Studio</h1>
+            <p className="mt-4 text-sm md:text-base text-black/55">Choose a tool from the toolbar to begin.</p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Workspace header */}
+      {activeShellKey && <div className="px-5 md:px-7 pt-6 pb-5 relative">
+        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-black/60 text-[10px] tracking-[0.22em] uppercase font-bold mb-1">
+              {user?.full_name || 'CREATOR'}
+            </p>
+            <h1 className="text-black text-3xl md:text-4xl font-bold tracking-tight">{STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeShellKey)?.label || 'Studio'}</h1>
+          </div>
+          <div className="hidden md:flex items-center gap-2 text-black/60 text-xs font-semibold">
+            <FolderOpen size={15} />
+            Creative workspace
+          </div>
+        </motion.div>
+      </div>}
 
       {/* ── HOME TAB ── */}
       {activeTab === 'home' && (
@@ -727,14 +1053,14 @@ export default function Studio() {
       )}
 
       {/* ── STAGES TAB ── */}
-      {activeTab === 'lab' && (
+      {false && activeTab === 'lab' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5">
           <SketchStudio user={user} />
         </motion.div>
       )}
 
       {/* ── TOOLS TAB ── */}
-      {activeTab === 'tools' && (
+      {false && activeTab === 'tools' && (
         <LabWorkspace
           user={user}
           onOpenActor={() => setEditingActor(false)}
@@ -758,10 +1084,99 @@ export default function Studio() {
         <StoryBlocks user={user} onBack={() => setActiveTab('home')} />
       )}
 
+      {/* ── VAULT WORKSPACE ── */}
+      {false && activeTab === 'vault' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 md:px-7">
+          <VaultSection
+            userEmail={user?.email}
+            onUsePrompt={(text) => {
+              setPendingPrompt(text);
+              setShowAnimateImage(true);
+            }}
+          />
+        </motion.div>
+      )}
+
+      {activeToolPanel === 'vault' && (
+        <div className="absolute inset-0 z-20 bg-yellow-400">
+          <StudioWorkspaceTool title="Vault" onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }}>
+            <div className="p-4 md:p-6">
+              <VaultSection
+                userEmail={user?.email}
+                onUsePrompt={(text) => {
+                  setPendingPrompt(text);
+                  setShowAnimateImage(true);
+                }}
+              />
+            </div>
+          </StudioWorkspaceTool>
+        </div>
+      )}
+
+      {activeToolPanel === 'stages' && (
+        <div className="absolute inset-0 z-20 bg-yellow-400">
+          <StudioWorkspaceTool title="Stages" onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }}>
+            <div className="p-4 md:p-6">
+              <SketchStudio user={user} />
+            </div>
+          </StudioWorkspaceTool>
+        </div>
+      )}
+
+      {activeToolPanel?.startsWith?.('lab:') && (
+        <div className="absolute inset-0 z-20 bg-yellow-400">
+          <StudioWorkspaceTool
+            title={STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeToolPanel.slice(4))?.label || 'Tool'}
+            onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }}
+          >
+            <div className="p-4 md:p-6">
+              <LabWorkspace
+                user={user}
+                directTool={activeToolPanel.slice(4)}
+                directMode={true}
+                onOpenActor={() => { setActiveToolPanel(null); setEditingActor(false); }}
+                onOpenSet={() => { setActiveToolPanel(null); setEditingSet(false); }}
+                onOpenVoiceRecorder={() => setShowVoiceRecorder(true)}
+                onOpenAudioUploader={() => setShowAudioUploader(true)}
+                onOpenDubbing={() => setShowDubbingStudio(true)}
+                onOpenTTS={() => setShowTextToSpeech(true)}
+                onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }}
+                onOpenLipSync={() => setShowLipSync(true)}
+                onOpenAnimateImage={() => setShowAnimateImage(true)}
+                onJoinProject={handleJoinProject}
+                onOpenFreeTimeline={() => setShowFreeTimeline(true)}
+                onOpenLayout={() => setShowLayout(true)}
+                hideProjects={true}
+              />
+            </div>
+          </StudioWorkspaceTool>
+        </div>
+      )}
+
+      {activeToolPanel === 'timeline' && (
+        <div className="absolute inset-0 z-20 bg-black">
+          <KitProductionRoom
+            kitPage={{ id: 'free_timeline', title: 'Free Timeline', kit_characters: [], kit_sets: [], kit_costumes: [] }}
+            dossier={null}
+            onClose={() => { setActiveToolPanel(null); setActiveTab(null); }}
+            producedMedia={producedMedia}
+            onMediaProduced={setProducedMedia}
+            referenceMedia={[]}
+          />
+        </div>
+      )}
+
+      {activeToolPanel === 'layout' && (
+        <div className="absolute inset-0 z-20 bg-zinc-900">
+          <LayoutTool user={user} onClose={() => { setActiveToolPanel(null); setActiveTab(null); }} />
+        </div>
+      )}
+
       {/* ── Editors ── */}
       <AnimatePresence>
         {editingActor !== null && (
           <CharacterSheetEditor
+            embedded
             key="actor-editor"
             sheet={editingActor || null}
             userEmail={user?.email}
@@ -770,6 +1185,7 @@ export default function Studio() {
         )}
         {editingSet !== null && (
           <SetAssetEditor
+            embedded
             key="set-editor"
             asset={editingSet || null}
             userEmail={user?.email}
@@ -778,6 +1194,7 @@ export default function Studio() {
         )}
       </AnimatePresence>
       </div>
-    </div>
+      </div>
+    </UnifiedStudioShell>
   );
 }
