@@ -520,7 +520,7 @@ function InlineCompose({ userEmail, onDone }) {
     }).catch(error => {
       if (!active) return;
       console.error('Unable to load OLOSHOP inventory:', error);
-      setOloError('OLOSHOP inventory could not load. Try again.');
+      setOloError('Assets Shop inventory could not load. Try again.');
     }).finally(() => { if (active) setLoadingOlo(false); });
     return () => { active = false; };
   }, []);
@@ -548,8 +548,8 @@ function InlineCompose({ userEmail, onDone }) {
     }
     if (selectedOloAssets.length >= availableOloSlots) {
       setError(availableOloSlots
-        ? `Only ${availableOloSlots} OLOSHOP reference${availableOloSlots === 1 ? '' : 's'} can be added with the current character, set and photo.`
-        : 'Remove a character, set or uploaded photo to make room for an OLOSHOP reference.');
+        ? `Only ${availableOloSlots} Assets Shop reference${availableOloSlots === 1 ? '' : 's'} can be added with the current character, set and photo.`
+        : 'Remove a character, set or uploaded photo to make room for an Assets Shop reference.');
       return;
     }
     setSelectedOloAssets(current => [...current, { ...asset, selected_image: image, selection_key: selectionKey }]);
@@ -582,7 +582,7 @@ function InlineCompose({ userEmail, onDone }) {
       return;
     }
     if (tooManyOloReferences) {
-      setError(`Remove ${selectedOloAssets.length - availableOloSlots} OLOSHOP selection${selectedOloAssets.length - availableOloSlots === 1 ? '' : 's'} to stay within the 3-reference limit.`);
+      setError(`Remove ${selectedOloAssets.length - availableOloSlots} Assets Shop selection${selectedOloAssets.length - availableOloSlots === 1 ? '' : 's'} to stay within the 3-reference limit.`);
       return;
     }
     if (!prompt.trim()) {
@@ -602,7 +602,7 @@ function InlineCompose({ userEmail, onDone }) {
     });
     const selectedOloProducts = [...new Map(selectedOloAssets.map(asset => [asset.id, asset])).values()];
     const oloDirection = selectedOloAssets.length
-      ? `Faithfully include these selected OLOSHOP assets as visible elements in the scene, preserving their recognizable design instead of replacing them with generic alternatives: ${selectedOloProducts.map(asset => `${asset.title || 'Untitled asset'}${asset.description ? ` — ${asset.description}` : ''}`).join('; ')}.`
+      ? `Faithfully include these selected Assets Shop assets as visible elements in the scene, preserving their recognizable design instead of replacing them with generic alternatives: ${selectedOloProducts.map(asset => `${asset.title || 'Untitled asset'}${asset.description ? ` — ${asset.description}` : ''}`).join('; ')}.`
       : '';
     const genPrompt = selectedChar 
       ? `Cinematic production still: ${charName} in ${setName}. ${oloDirection} ${prompt} Professional film photography, dramatic lighting.`
@@ -726,44 +726,11 @@ function InlineCompose({ userEmail, onDone }) {
         </div>
       )}
 
-      {/* Set picker - Library sets */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-white/80 text-xs font-bold uppercase tracking-wider">Your Sets (Library)</p>
-          <button onClick={() => {
-            if (!userEmail) return;
-            base44.entities.SetAsset.filter({ user_email: userEmail }).then(setsData => { console.log('Refreshed sets:', setsData); setSets(setsData); }).catch(console.error);
-          }} className="text-white hover:text-white text-xs">↻ Refresh</button>
-        </div>
-        {sets.length === 0 ? (
-          <div className="bg-white/5 rounded-xl p-4 text-center">
-            <p className="text-white text-sm">No sets in your library yet</p>
-            <p className="text-white text-xs mt-1">Create one in Library tab, or pick from Vault below</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10">
-            {sets.map(s => {
-              const img = s.images?.[0];
-              const sel = selectedSet?.id === s.id;
-              return (
-                <button key={s.id} onClick={() => setSelectedSet(sel ? null : s)}
-                  className={`min-w-0 flex flex-col items-center gap-1 p-2 rounded-2xl border-2 transition-all cursor-pointer ${sel ? 'border-yellow-400 bg-yellow-400/20' : 'border-white/20 bg-white/10 hover:border-white/40'}`}>
-                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/10">
-                    {img ? <img src={img} alt="" className="w-full h-full object-cover" /> : <MapPin size={20} className="m-auto mt-3 text-white" />}
-                  </div>
-                  <span className="text-white text-[10px] font-semibold w-full text-center truncate">{s.name || 'Set'}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Published OLOSHOP inventory */}
+      {/* Published Assets Shop inventory */}
       <div className="space-y-3 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.05] p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-200"><ShoppingBag size={15} /> OLOSHOP Inventory</p>
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-200"><ShoppingBag size={15} /> Assets Shop</p>
             <p className="mt-1 text-[11px] text-white/55">Select published products or production assets to place in the scene.</p>
           </div>
           <span className={`rounded-full px-3 py-1 text-[10px] font-black ${tooManyOloReferences ? 'bg-red-500/20 text-red-300' : 'bg-black/40 text-cyan-100'}`}>{selectedOloAssets.length}/{availableOloSlots} reference slots</span>
@@ -774,7 +741,7 @@ function InlineCompose({ userEmail, onDone }) {
           {oloCategories.map(category => <button key={category.id} onClick={() => setOloCategory(category.id)} className={`flex-shrink-0 rounded-full px-3 py-2 text-[10px] font-black ${oloCategory === category.id ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{category.label_en || category.label_fr || category.key}</button>)}
         </div>
 
-        <input value={oloSearch} onChange={event => setOloSearch(event.target.value)} placeholder="Search OLOSHOP inventory" className="w-full rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-cyan-300" />
+        <input value={oloSearch} onChange={event => setOloSearch(event.target.value)} placeholder="Search Assets Shop" className="w-full rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-cyan-300" />
 
         {loadingOlo ? <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-cyan-300" /></div>
           : oloError ? <p className="rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-xs text-red-300">{oloError}</p>
