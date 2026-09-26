@@ -174,9 +174,16 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
         >
           {menuCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
-        <div className="lg:hidden w-8 h-8 bg-yellow-400 text-black flex items-center justify-center flex-shrink-0">
-          <PanelLeft size={18} />
-        </div>
+        <button
+          type="button"
+          onClick={() => window.location.assign('/')}
+          className="lg:hidden h-8 px-2 bg-yellow-400 text-black flex items-center justify-center gap-1.5 flex-shrink-0 font-bold text-[11px]"
+          aria-label="Exit Studio"
+          title="Exit Studio"
+        >
+          <ChevronLeft size={16} />
+          <span>AISTAGE.ONE</span>
+        </button>
         <div className="min-w-0 flex-1">
           <div className="text-[9px] uppercase tracking-[0.22em] text-white/50 font-semibold">AISTAGE.ONE</div>
           <div className="font-semibold text-sm truncate">{title || 'Studio'}</div>
