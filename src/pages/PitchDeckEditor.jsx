@@ -26,9 +26,9 @@ async function loadEditor(id) {
 const mediaIcon = (type) => type === 'video' ? Film : type === 'audio' ? Music : ImageIcon;
 const slugify = (value) => String(value || 'pitch').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'pitch';
 
-export default function PitchDeckEditor() {
+export default function PitchDeckEditor({ projectId: projectIdProp = null, embedded = false, onBack = null, onView = null, onProjectCreated = null }) {
   const [params] = useSearchParams();
-  const projectId = params.get('id');
+  const projectId = projectIdProp || params.get('id');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [project, setProject] = useState(emptyProject);
@@ -72,7 +72,14 @@ export default function PitchDeckEditor() {
     payload.owner_id = auth.user.id; payload.updated_at = new Date().toISOString();
     const result = projectId ? await supabase.from('pitch_project').update(payload).eq('id', projectId).select('*').single() : await supabase.from('pitch_project').insert(payload).select('*').single();
     if (result.error) setNotice(result.error.message);
-    else { setProject(result.data); setNotice('Pitch deck saved.'); if (!projectId) navigate(`/PitchDeckEditor?id=${encodeURIComponent(result.data.id)}`, { replace: true }); }
+    else {
+      setProject(result.data);
+      setNotice('Pitch deck saved.');
+      if (!projectId) {
+        if (embedded) onProjectCreated?.(result.data.id);
+        else navigate(`/PitchDeckEditor?id=${encodeURIComponent(result.data.id)}`, { replace: true });
+      }
+    }
     setSaving(false);
   };
 
@@ -207,14 +214,14 @@ export default function PitchDeckEditor() {
     setNotice('Share link copied.');
   };
 
-  if (isLoading) return <div className="flex min-h-screen items-center justify-center bg-zinc-950"><Loader2 className="h-8 w-8 animate-spin text-cyan-400" /></div>;
-  if (error) return <div className="min-h-screen bg-zinc-950 p-8 text-white"><Link to="/Studio?tab=tools" className="inline-flex items-center gap-2 text-cyan-400"><ArrowLeft size={18} /> STUDIO TOOLS</Link><p className="mt-10">This pitch deck cannot be edited.</p></div>;
+  if (isLoading) return <div className={`flex ${embedded ? 'min-h-[calc(100vh-3.5rem)]' : 'min-h-screen'} items-center justify-center bg-zinc-950`}><Loader2 className="h-8 w-8 animate-spin text-cyan-400" /></div>;
+  if (error) return <div className={`${embedded ? 'min-h-[calc(100vh-3.5rem)]' : 'min-h-screen'} bg-zinc-950 p-8 text-white`}>{embedded ? <button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-cyan-400"><ArrowLeft size={18} /> PITCH DECKS</button> : <Link to="/Studio?tab=tools" className="inline-flex items-center gap-2 text-cyan-400"><ArrowLeft size={18} /> STUDIO TOOLS</Link>}<p className="mt-10">This pitch deck cannot be edited.</p></div>;
 
   const panelTabs = [{ id: 'sections', label: 'Sections', icon: LayoutTemplate }, { id: 'media', label: 'Media', icon: Film }, { id: 'project', label: 'Project', icon: Settings2 }];
 
-  return <div className="min-h-screen bg-zinc-950 pb-24 text-white">
+  return <div className={`${embedded ? 'min-h-[calc(100vh-3.5rem)]' : 'min-h-screen'} bg-zinc-950 pb-24 text-white`}>
     <header className="agent-safe-lg-sticky border-b border-zinc-800 bg-zinc-950/95 px-4 py-4 backdrop-blur lg:sticky lg:top-0 lg:z-40">
-      <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3"><Link to="/PitchDecks" className="text-zinc-400 hover:text-white"><ArrowLeft size={19} /></Link><div><p className="text-[10px] font-bold tracking-[.25em] text-cyan-400">OLO PITCH BUILDER</p><h1 className="text-lg font-bold">{project.final_title || project.working_title || 'New pitch deck'}</h1></div></div><div className="flex items-center gap-2"><Link to="/Studio?tab=tools" className="rounded-lg border border-zinc-700 px-3 py-2 text-xs text-zinc-300">STUDIO TOOLS</Link>{projectId && <Link to={`/PitchDeckDetail?id=${encodeURIComponent(projectId)}`} className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/50 px-3 py-2 text-xs text-cyan-300"><MonitorPlay size={15} /> FULL PREVIEW</Link>}<button onClick={publishProject} disabled={publishing || !projectId} className="inline-flex items-center gap-2 rounded-lg border border-emerald-400/50 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-300 disabled:opacity-40">{publishing ? <Loader2 size={15} className="animate-spin" /> : <Rocket size={15} />} {project.is_published ? 'REPUBLISH' : 'PUBLISH'}</button><button onClick={saveProject} disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-xs font-bold disabled:opacity-50">{saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} SAVE</button></div></div>
+      <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3">{embedded ? <button type="button" onClick={onBack} className="text-zinc-400 hover:text-white"><ArrowLeft size={19} /></button> : <Link to="/PitchDecks" className="text-zinc-400 hover:text-white"><ArrowLeft size={19} /></Link>}<div><p className="text-[10px] font-bold tracking-[.25em] text-cyan-400">OLO PITCH BUILDER</p><h1 className="text-lg font-bold">{project.final_title || project.working_title || 'New pitch deck'}</h1></div></div><div className="flex items-center gap-2">{!embedded && <Link to="/Studio?tab=tools" className="rounded-lg border border-zinc-700 px-3 py-2 text-xs text-zinc-300">STUDIO TOOLS</Link>}{projectId && (embedded ? <button type="button" onClick={onView} className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/50 px-3 py-2 text-xs text-cyan-300"><MonitorPlay size={15} /> FULL PREVIEW</button> : <Link to={`/PitchDeckDetail?id=${encodeURIComponent(projectId)}`} className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/50 px-3 py-2 text-xs text-cyan-300"><MonitorPlay size={15} /> FULL PREVIEW</Link>)}<button onClick={publishProject} disabled={publishing || !projectId} className="inline-flex items-center gap-2 rounded-lg border border-emerald-400/50 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-300 disabled:opacity-40">{publishing ? <Loader2 size={15} className="animate-spin" /> : <Rocket size={15} />} {project.is_published ? 'REPUBLISH' : 'PUBLISH'}</button><button onClick={saveProject} disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-xs font-bold disabled:opacity-50">{saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} SAVE</button></div></div>
     </header>
     <main className="mx-auto max-w-[1500px] p-4">
       {notice && <div className="mb-4 border-l-4 border-cyan-400 bg-zinc-900 p-3 text-sm text-zinc-200">{notice}</div>}
