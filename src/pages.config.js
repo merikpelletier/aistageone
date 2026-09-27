@@ -17,6 +17,7 @@ import PitchDeckEditor from './pages/PitchDeckEditor';
 import PitchDecks from './pages/PitchDecks';
 import ProductDebug from './pages/ProductDebug';
 import ProductDetail from './pages/ProductDetail';
+import ProductPlacement from './pages/ProductPlacement';
 import Quiz from './pages/Quiz';
 import Salons from './pages/Salons';
 import __Layout from './Layout.jsx';
@@ -42,6 +43,7 @@ export const PAGES = {
     "PitchDecks": PitchDecks,
     "ProductDebug": ProductDebug,
     "ProductDetail": ProductDetail,
+    "ProductPlacement": ProductPlacement,
     "Quiz": Quiz,
     "Salons": Salons,
 }
