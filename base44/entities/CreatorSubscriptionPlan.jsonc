@@ -6,6 +6,7 @@
     "creator_email": { "type": "string" },
     "annual_price_cents": { "type": "number", "default": 0 },
     "currency": { "type": "string", "default": "cad" },
+    "country": { "type": "string", "default": "CA" },
     "active": { "type": "boolean", "default": false },
     "stripe_account_id": { "type": "string" },
     "stripe_details_submitted": { "type": "boolean", "default": false },
