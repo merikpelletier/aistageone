@@ -7,6 +7,7 @@ export default function CreatorSubscriptionSection({ creatorEmail, isOwnProfile 
   const [plan, setPlan] = useState(null);
   const [activeSubscription, setActiveSubscription] = useState(false);
   const [annualPrice, setAnnualPrice] = useState('');
+  const [country, setCountry] = useState('CA');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [available, setAvailable] = useState(true);
@@ -34,6 +35,7 @@ export default function CreatorSubscriptionSection({ creatorEmail, isOwnProfile 
       const nextPlan = result.data?.plan || null;
       setPlan(nextPlan);
       setAnnualPrice(nextPlan?.annual_price_cents ? String(nextPlan.annual_price_cents / 100) : '');
+      setCountry(nextPlan?.country || 'CA');
 
       if (!isOwnProfile && nextPlan?.active) {
         try {
@@ -72,6 +74,7 @@ export default function CreatorSubscriptionSection({ creatorEmail, isOwnProfile 
         action: 'save-plan',
         annual_price_cents: Math.round(amount * 100),
         currency: plan?.currency || 'cad',
+        country,
         active: Boolean(plan?.active),
       });
       setPlan(result.data?.plan || plan);
@@ -113,6 +116,7 @@ export default function CreatorSubscriptionSection({ creatorEmail, isOwnProfile 
         action: 'save-plan',
         annual_price_cents: plan?.annual_price_cents || Math.round(Number(annualPrice || 0) * 100),
         currency: plan?.currency || 'cad',
+        country,
         active: !plan?.active,
       });
       setPlan(result.data?.plan || plan);
@@ -176,7 +180,7 @@ export default function CreatorSubscriptionSection({ creatorEmail, isOwnProfile 
         <CreditCard size={20} className="text-white/60" />
       </div>
 
-      <div className="grid sm:grid-cols-[1fr_auto] gap-3">
+      <div className="grid sm:grid-cols-[1fr_180px_auto] gap-3">
         <div>
           <label className="text-white/60 text-xs uppercase tracking-wider">Annual price (CAD)</label>
           <input
@@ -188,6 +192,25 @@ export default function CreatorSubscriptionSection({ creatorEmail, isOwnProfile 
             className="mt-1 w-full bg-black border border-white/15 px-3 py-2.5 text-white"
             placeholder="49.00"
           />
+        </div>
+        <div>
+          <label className="text-white/60 text-xs uppercase tracking-wider">Country</label>
+          <select
+            value={country}
+            onChange={e => setCountry(e.target.value)}
+            className="mt-1 w-full bg-black border border-white/15 px-3 py-2.5 text-white"
+          >
+            <option value="CA">Canada</option>
+            <option value="US">United States</option>
+            <option value="GB">United Kingdom</option>
+            <option value="FR">France</option>
+            <option value="BE">Belgium</option>
+            <option value="CH">Switzerland</option>
+            <option value="DE">Germany</option>
+            <option value="ES">Spain</option>
+            <option value="IT">Italy</option>
+            <option value="AU">Australia</option>
+          </select>
         </div>
         <button onClick={savePlan} disabled={busy} className="sm:self-end px-5 py-2.5 bg-white text-black font-semibold disabled:opacity-50">
           Save
