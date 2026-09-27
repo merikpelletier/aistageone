@@ -1,0 +1,16 @@
+{
+  "name": "CreatorSubscriptionPlan",
+  "type": "object",
+  "properties": {
+    "creator_id": { "type": "string" },
+    "creator_email": { "type": "string" },
+    "annual_price_cents": { "type": "number", "default": 0 },
+    "currency": { "type": "string", "default": "cad" },
+    "active": { "type": "boolean", "default": false },
+    "stripe_account_id": { "type": "string" },
+    "stripe_details_submitted": { "type": "boolean", "default": false },
+    "stripe_charges_enabled": { "type": "boolean", "default": false },
+    "stripe_payouts_enabled": { "type": "boolean", "default": false }
+  },
+  "required": ["creator_id", "creator_email"]
+}
