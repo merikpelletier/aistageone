@@ -21,8 +21,8 @@ export default function QuickViewModal({ asset, category, onClose }) {
                 <p className="mt-6 leading-relaxed text-zinc-300">{asset.description || 'Production-ready creative asset.'}</p>
                 {Array.isArray(asset.tags) && asset.tags.length > 0 && <div className="mt-6 flex flex-wrap gap-2">{asset.tags.slice(0, 8).map((tag) => <span key={tag} className="rounded-full bg-zinc-800 px-3 py-1 text-xs text-zinc-300">{tag}</span>)}</div>}
                 <div className="mt-8 flex items-center justify-between border-y border-white/10 py-4">
-                  <span className="text-sm text-zinc-500">Usage cost</span>
-                  <span className="flex items-center gap-2 text-xl font-black text-cyan-300"><Sparkles size={18} />{asset.credit_cost ?? 0} credits</span>
+                  <span className="text-sm text-zinc-500">Usage</span>
+                  <span className="flex items-center gap-2 text-xl font-black text-cyan-300"><Sparkles size={18} />{asset.is_product_placement ? 'Free for members' : `${asset.credit_cost ?? 0} credits`}</span>
                 </div>
                 <Link to={`/AssetDetail?id=${encodeURIComponent(asset.id)}`} onClick={onClose} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 font-black text-black hover:brightness-110">VIEW FULL ASSET <ArrowRight size={18} /></Link>
               </div>
