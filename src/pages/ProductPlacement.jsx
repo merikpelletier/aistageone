@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle2, Loader2, Megaphone } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, Megaphone, Upload } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
+import { base44 } from '@/api/base44Client';
 
 const splitList = (value) => String(value || '').split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
 
@@ -12,6 +13,7 @@ export default function ProductPlacement() {
   const [selectedPackage, setSelectedPackage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [uploading, setUploading] = useState('');
   const [form, setForm] = useState({
     company_name: '',
     contact_name: '',
@@ -65,6 +67,35 @@ export default function ProductPlacement() {
   );
 
   const setField = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+
+  const uploadPlacementImage = async (event, destination) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length) return;
+    setUploading(destination);
+    setErrorMessage('');
+    try {
+      const urls = [];
+      for (const file of files) {
+        if (!file.type?.startsWith('image/')) continue;
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        urls.push(file_url);
+      }
+      if (!urls.length) throw new Error('Please choose image files.');
+      if (destination === 'featured') {
+        setField('featured_image', urls[0]);
+      } else {
+        setForm((current) => ({
+          ...current,
+          preview_images: [current.preview_images, ...urls].filter(Boolean).join('\n'),
+        }));
+      }
+    } catch (error) {
+      setErrorMessage(error?.message || 'Unable to upload image.');
+    } finally {
+      setUploading('');
+    }
+  };
 
   const startCheckout = async () => {
     setErrorMessage('');
@@ -150,8 +181,26 @@ export default function ProductPlacement() {
             <input value={form.product_name} onChange={(e) => setField('product_name', e.target.value)} placeholder="Product name *" className="bg-black border border-white/10 px-4 py-3 md:col-span-2" />
             <textarea value={form.product_description} onChange={(e) => setField('product_description', e.target.value)} placeholder="Product description" rows={4} className="bg-black border border-white/10 px-4 py-3 md:col-span-2" />
             <input value={form.product_url} onChange={(e) => setField('product_url', e.target.value)} placeholder="Product / brand website URL" className="bg-black border border-white/10 px-4 py-3 md:col-span-2" />
-            <input value={form.featured_image} onChange={(e) => setField('featured_image', e.target.value)} placeholder="Main product image URL *" className="bg-black border border-white/10 px-4 py-3 md:col-span-2" />
-            <textarea value={form.preview_images} onChange={(e) => setField('preview_images', e.target.value)} placeholder="Additional image URLs — one per line" rows={3} className="bg-black border border-white/10 px-4 py-3 md:col-span-2" />
+            <div className="md:col-span-2 space-y-2">
+              <label className="block text-xs font-black uppercase tracking-wider text-zinc-500">Main product image *</label>
+              <input value={form.featured_image} onChange={(e) => setField('featured_image', e.target.value)} placeholder="Image URL" className="w-full bg-black border border-white/10 px-4 py-3" />
+              <label className={`inline-flex cursor-pointer items-center gap-2 border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-black text-cyan-100 ${uploading ? 'pointer-events-none opacity-60' : ''}`}>
+                {uploading === 'featured' ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                Upload main image
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadPlacementImage(e, 'featured')} disabled={Boolean(uploading)} />
+              </label>
+              {form.featured_image && <img src={form.featured_image} alt="Main product preview" className="h-40 w-full border border-white/10 bg-black object-contain" />}
+            </div>
+            <div className="md:col-span-2 space-y-2">
+              <label className="block text-xs font-black uppercase tracking-wider text-zinc-500">Additional product images</label>
+              <textarea value={form.preview_images} onChange={(e) => setField('preview_images', e.target.value)} placeholder="Additional image URLs — one per line" rows={3} className="w-full bg-black border border-white/10 px-4 py-3" />
+              <label className={`inline-flex cursor-pointer items-center gap-2 border border-white/15 bg-white/5 px-4 py-2 text-sm font-black text-white ${uploading ? 'pointer-events-none opacity-60' : ''}`}>
+                {uploading === 'previews' ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                Add product images
+                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => uploadPlacementImage(e, 'previews')} disabled={Boolean(uploading)} />
+              </label>
+              {splitList(form.preview_images).length > 0 && <div className="grid grid-cols-4 gap-2">{splitList(form.preview_images).slice(0,8).map((url) => <img key={url} src={url} alt="" className="h-20 w-full border border-white/10 bg-black object-contain" />)}</div>}
+            </div>
             <select value={form.category_id} onChange={(e) => setForm((current) => ({ ...current, category_id: e.target.value, subcategory_id: '' }))} className="bg-black border border-white/10 px-4 py-3">
               <option value="">Category</option>
               {categories.map((item) => <option key={item.id} value={item.id}>{item.label_en || item.label_fr}</option>)}
