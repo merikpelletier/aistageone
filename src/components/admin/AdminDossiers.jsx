@@ -304,6 +304,25 @@ export default function AdminDossiers() {
               </div>
 
               <div>
+                <label className="block text-white text-sm mb-2">Access</label>
+                <Select
+                  value={editingDossier.access_level || 'public'}
+                  onValueChange={(value) => setEditingDossier({ ...editingDossier, access_level: value })}
+                >
+                  <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Public</SelectItem>
+                    <SelectItem value="subscribers">Subscribers only</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-white/50 text-xs mt-1.5">
+                  Subscribers only requires an active annual creator subscription.
+                </p>
+              </div>
+
+              <div>
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
