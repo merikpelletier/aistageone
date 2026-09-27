@@ -19,6 +19,10 @@
       "type": "string",
       "description": "External payment page URL"
     },
+    "stripe_tax_code": {
+      "type": "string",
+      "description": "Optional Stripe Tax product tax code"
+    },
     "category": {
       "type": "string",
       "enum": [
