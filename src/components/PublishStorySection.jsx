@@ -10,6 +10,7 @@ import { createPageUrl } from '@/utils';
 export default function PublishStorySection({ userEmail }) {
   const qc = useQueryClient();
   const [publishingId, setPublishingId] = useState(null);
+  const [accessByStory, setAccessByStory] = useState({});
 
   const { data: stories = [], isLoading } = useQuery({
     queryKey: ['userTimelineStories', userEmail],
@@ -30,6 +31,7 @@ export default function PublishStorySection({ userEmail }) {
         production_id: story.id,
         kit_page_id: story.kit_page_id,
         dossier_id: story.dossier_id,
+        access_level: accessByStory[story.id] || 'public',
       });
       if (res.data?.error) {
         toast.error(res.data.error);
@@ -113,6 +115,32 @@ export default function PublishStorySection({ userEmail }) {
                       Published
                     </div>
                   )}
+                </div>
+
+                {/* Audience */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAccessByStory(prev => ({ ...prev, [story.id]: 'public' }))}
+                    className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                      (accessByStory[story.id] || 'public') === 'public'
+                        ? 'bg-white text-black border-white'
+                        : 'bg-transparent text-white/70 border-white/20 hover:border-white/40'
+                    }`}
+                  >
+                    Public
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAccessByStory(prev => ({ ...prev, [story.id]: 'subscribers' }))}
+                    className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                      accessByStory[story.id] === 'subscribers'
+                        ? 'bg-red-600 text-white border-red-600'
+                        : 'bg-transparent text-white/70 border-white/20 hover:border-white/40'
+                    }`}
+                  >
+                    Subscribers only
+                  </button>
                 </div>
 
                 {/* Actions */}
