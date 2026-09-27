@@ -57,12 +57,7 @@ export default function Cart() {
       return sum + (price * item.quantity);
     }, 0);
     
-    const tps = subtotal * 0.05;
-    const tvq = subtotal * 0.09975;
-    const shipping = 0; // À configurer plus tard
-    const total = subtotal + tps + tvq + shipping;
-    
-    return { subtotal, tps, tvq, shipping, total };
+    return { subtotal };
   };
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -70,11 +65,7 @@ export default function Cart() {
   const proceedToCheckout = async () => {
     setIsProcessing(true);
     try {
-      const totals = calculateTotals();
-      const response = await base44.functions.invoke('createAuthorizeNetCheckout', { 
-        cart,
-        totals 
-      });
+      const response = await base44.functions.invoke('gift-shop-stripe-checkout', { cart });
       if (response.data.url) {
         window.location.href = response.data.url;
       } else {
@@ -180,24 +171,17 @@ export default function Cart() {
             <span>{calculateTotals().subtotal.toFixed(2)} $</span>
           </div>
           <div className="flex justify-between text-white text-sm">
-            <span>Tax (5%)</span>
-            <span>{calculateTotals().tps.toFixed(2)} $</span>
+            <span>Taxes</span>
+            <span>Calculated at checkout</span>
           </div>
-          <div className="flex justify-between text-white text-sm">
-            <span>Tax (9.975%)</span>
-            <span>{calculateTotals().tvq.toFixed(2)} $</span>
-          </div>
-          {calculateTotals().shipping > 0 && (
-            <div className="flex justify-between text-white text-sm">
-              <span>Shipping</span>
-              <span>{calculateTotals().shipping.toFixed(2)} $</span>
-            </div>
-          )}
           <div className="border-t border-white/10 pt-2 mt-2">
             <div className="flex justify-between text-white text-lg font-light">
-              <span>Total</span>
-                <span>${calculateTotals().total.toFixed(2)}</span>
+              <span>Subtotal</span>
+              <span>${calculateTotals().subtotal.toFixed(2)}</span>
             </div>
+            <p className="text-white/45 text-xs mt-2">
+              Final tax and total are calculated from the customer destination.
+            </p>
           </div>
         </div>
       </div>
@@ -218,7 +202,7 @@ export default function Cart() {
           disabled={isProcessing}
           className="w-full bg-white text-black hover:bg-white/90 font-light tracking-wide py-6 text-base disabled:opacity-50"
         >
-          {isProcessing ? 'Processing...' : `Pay $${calculateTotals().total.toFixed(2)}`}
+          {isProcessing ? 'Processing...' : 'Continue to secure checkout'}
         </Button>
       </div>
     </div>
