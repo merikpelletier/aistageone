@@ -132,6 +132,12 @@
       "type": "string",
       "description": "Description/pitch of the submitted content"
     },
+    "access_level": {
+      "type": "string",
+      "enum": ["public", "subscribers"],
+      "default": "public",
+      "description": "Audience access: public or subscribers-only"
+    },
     "product_placements": {
       "type": "array",
       "description": "Product/brand placements associated with this dossier (dossier-level, not tied to a specific DossierPage)",
