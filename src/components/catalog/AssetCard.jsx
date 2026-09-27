@@ -10,6 +10,7 @@ export default function AssetCard({ asset, category, onQuickView, onOpenAsset = 
         <div className="relative aspect-[4/3] overflow-hidden bg-black">
           {asset.featured_image ? <img src={asset.featured_image} alt={asset.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-zinc-700"><Box size={52} /></div>}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+          {asset.is_product_placement && <span className="absolute right-3 top-3 rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wider text-black">Product placement</span>}
           {asset.is_featured && <span className="absolute left-3 top-3 rounded-full bg-cyan-400 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-black">Featured</span>}
           {category && <span className="absolute bottom-3 left-3 rounded-full border border-white/20 bg-black/70 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">{category.label_en || category.label_fr || category.key}</span>}
         </div>
@@ -26,7 +27,7 @@ export default function AssetCard({ asset, category, onQuickView, onOpenAsset = 
         <p className="mt-2 text-xs text-zinc-500">{asset.creator_name ? `By ${asset.creator_name}` : 'AISTAGE.ONE'}</p>
         <p className="mt-3 line-clamp-2 min-h-10 text-sm leading-relaxed text-zinc-400">{asset.description || 'Production-ready creative asset.'}</p>
         <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4">
-          <div className="flex items-center gap-1.5 font-black text-cyan-300"><Sparkles size={15} />{asset.credit_cost ?? 0} credits</div>
+          <div className="flex items-center gap-1.5 font-black text-cyan-300"><Sparkles size={15} />{asset.is_product_placement ? 'Product placement · Free use' : `${asset.credit_cost ?? 0} credits`}</div>
           <button onClick={() => onQuickView(asset)} className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-300 hover:border-cyan-400 hover:text-cyan-300"><Eye size={14} /> Quick view</button>
         </div>
       </div>
