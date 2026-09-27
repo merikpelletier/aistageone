@@ -7,7 +7,7 @@ serveWithCors(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { kit_page_id, dossier_id, production_id } = await req.json();
+    const { kit_page_id, dossier_id, production_id, access_level = 'public' } = await req.json();
 
     if (!production_id) {
       return Response.json({ error: 'Missing production_id' }, { status: 400 });
@@ -42,6 +42,7 @@ serveWithCors(async (req) => {
       submitted_by_name: user.full_name || user.email,
       submitted_at: new Date().toISOString(),
       approved_at: new Date().toISOString(),
+      access_level: access_level === 'subscribers' ? 'subscribers' : 'public',
     };
 
     // Check if a Dossier already exists for this production (via its block_player page)
