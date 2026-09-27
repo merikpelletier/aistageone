@@ -133,7 +133,7 @@ export default function ProductPlacement() {
                     className={`border p-5 text-left transition ${active ? 'border-cyan-400 bg-cyan-400/10' : 'border-white/10 bg-zinc-900 hover:border-white/30'}`}>
                     <div className="text-lg font-black">{item.name}</div>
                     <div className="mt-1 text-3xl font-black text-cyan-300">${Number(item.price).toFixed(2)} <span className="text-xs text-zinc-500">{item.currency}</span></div>
-                    <div className="mt-2 text-sm text-zinc-400">{item.duration_days} days{item.includes_featured ? ' · Featured placement included' : ''}</div>
+                    <div className="mt-2 text-sm text-zinc-400">1 year · per item{item.includes_featured ? ' · Featured placement included' : ''}</div>
                     {item.description && <p className="mt-3 text-sm leading-relaxed text-zinc-400">{item.description}</p>}
                   </button>
                 );
@@ -165,7 +165,7 @@ export default function ProductPlacement() {
 
           <div className="mt-6 space-y-3 text-sm text-zinc-300">
             <label className="flex items-start gap-3"><input type="checkbox" checked={form.rights_confirmed} onChange={(e) => setField('rights_confirmed', e.target.checked)} className="mt-1" /><span>I confirm that I am authorized to submit this brand/product and its supplied media for placement.</span></label>
-            <label className="flex items-start gap-3"><input type="checkbox" checked={form.terms_accepted} onChange={(e) => setField('terms_accepted', e.target.checked)} className="mt-1" /><span>I accept that placement is subject to AISTAGE.ONE review and will remain active only for the purchased placement period.</span></label>
+            <label className="flex items-start gap-3"><input type="checkbox" checked={form.terms_accepted} onChange={(e) => setField('terms_accepted', e.target.checked)} className="mt-1" /><span>I accept that placement is subject to AISTAGE.ONE review and is sold per item for a one-year placement period.</span></label>
           </div>
 
           {errorMessage && <div className="mt-5 border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{errorMessage}</div>}
