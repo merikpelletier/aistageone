@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
     append(params, 'line_items[0][price_data][tax_behavior]', 'exclusive');
     append(params, 'line_items[0][price_data][product_data][name]', 'AISTAGE.ONE Product Placement — ' + placementPackage.name);
     append(params, 'line_items[0][price_data][product_data][description]', productName);
-    append(params, 'line_items[0][price_data][product_data][tax_code]', 'txcd_10000000');
+    if (placementPackage.stripe_tax_code) append(params, 'line_items[0][price_data][product_data][tax_code]', placementPackage.stripe_tax_code);
 
     const session = await stripePost('/checkout/sessions', params);
 
