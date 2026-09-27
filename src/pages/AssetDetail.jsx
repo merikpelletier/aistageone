@@ -48,7 +48,7 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
           </div>
 
           <div>
-            <p className="text-xs font-black tracking-[0.25em] uppercase">Production asset</p>
+            <p className="text-xs font-black tracking-[0.25em] uppercase">{asset.is_product_placement ? 'Product placement' : 'Production asset'}</p>
             <h1 className="text-4xl font-black leading-none mt-3">{asset.title}</h1>
             <div className="w-14 h-1 bg-red-600 mt-5" />
             {asset.creator_name && <p className="mt-5 text-sm font-bold">Created by {asset.creator_name}</p>}
@@ -59,9 +59,15 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
               <div className="flex items-center gap-3"><Download className="text-yellow-400" size={20} /><span className="text-sm">Secure temporary download after purchase</span></div>
             </div>
 
-            <Button disabled className="w-full mt-5 h-12 bg-red-600 text-white hover:bg-red-600 disabled:opacity-60 font-black tracking-wider">
-              PURCHASE COMING NEXT
-            </Button>
+            {asset.is_product_placement ? (
+              <div className="mt-5 border-2 border-black bg-white p-4 font-black">
+                AVAILABLE FOR MEMBER PRODUCTIONS — NO PURCHASE REQUIRED
+              </div>
+            ) : (
+              <Button disabled className="w-full mt-5 h-12 bg-red-600 text-white hover:bg-red-600 disabled:opacity-60 font-black tracking-wider">
+                PURCHASE COMING NEXT
+              </Button>
+            )}
           </div>
         </div>
       </div>
