@@ -70,6 +70,7 @@ serveWithCors(async (req) => {
       creator_email: user.email.toLowerCase(),
       annual_price_cents: annualPriceCents,
       currency: String(payload.currency || 'cad').toLowerCase(),
+      country: String(payload.country || 'CA').toUpperCase(),
       active: Boolean(payload.active),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'creator_id' }).select('*').single();
@@ -91,6 +92,9 @@ serveWithCors(async (req) => {
         body: {
           contact_email: user.email,
           display_name: profile?.display_name || user.user_metadata?.full_name || user.email,
+          identity: {
+            country: String(plan?.country || 'CA').toUpperCase()
+          },
           configuration: {
             merchant: {
               capabilities: {
@@ -118,6 +122,7 @@ serveWithCors(async (req) => {
         creator_email: user.email.toLowerCase(),
         annual_price_cents: plan?.annual_price_cents || 0,
         currency: plan?.currency || 'cad',
+        country: plan?.country || 'CA',
         active: false,
         stripe_account_id: accountId,
         updated_at: new Date().toISOString(),
