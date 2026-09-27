@@ -232,10 +232,18 @@ export default function CreatorSubscriptionSection({ creatorEmail, isOwnProfile 
               Connect Stripe
             </button>
           ) : (
-            <button onClick={refreshStripe} disabled={busy} className="px-4 py-2.5 border border-white/20 text-white flex items-center gap-2">
-              <RefreshCcw size={15} className={busy ? 'animate-spin' : ''} />
-              Refresh Stripe status
-            </button>
+            <>
+              {!stripeReady && (
+                <button onClick={startOnboarding} disabled={busy} className="px-4 py-2.5 bg-red-600 text-white font-semibold flex items-center gap-2">
+                  {busy ? <Loader2 size={15} className="animate-spin" /> : <ExternalLink size={15} />}
+                  Continue Stripe setup
+                </button>
+              )}
+              <button onClick={refreshStripe} disabled={busy} className="px-4 py-2.5 border border-white/20 text-white flex items-center gap-2">
+                <RefreshCcw size={15} className={busy ? 'animate-spin' : ''} />
+                Refresh Stripe status
+              </button>
+            </>
           )}
 
           {stripeReady && plan?.annual_price_cents > 0 && (
