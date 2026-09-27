@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Loader2, Package, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Loader2, Megaphone, Package, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import AssetCard from '@/components/catalog/AssetCard';
 import CatalogFilters from '@/components/catalog/CatalogFilters';
@@ -71,7 +71,7 @@ export default function Catalog({ embedded = false, onOpenAsset = null }) {
     queryFn: async () => {
       const { data, error: catalogError } = await supabase.from('catalog_asset').select('*').eq('status', 'published').order('created_at', { ascending: false, nullsFirst: false }).limit(500);
       if (catalogError) throw catalogError;
-      return data || [];
+      return (data || []).filter((asset) => !asset.is_product_placement || !asset.placement_expires_at || new Date(asset.placement_expires_at) > new Date());
     },
   });
 
@@ -135,7 +135,10 @@ export default function Catalog({ embedded = false, onOpenAsset = null }) {
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-300"><Sparkles size={14} /> {heroBadgeLabel}</div>
           <h1 className="text-5xl font-black tracking-tight md:text-7xl">{heroTitle}</h1>
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-zinc-300 md:text-lg">{heroSubtitle}</p>
-          {heroShowStats && <div className="mt-8 flex flex-wrap gap-3 text-sm font-bold text-zinc-300">
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a href="/ProductPlacement" className="inline-flex items-center gap-2 rounded-lg bg-cyan-400 px-4 py-2 text-sm font-black text-black hover:bg-cyan-300"><Megaphone size={16} /> PLACE YOUR PRODUCT</a>
+          </div>
+          {heroShowStats && <div className="mt-4 flex flex-wrap gap-3 text-sm font-bold text-zinc-300">
             <span className="rounded-lg border border-white/10 bg-white/5 px-4 py-2">{assets.length} assets</span>
             <span className="rounded-lg border border-white/10 bg-white/5 px-4 py-2">{categories.length} categories</span>
             <span className="rounded-lg border border-white/10 bg-white/5 px-4 py-2">Supabase secured</span>
