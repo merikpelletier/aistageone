@@ -6,7 +6,7 @@ const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY') || '';
 const appUrl = (Deno.env.get('APP_URL') || 'https://aistage.one').replace(/\/$/, '');
-const platformFeePercent = Number(Deno.env.get('CREATOR_SUBSCRIPTION_PLATFORM_FEE_PERCENT') || '');
+const platformFeePercent = Number(Deno.env.get('CREATOR_SUBSCRIPTION_PLATFORM_FEE_PERCENT') || '10');
 
 async function stripeRequest(path: string, options: {
   method?: string;
