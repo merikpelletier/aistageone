@@ -966,6 +966,12 @@ export default function AdminProducts() {
                 className="bg-neutral-900 border-white/10 text-white"
               />
               <Input
+                value={editingProduct.stripe_tax_code || ''}
+                onChange={(e) => setEditingProduct({ ...editingProduct, stripe_tax_code: e.target.value })}
+                placeholder="Stripe tax code (optional, e.g. txcd_99999999)"
+                className="bg-neutral-900 border-white/10 text-white"
+              />
+              <Input
                 value={editingProduct.sku || ''}
                 onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value })}
                 placeholder="SKU (optional)"
