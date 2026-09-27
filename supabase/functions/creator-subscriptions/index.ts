@@ -55,7 +55,7 @@ serveWithCors(async (req) => {
 
   if (action === 'get-plan') {
     const creatorEmail = String(payload.creator_email || user.email).toLowerCase();
-    const { data: plan } = await service.from('creator_subscription_plan')
+    const { data: plan } = await scoped.from('creator_subscription_plan')
       .select('*').eq('creator_email', creatorEmail).maybeSingle();
     return Response.json({ plan: plan || null });
   }
@@ -65,7 +65,7 @@ serveWithCors(async (req) => {
     if (!Number.isFinite(annualPriceCents) || annualPriceCents < 100) {
       return Response.json({ error: 'Annual price must be at least 1.00' }, { status: 400 });
     }
-    const { data, error } = await service.from('creator_subscription_plan').upsert({
+    const { data, error } = await scoped.from('creator_subscription_plan').upsert({
       creator_id: user.id,
       creator_email: user.email.toLowerCase(),
       annual_price_cents: annualPriceCents,
@@ -81,7 +81,7 @@ serveWithCors(async (req) => {
   if (action === 'connect-onboarding') {
     const { data: profile } = await service.from('member_profile')
       .select('display_name').eq('user_email', user.email).maybeSingle();
-    let { data: plan } = await service.from('creator_subscription_plan')
+    let { data: plan } = await scoped.from('creator_subscription_plan')
       .select('*').eq('creator_id', user.id).maybeSingle();
 
     let accountId = plan?.stripe_account_id || null;
@@ -117,7 +117,7 @@ serveWithCors(async (req) => {
         }
       });
       accountId = account.id;
-      const { data, error } = await service.from('creator_subscription_plan').upsert({
+      const { data, error } = await scoped.from('creator_subscription_plan').upsert({
         creator_id: user.id,
         creator_email: user.email.toLowerCase(),
         annual_price_cents: plan?.annual_price_cents || 0,
@@ -142,7 +142,7 @@ serveWithCors(async (req) => {
   }
 
   if (action === 'connect-status') {
-    const { data: plan } = await service.from('creator_subscription_plan')
+    const { data: plan } = await scoped.from('creator_subscription_plan')
       .select('*').eq('creator_id', user.id).maybeSingle();
     if (!plan?.stripe_account_id) return Response.json({ plan: plan || null });
 
@@ -163,7 +163,7 @@ serveWithCors(async (req) => {
     const requirementsStatus = account?.requirements?.summary?.minimum_deadline?.status;
     const ready = cardStatus === 'active' && payoutStatus === 'active';
 
-    const { data: updated, error } = await service.from('creator_subscription_plan').update({
+    const { data: updated, error } = await scoped.from('creator_subscription_plan').update({
       stripe_details_submitted: requirementsStatus !== 'currently_due' && requirementsStatus !== 'past_due',
       stripe_charges_enabled: cardStatus === 'active',
       stripe_payouts_enabled: payoutStatus === 'active',
@@ -197,7 +197,7 @@ serveWithCors(async (req) => {
       return Response.json({ error: 'Platform subscription fee is not configured yet' }, { status: 503 });
     }
 
-    const { data: plan } = await service.from('creator_subscription_plan')
+    const { data: plan } = await scoped.from('creator_subscription_plan')
       .select('*').eq('creator_email', creatorEmail).eq('active', true).maybeSingle();
     if (!plan?.stripe_account_id || !plan.stripe_charges_enabled) {
       return Response.json({ error: 'This creator is not ready to accept subscriptions yet' }, { status: 400 });
