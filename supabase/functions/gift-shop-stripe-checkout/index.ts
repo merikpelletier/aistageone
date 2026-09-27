@@ -22,6 +22,7 @@ async function stripePost(path: string, params: URLSearchParams) {
     method: 'POST',
     headers: {
       Authorization: 'Basic ' + btoa(secret + ':'),
+      'Stripe-Version': '2025-03-31.basil',
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: params,
