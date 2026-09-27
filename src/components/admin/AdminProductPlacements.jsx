@@ -12,6 +12,7 @@ const emptyPackage = {
   includes_featured: false,
   display_order: 0,
   is_active: true,
+  stripe_tax_code: '',
 };
 
 export default function AdminProductPlacements() {
@@ -57,6 +58,7 @@ export default function AdminProductPlacements() {
         includes_featured: Boolean(item.includes_featured),
         display_order: Number(item.display_order || 0),
         is_active: Boolean(item.is_active),
+        stripe_tax_code: item.stripe_tax_code?.trim() || null,
         updated_at: new Date().toISOString(),
       };
       if (!payload.name) throw new Error('Package name is required.');
@@ -187,6 +189,7 @@ export default function AdminProductPlacements() {
                 <input type="number" min="0" step="0.01" value={editingPackage.price} onChange={(e) => setEditingPackage({ ...editingPackage, price: e.target.value })} placeholder="Price" className="border border-white/10 bg-black px-3 py-2" />
                 <input value={editingPackage.currency || 'CAD'} onChange={(e) => setEditingPackage({ ...editingPackage, currency: e.target.value })} placeholder="Currency" className="border border-white/10 bg-black px-3 py-2" />
                 <input type="number" min="1" value={editingPackage.duration_days} onChange={(e) => setEditingPackage({ ...editingPackage, duration_days: e.target.value })} placeholder="Days" className="border border-white/10 bg-black px-3 py-2" />
+                <input value={editingPackage.stripe_tax_code || ''} onChange={(e) => setEditingPackage({ ...editingPackage, stripe_tax_code: e.target.value })} placeholder="Stripe tax code (optional)" className="border border-white/10 bg-black px-3 py-2" />
                 <input type="number" value={editingPackage.display_order} onChange={(e) => setEditingPackage({ ...editingPackage, display_order: e.target.value })} placeholder="Display order" className="border border-white/10 bg-black px-3 py-2" />
               </div>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editingPackage.includes_featured} onChange={(e) => setEditingPackage({ ...editingPackage, includes_featured: e.target.checked })} /> Includes featured placement</label>
