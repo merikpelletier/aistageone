@@ -1,0 +1,18 @@
+{
+  "name": "CreatorSubscription",
+  "type": "object",
+  "properties": {
+    "subscriber_id": { "type": "string" },
+    "subscriber_email": { "type": "string" },
+    "creator_id": { "type": "string" },
+    "creator_email": { "type": "string" },
+    "stripe_account_id": { "type": "string" },
+    "stripe_checkout_session_id": { "type": "string" },
+    "stripe_subscription_id": { "type": "string" },
+    "stripe_customer_id": { "type": "string" },
+    "status": { "type": "string" },
+    "current_period_end": { "type": "string", "format": "date-time" },
+    "cancel_at_period_end": { "type": "boolean", "default": false }
+  },
+  "required": ["subscriber_id", "subscriber_email", "creator_id", "creator_email"]
+}
