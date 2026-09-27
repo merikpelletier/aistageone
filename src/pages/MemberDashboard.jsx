@@ -18,6 +18,7 @@ import BecomeSponsorBanner from '@/components/BecomeSponsorBanner';
 import CollapsibleSection from '@/components/CollapsibleSection';
 import ProfilePresentation from '@/components/ProfilePresentation';
 import ProfileGallery from '@/components/ProfileGallery';
+import CreatorSubscriptionSection from '@/components/CreatorSubscriptionSection';
 import ProfileFansSponsors from '@/components/ProfileFansSponsors';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -214,6 +215,14 @@ export default function MemberDashboard() {
               </CollapsibleSection>
             </div>
           </>
+        )}
+
+        {/* Creator annual subscriptions */}
+        {viewingEmail && (
+          <CreatorSubscriptionSection
+            creatorEmail={viewingEmail}
+            isOwnProfile={effectiveIsOwnProfile}
+          />
         )}
 
         {/* Tokens & Membership — own profile only */}
