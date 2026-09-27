@@ -9,12 +9,11 @@ function hex(buffer: ArrayBuffer) {
 }
 
 async function verifyStripeSignature(payload: string, signature: string) {
-  if (!webhookSecret) throw new Error('Stripe Gift Shop webhook secret is not configured');
+  if (!webhookSecret) throw new Error('Stripe webhook secret is not configured');
 
   const pairs = signature.split(',').map((part) => part.split('='));
   const timestamp = pairs.find(([key]) => key === 't')?.[1];
   const signatures = pairs.filter(([key]) => key === 'v1').map(([, value]) => value);
-
   if (!timestamp || signatures.length === 0) return false;
 
   const key = await crypto.subtle.importKey(
@@ -24,7 +23,6 @@ async function verifyStripeSignature(payload: string, signature: string) {
     false,
     ['sign'],
   );
-
   const digest = await crypto.subtle.sign(
     'HMAC',
     key,
@@ -35,9 +33,7 @@ async function verifyStripeSignature(payload: string, signature: string) {
   return signatures.some((expected) => {
     if (!expected || expected.length !== actual.length) return false;
     let mismatch = 0;
-    for (let i = 0; i < actual.length; i++) {
-      mismatch |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
-    }
+    for (let i = 0; i < actual.length; i++) mismatch |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
     return mismatch === 0;
   });
 }
@@ -53,32 +49,46 @@ Deno.serve(async (req) => {
   try {
     const payload = await req.text();
     const signature = req.headers.get('stripe-signature') || '';
-
     if (!(await verifyStripeSignature(payload, signature))) {
       return new Response('Invalid signature', { status: 400 });
     }
 
     const event = JSON.parse(payload);
-    if (
-      event.type !== 'checkout.session.completed' &&
-      event.type !== 'checkout.session.async_payment_succeeded'
-    ) {
+    if (event.type !== 'checkout.session.completed' && event.type !== 'checkout.session.async_payment_succeeded') {
       return Response.json({ received: true });
     }
 
     const session = event.data?.object || {};
-    if (session.metadata?.gift_shop !== 'true') {
+    if (session.payment_status !== 'paid' && event.type !== 'checkout.session.async_payment_succeeded') {
       return Response.json({ received: true });
     }
 
-    if (session.payment_status !== 'paid' && event.type !== 'checkout.session.async_payment_succeeded') {
+    const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+
+    if (session.metadata?.product_placement === 'true') {
+      const requestId = session.metadata?.product_placement_request_id || session.client_reference_id;
+      if (!requestId) throw new Error('Missing Product Placement request reference');
+
+      const { error } = await service.rpc('complete_product_placement_stripe', {
+        p_request_id: requestId,
+        p_stripe_checkout_session_id: session.id,
+        p_stripe_payment_intent_id: session.payment_intent || null,
+        p_subtotal: money(session.amount_subtotal),
+        p_tax_amount: money(session.total_details?.amount_tax),
+        p_total_amount: money(session.amount_total),
+        p_currency: String(session.currency || 'cad').toUpperCase(),
+      });
+      if (error) throw error;
+
+      return Response.json({ received: true, product_placement_request_id: requestId });
+    }
+
+    if (session.metadata?.gift_shop !== 'true') {
       return Response.json({ received: true });
     }
 
     const checkoutSessionId = session.metadata?.checkout_session_id || session.client_reference_id;
     if (!checkoutSessionId) throw new Error('Missing Gift Shop checkout session reference');
-
-    const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
     const { data: checkoutRows, error: checkoutError } = await service.rpc(
       'gift_shop_get_checkout_session',
@@ -90,24 +100,18 @@ Deno.serve(async (req) => {
     if (!checkout) throw new Error('Gift Shop checkout session not found');
 
     const customerDetails = session.customer_details || {};
-    const shippingDetails =
-      session.collected_information?.shipping_details ||
-      session.shipping_details ||
-      {};
+    const shippingDetails = session.collected_information?.shipping_details || session.shipping_details || {};
     const shippingAddress = shippingDetails.address || customerDetails.address || {};
-
     const subtotal = money(session.amount_subtotal);
     const total = money(session.amount_total);
     const taxTotal = money(session.total_details?.amount_tax);
     const shipping = money(session.total_details?.amount_shipping);
 
-    const taxBreakdown = [
-      {
-        source: checkout.payment_mode === 'stripe_managed_payments' ? 'managed_payments' : 'stripe_tax',
-        amount: taxTotal,
-        currency: String(session.currency || 'cad').toUpperCase(),
-      },
-    ];
+    const taxBreakdown = [{
+      source: checkout.payment_mode === 'stripe_managed_payments' ? 'managed_payments' : 'stripe_tax',
+      amount: taxTotal,
+      currency: String(session.currency || 'cad').toUpperCase(),
+    }];
 
     const { data: orderId, error: orderError } = await service.rpc(
       'gift_shop_complete_stripe_order',
@@ -138,7 +142,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ received: true, order_id: orderId });
   } catch (error) {
-    console.error('Gift Shop Stripe webhook error:', error);
+    console.error('Stripe commerce webhook error:', error);
     return Response.json(
       { error: error instanceof Error ? error.message : String(error) },
       { status: 500 },
