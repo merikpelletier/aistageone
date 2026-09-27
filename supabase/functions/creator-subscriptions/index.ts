@@ -147,7 +147,7 @@ serveWithCors(async (req) => {
     if (!plan?.stripe_account_id) return Response.json({ plan: plan || null });
 
     const response = await fetch(
-      `https://api.stripe.com/v2/core/accounts/${encodeURIComponent(plan.stripe_account_id)}?include[]=configuration.merchant&include[]=requirements&include[]=defaults`,
+      `https://api.stripe.com/v2/core/accounts/${encodeURIComponent(plan.stripe_account_id)}?include[0]=configuration.merchant&include[1]=requirements&include[2]=defaults`,
       {
         headers: {
           Authorization: `Bearer ${stripeSecret}`,
