@@ -34,6 +34,7 @@ export default function Magazine() {
   
   const [currentDossierIndex, setCurrentDossierIndex] = useState(0);
   const [viewingDossier, setViewingDossier] = useState(null);
+  const [lockedDossier, setLockedDossier] = useState(null);
   // True landscape: width significantly larger than height (ratio > 1.2), not just a wide tablet in portrait
   const [isLandscape, setIsLandscape] = useState(window.innerWidth / window.innerHeight > 1.2);
   const containerRef = useRef(null);
@@ -120,6 +121,32 @@ export default function Magazine() {
   }, [currentDossierIndex, viewingDossier, dossiers.length]);
 
   const openDossier = async (dossier) => {
+    if (dossier?.access_level === 'subscribers') {
+      let allowed = false;
+      try {
+        const isAuth = await base44.auth.isAuthenticated();
+        if (isAuth) {
+          const me = await base44.auth.me();
+          const isOwner = me?.email?.toLowerCase() === dossier?.submitted_by_email?.toLowerCase();
+          if (isOwner) {
+            allowed = true;
+          } else if (dossier?.submitted_by_email) {
+            const result = await base44.functions.invoke('creator-subscriptions', {
+              action: 'subscription-status',
+              creator_email: dossier.submitted_by_email,
+            });
+            allowed = Boolean(result.data?.active);
+          }
+        }
+      } catch {
+        allowed = false;
+      }
+      if (!allowed) {
+        setLockedDossier(dossier);
+        return;
+      }
+    }
+
     const freshPages = await base44.entities.DossierPage.filter({ dossier_id: dossier.id }, 'order');
     setViewingDossier({ ...dossier, pages: freshPages });
   };
@@ -290,6 +317,35 @@ export default function Magazine() {
           />
         ))}
       </div>}
+
+      {/* Subscribers-only access prompt */}
+      {lockedDossier && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-5" onClick={() => setLockedDossier(null)}>
+          <div className="w-full max-w-md bg-neutral-950 border border-white/15 p-6" onClick={(e) => e.stopPropagation()}>
+            <p className="text-red-500 text-xs font-bold uppercase tracking-[0.2em] mb-3">Subscribers only</p>
+            <h2 className="text-white text-2xl font-light">{lockedDossier.title}</h2>
+            <p className="text-white/60 text-sm mt-3 leading-relaxed">
+              This publication is reserved for annual subscribers of {lockedDossier.author_name || 'this creator'}.
+            </p>
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={() => setLockedDossier(null)}
+                className="flex-1 py-3 border border-white/20 text-white"
+              >
+                Back
+              </button>
+              {lockedDossier.submitted_by_email && (
+                <Link
+                  to={`/MemberDashboard?email=${encodeURIComponent(lockedDossier.submitted_by_email)}`}
+                  className="flex-1 py-3 bg-white text-black font-semibold text-center"
+                >
+                  View subscription
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Dossier Viewer */}
       {viewingDossier && viewingDossier.pages?.length > 0 && (
