@@ -8,7 +8,7 @@ const emptyPackage = {
   description: '',
   price: '',
   currency: 'CAD',
-  duration_days: 30,
+  duration_days: 365,
   includes_featured: false,
   display_order: 0,
   is_active: true,
@@ -54,7 +54,7 @@ export default function AdminProductPlacements() {
         description: item.description?.trim() || null,
         price: Number(item.price || 0),
         currency: String(item.currency || 'CAD').toUpperCase(),
-        duration_days: Number(item.duration_days || 30),
+        duration_days: 365,
         includes_featured: Boolean(item.includes_featured),
         display_order: Number(item.display_order || 0),
         is_active: Boolean(item.is_active),
@@ -105,7 +105,7 @@ export default function AdminProductPlacements() {
         <div>
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-cyan-300"><Megaphone size={15} /> Assets Shop</div>
           <h2 className="mt-2 text-3xl font-black">Product Placements</h2>
-          <p className="mt-2 text-sm text-zinc-400">Paid brand/creator placements. Members use approved products without paying for the placement.</p>
+          <p className="mt-2 text-sm text-zinc-400">Paid brand/creator placements sold per item for one year. Members use approved products without paying for the placement.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => expire.mutate()} className="border border-white/15 bg-zinc-900 px-4 py-2 text-sm font-bold">Expire due placements</button>
@@ -129,7 +129,7 @@ export default function AdminProductPlacements() {
               <button key={item.id} onClick={() => setEditingPackage({ ...item })} className="border border-white/10 bg-zinc-950 p-4 text-left hover:border-cyan-400/40">
                 <div className="flex items-start justify-between gap-3"><strong>{item.name}</strong><span className={item.is_active ? 'text-emerald-300' : 'text-zinc-600'}>{item.is_active ? 'Active' : 'Inactive'}</span></div>
                 <div className="mt-2 text-2xl font-black text-cyan-300">${Number(item.price).toFixed(2)} {item.currency}</div>
-                <div className="mt-1 text-sm text-zinc-400">{item.duration_days} days{item.includes_featured ? ' · Featured' : ''}</div>
+                <div className="mt-1 text-sm text-zinc-400">1 year · per item{item.includes_featured ? ' · Featured' : ''}</div>
               </button>
             ))}
           </div>
@@ -188,7 +188,7 @@ export default function AdminProductPlacements() {
               <div className="grid grid-cols-2 gap-3">
                 <input type="number" min="0" step="0.01" value={editingPackage.price} onChange={(e) => setEditingPackage({ ...editingPackage, price: e.target.value })} placeholder="Price" className="border border-white/10 bg-black px-3 py-2" />
                 <input value={editingPackage.currency || 'CAD'} onChange={(e) => setEditingPackage({ ...editingPackage, currency: e.target.value })} placeholder="Currency" className="border border-white/10 bg-black px-3 py-2" />
-                <input type="number" min="1" value={editingPackage.duration_days} onChange={(e) => setEditingPackage({ ...editingPackage, duration_days: e.target.value })} placeholder="Days" className="border border-white/10 bg-black px-3 py-2" />
+                <div className="border border-white/10 bg-black px-3 py-2 text-sm text-zinc-300">Duration: <strong className="text-white">1 year (365 days)</strong></div>
                 <input value={editingPackage.stripe_tax_code || ''} onChange={(e) => setEditingPackage({ ...editingPackage, stripe_tax_code: e.target.value })} placeholder="Stripe tax code (optional)" className="border border-white/10 bg-black px-3 py-2" />
                 <input type="number" value={editingPackage.display_order} onChange={(e) => setEditingPackage({ ...editingPackage, display_order: e.target.value })} placeholder="Display order" className="border border-white/10 bg-black px-3 py-2" />
               </div>
