@@ -1,12 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Box, Download, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Box, BookmarkPlus, Check, Download, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { Button } from '@/components/ui/button';
+import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function AssetDetail({ assetId: assetIdProp = null, embedded = false, onBack = null }) {
   const [params] = useSearchParams();
+  const { user } = useAuth();
+  const [addingToVault, setAddingToVault] = useState(false);
+  const [addedToVault, setAddedToVault] = useState(false);
+  const [vaultError, setVaultError] = useState('');
   const assetId = assetIdProp || params.get('id');
 
   const { data: asset, isLoading, error } = useQuery({
@@ -37,6 +43,41 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
 
   const images = [asset.featured_image, ...(Array.isArray(asset.preview_images) ? asset.preview_images : [])].filter(Boolean);
 
+  const addPlacementToVault = async () => {
+    if (!asset.is_product_placement || !asset.featured_image) return;
+    if (!user?.email) {
+      base44.auth.redirectToLogin(window.location.href);
+      return;
+    }
+    setAddingToVault(true);
+    setVaultError('');
+    try {
+      const existing = await base44.entities.VaultAsset.filter({
+        user_email: user.email,
+        source_asset_id: asset.id,
+      }, '-created_date', 1);
+      if (existing.length) {
+        setAddedToVault(true);
+        return;
+      }
+      await base44.entities.VaultAsset.create({
+        user_email: user.email,
+        name: asset.title,
+        url: asset.featured_image,
+        media_type: 'image',
+        asset_category: 'product_placement',
+        source_asset_id: asset.id,
+        source_dossier_id: '',
+        tags: Array.isArray(asset.tags) ? asset.tags : [],
+      });
+      setAddedToVault(true);
+    } catch (error) {
+      setVaultError(error?.message || 'Unable to add this placement to your Vault.');
+    } finally {
+      setAddingToVault(false);
+    }
+  };
+
   return (
     <div className={`${embedded ? 'min-h-[calc(100vh-3.5rem)]' : 'min-h-screen'} bg-yellow-400 pb-24 pt-8 text-black`}>
       <div className="px-6 max-w-5xl mx-auto">
@@ -60,8 +101,24 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
             </div>
 
             {asset.is_product_placement ? (
-              <div className="mt-5 border-2 border-black bg-white p-4 font-black">
-                AVAILABLE FOR MEMBER PRODUCTIONS — NO PURCHASE REQUIRED
+              <div className="mt-5 space-y-3">
+                <div className="border-2 border-black bg-white p-4 font-black">
+                  AVAILABLE FOR MEMBER PRODUCTIONS — NO PURCHASE REQUIRED
+                </div>
+                <Button
+                  type="button"
+                  onClick={addPlacementToVault}
+                  disabled={addingToVault || addedToVault}
+                  className="w-full h-12 bg-black text-white hover:bg-neutral-800 font-black tracking-wider"
+                >
+                  {addedToVault ? <><Check size={18} className="mr-2" /> ADDED TO MY VAULT</> : <><BookmarkPlus size={18} className="mr-2" /> {addingToVault ? 'ADDING…' : 'ADD TO MY VAULT'}</>}
+                </Button>
+                {asset.placement_product_url && (
+                  <a href={asset.placement_product_url} target="_blank" rel="noreferrer" className="block text-center text-sm font-bold underline underline-offset-4">
+                    Visit brand / product website
+                  </a>
+                )}
+                {vaultError && <div className="border border-red-600 bg-white p-3 text-sm font-bold text-red-700">{vaultError}</div>}
               </div>
             ) : (
               <Button disabled className="w-full mt-5 h-12 bg-red-600 text-white hover:bg-red-600 disabled:opacity-60 font-black tracking-wider">
