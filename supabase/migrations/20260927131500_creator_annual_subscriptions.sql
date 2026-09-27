@@ -99,7 +99,7 @@ $$;
 
 grant execute on function public.has_active_creator_subscription(text) to anon, authenticated;
 
-create or replace function public.can_access_dossier(target_dossier_id uuid)
+create or replace function public.can_access_dossier(target_dossier_id text)
 returns boolean
 language sql
 stable
@@ -113,7 +113,7 @@ as $$
       and d.status = 'published'
       and (
         coalesce(d.access_level, 'public') = 'public'
-        or d.created_by_id = auth.uid()
+        or d.created_by_id = auth.uid()::text
         or lower(coalesce(d.submitted_by_email, '')) = lower(coalesce(auth.jwt() ->> 'email', ''))
         or (
           coalesce(d.access_level, 'public') = 'subscribers'
@@ -125,7 +125,7 @@ as $$
   );
 $$;
 
-grant execute on function public.can_access_dossier(uuid) to anon, authenticated;
+grant execute on function public.can_access_dossier(text) to anon, authenticated;
 
 create or replace function public.can_access_published_production(target_production_id text)
 returns boolean
