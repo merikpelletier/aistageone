@@ -56,6 +56,7 @@ import AdminSketchTemplates from '@/components/admin/AdminSketchTemplates';
 import AdminStyleReferences from '@/components/admin/AdminStyleReferences';
 import AdminProductionKits from '@/components/admin/AdminProductionKits';
 import AdminPitchDecks from '@/components/admin/AdminPitchDecks';
+import AdminProductPlacements from '@/components/admin/AdminProductPlacements';
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState('dossiers');
@@ -229,6 +230,13 @@ export default function Admin() {
             Submissions
           </TabsTrigger>
           <TabsTrigger
+            value="product-placements"
+            className="flex-1 py-3 text-xs tracking-wide text-white hover:text-white data-[state=active]:bg-white data-[state=active]:text-black rounded-sm"
+          >
+            <Megaphone size={14} className="mr-2" />
+            Product Placement
+          </TabsTrigger>
+          <TabsTrigger
             value="sponsors"
             className="flex-1 py-3 text-xs tracking-wide text-white hover:text-white data-[state=active]:bg-white data-[state=active]:text-black rounded-sm"
           >
@@ -342,6 +350,9 @@ export default function Admin() {
         </TabsContent>
         <TabsContent value="submissions" className="mt-6">
           <AdminSubmissions />
+        </TabsContent>
+        <TabsContent value="product-placements" className="mt-6">
+          <AdminProductPlacements />
         </TabsContent>
         <TabsContent value="sponsors" className="mt-6">
           <AdminSponsors />
