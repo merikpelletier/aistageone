@@ -18,6 +18,7 @@ export default function BlockPlayer({ blocks = [], characters = [], userBlocks =
   const [showInfo, setShowInfo] = useState(false);
   const [imageProgress, setImageProgress] = useState(0);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [needsUserStart, setNeedsUserStart] = useState(false);
   const videoRef = useRef(null);
   const narrationRef = useRef(null);
   const progressInterval = useRef(null);
@@ -77,23 +78,64 @@ export default function BlockPlayer({ blocks = [], characters = [], userBlocks =
     return clearImageProgress;
   }, [currentIndex, isPlaying, isImage, narrationAudio]);
 
-  // Handle play/pause for video + narration
+  // Handle play/pause for video + narration.
+  // Mobile browsers may reject autoplay with sound before the first user gesture.
   useEffect(() => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.play().catch(() => {});
-      } else {
-        videoRef.current.pause();
+    let cancelled = false;
+
+    const syncPlayback = async () => {
+      const targets = [videoRef.current, narrationRef.current].filter(Boolean);
+
+      if (!isPlaying) {
+        targets.forEach((el) => el.pause());
+        return;
       }
-    }
-    if (narrationRef.current) {
-      if (isPlaying) {
-        narrationRef.current.play().catch(() => {});
-      } else {
-        narrationRef.current.pause();
+
+      if (targets.length === 0) return;
+
+      try {
+        await Promise.all(targets.map((el) => {
+          const result = el.play();
+          return result && typeof result.then === 'function' ? result : Promise.resolve();
+        }));
+        if (!cancelled) setNeedsUserStart(false);
+      } catch {
+        if (!cancelled) {
+          // Keep audio/video synchronized and wait for an explicit tap.
+          targets.forEach((el) => el.pause());
+          setIsPlaying(false);
+          setNeedsUserStart(true);
+        }
       }
-    }
-  }, [isPlaying, currentIndex, narrationAudio]);
+    };
+
+    syncPlayback();
+    return () => { cancelled = true; };
+  }, [isPlaying, currentIndex, narrationAudio, media]);
+
+  const startPlaybackFromGesture = () => {
+    const targets = [videoRef.current, narrationRef.current].filter(Boolean);
+
+    // Call play() directly inside the tap/click handler so iOS/Android
+    // recognize this as a user-initiated media start.
+    const attempts = targets.map((el) => {
+      try {
+        const result = el.play();
+        return result && typeof result.then === 'function' ? result : Promise.resolve();
+      } catch (error) {
+        return Promise.reject(error);
+      }
+    });
+
+    setIsPlaying(true);
+    setNeedsUserStart(false);
+
+    Promise.all(attempts).catch(() => {
+      targets.forEach((el) => el.pause());
+      setIsPlaying(false);
+      setNeedsUserStart(true);
+    });
+  };
 
   // Preload next video for smoother transitions
   useEffect(() => {
@@ -225,6 +267,26 @@ export default function BlockPlayer({ blocks = [], characters = [], userBlocks =
 
         {showInfo && (
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
+        )}
+
+        {needsUserStart && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              startPlaybackFromGesture();
+            }}
+            onTouchEnd={(e) => {
+              e.stopPropagation();
+            }}
+            className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/35 text-white pointer-events-auto"
+            aria-label="Start playback"
+          >
+            <span className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30">
+              <Play size={34} fill="currentColor" />
+            </span>
+            <span className="text-sm font-semibold tracking-wide">Tap to play</span>
+          </button>
         )}
       </div>
 
