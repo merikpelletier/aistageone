@@ -102,6 +102,7 @@ export default function ProductPlacement() {
     if (!selectedPackage) return setErrorMessage('Choose a placement package.');
     if (!form.product_name.trim()) return setErrorMessage('Product name is required.');
     if (!form.featured_image.trim()) return setErrorMessage('A product image is required.');
+    if (!form.category_id) return setErrorMessage('Choose the Assets Shop category where this product should appear.');
     if (!form.rights_confirmed || !form.terms_accepted) return setErrorMessage('Rights and placement terms must be accepted.');
 
     setSubmitting(true);
@@ -202,11 +203,11 @@ export default function ProductPlacement() {
               {splitList(form.preview_images).length > 0 && <div className="grid grid-cols-4 gap-2">{splitList(form.preview_images).slice(0,8).map((url) => <img key={url} src={url} alt="" className="h-20 w-full border border-white/10 bg-black object-contain" />)}</div>}
             </div>
             <select value={form.category_id} onChange={(e) => setForm((current) => ({ ...current, category_id: e.target.value, subcategory_id: '' }))} className="bg-black border border-white/10 px-4 py-3">
-              <option value="">Category</option>
+              <option value="">Choose Assets Shop category *</option>
               {categories.map((item) => <option key={item.id} value={item.id}>{item.label_en || item.label_fr}</option>)}
             </select>
             <select value={form.subcategory_id} onChange={(e) => setField('subcategory_id', e.target.value)} className="bg-black border border-white/10 px-4 py-3">
-              <option value="">Subcategory</option>
+              <option value="">Choose subcategory (optional)</option>
               {visibleSubcategories.map((item) => <option key={item.id} value={item.id}>{item.label_en || item.label_fr}</option>)}
             </select>
             <input value={form.tags} onChange={(e) => setField('tags', e.target.value)} placeholder="Tags, separated by commas" className="bg-black border border-white/10 px-4 py-3 md:col-span-2" />
