@@ -66,6 +66,7 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
         user_email: user.email,
         created_by_id: user.id,
         name: asset.title,
+        author_name: asset.creator_name || asset.placement_source_name || user.email,
         url: asset.featured_image,
         media_type: 'image',
         asset_category: 'product_placement',
@@ -96,7 +97,10 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
             <p className="text-xs font-black tracking-[0.25em] uppercase">{asset.is_product_placement ? 'Product placement' : 'Production asset'}</p>
             <h1 className="text-4xl font-black leading-none mt-3">{asset.title}</h1>
             <div className="w-14 h-1 bg-red-600 mt-5" />
-            {asset.creator_name && <p className="mt-5 text-sm font-bold">Created by {asset.creator_name}</p>}
+            <div className="mt-5 space-y-1 text-sm font-bold">
+              <p>Author: {asset.creator_name || asset.placement_source_name || 'AISTAGE.ONE'}</p>
+              {asset.created_at && <p>Added to Assets Shop: {new Date(asset.created_at).toLocaleDateString()}</p>}
+            </div>
             {asset.description && <p className="mt-6 leading-relaxed font-bold">{asset.description}</p>}
             {Array.isArray(asset.tags) && asset.tags.length > 0 && (
               <div className="mt-5 flex flex-wrap gap-2">
