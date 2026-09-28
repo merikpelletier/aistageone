@@ -30,6 +30,10 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
     enabled: Boolean(assetId),
   });
 
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [assetId]);
+
   if (isLoading) return <div className={`${embedded ? 'min-h-[calc(100vh-3.5rem)]' : 'min-h-screen'} bg-zinc-950 flex items-center justify-center font-black text-white`}>LOADING…</div>;
 
   if (!assetId || error || !asset) {
@@ -42,10 +46,6 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
   }
 
   const images = [...new Set([asset.featured_image, ...(Array.isArray(asset.preview_images) ? asset.preview_images : [])].filter(Boolean))];
-
-  useEffect(() => {
-    setActiveImageIndex(0);
-  }, [assetId]);
 
   const addPlacementToVault = async () => {
     if (!asset.is_product_placement || !asset.featured_image) return;
