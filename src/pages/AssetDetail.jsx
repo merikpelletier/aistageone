@@ -66,7 +66,7 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
         user_email: user.email,
         created_by_id: user.id,
         name: asset.title,
-        author_name: asset.creator_name || asset.placement_source_name || user.email,
+        author_name: asset.creator_name || asset.placement_source_name || 'AISTAGE.ONE',
         url: asset.featured_image,
         media_type: 'image',
         asset_category: 'product_placement',
