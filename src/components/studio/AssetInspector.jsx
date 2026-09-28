@@ -217,4 +217,6 @@ export default function AssetInspector({ asset, userEmail, folders = [], onClose
       </div>
     </div>
   );
+
+  return createPortal(inspector, document.body);
 }
