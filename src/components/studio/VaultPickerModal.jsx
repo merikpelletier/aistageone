@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Folder, ChevronDown, Upload, Loader2 } from 'lucide-react';
@@ -80,15 +81,16 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
   };
 
   if (foldersLoading || assetsLoading) {
-    return (
-      <div className="fixed inset-0 z-[200] bg-black flex items-center justify-center">
+    return createPortal(
+      <div className="fixed inset-0 z-[99999] bg-black flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-      </div>
+      </div>,
+      document.body,
     );
   }
 
-  return (
-    <div className="fixed inset-0 z-[200] bg-black flex flex-col">
+  const picker = (
+    <div className="fixed inset-0 z-[99999] bg-black flex flex-col text-white">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 px-5 pt-10 pb-4 border-b border-white/10 flex-shrink-0">
         <h3 className="text-white text-sm font-medium tracking-widest uppercase">Pick from Vault</h3>
@@ -165,4 +167,6 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
       </div>
     </div>
   );
+
+  return createPortal(picker, document.body);
 }
