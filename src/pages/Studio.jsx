@@ -234,7 +234,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
         </main>
       </div>
 
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[5000] h-[64px] bg-[#17191d] border-t border-white/10">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[5000] h-[var(--studio-mobile-nav-height)] pb-[env(safe-area-inset-bottom)] bg-[#17191d] border-t border-white/10">
         <div className="h-full grid grid-cols-5">
           {primaryMobile.map((tool) => (
             <button
@@ -264,7 +264,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 18 }}
-            className="lg:hidden fixed z-[4990] left-0 right-0 bottom-16 max-h-[72vh] overflow-y-auto bg-[#202328] border-t border-white/10"
+            className="lg:hidden fixed z-[4990] left-0 right-0 bottom-[var(--studio-mobile-nav-height)] max-h-[72dvh] overflow-y-auto bg-[#202328] border-t border-white/10"
           >
             {STUDIO_TOOL_SECTIONS.map((section, index) => (
               <ToolAccordionSection
