@@ -404,6 +404,24 @@ serveWithCors(async (req) => {
       file_url = uploaded.file_url;
     }
 
+    const lineageInputs = [
+      photo_url,
+      ...(Array.isArray(photo_urls) ? photo_urls : []),
+      reference_video_url,
+      reference_image_url,
+      ...(Array.isArray(reference_image_urls) ? reference_image_urls : []),
+      audio_url,
+      costume_url,
+    ].filter((value) => typeof value === 'string' && value.length > 0);
+
+    if (lineageInputs.length > 0) {
+      const { error: lineageError } = await billing.service.rpc('inherit_media_product_placements', {
+        p_output_url: file_url,
+        p_input_urls: [...new Set(lineageInputs)],
+      });
+      if (lineageError) console.error('Product placement lineage propagation failed:', lineageError.message);
+    }
+
     await completeCreditCharge(billing.service, creditCharge);
 
     return Response.json({
