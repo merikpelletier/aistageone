@@ -79,6 +79,7 @@
 
 :root {
   --bottom-nav-height: calc(56px + env(safe-area-inset-bottom));
+  --studio-mobile-nav-height: calc(64px + env(safe-area-inset-bottom));
 }
 
 .magazine-cover {
