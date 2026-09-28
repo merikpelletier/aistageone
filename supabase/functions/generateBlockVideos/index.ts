@@ -2,12 +2,28 @@ import { installModelControl } from '../_shared/modelControlRuntime.ts';
 installModelControl('generateBlockVideos');
 import { createClientFromRequest } from './_legacy/base44Compat.ts';
 import { serveWithCors } from './_legacy/cors.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const REPLICATE_API = 'https://api.replicate.com/v1';
 const FALLBACK_POLL_MS = 5 * 1000;
 const MAX_SEGMENT_ATTEMPTS = 3;
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const webhookUrl = supabaseUrl ? `${supabaseUrl}/functions/v1/replicateWebhook` : '';
+const lineageService = createClient(
+  Deno.env.get('SUPABASE_URL') || '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
+  { auth: { persistSession: false } },
+);
+
+async function inheritLineage(outputUrl, inputUrls) {
+  const inputs = [...new Set((inputUrls || []).filter((value) => typeof value === 'string' && value.length > 0))];
+  if (!outputUrl || inputs.length === 0) return;
+  const { error } = await lineageService.rpc('inherit_media_product_placements', {
+    p_output_url: outputUrl,
+    p_input_urls: inputs,
+  });
+  if (error) console.error('[generateBlockMedia] Product placement lineage propagation failed:', error.message);
+}
 
 function extractUrl(output) {
   if (!output) return null;
@@ -230,6 +246,10 @@ serveWithCors(async (req) => {
                 const blob = await mediaRes.blob();
                 const file = new File([blob], `segment_${nextSegmentIndex}.${ext}`, { type: contentType });
                 const uploaded = await base44.integrations.Core.UploadFile({ file });
+                await inheritLineage(uploaded.file_url, [
+                  ...(segment.lineage_source_urls || []),
+                  segment.first_frame_url,
+                ]);
 
                 // Video two-step: if this was the image stage, start kling-v2.6 animation
                 if (mediaType === 'video' && segment.video_stage !== 'video') {
@@ -251,7 +271,7 @@ serveWithCors(async (req) => {
                   if (klingRes.ok && klingData.id) {
                     const klingNow = new Date().toISOString();
                     const updatedSegs = [...segments];
-                    updatedSegs[nextSegmentIndex] = { ...segment, prediction_id: klingData.id, prediction_created_at: klingNow, video_stage: 'video', first_frame_url: uploaded.file_url };
+                    updatedSegs[nextSegmentIndex] = { ...segment, prediction_id: klingData.id, prediction_created_at: klingNow, video_stage: 'video', first_frame_url: uploaded.file_url, lineage_source_urls: segment.lineage_source_urls || [] };
                     await base44.entities.StoryBlock.update(block_id, { segment_instructions: updatedSegs, active_prediction_id: klingData.id, last_error: null });
                     return Response.json({
                       block_id: block.id, status: 'generating', total_segments: segments.length,
@@ -473,6 +493,7 @@ serveWithCors(async (req) => {
     // Both image and video segments start by generating a still frame with nano-banana-2.
     // Video segments then get animated by kling-v2.6 in a second step (handled in the
     // success handler below when video_stage === 'image').
+    const lineageSourceUrls = [...new Set(referenceImages.filter(Boolean))];
     const modelPath = 'google/nano-banana-2';
     const predictionBody = {
       input: {
@@ -535,6 +556,8 @@ serveWithCors(async (req) => {
           const blob = await mediaRes.blob();
           const file = new File([blob], `segment_${nextSegmentIndex}.${ext}`, { type: contentType });
           const uploaded = await base44.integrations.Core.UploadFile({ file });
+          const lineageSourceUrls = [...new Set(referenceImages.filter(Boolean))];
+          await inheritLineage(uploaded.file_url, lineageSourceUrls);
 
           // Video two-step: if this was the image stage, start kling-v2.6 animation
           if (mediaType === 'video' && segment.video_stage !== 'video') {
@@ -556,7 +579,7 @@ serveWithCors(async (req) => {
             if (klingRes.ok && klingData.id) {
               const klingNow = new Date().toISOString();
               const updatedSegs = [...segments];
-              updatedSegs[nextSegmentIndex] = { ...segment, prediction_id: klingData.id, prediction_created_at: klingNow, video_stage: 'video', first_frame_url: uploaded.file_url };
+              updatedSegs[nextSegmentIndex] = { ...segment, prediction_id: klingData.id, prediction_created_at: klingNow, video_stage: 'video', first_frame_url: uploaded.file_url, lineage_source_urls: lineageSourceUrls };
               await base44.entities.StoryBlock.update(block_id, { segment_instructions: updatedSegs, active_prediction_id: klingData.id, last_error: null });
               return Response.json({
                 block_id: block.id, status: 'generating', total_segments: segments.length,
@@ -612,6 +635,7 @@ serveWithCors(async (req) => {
       prediction_id: predictionId,
       prediction_created_at: now,
       video_stage: mediaType === 'video' ? 'image' : undefined,
+      lineage_source_urls: lineageSourceUrls,
     };
     await base44.entities.StoryBlock.update(block_id, {
       segment_instructions: updatedSegments,
