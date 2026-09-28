@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { X, Folder, FolderPlus, Check, ExternalLink, Loader2, Volume2 } from 'lucide-react';
 
@@ -66,8 +67,8 @@ export default function SaveToVaultModal({ userEmail, imageUrl, mediaType = 'ima
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[200] bg-black/90 flex flex-col">
+  const modal = (
+    <div className="fixed inset-0 z-[99999] bg-black/95 flex flex-col text-white">
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-10 pb-4 border-b border-white/10 flex-shrink-0">
         <h3 className="text-white text-sm font-bold tracking-widest uppercase">Save to Vault</h3>
@@ -193,4 +194,6 @@ export default function SaveToVaultModal({ userEmail, imageUrl, mediaType = 'ima
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }
