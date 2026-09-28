@@ -84,6 +84,12 @@ serveWithCors(async (req) => {
     const file = new File([blob], 'dubbed_video.mp4', { type: 'video/mp4' });
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
+    const { error: lineageError } = await billing.service.rpc('inherit_media_product_placements', {
+      p_output_url: file_url,
+      p_input_urls: [video_url, audio_url],
+    });
+    if (lineageError) console.error('Product placement lineage propagation failed:', lineageError.message);
+
     await completeCreditCharge(billing.service, creditCharge);
     return Response.json({
       file_url,
