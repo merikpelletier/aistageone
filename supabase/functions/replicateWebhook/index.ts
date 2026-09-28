@@ -2,6 +2,13 @@ import { installModelControl } from '../_shared/modelControlRuntime.ts';
 installModelControl('replicateWebhook');
 import { createClientFromRequest } from './_legacy/base44Compat.ts';
 import { serveWithCors } from './_legacy/cors.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+const lineageService = createClient(
+  Deno.env.get('SUPABASE_URL') || '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
+  { auth: { persistSession: false } },
+);
 
 const MAX_SEGMENT_ATTEMPTS = 3;
 
@@ -116,6 +123,18 @@ serveWithCors(async (req) => {
     const blob = await mediaRes.blob();
     const file = new File([blob], `segment_${segIndex}.${ext}`, { type: contentType });
     const uploaded = await base44.asServiceRole.integrations.Core.UploadFile({ file });
+
+    const lineageInputs = [
+      ...(segment.lineage_source_urls || []),
+      segment.first_frame_url,
+    ].filter((value) => typeof value === 'string' && value.length > 0);
+    if (lineageInputs.length > 0) {
+      const { error: lineageError } = await lineageService.rpc('inherit_media_product_placements', {
+        p_output_url: uploaded.file_url,
+        p_input_urls: [...new Set(lineageInputs)],
+      });
+      if (lineageError) console.error('[replicateWebhook] Product placement lineage propagation failed:', lineageError.message);
+    }
 
     // Update the block
     const updatedMedia = [...existingMedia];
