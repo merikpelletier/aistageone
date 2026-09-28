@@ -95,9 +95,9 @@ export default function AssetInspector({ asset, userEmail, folders = [], onClose
   const isScript = asset.media_type === 'script';
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-x-0 top-0 bottom-[64px] sm:inset-0 bg-black/80 backdrop-blur-sm z-[6000] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
       <div
-        className="bg-neutral-950 border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md h-[calc(100dvh-64px)] sm:h-auto sm:max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl"
+        className="bg-neutral-950 border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md h-full sm:h-auto sm:max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Preview header */}
