@@ -4,7 +4,31 @@ export const billingUnits = {
  characters:'Par caractères', tokens:'Par tokens (entrée et sortie)',
 };
 const amount=(v:any)=>{if(v==null||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))||Number(v)<0||Number(v)>=1000000)throw Error('Renseigne un tarif valide en USD.');return Number(v);};
-function fieldSchema(model:any,key:string){let f=model.schema?.components?.schemas?.Input?.properties?.[key];if(f?.allOf?.length===1)f=f.allOf[0];if(f?.$ref)f=f.$ref.slice(2).split('/').reduce((a:any,k:string)=>a?.[k],model.schema);return f;}
+const internalPricingFields:any={
+ '__input_has_video':{type:'boolean',title:'Contexte interne — entrée vidéo'},
+ '__input_has_image':{type:'boolean',title:'Contexte interne — entrée image'},
+};
+function fieldSchema(model:any,key:string){
+ if(internalPricingFields[key])return internalPricingFields[key];
+ let f=model.schema?.components?.schemas?.Input?.properties?.[key];
+ if(f?.allOf?.length===1)f=f.allOf[0];
+ if(f?.$ref)f=f.$ref.slice(2).split('/').reduce((a:any,k:string)=>a?.[k],model.schema);
+ return f;
+}
+function hasMediaInput(input:any,kind:'video'|'image'){
+ if(!input||typeof input!=='object')return false;
+ return Object.entries(input).some(([key,value])=>{
+  if(value==null||value===''||(Array.isArray(value)&&!value.length))return false;
+  const k=key.toLowerCase();
+  if(kind==='video')return k.includes('video')||k.includes('motion');
+  return k.includes('image')||k.includes('photo')||k.includes('frame');
+ });
+}
+function conditionValue(input:any,parameter:string){
+ if(parameter==='__input_has_video')return hasMediaInput(input,'video');
+ if(parameter==='__input_has_image')return hasMediaInput(input,'image');
+ return input?.[parameter];
+}
 export function normalizePricing(model:any){
  const p=model.capabilities?.pricing||{mode:'fixed'};
  if(!(model.billing_type in billingUnits))throw Error('Unité de facturation invalide.');
@@ -39,7 +63,7 @@ export function resolveTariff(rate:any,input:any){
  const pricing=rate.pricing||rate.capabilities?.pricing;
  if(pricing?.mode!=='conditional')return rate.unit_price_usd==null?null:rate;
  const matches=(pricing.rules||[]).filter((r:any)=>r.conditions?.length&&r.conditions.every((c:any)=>{
-  const value=input?.[c.parameter];if(value==null)return false;
+  const value=conditionValue(input,c.parameter);if(value==null)return false;
   if(c.operator==='eq')return typeof c.value==='boolean'?value===c.value:String(value)===String(c.value);
   if(typeof value==='boolean'||value===''||!Number.isFinite(Number(value)))return false;
   return c.operator==='gte'?Number(value)>=Number(c.value):c.operator==='lte'?Number(value)<=Number(c.value):false;
