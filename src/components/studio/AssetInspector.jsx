@@ -135,7 +135,10 @@ export default function AssetInspector({ asset, userEmail, folders = [], onClose
               placeholder="Name this asset…"
               className="w-full bg-transparent text-white text-lg font-bold tracking-wide focus:outline-none placeholder-white/30"
             />
-            <p className="text-white/40 text-xs mt-1">{asset.media_type} · saved {new Date(asset.created_date).toLocaleDateString()}</p>
+            <div className="mt-1 space-y-0.5 text-xs text-white/40">
+              <p>{asset.media_type} · added {asset.created_date ? new Date(asset.created_date).toLocaleDateString() : 'date unavailable'}</p>
+              <p>Author: {asset.author_name || asset.created_by || asset.user_email || 'Unknown'}</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
