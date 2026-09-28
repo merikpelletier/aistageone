@@ -1,5 +1,6 @@
 import { createClientFromRequest } from '../_shared/base44Compat.ts';
 import { serveWithCors } from '../_shared/cors.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 serveWithCors(async (request) => {
   const base44 = createClientFromRequest(request);
@@ -78,6 +79,18 @@ serveWithCors(async (request) => {
   const page = existingPages.find((item: any) => item.page_type === 'block_player');
   if (page) await service.entities.DossierPage.update(page.id, pageData);
   else await service.entities.DossierPage.create(pageData);
+
+  const lineageService = createClient(
+    Deno.env.get('SUPABASE_URL') || '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
+    { auth: { persistSession: false } },
+  );
+  const { error: placementError } = await lineageService.rpc('refresh_dossier_product_placements', {
+    p_dossier_id: dossier.id,
+  });
+  if (placementError) {
+    console.error('[publishAuthorStory] Product placement refresh failed:', placementError.message);
+  }
 
   await service.entities.AuthorStoryProject.update(project.id, { status: 'published', published_dossier_id: dossier.id });
   return Response.json({ success: true, dossier_id: dossier.id, story_id: story.id, chapter_count: chapters.length, segment_count: blocks.length, republished });
