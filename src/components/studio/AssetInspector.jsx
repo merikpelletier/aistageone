@@ -97,7 +97,7 @@ export default function AssetInspector({ asset, userEmail, folders = [], onClose
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
       <div
-        className="bg-neutral-950 border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md max-h-[92vh] overflow-y-auto shadow-2xl"
+        className="bg-neutral-950 border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md h-[calc(100dvh-64px)] sm:h-auto sm:max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Preview header */}
@@ -125,8 +125,8 @@ export default function AssetInspector({ asset, userEmail, folders = [], onClose
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-5 space-y-5">
+        {/* Scrollable body */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 space-y-5 pb-8">
           <div>
             <input
               value={form.name}
@@ -197,7 +197,7 @@ export default function AssetInspector({ asset, userEmail, folders = [], onClose
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-neutral-950 border-t border-white/10 p-4 flex gap-3">
+        <div className="shrink-0 bg-neutral-950 border-t border-white/10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex gap-3">
           <button
             onClick={handleSave}
             disabled={saving}
