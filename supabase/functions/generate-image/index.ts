@@ -75,6 +75,14 @@ serveWithCors(async (request) => {
     const { data: publicData } = billing.service.storage.from('media').getPublicUrl(objectPath);
     return publicData.publicUrl;
   });
+  if (referenceUrls.length > 0) {
+    const { error: lineageError } = await billing.service.rpc('inherit_media_product_placements', {
+      p_output_url: output,
+      p_input_urls: [...new Set(referenceUrls)],
+    });
+    if (lineageError) console.error('Product placement lineage propagation failed:', lineageError.message);
+  }
+
   return Response.json({
     url: output,
     file_url: output,
