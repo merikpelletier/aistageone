@@ -11,7 +11,11 @@ export default function ModelPricingFields({model,onChange}){
  const update=p=>onChange({...model,capabilities:{...model.capabilities,pricing:{...pricing,...p}}});
  const ruleUpdate=(index,value)=>update({rules:rules.map((r,i)=>i===index?{...r,...value}:r)});
  const fields=model.schema?.components?.schemas?.Input?.properties||{};
- const fieldInfo=key=>{let f=fields[key];if(f?.allOf?.length===1)f=f.allOf[0];if(f?.$ref)f=f.$ref.slice(2).split('/').reduce((a,k)=>a?.[k],model.schema);return f||{};};
+ const internalFields={
+  '__input_has_video':{type:'boolean',title:'Contexte interne — entrée vidéo'},
+  '__input_has_image':{type:'boolean',title:'Contexte interne — entrée image'},
+ };
+ const fieldInfo=key=>{if(internalFields[key])return internalFields[key];let f=fields[key];if(f?.allOf?.length===1)f=f.allOf[0];if(f?.$ref)f=f.$ref.slice(2).split('/').reduce((a,k)=>a?.[k],model.schema);return f||{};};
  const token=model.billing_type==='tokens';
  return <div className="space-y-4 rounded border border-white/15 p-4 md:col-span-2">
   <h4 className="font-medium">Tarification du fournisseur</h4>
@@ -24,7 +28,7 @@ export default function ModelPricingFields({model,onChange}){
    <Field required={model.enabled} label={token?'Prix des tokens d’entrée (USD)':'Prix par unité (USD)'} type="number" min="0" step="any" value={model.unit_price_usd??''} onChange={e=>onChange({...model,unit_price_usd:e.target.value})}/>
    {token&&<Field required={model.enabled} label="Prix des tokens de sortie (USD)" type="number" min="0" step="any" value={model.output_unit_price_usd??''} onChange={e=>onChange({...model,output_unit_price_usd:e.target.value})}/>}
   </div>:<>
-   <p className="text-sm text-white/60">Ajoute une ligne pour chaque tarif. Combine les conditions si le prix dépend de plusieurs paramètres : résolution, qualité, durée, audio… Les paramètres proposés proviennent du modèle importé. Les montants sont à saisir par toi.</p>
+   <p className="text-sm text-white/60">Ajoute une ligne pour chaque tarif. Combine les conditions si le prix dépend de plusieurs paramètres : résolution, qualité, durée, audio… Tu peux aussi utiliser le contexte interne AISTAGE.ONE lorsque Replicate distingue par exemple une entrée vidéo d’une entrée non vidéo sans exposer ce champ dans l’API.</p>
    {!Object.keys(fields).length&&<p className="text-amber-200 text-sm">Importe les informations du modèle pour choisir ses paramètres.</p>}
    {rules.map((rule,index)=><fieldset className="space-y-3 rounded border border-white/15 p-3" key={index}>
     <legend className="px-2">Tarif {index+1}</legend>
@@ -33,7 +37,7 @@ export default function ModelPricingFields({model,onChange}){
      const f=fieldInfo(condition.parameter),numeric=['number','integer'].includes(f.type);
      const edit=changes=>ruleUpdate(index,{conditions:rule.conditions.map((c,i)=>i===ci?{...c,...changes}:c)});
      return <div className="grid items-end gap-2 md:grid-cols-[1fr_1fr_1fr_auto]" key={ci}>
-      <label className="text-sm">{ci?'Et le paramètre':'Paramètre'}<select required className={input} value={condition.parameter} onChange={e=>edit({parameter:e.target.value,operator:'eq',value:''})}><option value="">Choisir…</option>{Object.entries(fields).filter(([key])=>['string','number','integer','boolean'].includes(fieldInfo(key).type)||fieldInfo(key).enum).map(([key,field])=><option value={key} key={key}>{field.title||key} ({key})</option>)}</select></label>
+      <label className="text-sm">{ci?'Et le paramètre':'Paramètre'}<select required className={input} value={condition.parameter} onChange={e=>edit({parameter:e.target.value,operator:'eq',value:''})}><option value="">Choisir…</option><optgroup label="Paramètres du modèle">{Object.entries(fields).filter(([key])=>['string','number','integer','boolean'].includes(fieldInfo(key).type)||fieldInfo(key).enum).map(([key,field])=><option value={key} key={key}>{field.title||key} ({key})</option>)}</optgroup><optgroup label="Contexte interne AISTAGE.ONE">{Object.entries(internalFields).map(([key,field])=><option value={key} key={key}>{field.title}</option>)}</optgroup></select></label>
       <label className="text-sm">Condition<select className={input} value={condition.operator} onChange={e=>edit({operator:e.target.value})}><option value="eq">Égal à</option>{numeric&&<><option value="gte">Au moins</option><option value="lte">Au plus</option></>}</select></label>
       <label className="text-sm">Valeur{f.type==='boolean'?<select required className={input} value={String(condition.value)} onChange={e=>edit({value:e.target.value})}><option value="">Choisir…</option><option value="true">Oui</option><option value="false">Non</option></select>:f.enum?<select required className={input} value={condition.value} onChange={e=>edit({value:e.target.value})}><option value="">Choisir…</option>{f.enum.map(v=><option key={String(v)} value={v}>{String(v)}</option>)}</select>:<input required className={input} type={numeric?'number':'text'} step="any" value={condition.value} onChange={e=>edit({value:e.target.value})}/>}</label>
       <button type="button" className={button} aria-label={`Retirer la condition ${ci+1} du tarif ${index+1}`} disabled={rule.conditions.length===1} onClick={()=>ruleUpdate(index,{conditions:rule.conditions.filter((_,i)=>i!==ci)})}>Retirer</button>
