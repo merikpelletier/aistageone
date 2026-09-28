@@ -4,7 +4,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Box, BookmarkPlus, Check, Download, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { Button } from '@/components/ui/button';
-import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 
 export default function AssetDetail({ assetId: assetIdProp = null, embedded = false, onBack = null }) {
@@ -46,22 +45,26 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
   const addPlacementToVault = async () => {
     if (!asset.is_product_placement || !asset.featured_image) return;
     if (!user?.email) {
-      base44.auth.redirectToLogin(window.location.href);
+      window.location.assign(`/Login?returnTo=${encodeURIComponent(window.location.href)}`);
       return;
     }
     setAddingToVault(true);
     setVaultError('');
     try {
-      const existing = await base44.entities.VaultAsset.filter({
-        user_email: user.email,
-        source_asset_id: asset.id,
-      }, '-created_date', 1);
-      if (existing.length) {
+      const { data: existing, error: existingError } = await supabase
+        .from('vault_asset')
+        .select('id')
+        .eq('user_email', user.email)
+        .eq('source_asset_id', asset.id)
+        .limit(1);
+      if (existingError) throw existingError;
+      if (existing?.length) {
         setAddedToVault(true);
         return;
       }
-      await base44.entities.VaultAsset.create({
+      const { error: insertError } = await supabase.from('vault_asset').insert({
         user_email: user.email,
+        created_by_id: user.id,
         name: asset.title,
         url: asset.featured_image,
         media_type: 'image',
@@ -70,6 +73,7 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
         source_dossier_id: '',
         tags: Array.isArray(asset.tags) ? asset.tags : [],
       });
+      if (insertError) throw insertError;
       setAddedToVault(true);
     } catch (error) {
       setVaultError(error?.message || 'Unable to add this placement to your Vault.');
