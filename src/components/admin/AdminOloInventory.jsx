@@ -342,7 +342,14 @@ export default function AdminOloInventory() {
                     </div>
                     <p className="mt-1 truncate text-sm text-zinc-500">{asset.creator_name || 'Créateur non indiqué'}</p>
                   </div>
-                  <div className="text-sm text-zinc-300">{category?.label_fr || category?.label_en || 'Non classé'}</div>
+                  <div className="text-sm text-zinc-300">
+                    <div>{category?.label_fr || category?.label_en || 'Non classé'}</div>
+                    {Array.isArray(asset.tags) && asset.tags.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {asset.tags.slice(0, 4).map((tag) => <span key={tag} className="rounded-full border border-white/10 bg-zinc-900 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-400">{tag}</span>)}
+                      </div>
+                    )}
+                  </div>
                   <div className="text-sm font-bold text-cyan-200">{displayPrice(asset)}</div>
                   <div><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${STATUS_STYLES[asset.status] || STATUS_STYLES.draft}`}>{STATUS_LABELS[asset.status] || asset.status}</span></div>
                   <div className="flex items-center gap-1">
