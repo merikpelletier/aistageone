@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import VaultPickerModal from '@/components/studio/VaultPickerModal';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 
-const DURATIONS = ['5s', '10s'];
+const DURATIONS = [5, 10];
 const RATIOS = ['9:16', '16:9', '1:1', '4:3'];
 
 export default function AnimateImage({ onComplete, onClose, episodePageId, blockId, user, initialPrompt, embedded = false }) {
@@ -15,7 +15,7 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
   const [uploading, setUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
-  const [duration, setDuration] = useState('5s');
+  const [duration, setDuration] = useState(5);
   const [ratio, setRatio] = useState('16:9');
   const [prompt, setPrompt] = useState(initialPrompt || '');
   const [audioUrl, setAudioUrl] = useState(null);
@@ -105,12 +105,12 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
   };
 
   return (
-    <div className={`fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] bg-yellow-400 overflow-y-auto' : 'inset-0 bg-black/80 flex items-center justify-center p-4'}`}>
+    <div className={`fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[var(--studio-mobile-nav-height)] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] bg-yellow-400 overflow-y-auto' : 'inset-0 bg-black/80 flex items-center justify-center p-4'}`}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className={embedded ? 'bg-yellow-400 min-h-full w-full p-5 md:p-8 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto'}
+        className={embedded ? 'bg-yellow-400 min-h-full w-full p-5 pb-28 md:p-8 md:pb-10 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto'}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
@@ -133,7 +133,7 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
           <p className="text-black text-xs font-bold uppercase tracking-wider mb-2">Image</p>
           {imageUrl ? (
             <div className="relative">
-              <img src={imageUrl} alt="Preview" className="w-full h-48 object-cover rounded-2xl" />
+              <img src={imageUrl} alt="Preview" className="w-full max-h-72 object-contain bg-black rounded-2xl" />
               <button onClick={() => { setImageUrl(null); setImageName(''); }}
                 className="absolute top-2 right-2 p-1.5 bg-black/70 rounded-full hover:bg-black transition-colors">
                 <X size={14} className="text-white" />
@@ -167,7 +167,7 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
               {DURATIONS.map(d => (
                 <button key={d} onClick={() => setDuration(d)}
                   className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${duration === d ? 'bg-black text-yellow-400' : 'bg-black/10 text-black'}`}>
-                  {d}
+                  {d}s
                 </button>
               ))}
             </div>
@@ -193,7 +193,7 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
             onChange={e => setPrompt(e.target.value)}
             placeholder="Describe the motion… e.g. 'slow zoom in', 'hair blowing in the wind', 'camera pan left'"
             rows={3}
-            className="w-full bg-black/10 border border-black/15 rounded-xl px-4 py-3 text-black text-sm placeholder-black/30 focus:outline-none focus:border-black/40 resize-none"
+            className="w-full bg-black/15 border border-black/25 rounded-xl px-4 py-3 text-black text-sm placeholder-black/50 focus:outline-none focus:border-black/60 resize-none"
           />
         </div>
 
@@ -210,7 +210,7 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
               </button>
             </div>
           ) : (
-            <label className="flex items-center gap-3 px-4 py-3 bg-black/10 rounded-xl cursor-pointer hover:bg-black/15 transition-colors">
+            <label className="flex items-center gap-3 px-4 py-3 bg-black/15 border border-black/10 rounded-xl cursor-pointer hover:bg-black/20 transition-colors">
               {uploadingAudio ? <Loader2 size={16} className="animate-spin text-black" /> : <Music size={16} className="text-black" />}
               <span className="text-black text-sm">{uploadingAudio ? 'Uploading audio…' : 'Add background audio / music'}</span>
               <input type="file" accept="audio/*" className="hidden" disabled={uploadingAudio}
