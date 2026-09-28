@@ -7,6 +7,20 @@ import AssetInspector from '@/components/studio/AssetInspector';
 import { Info, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
+
+function VisibleTags({ tags = [] }) {
+  if (!Array.isArray(tags) || tags.length === 0) return null;
+  return (
+    <div className="absolute top-3 left-3 right-3 z-[2] flex flex-wrap gap-1 pointer-events-none">
+      {tags.slice(0, 4).map((tag) => (
+        <span key={tag} className="rounded-full border border-white/20 bg-black/80 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+          {tag}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 const folderColors = {
   red: 'bg-red-500/20 border-red-500/40 text-red-400',
   orange: 'bg-orange-500/20 border-orange-500/40 text-orange-400',
@@ -190,7 +204,8 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
           <div className="grid grid-cols-3 gap-3">
             {unfiledAssets.map((asset) => (
               <div key={asset.id} className="relative rounded-2xl overflow-hidden bg-white/5 border border-white/10" style={{ aspectRatio: '3/4' }}>
-                <div className="absolute top-3 left-3 flex gap-2">
+                <VisibleTags tags={asset.tags} />
+                <div className="absolute top-12 left-3 flex gap-2">
                   <select value="" onChange={(e) => { if (e.target.value) moveAssetToFolder(asset.id, e.target.value); }} className="bg-black/90 text-white text-xs font-bold rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 border border-white/30">
                     <option value="" className="text-white">Move to...</option>
                     {folders.map(f => <option key={f.id} value={f.id} className="text-white bg-black">{f.name}</option>)}
@@ -274,7 +289,8 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
             <div className="grid grid-cols-3 gap-3 pl-2">
               {folderAssets.map((asset) => (
                 <div key={asset.id} className="relative rounded-2xl overflow-hidden bg-white/5 border border-white/10" style={{ aspectRatio: '3/4' }}>
-                  <div className="absolute top-3 left-3 flex gap-2">
+                  <VisibleTags tags={asset.tags} />
+                  <div className="absolute top-12 left-3 flex gap-2">
                     <select value="" onChange={(e) => { if (e.target.value) moveAssetToFolder(asset.id, e.target.value); }} className="bg-black/90 text-white text-xs font-bold rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 border border-white/30">
                       <option value="" className="text-white">Move to...</option>
                       <option value="unfiled" className="text-white bg-black">Unfiled</option>
