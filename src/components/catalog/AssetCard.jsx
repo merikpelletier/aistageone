@@ -26,6 +26,13 @@ export default function AssetCard({ asset, category, onQuickView, onOpenAsset = 
         {onOpenAsset ? <button type="button" onClick={() => onOpenAsset(asset.id)} className="text-left"><h2 className="line-clamp-2 text-lg font-black leading-tight hover:text-cyan-300">{asset.title}</h2></button> : <Link to={`/AssetDetail?id=${encodeURIComponent(asset.id)}`}><h2 className="line-clamp-2 text-lg font-black leading-tight hover:text-cyan-300">{asset.title}</h2></Link>}
         <p className="mt-2 text-xs text-zinc-500">{asset.creator_name ? `By ${asset.creator_name}` : 'AISTAGE.ONE'}</p>
         <p className="mt-3 line-clamp-2 min-h-10 text-sm leading-relaxed text-zinc-400">{asset.description || 'Production-ready creative asset.'}</p>
+        {Array.isArray(asset.tags) && asset.tags.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {asset.tags.slice(0, 5).map((tag) => (
+              <span key={tag} className="rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-zinc-300">{tag}</span>
+            ))}
+          </div>
+        )}
         <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4">
           <div className="flex items-center gap-1.5 font-black text-cyan-300"><Sparkles size={15} />{asset.is_product_placement ? 'Product placement · Free use' : `${asset.credit_cost ?? 0} credits`}</div>
           <button onClick={() => onQuickView(asset)} className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-300 hover:border-cyan-400 hover:text-cyan-300"><Eye size={14} /> Quick view</button>
