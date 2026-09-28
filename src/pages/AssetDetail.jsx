@@ -94,6 +94,13 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
             <div className="w-14 h-1 bg-red-600 mt-5" />
             {asset.creator_name && <p className="mt-5 text-sm font-bold">Created by {asset.creator_name}</p>}
             {asset.description && <p className="mt-6 leading-relaxed font-bold">{asset.description}</p>}
+            {Array.isArray(asset.tags) && asset.tags.length > 0 && (
+              <div className="mt-5 flex flex-wrap gap-2">
+                {asset.tags.map((tag) => (
+                  <span key={tag} className="rounded-full border border-black/20 bg-white/70 px-3 py-1 text-xs font-black uppercase tracking-wide">{tag}</span>
+                ))}
+              </div>
+            )}
 
             <div className="mt-8 bg-neutral-950 text-white p-5 space-y-3">
               <div className="flex items-center gap-3"><ShieldCheck className="text-yellow-400" size={20} /><span className="text-sm">Rights verified before delivery</span></div>
