@@ -24,7 +24,10 @@ export default function AssetCard({ asset, category, onQuickView, onOpenAsset = 
       </Link>}
       <div className="p-5">
         {onOpenAsset ? <button type="button" onClick={() => onOpenAsset(asset.id)} className="text-left"><h2 className="line-clamp-2 text-lg font-black leading-tight hover:text-cyan-300">{asset.title}</h2></button> : <Link to={`/AssetDetail?id=${encodeURIComponent(asset.id)}`}><h2 className="line-clamp-2 text-lg font-black leading-tight hover:text-cyan-300">{asset.title}</h2></Link>}
-        <p className="mt-2 text-xs text-zinc-500">{asset.creator_name ? `By ${asset.creator_name}` : 'AISTAGE.ONE'}</p>
+        <p className="mt-2 text-xs text-zinc-500">
+          {asset.creator_name ? `By ${asset.creator_name}` : 'By AISTAGE.ONE'}
+          {asset.created_at ? ` · ${new Date(asset.created_at).toLocaleDateString()}` : ''}
+        </p>
         <p className="mt-3 line-clamp-2 min-h-10 text-sm leading-relaxed text-zinc-400">{asset.description || 'Production-ready creative asset.'}</p>
         {Array.isArray(asset.tags) && asset.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
