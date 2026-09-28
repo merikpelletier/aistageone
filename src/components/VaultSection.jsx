@@ -59,6 +59,7 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
         const { file_url } = await base44.integrations.Core.UploadFile({ file });
         await base44.entities.VaultAsset.create({
           user_email: userEmail,
+          author_name: userEmail,
           url: file_url,
           name: file.name.replace(/\.[^.]+$/, ''),
           media_type: mediaType,
