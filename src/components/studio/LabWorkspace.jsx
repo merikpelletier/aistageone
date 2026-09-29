@@ -20,7 +20,7 @@ const TOOL_GROUPS = [
     label: 'Actor & Character',
     color: 'bg-gradient-to-br from-rose-500 to-amber-500',
     tools: [
-      { id: 'actor_designer', pricingId: 'character_sheet', label: 'Actor Studio', icon: Users, desc: 'Design a complete character with references, wardrobe, Vault and OLOShop' },
+      { id: 'actor_designer', label: 'Actor Studio', icon: Users, desc: 'Design a complete character with references, wardrobe, Vault and OLOShop' },
     ],
   },
   {
@@ -39,9 +39,9 @@ const TOOL_GROUPS = [
     label: 'Video',
     color: 'bg-violet-600',
     tools: [
-      { id: 'animate', pricingId: 'animate_image', label: 'Animate Image', icon: Film, desc: 'Bring a still image to life with AI motion' },
-      { id: 'ai_video', pricingId: 'ai_video', label: 'AI Video', icon: Camera, desc: 'Generate video from a text prompt' },
-      { id: 'video_tools', pricingId: 'ai_video', label: 'Video Reference', icon: Video, desc: 'Use a reference video to generate a new video' },
+      { id: 'animate', label: 'Animate Image', icon: Film, desc: 'Bring a still image to life with AI motion' },
+      { id: 'ai_video', label: 'AI Video', icon: Camera, desc: 'Generate video from a text prompt' },
+      { id: 'video_tools', label: 'Video Reference', icon: Video, desc: 'Use a reference video to generate a new video' },
     ],
   },
   {
@@ -49,7 +49,7 @@ const TOOL_GROUPS = [
     color: 'bg-emerald-600',
     tools: [
       { id: 'free_timeline', label: 'Timeline Generator', icon: ListVideo, desc: 'Build a block timeline from scratch' },
-      { id: 'compose', pricingId: 'compose_scene', label: 'Compose Scene', icon: Wand2, desc: 'Place your characters in a cinematic set' },
+      { id: 'compose', label: 'Compose Scene', icon: Wand2, desc: 'Place your characters in a cinematic set' },
     ],
     library: [
       { id: 'new_set', label: 'New Set', icon: Layers, desc: 'Add a set to your library' },
@@ -59,7 +59,7 @@ const TOOL_GROUPS = [
     label: 'Image & Layout',
     color: 'bg-cyan-600',
     tools: [
-      { id: 'layout', pricingId: 'compose_scene', label: 'Layout', icon: LayoutTemplate, desc: 'Create a finished AI composition with integrated graphic lettering' },
+      { id: 'layout', label: 'Layout', icon: LayoutTemplate, desc: 'Create a finished AI composition with integrated graphic lettering' },
     ],
   },
   {
@@ -987,7 +987,6 @@ export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoice
   const [activeTool, setActiveTool] = useState(directTool || null);
   const [balance, setBalance] = useState(null);
   const [showBuyTokens, setShowBuyTokens] = useState(false);
-  const [toolPricing, setToolPricing] = useState({});
   const [animateRatio, setAnimateRatio] = useState('16:9');
   const VIDEO_RATIOS = ['16:9', '9:16', '1:1', '4:3'];
   useEffect(() => {
@@ -1018,26 +1017,15 @@ export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoice
     library: configuredTools.filter((tool) => tool.groupLabel === group.label && tool.library),
   })).filter((group) => group.tools.length || group.library.length);
 
-  // Load balance and tool pricing
+  // Load the user's current credit balance. Tool prices are calculated
+  // inside each AI tool by the central model/pricing system.
   useEffect(() => {
     if (!user?.email) return;
-    
-    // Load balance
     base44.functions.invoke('getUserBalance', {})
       .then(res => {
         if (res.data) setBalance(res.data.balance);
       })
       .catch(() => {});
-    
-    // Load tool pricing
-    base44.entities.ToolPricing.filter({ is_active: true })
-      .then(pricing => {
-        const map = {};
-        pricing.forEach(p => { map[p.tool_id] = p.token_cost; });
-        setToolPricing(map);
-      })
-      .catch(() => {});
-    
   }, [user?.email]);
 
   const handleResult = async (url, type, alreadySavedId) => {
@@ -1229,7 +1217,6 @@ export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoice
               {group.tools.map(tool => {
                 const Icon = tool.icon;
                 const isActive = activeTool === tool.id;
-                const cost = toolPricing[tool.pricingId || tool.id];
                 return (
                   <motion.button key={tool.id} whileTap={{ scale: 0.97 }} onClick={() => handleToolClick(tool.id)}
                     style={{ backgroundColor: tool.look?.background_color || undefined, '--aistage-tool-accent': tool.look?.accent_color || '#facc15' }}
@@ -1241,11 +1228,6 @@ export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoice
                       <p className="text-white text-sm font-bold">{tool.label}</p>
                       <p className="text-white text-[11px] leading-tight mt-0.5">{tool.desc}</p>
                     </div>
-                    {cost !== undefined && (
-                      <span className="text-yellow-400 text-xs font-black bg-black/50 px-2 py-1 rounded-full">
-                        {cost} Ⓣ
-                      </span>
-                    )}
                   </motion.button>
                 );
               })}
