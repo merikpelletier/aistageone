@@ -33,7 +33,8 @@ serveWithCors(async (req) => {
       aspect_ratio = '16:9',
       use_as_reference = false,
       engine = 'seedance',
-      transformation_prompt = null
+      transformation_prompt = null,
+      model_key = null
     } = await req.json();
 
     if (!prompt && !image_url && !video_url) {
@@ -59,7 +60,7 @@ serveWithCors(async (req) => {
       billing.service,
       `generateVideo:${engine}`,
       quoteInput,
-      null,
+      model_key || null,
       'video'
     );
     creditCharge = await reserveCredits({
