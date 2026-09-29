@@ -3,6 +3,8 @@ import { ArrowLeft, Check, Download, Image as ImageIcon, LayoutTemplate, Loader2
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import AtelierAssetPicker from '@/components/atelier/AtelierAssetPicker';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const PURPOSES = [
   { id: 'cover', label: 'Cover' },
@@ -68,10 +70,24 @@ export default function LayoutTool({ user, onClose }) {
   const [showVault, setShowVault] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(null);
   const prompt = useMemo(() => buildPrompt({
     purpose, format, exactText, direction, hasSource: sourceUrls.length > 0,
     imageMode, imageCount: imageSources.length, revision,
   }), [purpose, format, exactText, direction, sourceUrls.length, imageMode, imageSources.length, revision]);
+  const pricingInput = { aspect_ratio: format, prompt };
+  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: pricingInput,
+  });
+  const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: pricingInput,
+    modelKey: effectiveModel,
+  });
 
   const generate = async () => {
     if (purpose === 'image' && imageMode === 'prompt' && !direction.trim()) { toast.error('Describe the image to create'); return; }
@@ -88,6 +104,7 @@ export default function LayoutTool({ user, onClose }) {
         method: 'compose_scene', prompt,
         reference_image_urls: references.length ? references : undefined,
         aspect_ratio: format,
+        model_key: effectiveModel || undefined,
       });
       const url = response?.data?.file_url;
       if (!url) throw new Error(response?.data?.error || response?.data?.message || 'Generation failed');
@@ -129,6 +146,7 @@ export default function LayoutTool({ user, onClose }) {
     </header>
     <div className="mx-auto grid max-w-[1500px] gap-6 xl:grid-cols-[430px_minmax(0,1fr)]">
       <section className="space-y-5 rounded-[2rem] bg-black p-5 lg:p-7">
+<div><Label>AI Model</Label><select value={effectiveModel || ''} onChange={(e) => setSelectedModel(e.target.value || null)} disabled={modelsLoading || modelOptions.length === 0} className="w-full rounded-2xl bg-white px-3 py-3 text-sm font-black text-black disabled:opacity-50">{modelsLoading && <option value="">Loading models…</option>}{!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}{modelOptions.map((m) => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}</select></div>
         <Picker title="Usage" items={PURPOSES} value={purpose} onChange={setPurpose} columns="grid-cols-2 sm:grid-cols-4" />
         <Picker title="Format" items={FORMATS} value={format} onChange={setFormat} columns="grid-cols-5" />
         {purpose === 'image' ? <>
@@ -138,7 +156,7 @@ export default function LayoutTool({ user, onClose }) {
         {purpose !== 'image' && <div><Label>Exact text</Label><textarea value={exactText} onChange={(event) => setExactText(event.target.value)} rows={3} placeholder="Write the exact words and line breaks" className="w-full rounded-2xl bg-white p-3 text-sm font-bold text-black" /></div>}
         <div><Label>{purpose === 'image' ? 'Image prompt' : 'Art direction'}</Label><textarea value={direction} onChange={(event) => setDirection(event.target.value)} rows={5} placeholder={purpose === 'image' ? 'Describe the image to create, its subjects, setting, style, light and composition' : 'Describe the visual world, materials, lettering character, light and composition'} className="w-full rounded-2xl bg-white p-3 text-sm font-semibold text-black" /></div>
         {selectedUrl && <div><Label>Change this version</Label><textarea value={revision} onChange={(event) => setRevision(event.target.value)} rows={2} placeholder="Describe only what must change" className="w-full rounded-2xl bg-white p-3 text-sm font-semibold text-black" /></div>}
-        <button onClick={generate} disabled={generating} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 py-4 font-black text-black disabled:opacity-50">{generating ? <><Loader2 className="animate-spin" size={18} /> Generating…</> : <><Sparkles size={18} /> {selectedUrl ? 'Generate a new version' : purpose === 'image' ? 'Generate image' : 'Generate layout'}</>}</button>
+        <button onClick={generate} disabled={generating} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 py-4 font-black text-black disabled:opacity-50">{generating ? <><Loader2 className="animate-spin" size={18} /> Generating…</> : <><Sparkles size={18} /> {selectedUrl ? 'Generate a new version' : purpose === 'image' ? 'Generate image' : 'Generate layout'}{priceLoading ? ' · calculating…' : priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}</>}</button>
       </section>
       <section className="min-h-[600px] rounded-[2rem] bg-black/50 p-5 lg:p-7">
         {selectedUrl ? <><div className="flex min-h-[480px] items-center justify-center"><img src={selectedUrl} alt={purpose === 'image' ? 'Selected image' : 'Selected layout'} className="max-h-[760px] max-w-full rounded-2xl object-contain shadow-2xl" /></div><div className="mt-5 grid gap-2 sm:grid-cols-2"><button onClick={saveToVault} disabled={saving} className="flex items-center justify-center gap-2 rounded-xl bg-yellow-400 py-3 text-sm font-black text-black">{saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} Save to Vault</button><button onClick={download} className="flex items-center justify-center gap-2 rounded-xl bg-white/10 py-3 text-sm font-black"><Download size={16} /> Download PNG</button></div></> : <div className="flex min-h-[560px] flex-col items-center justify-center text-center text-white/35"><LayoutTemplate size={48} /><p className="mt-4 text-lg font-black text-white/60">Your finished {purpose === 'image' ? 'image' : 'layout'} will appear here</p>{purpose !== 'image' && <p className="mt-2 max-w-sm text-sm font-semibold">The result is a flattened AI composition, not a conventional text layer.</p>}</div>}
