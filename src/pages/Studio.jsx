@@ -1171,6 +1171,7 @@ export default function Studio() {
       {activeToolPanel === 'timeline' && (
         <div className="absolute inset-0 z-20 bg-black">
           <KitProductionRoom
+            embedded
             kitPage={{ id: 'free_timeline', title: 'Free Timeline', kit_characters: [], kit_sets: [], kit_costumes: [] }}
             dossier={null}
             onClose={() => { setActiveToolPanel(null); setActiveTab(null); }}
