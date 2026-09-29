@@ -1,4 +1,3 @@
-import { adaptInput } from './modelControlPolicy.ts';
 import { resolveTariff } from './modelPricing.ts';
 
 const PRIMARY_KIND:Record<string,string>={
@@ -40,7 +39,17 @@ export async function quoteAiService(serviceClient:any,service:string,rawInput:a
   const {data:model,error:modelError}=await serviceClient.from('ai_model_catalog').select('*').eq('model_key',option.model_key).eq('enabled',true).maybeSingle();
   if(modelError||!model)throw new Error(modelError?.message||'Modèle tarifable introuvable');
 
-  const providerInput=adaptInput(rawInput,option,model);
+  const props=model.schema?.components?.schemas?.Input?.properties||{};
+  const providerInput:any={...rawInput};
+  for(const [key,field] of Object.entries(props)){
+    const source=option.input_mapping?.[key]||key;
+    if(providerInput[key]===undefined&&rawInput?.[source]!==undefined)providerInput[key]=rawInput[source];
+    if(providerInput[key]===undefined&&option.defaults?.[key]!==undefined)providerInput[key]=option.defaults[key];
+    if(providerInput[key]===undefined&&(field as any)?.default!==undefined)providerInput[key]=(field as any).default;
+  }
+  if(providerInput.generate_audio===undefined&&rawInput?.audio_url!==undefined)providerInput.generate_audio=Boolean(rawInput.audio_url);
+  if(providerInput.duration===undefined&&rawInput?.duration!==undefined)providerInput.duration=rawInput.duration;
+  if(providerInput.resolution===undefined&&rawInput?.resolution!==undefined)providerInput.resolution=rawInput.resolution;
   const selected=resolveTariff(model,providerInput);
   if(!selected)throw new Error('Le tarif de ce modèle ne peut pas être déterminé avec ces paramètres');
 
