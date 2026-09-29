@@ -9,7 +9,6 @@ import VaultPickerModal from '@/components/studio/VaultPickerModal';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
-import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const RATIOS = [
   { id: '16:9', label: 'Landscape', icon: '🎬' },
@@ -211,22 +210,6 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
             {modelOptions.map(m => (
               <option key={m.model_key} value={m.model_key}>
                 {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mb-6">
-          <p className="text-black font-semibold mb-2">AI Model</p>
-          <select
-            value={modelKey}
-            onChange={e => setModelKey(e.target.value)}
-            disabled={modelsLoading || !modelOptions.length}
-            className="w-full bg-black/10 border border-black/20 rounded-xl px-4 py-3 text-black text-sm focus:outline-none focus:border-black"
-          >
-            {!modelOptions.length && <option value="">{modelsLoading ? 'Loading models…' : 'No model available'}</option>}
-            {modelOptions.map(o => (
-              <option key={o.model_key} value={o.model_key}>
-                {o.name || o.model_key}{o.recommended ? ' — Recommended' : ''}{o.credits ? ` — ${o.credits} credits` : ''}
               </option>
             ))}
           </select>
