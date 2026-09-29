@@ -7,7 +7,7 @@ import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
-export default function LipSync({ onComplete, onClose, episodePageId, blockId, user, embedded = false }) {
+export default function LipSync({ onComplete, onClose, episodePageId, blockId, user, embedded = false, inline = false }) {
   const [videoUrl, setVideoUrl] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   const [videoName, setVideoName] = useState('');
@@ -110,12 +110,12 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
   };
 
   return (
-    <div className={`fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] bg-yellow-400 overflow-y-auto' : 'inset-0 bg-black/80 flex items-center justify-center p-4'}`}>
+    <div className={inline ? 'relative w-full' : `fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] bg-yellow-400 overflow-y-auto' : 'inset-0 bg-black/80 flex items-center justify-center p-4'}`}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className={embedded ? 'bg-yellow-400 min-h-full w-full p-5 pb-28 md:p-8 md:pb-28 lg:pb-32 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-8 pb-24 max-w-lg w-full max-h-[90vh] overflow-y-auto'}
+        className={inline ? 'bg-yellow-400 rounded-3xl p-5 md:p-6 w-full' : (embedded ? 'bg-yellow-400 min-h-full w-full p-5 pb-28 md:p-8 md:pb-28 lg:pb-32 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-8 pb-24 max-w-lg w-full max-h-[90vh] overflow-y-auto')}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -126,7 +126,7 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
             </h3>
             <p className="text-black text-sm">Sync audio to a video automatically</p>
           </div>
-          {!embedded && (
+          {!embedded && !inline && (
             <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
               <X size={20} className="text-black" />
             </button>
