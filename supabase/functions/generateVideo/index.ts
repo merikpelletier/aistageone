@@ -9,6 +9,7 @@ import {
   reserveCredits,
 } from '../_shared/credits.ts';
 import type { CreditCharge, CreditBillingContext } from '../_shared/credits.ts';
+import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 import Replicate from 'npm:replicate@0.33.0';
 
 serveWithCors(async (req) => {
@@ -45,11 +46,28 @@ serveWithCors(async (req) => {
       }, { status: 409 });
     }
 
+    const quoteInput = {
+      prompt,
+      image_url,
+      video_url,
+      duration,
+      resolution: use_as_reference ? '720p' : resolution,
+      aspect_ratio,
+      generate_audio: engine === 'kling_morph',
+    };
+    const dynamicQuote = await quoteAiService(
+      billing.service,
+      `generateVideo:${engine}`,
+      quoteInput,
+      null,
+      'video'
+    );
     creditCharge = await reserveCredits({
       ...billing,
       toolId: 'ai_video',
       provider: 'replicate',
       relatedEntity: 'generateVideo',
+      explicitCost: dynamicQuote.credits,
     });
 
     const replicate = new Replicate({ auth: TOKEN });
