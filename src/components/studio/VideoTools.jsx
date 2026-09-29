@@ -8,6 +8,7 @@ import ProductionContextInfo from '@/components/ProductionContextInfo';
 import VaultPickerModal from '@/components/studio/VaultPickerModal';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const RATIOS = [
   { id: '16:9', label: 'Landscape', icon: '🎬' },
@@ -48,11 +49,20 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [userEmail, setUserEmail] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(null);
   const quoteService = 'generateVideo:seedance';
+  const pricingInput = { duration, resolution, aspect_ratio: aspectRatio, prompt, image_url: imagePreview || undefined, video_url: videoPreview || undefined };
+  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
+    service: quoteService,
+    kind: 'video',
+    input: pricingInput,
+  });
+  const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
   const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
     service: quoteService,
     kind: 'video',
-    input: { duration, resolution, aspect_ratio: aspectRatio, prompt, image_url: imagePreview || undefined, video_url: videoPreview || undefined },
+    input: pricingInput,
+    modelKey: effectiveModel,
   });
 
   useEffect(() => {
@@ -104,6 +114,7 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
         duration,
         aspect_ratio: aspectRatio,
         resolution,
+        model_key: effectiveModel || undefined,
       });
       
       if (response.data?.file_url) {
@@ -185,6 +196,24 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
           )}
         </div>
 
+        {/* AI Model */}
+        <div className="mb-6">
+          <p className="text-black font-semibold mb-2">AI Model</p>
+          <select
+            value={effectiveModel || ''}
+            onChange={e => setSelectedModel(e.target.value || null)}
+            disabled={modelsLoading || modelOptions.length === 0}
+            className="w-full bg-black text-yellow-400 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+          >
+            {modelsLoading && <option value="">Loading models…</option>}
+            {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
+            {modelOptions.map(m => (
+              <option key={m.model_key} value={m.model_key}>
+                {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
         {/* Production Context Info - Only show when in Dossier production mode */}
         {showContext && (
           <ProductionContextInfo
