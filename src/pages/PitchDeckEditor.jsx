@@ -6,6 +6,8 @@ import { supabase } from '@/api/base44Client';
 import PitchDeckPreview, { mediaThumbnail, mediaUrl } from '@/components/pitch/PitchDeckPreview';
 import PitchVoiceSelector from '@/components/pitch/PitchVoiceSelector';
 import { LAYOUT_OPTIONS, PITCH_TEMPLATES, TRANSITIONS } from '@/components/pitch/pitchDeckTemplates';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 
 const emptyProject = { working_title: '', final_title: '', tagline: '', project_type: 'film', genre: '', subgenre: '', hook_headline: '', logline_short: '', logline_full: '', original_language: 'en', project_status: 'draft', selected_template_id: 'science_fiction' };
 
@@ -43,6 +45,11 @@ export default function PitchDeckEditor({ projectId: projectIdProp = null, embed
   const [generatingNarration, setGeneratingNarration] = useState(false);
   const [narrationPlaying, setNarrationPlaying] = useState(false);
   const [narrationMuted, setNarrationMuted] = useState(false);
+  const [selectedNarrationModel, setSelectedNarrationModel] = useState(null);
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [imageAspectRatio, setImageAspectRatio] = useState('16:9');
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [selectedImageModel, setSelectedImageModel] = useState(null);
   const narrationAudioRef = useRef(null);
   const timers = useRef({});
   const { data, isLoading, error } = useQuery({ queryKey: ['pitch-editor', projectId], queryFn: () => loadEditor(projectId), enabled: Boolean(projectId) });
@@ -51,6 +58,43 @@ export default function PitchDeckEditor({ projectId: projectIdProp = null, embed
   useEffect(() => { if (!selectedId && data?.sections?.length) setSelectedId(data.sections[0].id); }, [data?.sections, selectedId]);
 
   const selected = data?.sections?.find((section) => section.id === selectedId) || null;
+  const narrationText = (selected?.body || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 5000);
+  const narrationPricingInput = {
+    text: narrationText,
+    voice: narrationVoice,
+    language_code: narrationLanguage || 'en',
+  };
+  const { options: narrationModelOptions, loading: narrationModelsLoading } = useAiModelOptions({
+    service: 'generateSpeech',
+    kind: 'speech',
+    input: narrationPricingInput,
+    enabled: Boolean(selected),
+  });
+  const effectiveNarrationModel = selectedNarrationModel || narrationModelOptions.find(m => m.recommended)?.model_key || narrationModelOptions[0]?.model_key || null;
+  const { quote: narrationPriceQuote, loading: narrationPriceLoading } = useAiPriceQuote({
+    service: 'generateSpeech',
+    kind: 'speech',
+    input: narrationPricingInput,
+    modelKey: effectiveNarrationModel,
+    enabled: Boolean(selected),
+  });
+
+  const imagePricingInput = { prompt: imagePrompt, aspect_ratio: imageAspectRatio };
+  const { options: imageModelOptions, loading: imageModelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: imagePricingInput,
+    enabled: Boolean(selected),
+  });
+  const effectiveImageModel = selectedImageModel || imageModelOptions.find(m => m.recommended)?.model_key || imageModelOptions[0]?.model_key || null;
+  const { quote: imagePriceQuote, loading: imagePriceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: imagePricingInput,
+    modelKey: effectiveImageModel,
+    enabled: Boolean(selected),
+  });
+
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['pitch-editor', projectId] });
   const setLocalSection = (id, patch) => queryClient.setQueryData(['pitch-editor', projectId], (current) => current ? ({ ...current, sections: current.sections.map((section) => section.id === id ? { ...section, ...patch } : section) }) : current);
 
@@ -113,7 +157,7 @@ export default function PitchDeckEditor({ projectId: projectIdProp = null, embed
     setNarrationPlaying(false);
     const text = (selected.body || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 5000);
     if (!text) { setNotice('Add body text to this section before generating narration.'); setGeneratingNarration(false); return; }
-    const { data: result, error: genError } = await supabase.functions.invoke('generateSpeech', { body: { text, voice: narrationVoice, language_code: narrationLanguage || 'en' } });
+    const { data: result, error: genError } = await supabase.functions.invoke('generateSpeech', { body: { text, voice: narrationVoice, language_code: narrationLanguage || 'en', model_key: effectiveNarrationModel || undefined } });
     const audioUrl = result?.file_url || result?.url;
     if (genError || !audioUrl) {
       let detail = result?.error || genError?.message || 'Narration generation failed.';
@@ -187,6 +231,51 @@ export default function PitchDeckEditor({ projectId: projectIdProp = null, embed
     if (mediaError) setNotice(mediaError.message); else { setMediaDraft({ title: '', source_media_url: '', media_type: 'image' }); refresh(); }
   };
 
+  const generatePitchImage = async () => {
+    if (!projectId || !selected) { setNotice('Select a slide first.'); return; }
+    const prompt = imagePrompt.trim();
+    if (!prompt) { setNotice('Enter an image prompt first.'); return; }
+    setGeneratingImage(true); setNotice('');
+    try {
+      const { data: result, error: genError } = await supabase.functions.invoke('replicateGenerate', {
+        body: {
+          method: 'compose_scene',
+          prompt,
+          aspect_ratio: imageAspectRatio,
+          model_key: effectiveImageModel || undefined,
+        },
+      });
+      const url = result?.file_url || result?.url;
+      if (genError || !url) throw new Error(result?.error || genError?.message || 'Image generation failed.');
+
+      const payload = {
+        pitch_project_id: projectId,
+        title: imagePrompt.trim().slice(0, 80) || 'AI generated image',
+        media_type: 'image',
+        source_media_url: url,
+        source_thumbnail_url: url,
+        display_order: data?.media?.length || 0,
+      };
+      const { data: mediaItem, error: mediaError } = await supabase.from('pitch_media').insert(payload).select('*').single();
+      if (mediaError) throw mediaError;
+
+      if (selected.layout_type === 'gallery') {
+        const gallery = Array.isArray(selected.gallery_media) ? selected.gallery_media : [];
+        updateSection(selected.id, { gallery_media: [...gallery, url] });
+      } else {
+        updateSection(selected.id, { source_media_url: url });
+      }
+      setNotice('AI image generated and attached to this slide.');
+      setImagePrompt('');
+      await refresh();
+      return mediaItem;
+    } catch (err) {
+      setNotice(err?.message || 'Image generation failed.');
+    } finally {
+      setGeneratingImage(false);
+    }
+  };
+
   const selectTemplate = async (templateId) => {
     setProject((current) => ({ ...current, selected_template_id: templateId }));
     if (projectId) { await supabase.from('pitch_project').update({ selected_template_id: templateId, updated_at: new Date().toISOString() }).eq('id', projectId); refresh(); }
@@ -231,9 +320,9 @@ export default function PitchDeckEditor({ projectId: projectIdProp = null, embed
         <aside className="col-span-12 lg:col-span-3"><div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 lg:sticky lg:top-24"><div className="grid grid-cols-3 border-b border-zinc-800">{panelTabs.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setPanel(id)} className={`flex items-center justify-center gap-1.5 px-2 py-3 text-xs ${panel === id ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-500 hover:text-white'}`}><Icon size={14} /> {label}</button>)}</div>
           <div className="max-h-[calc(100vh-10rem)] overflow-y-auto p-3">
             {panel === 'sections' && <div className="space-y-3"><button onClick={addSection} className="flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 py-2 text-xs font-bold text-cyan-300"><Plus size={15} /> ADD SECTION</button><div className="space-y-1.5">{(data?.sections || []).map((section, index) => <div key={section.id} onClick={() => setSelectedId(section.id)} className={`cursor-pointer rounded-lg border p-2 ${selectedId === section.id ? 'border-cyan-500 bg-cyan-500/10' : 'border-zinc-800 bg-zinc-950/50'}`}><div className="flex items-center gap-1"><span className="w-5 text-[10px] text-zinc-600">{index + 1}</span><p className="min-w-0 flex-1 truncate text-xs">{section.title || section.section_type}</p><button onClick={(event) => { event.stopPropagation(); moveSection(index, -1); }} className="p-1 text-zinc-500"><ChevronUp size={13} /></button><button onClick={(event) => { event.stopPropagation(); moveSection(index, 1); }} className="p-1 text-zinc-500"><ChevronDown size={13} /></button><button onClick={(event) => { event.stopPropagation(); updateSection(section.id, { is_visible: !section.is_visible }); }} className="p-1 text-zinc-500">{section.is_visible === false ? <EyeOff size={13} /> : <Eye size={13} />}</button><button onClick={(event) => { event.stopPropagation(); duplicateSection(section); }} className="p-1 text-zinc-500"><Copy size={13} /></button><button onClick={(event) => { event.stopPropagation(); deleteSection(section.id); }} className="p-1 text-red-400"><Trash2 size={13} /></button></div></div>)}</div>
-              {selected && <div className="space-y-3 border-t border-zinc-800 pt-3"><label className="block text-[10px] uppercase text-zinc-500">Title<input value={selected.title || ''} onChange={(event) => updateSection(selected.id, { title: event.target.value })} className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white" /></label><label className="block text-[10px] uppercase text-zinc-500">Subtitle<input value={selected.subtitle || ''} onChange={(event) => updateSection(selected.id, { subtitle: event.target.value })} className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white" /></label><label className="block text-[10px] uppercase text-zinc-500">Body<textarea value={selected.body || ''} onChange={(event) => updateSection(selected.id, { body: event.target.value })} rows={6} className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white" /></label><label className="block text-[10px] uppercase text-zinc-500">Layout<select value={selected.layout_type || 'text'} onChange={(event) => updateSection(selected.id, { layout_type: event.target.value })} className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white">{LAYOUT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="block text-[10px] uppercase text-zinc-500">Transition<select value={selected.transition_type || 'fade'} onChange={(event) => updateSection(selected.id, { transition_type: event.target.value })} className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white">{TRANSITIONS.map((transition) => <option key={transition}>{transition}</option>)}</select></label><div className="space-y-2 border-t border-zinc-800 pt-3"><p className="text-[10px] uppercase text-zinc-500">Narration</p><PitchVoiceSelector value={narrationVoice} onChange={setNarrationVoice} language={narrationLanguage} onLanguageChange={setNarrationLanguage} /><button onClick={generateNarration} disabled={generatingNarration} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-cyan-600 py-2 text-xs font-bold disabled:opacity-50">{generatingNarration ? <Loader2 size={13} className="animate-spin" /> : <Volume2 size={13} />} {generatingNarration ? 'GENERATING NARRATION...' : 'GENERATE NARRATION'}</button>{selected.narration_audio_url && <div className="flex items-center gap-2"><button onClick={toggleNarrationPlayback} className="inline-flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-bold text-cyan-300">{narrationPlaying ? 'PAUSE' : 'PLAY'}</button><button onClick={toggleNarrationMute} className="inline-flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-bold text-cyan-300">{narrationMuted ? 'UNMUTE' : 'MUTE'}</button><p className="truncate text-[10px] text-emerald-400">Saved: {selected.narration_voice} Â· {selected.narration_language}</p><audio ref={narrationAudioRef} src={selected.narration_audio_url} controls onEnded={() => setNarrationPlaying(false)} onPause={() => setNarrationPlaying(false)} onPlay={() => setNarrationPlaying(true)} className="mt-2 w-full" /></div>}</div></div>}
+              {selected && <div className="space-y-3 border-t border-zinc-800 pt-3"><label className="block text-[10px] uppercase text-zinc-500">Title<input value={selected.title || ''} onChange={(event) => updateSection(selected.id, { title: event.target.value })} className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white" /></label><label className="block text-[10px] uppercase text-zinc-500">Subtitle<input value={selected.subtitle || ''} onChange={(event) => updateSection(selected.id, { subtitle: event.target.value })} className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white" /></label><label className="block text-[10px] uppercase text-zinc-500">Body<textarea value={selected.body || ''} onChange={(event) => updateSection(selected.id, { body: event.target.value })} rows={6} className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white" /></label><label className="block text-[10px] uppercase text-zinc-500">Layout<select value={selected.layout_type || 'text'} onChange={(event) => updateSection(selected.id, { layout_type: event.target.value })} className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white">{LAYOUT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="block text-[10px] uppercase text-zinc-500">Transition<select value={selected.transition_type || 'fade'} onChange={(event) => updateSection(selected.id, { transition_type: event.target.value })} className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white">{TRANSITIONS.map((transition) => <option key={transition}>{transition}</option>)}</select></label><div className="space-y-2 border-t border-zinc-800 pt-3"><p className="text-[10px] uppercase text-zinc-500">Narration</p><PitchVoiceSelector value={narrationVoice} onChange={setNarrationVoice} language={narrationLanguage} onLanguageChange={setNarrationLanguage} /><select value={effectiveNarrationModel || ''} onChange={(event) => setSelectedNarrationModel(event.target.value || null)} disabled={narrationModelsLoading || !narrationModelOptions.length} className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-cyan-300">{narrationModelsLoading && <option value="" className="bg-white text-black">Loading models…</option>}{!narrationModelsLoading && !narrationModelOptions.length && <option value="" className="bg-white text-black">No model available</option>}{narrationModelOptions.map((model) => <option key={model.model_key} value={model.model_key} className="bg-white text-black">{model.name || model.model_key}{model.recommended ? ' — Recommended' : ''}{model.credits ? ` — ${model.credits} credits` : ''}</option>)}</select><div className="flex items-center justify-between text-[10px] text-zinc-500"><span>AI cost</span><span>{narrationPriceLoading ? 'Calculating…' : narrationPriceQuote?.credits ? `${narrationPriceQuote.credits} credits` : 'Calculated automatically'}</span></div><button onClick={generateNarration} disabled={generatingNarration || !effectiveNarrationModel} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-cyan-600 py-2 text-xs font-bold disabled:opacity-50">{generatingNarration ? <Loader2 size={13} className="animate-spin" /> : <Volume2 size={13} />} {generatingNarration ? 'GENERATING NARRATION...' : 'GENERATE NARRATION'}</button>{selected.narration_audio_url && <div className="flex items-center gap-2"><button onClick={toggleNarrationPlayback} className="inline-flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-bold text-cyan-300">{narrationPlaying ? 'PAUSE' : 'PLAY'}</button><button onClick={toggleNarrationMute} className="inline-flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-bold text-cyan-300">{narrationMuted ? 'UNMUTE' : 'MUTE'}</button><p className="truncate text-[10px] text-emerald-400">Saved: {selected.narration_voice} Â· {selected.narration_language}</p><audio ref={narrationAudioRef} src={selected.narration_audio_url} controls onEnded={() => setNarrationPlaying(false)} onPause={() => setNarrationPlaying(false)} onPlay={() => setNarrationPlaying(true)} className="mt-2 w-full" /></div>}</div></div>}
             </div>}
-            {panel === 'media' && <div className="space-y-3"><p className="text-xs text-zinc-400">Select a slide, then attach an image, video or audio file from the library.</p><div className="space-y-2">{(data?.media || []).map((item) => { const Icon = mediaIcon(item.media_type); const attached = selected && (selected.source_media_url === mediaUrl(item) || (Array.isArray(selected.gallery_media) && selected.gallery_media.includes(mediaUrl(item)))); return <div key={item.id} className={`rounded-lg border p-2 ${attached ? 'border-cyan-500 bg-cyan-500/10' : 'border-zinc-800 bg-zinc-950/50'}`}><div className="flex items-center gap-2"><div className="flex h-14 w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-black">{item.media_type === 'image' && mediaThumbnail(item) ? <img src={mediaThumbnail(item)} alt="" className="h-full w-full object-cover" /> : item.media_type === 'video' && mediaUrl(item) ? <video src={mediaUrl(item)} muted preload="metadata" className="h-full w-full object-cover" /> : <Icon size={20} className="text-cyan-400" />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs text-white">{item.title || 'Untitled media'}</p><p className="text-[10px] uppercase text-zinc-600">{item.media_type}</p></div><button onClick={() => attachMedia(item)} className={`rounded-md px-2 py-1 text-xs ${attached ? 'bg-cyan-500 text-white' : 'bg-zinc-800 text-cyan-300'}`}>{attached ? 'âœ“' : '+'}</button><button onClick={async () => { await supabase.from('pitch_media').delete().eq('id', item.id); refresh(); }} className="p-1 text-red-400"><Trash2 size={13} /></button></div></div>; })}</div><div className="space-y-2 border-t border-zinc-800 pt-3"><p className="text-xs font-bold text-white">Add existing media URL</p><input value={mediaDraft.title} onChange={(event) => setMediaDraft({ ...mediaDraft, title: event.target.value })} placeholder="Media title" className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs" /><input value={mediaDraft.source_media_url} onChange={(event) => setMediaDraft({ ...mediaDraft, source_media_url: event.target.value })} placeholder="https://..." className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs" /><select value={mediaDraft.media_type} onChange={(event) => setMediaDraft({ ...mediaDraft, media_type: event.target.value })} className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs"><option value="image">Image</option><option value="video">Video</option><option value="audio">Audio</option></select><button onClick={addMediaLink} className="w-full rounded-md bg-cyan-600 py-2 text-xs font-bold">ADD TO LIBRARY</button></div></div>}
+            {panel === 'media' && <div className="space-y-3"><div className="space-y-2 rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3"><div className="flex items-center justify-between gap-2"><p className="text-xs font-bold text-white">Generate image with AI</p><span className="text-[10px] text-cyan-300">{imagePriceLoading ? 'Calculating…' : imagePriceQuote?.credits ? `${imagePriceQuote.credits} credits` : 'Auto price'}</span></div><select value={effectiveImageModel || ''} onChange={(event) => setSelectedImageModel(event.target.value || null)} disabled={imageModelsLoading || !imageModelOptions.length} className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-cyan-300">{imageModelsLoading && <option value="" className="bg-white text-black">Loading models…</option>}{!imageModelsLoading && !imageModelOptions.length && <option value="" className="bg-white text-black">No model available</option>}{imageModelOptions.map((model) => <option key={model.model_key} value={model.model_key} className="bg-white text-black">{model.name || model.model_key}{model.recommended ? ' — Recommended' : ''}{model.credits ? ` — ${model.credits} credits` : ''}</option>)}</select><div className="grid grid-cols-[1fr_auto] gap-2"><textarea value={imagePrompt} onChange={(event) => setImagePrompt(event.target.value)} rows={3} placeholder="Describe the image for this slide…" className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white placeholder:text-zinc-600" /><select value={imageAspectRatio} onChange={(event) => setImageAspectRatio(event.target.value)} className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white"><option value="16:9">16:9</option><option value="9:16">9:16</option><option value="4:3">4:3</option><option value="1:1">1:1</option></select></div><button onClick={generatePitchImage} disabled={generatingImage || !selected || !imagePrompt.trim() || !effectiveImageModel} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-cyan-600 py-2 text-xs font-bold disabled:opacity-50">{generatingImage ? <Loader2 size={13} className="animate-spin" /> : <ImageIcon size={13} />}{generatingImage ? 'GENERATING IMAGE...' : 'GENERATE & ATTACH IMAGE'}</button></div><p className="text-xs text-zinc-400">Select a slide, then attach an image, video or audio file from the library.</p><div className="space-y-2">{(data?.media || []).map((item) => { const Icon = mediaIcon(item.media_type); const attached = selected && (selected.source_media_url === mediaUrl(item) || (Array.isArray(selected.gallery_media) && selected.gallery_media.includes(mediaUrl(item)))); return <div key={item.id} className={`rounded-lg border p-2 ${attached ? 'border-cyan-500 bg-cyan-500/10' : 'border-zinc-800 bg-zinc-950/50'}`}><div className="flex items-center gap-2"><div className="flex h-14 w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-black">{item.media_type === 'image' && mediaThumbnail(item) ? <img src={mediaThumbnail(item)} alt="" className="h-full w-full object-cover" /> : item.media_type === 'video' && mediaUrl(item) ? <video src={mediaUrl(item)} muted preload="metadata" className="h-full w-full object-cover" /> : <Icon size={20} className="text-cyan-400" />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs text-white">{item.title || 'Untitled media'}</p><p className="text-[10px] uppercase text-zinc-600">{item.media_type}</p></div><button onClick={() => attachMedia(item)} className={`rounded-md px-2 py-1 text-xs ${attached ? 'bg-cyan-500 text-white' : 'bg-zinc-800 text-cyan-300'}`}>{attached ? 'âœ“' : '+'}</button><button onClick={async () => { await supabase.from('pitch_media').delete().eq('id', item.id); refresh(); }} className="p-1 text-red-400"><Trash2 size={13} /></button></div></div>; })}</div><div className="space-y-2 border-t border-zinc-800 pt-3"><p className="text-xs font-bold text-white">Add existing media URL</p><input value={mediaDraft.title} onChange={(event) => setMediaDraft({ ...mediaDraft, title: event.target.value })} placeholder="Media title" className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs" /><input value={mediaDraft.source_media_url} onChange={(event) => setMediaDraft({ ...mediaDraft, source_media_url: event.target.value })} placeholder="https://..." className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs" /><select value={mediaDraft.media_type} onChange={(event) => setMediaDraft({ ...mediaDraft, media_type: event.target.value })} className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs"><option value="image">Image</option><option value="video">Video</option><option value="audio">Audio</option></select><button onClick={addMediaLink} className="w-full rounded-md bg-cyan-600 py-2 text-xs font-bold">ADD TO LIBRARY</button></div></div>}
             {panel === 'project' && <div className="space-y-3"><p className="text-xs font-bold text-white">Project details</p>{[['working_title','Working title'],['final_title','Final title'],['tagline','Tagline'],['genre','Genre'],['subgenre','Subgenre'],['project_type','Project type'],['hook_headline','Hook headline']].map(([field,label]) => <label key={field} className="block text-[10px] uppercase text-zinc-500">{label}<input value={project[field] || ''} onChange={(event) => setProject({ ...project, [field]: event.target.value })} className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white" /></label>)}<label className="block text-[10px] uppercase text-zinc-500">Logline<textarea value={project.logline_short || ''} onChange={(event) => setProject({ ...project, logline_short: event.target.value })} rows={4} className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-white" /></label><button onClick={saveProject} className="w-full rounded-md bg-gradient-to-r from-cyan-500 to-blue-600 py-2 text-xs font-bold">SAVE PROJECT</button><div className="border-t border-zinc-800 pt-3"><p className="mb-2 text-xs font-bold text-white">Visual template</p><div className="grid grid-cols-2 gap-2">{PITCH_TEMPLATES.map((template) => <button key={template.id} onClick={() => selectTemplate(template.id)} className={`overflow-hidden rounded-lg border text-left ${project.selected_template_id === template.id ? 'border-cyan-400' : 'border-zinc-700'}`}><div className={`h-12 bg-gradient-to-br ${template.gradient}`} /><p className="truncate px-2 py-1.5 text-[10px]">{template.name}</p></button>)}</div></div><div className="grid grid-cols-2 gap-2 text-center"><div className="rounded-lg bg-zinc-950 p-3"><p className="text-xl font-bold text-cyan-400">{data?.documents.length || 0}</p><p className="text-[9px] uppercase text-zinc-600">Documents</p></div><div className="rounded-lg bg-zinc-950 p-3"><p className="text-xl font-bold text-cyan-400">{data?.titles.length || 0}</p><p className="text-[9px] uppercase text-zinc-600">Title ideas</p></div></div></div>}
           </div>
         </div></aside>
