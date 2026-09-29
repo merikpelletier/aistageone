@@ -9,6 +9,7 @@ import {
   reserveCredits,
 } from './_legacy/credits.ts';
 import type { CreditCharge, CreditBillingContext } from './_legacy/credits.ts';
+import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 import * as jpeg from 'npm:jpeg-js@0.4.4';
 import UPNG from 'npm:upng-js@2.1.0';
 import { Buffer } from 'node:buffer';
@@ -142,7 +143,7 @@ serveWithCors(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { method, photo_url, photo_urls, reference_video_url, reference_image_url, prompt_override, prompt, reference_image_urls, audio_url, aspect_ratio, costume_url } = await req.json();
+    const { method, photo_url, photo_urls, reference_video_url, reference_image_url, prompt_override, prompt, reference_image_urls, audio_url, aspect_ratio, costume_url, duration } = await req.json();
 
     if (!method) return Response.json({ error: 'method is required' }, { status: 400 });
 
@@ -169,11 +170,29 @@ serveWithCors(async (req) => {
     })();
     if (invalidRequest) return Response.json({ error: invalidRequest }, { status: 400 });
 
+    const priceInput = {
+      duration: duration || 5,
+      aspect_ratio,
+      prompt: prompt_override || prompt,
+      audio_url,
+      photo_url,
+      reference_video_url,
+      reference_image_url,
+      reference_image_urls,
+    };
+    const dynamicQuote = await quoteAiService(
+      billing.service,
+      `replicateGenerate:${method}`,
+      priceInput,
+      null,
+      ['faceswitch'].includes(method) ? 'processing' : ['character_photo','reference_sheet_swap','character_sheet','headshot','compose_scene'].includes(method) ? 'image' : 'video'
+    );
     creditCharge = await reserveCredits({
       ...billing,
       toolId: method,
       provider: 'replicate',
       relatedEntity: `replicate_${method}`,
+      explicitCost: dynamicQuote.credits,
     });
 
     let rawOutput;
@@ -270,7 +289,7 @@ serveWithCors(async (req) => {
       const klingInput = {
         start_image: photo_url,
         prompt: prompt_override || prompt || 'Cinematic subtle natural motion, professional film quality.',
-        duration: 5,
+        duration: Number(duration) === 10 ? 10 : 5,
         aspect_ratio: aspect_ratio || DEFAULT_VIDEO_RATIO,
       };
       const prediction = await startModelPrediction('kwaivgi/kling-v2.6', klingInput);
@@ -284,7 +303,7 @@ serveWithCors(async (req) => {
       const klingInput = {
         start_image: photo_url,
         reference_video: reference_video_url,
-        duration: 5,
+        duration: Number(duration) === 10 ? 10 : 5,
         aspect_ratio: aspect_ratio || DEFAULT_VIDEO_RATIO,
       };
       const prediction = await startModelPrediction('kwaivgi/kling-v2.6-motion-control', klingInput);
@@ -340,7 +359,7 @@ serveWithCors(async (req) => {
       if (!prompt) return Response.json({ error: 'prompt required' }, { status: 400 });
       const prediction = await startModelPrediction('kwaivgi/kling-v2.6', {
         prompt,
-        duration: 5,
+        duration: Number(duration) === 10 ? 10 : 5,
         aspect_ratio: aspect_ratio || DEFAULT_VIDEO_RATIO,
       });
       rawOutput = prediction.status === 'succeeded' ? prediction.output : await pollPrediction(prediction.id);
