@@ -81,11 +81,9 @@ serveWithCors(async request=>{
   if(!model.enabled)fail('Active d’abord ce modèle dans le catalogue',422);
   if(model.kind!==route.kind)fail('Le type du modèle ne correspond pas à cette étape',422);
   if(!jsonObject(o.input_mapping??route.input_mapping)||!jsonObject(o.defaults??route.defaults))fail('Correspondances invalides',422);
-  const creditCost=o.credit_cost===''||o.credit_cost==null?null:Number(o.credit_cost);
-  if(creditCost!=null&&(!Number.isInteger(creditCost)||creditCost<0))fail('Le coût en crédits doit être un entier positif ou nul',422);
   const value={
    route_key:route.route_key,service:route.service,kind:route.kind,model_key:model.model_key,
-   enabled:o.enabled!==false,recommended:Boolean(o.recommended),credit_cost:creditCost,
+   enabled:o.enabled!==false,recommended:Boolean(o.recommended),credit_cost:null,
    display_order:Number.isFinite(Number(o.display_order))?Number(o.display_order):0,
    input_mapping:o.input_mapping??route.input_mapping??{},defaults:o.defaults??route.defaults??{}
   };
