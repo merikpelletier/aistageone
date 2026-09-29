@@ -4,6 +4,8 @@ import { X, Upload, Loader2, CheckCircle2, Mic, Video } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 export default function LipSync({ onComplete, onClose, episodePageId, blockId, user, embedded = false }) {
   const [videoUrl, setVideoUrl] = useState(null);
@@ -15,6 +17,20 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
   const [result, setResult] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveVault, setShowSaveVault] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(null);
+  const pricingInput = { photo_url: videoUrl || undefined, audio_url: audioUrl || undefined };
+  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:lip_sync',
+    kind: 'video',
+    input: pricingInput,
+  });
+  const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:lip_sync',
+    kind: 'video',
+    input: pricingInput,
+    modelKey: effectiveModel,
+  });
 
   const handleVideoUpload = async (file) => {
     setUploading(u => ({ ...u, video: true }));
@@ -40,6 +56,7 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
         method: 'lip_sync',
         photo_url: videoUrl,
         audio_url: audioUrl,
+        model_key: effectiveModel || undefined,
       });
       if (res.data?.file_url) {
         setResult(res.data.file_url);
@@ -116,6 +133,25 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
           )}
         </div>
 
+        {/* AI Model */}
+        <div className="mb-5">
+          <p className="text-black text-xs font-bold uppercase tracking-wider mb-2">AI Model</p>
+          <select
+            value={effectiveModel || ''}
+            onChange={e => setSelectedModel(e.target.value || null)}
+            disabled={modelsLoading || modelOptions.length === 0}
+            className="w-full bg-black text-yellow-400 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+          >
+            {modelsLoading && <option value="">Loading models…</option>}
+            {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
+            {modelOptions.map(m => (
+              <option key={m.model_key} value={m.model_key}>
+                {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Video Upload */}
         <div className="mb-5">
           <p className="text-black font-semibold mb-2 flex items-center gap-2"><Video size={16} /> Video</p>
@@ -155,10 +191,16 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
 
         {/* Generate */}
         {!result && (
-          <button onClick={handleGenerate} disabled={!videoUrl || !audioUrl || isGenerating}
-            className="w-full py-4 bg-black text-yellow-400 font-bold rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2">
-            {isGenerating ? <><Loader2 size={18} className="animate-spin" /> Syncing… (~1–3 min)</> : <><Mic size={18} /> Generate Lip Sync</>}
-          </button>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-black/70">
+              <span>AI cost</span>
+              <span>{priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Calculated automatically'}</span>
+            </div>
+            <button onClick={handleGenerate} disabled={!videoUrl || !audioUrl || isGenerating}
+              className="w-full py-4 bg-black text-yellow-400 font-bold rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2">
+              {isGenerating ? <><Loader2 size={18} className="animate-spin" /> Syncing… (~1–3 min)</> : <><Mic size={18} /> Generate Lip Sync{priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}</>}
+            </button>
+          </div>
         )}
 
         {/* Result */}
