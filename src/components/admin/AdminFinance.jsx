@@ -29,12 +29,16 @@ function CostSettings({data,mutate,pending}){
   const totalCredits=modelCredits==null?null:modelCredits+Number(sim.tool_cost||0);
   return <>
     <Panel title="Réglages du calcul des crédits">
-      <p className="text-sm text-white/60">Ces valeurs servent à convertir le coût fournisseur en crédits AISTAGE.ONE. Elles ne modifient aucun tarif de modèle.</p>
+      <p className="text-sm text-white/60">Source centrale de vérité pour toute l’économie AISTAGE.ONE : Studio, IA, Assets et Gift Shop. Les services utilisent cette conversion automatiquement.</p>
       <form onSubmit={e=>{e.preventDefault();mutate({action:'save_settings',...settings});}} className="grid gap-4 md:grid-cols-4">
-        <Field label="Valeur nette d’un crédit (CAD)" type="number" min="0.000001" step="any" value={settings.credit_value_cad??''} onChange={e=>setSettings({...settings,credit_value_cad:e.target.value})}/>
+        <Field label="Valeur d’un crédit (CAD)" type="number" min="0.000001" step="any" value={settings.credit_value_cad??''} onChange={e=>setSettings({...settings,credit_value_cad:e.target.value})}/>
+        <Field label="Achat minimum de crédits (CAD)" type="number" min="0.01" step="0.01" value={settings.minimum_purchase_cad??10} onChange={e=>setSettings({...settings,minimum_purchase_cad:e.target.value})}/>
         <Field label="1 USD = … CAD" type="number" min="0.000001" step="any" value={settings.usd_to_cad_rate??''} onChange={e=>setSettings({...settings,usd_to_cad_rate:e.target.value})}/>
-        <Field label="Marge de sécurité (%)" type="number" min="0" max="100" step="0.1" value={settings.cost_buffer_pct??0} onChange={e=>setSettings({...settings,cost_buffer_pct:e.target.value})}/>
-        <button disabled={pending} className={`${buttonClass} self-end`}>Enregistrer les réglages</button>
+        <Field label="Marge de sécurité IA (%)" type="number" min="0" max="100" step="0.1" value={settings.cost_buffer_pct??0} onChange={e=>setSettings({...settings,cost_buffer_pct:e.target.value})}/>
+        <div className="md:col-span-4 flex flex-wrap items-center gap-4">
+          <button disabled={pending} className={buttonClass}>Enregistrer les réglages</button>
+          <span className="text-sm text-white/55">Exemple : {settings.credit_value_cad?Math.round(10/Number(settings.credit_value_cad)).toLocaleString('fr-CA'):'—'} crédits = 10 CAD</span>
+        </div>
       </form>
     </Panel>
 
