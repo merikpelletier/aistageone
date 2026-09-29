@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Upload, Loader2, X, Camera, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const DEFAULT_PROMPT = `Image A is the facial identity reference. Image B is the target image. Replace the face in Image B with the face from Image A while keeping Image B's pose, camera angle, framing, glasses, hairstyle, clothing, lighting, background, and photorealistic style. The final result must look like the person from Image A was photographed naturally in the same position and setting as Image B. Preserve realistic skin texture, beard details, facial proportions, shadows, and lens reflections. Do not change the background, outfit, glasses, crop, or overall composition.`;
 
@@ -53,6 +55,20 @@ export default function CharacterPhotoCreator({ character, onDone }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('4:3');
   const RATIOS = ['4:3', '3:4', '16:9', '9:16', '1:1'];
+  const [selectedModel, setSelectedModel] = useState(null);
+  const pricingInput = { aspect_ratio: aspectRatio, prompt: customPrompt !== DEFAULT_PROMPT ? customPrompt : undefined };
+  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:character_photo',
+    kind: 'image',
+    input: pricingInput,
+  });
+  const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:character_photo',
+    kind: 'image',
+    input: pricingInput,
+    modelKey: effectiveModel,
+  });
 
   const setPhoto = (key, file) => {
     setPhotos(p => ({ ...p, [key]: { file, previewUrl: URL.createObjectURL(file) } }));
@@ -104,6 +120,7 @@ export default function CharacterPhotoCreator({ character, onDone }) {
         extra_reference_urls: urls.filter((_, i) => i !== portraitIdx && i !== frontIdx),
         prompt_override: customPrompt !== DEFAULT_PROMPT ? customPrompt : undefined,
         aspect_ratio: aspectRatio,
+        model_key: effectiveModel || undefined,
       });
 
       if (res.data?.file_url) {
@@ -177,6 +194,24 @@ export default function CharacterPhotoCreator({ character, onDone }) {
             </p>
           </div>
 
+          <div>
+            <p className="text-white text-xs tracking-widest uppercase mb-2">AI Model</p>
+            <select
+              value={effectiveModel || ''}
+              onChange={e => setSelectedModel(e.target.value || null)}
+              disabled={modelsLoading || modelOptions.length === 0}
+              className="w-full bg-black text-yellow-400 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+            >
+              {modelsLoading && <option value="">Loading models…</option>}
+              {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
+              {modelOptions.map(m => (
+                <option key={m.model_key} value={m.model_key}>
+                  {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Photo upload slots */}
           <div>
             <p className="text-white text-xs tracking-widest uppercase mb-3">Your Reference Photos</p>
@@ -215,7 +250,7 @@ export default function CharacterPhotoCreator({ character, onDone }) {
               onClick={handleGenerate}
               className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-medium"
             >
-              Generate My Character Photo ({aspectRatio})
+              Generate My Character Photo ({aspectRatio}){priceLoading ? ' · calculating…' : priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}
             </Button>
           )}
 
