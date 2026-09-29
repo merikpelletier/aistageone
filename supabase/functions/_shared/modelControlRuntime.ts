@@ -41,11 +41,19 @@ export function installModelControl(slug:string){
   const client=db();
   const {data:assignment,error}=await client.from('ai_model_assignment').select('*').eq('route_key',key).maybeSingle();
   if(error)fail('Contrôle des modèles indisponible',503);
-  const {data:model,error:me}=assignment?.model_key?await client.from('ai_model_catalog').select('*').eq('model_key',assignment.model_key).maybeSingle():{data:null,error:null};
+  const requestedModel=String(original?.model_key||original?.ai_model_key||'').trim().toLowerCase();
+  let choice=assignment;
+  if(requestedModel){
+   const {data:option,error:oe}=await client.from('ai_model_route_option').select('*').eq('route_key',key).eq('model_key',requestedModel).eq('enabled',true).maybeSingle();
+   if(oe)fail('Choix de modèle indisponible',503);
+   if(!option)fail('Ce modèle n’est pas disponible pour cet outil',422);
+   choice={...assignment,model_key:option.model_key,input_mapping:option.input_mapping??assignment?.input_mapping??{},defaults:option.defaults??assignment?.defaults??{},enabled:option.enabled};
+  }
+  const {data:model,error:me}=choice?.model_key?await client.from('ai_model_catalog').select('*').eq('model_key',choice.model_key).maybeSingle():{data:null,error:null};
   if(me)fail('Catalogue des modèles indisponible',503);
   let providerInput;
-  try{validateChoice(assignment,model);providerInput=adaptInput(body.input,assignment,model);}catch(e){context.failed=true;throw e;}
-  const {data:call,error:ce}=await client.from('ai_model_call').insert({route_key:key,request_id:context.id,model_key:model.model_key,assignment_revision:assignment.revision,rate_snapshot:{billing_type:model.billing_type,unit_price_usd:model.unit_price_usd,output_unit_price_usd:model.output_unit_price_usd,source_url:model.cost_source_url},status:'starting'}).select('id').single();
+  try{validateChoice(choice,model);providerInput=adaptInput(body.input,choice,model);}catch(e){context.failed=true;throw e;}
+  const {data:call,error:ce}=await client.from('ai_model_call').insert({route_key:key,request_id:context.id,model_key:model.model_key,assignment_revision:assignment?.revision??null,rate_snapshot:{billing_type:model.billing_type,unit_price_usd:model.unit_price_usd,output_unit_price_usd:model.output_unit_price_usd,source_url:model.cost_source_url},status:'starting'}).select('id').single();
   if(ce)fail('Journal des appels indisponible; aucun appel envoyé',503);
   const target=model.version_id?'https://api.replicate.com/v1/predictions':`https://api.replicate.com/v1/models/${model.model_key}/predictions`;
   const payload={...body,input:providerInput};delete payload.version;if(model.version_id)payload.version=model.version_id;
