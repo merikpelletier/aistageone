@@ -108,7 +108,7 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className={embedded ? 'bg-yellow-400 min-h-full w-full p-5 md:p-8 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto'}
+        className={embedded ? 'bg-yellow-400 min-h-full w-full p-5 pb-28 md:p-8 md:pb-28 lg:pb-32 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-8 pb-24 max-w-2xl w-full max-h-[90vh] overflow-y-auto'}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -255,7 +255,7 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
           <Button
             onClick={handleGenerate}
             disabled={isGenerating || !text.trim()}
-            className="w-full bg-black hover:bg-black/90 text-yellow-400 font-bold py-4 rounded-2xl mb-4"
+            className="w-full bg-black hover:bg-black/90 text-yellow-400 font-bold py-4 rounded-2xl mb-4 disabled:bg-neutral-900 disabled:text-yellow-300 disabled:opacity-100 disabled:cursor-not-allowed"
           >
             {isGenerating ? (
               <>
