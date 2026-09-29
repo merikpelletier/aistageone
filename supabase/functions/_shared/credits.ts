@@ -153,7 +153,7 @@ export async function refundCreditCharge(
 }
 
 export async function withCreditCharge<T>(
-  context: CreditBillingContext & { toolId: string; provider: string; relatedEntity?: string },
+  context: CreditBillingContext & { toolId: string; provider: string; relatedEntity?: string; explicitCost?: number | null },
   operation: () => Promise<T>,
 ) {
   const charge = await reserveCredits(context);
