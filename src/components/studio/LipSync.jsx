@@ -115,7 +115,7 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className={embedded ? 'bg-yellow-400 min-h-full w-full p-5 md:p-8 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto'}
+        className={embedded ? 'bg-yellow-400 min-h-full w-full p-5 pb-28 md:p-8 md:pb-28 lg:pb-32 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-8 pb-24 max-w-lg w-full max-h-[90vh] overflow-y-auto'}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -197,7 +197,7 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
               <span>{priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Calculated automatically'}</span>
             </div>
             <button onClick={handleGenerate} disabled={!videoUrl || !audioUrl || isGenerating}
-              className="w-full py-4 bg-black text-yellow-400 font-bold rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2">
+              className="w-full py-4 bg-black text-yellow-400 font-bold rounded-2xl disabled:bg-neutral-900 disabled:text-yellow-300 disabled:opacity-100 disabled:cursor-not-allowed flex items-center justify-center gap-2">
               {isGenerating ? <><Loader2 size={18} className="animate-spin" /> Syncing… (~1–3 min)</> : <><Mic size={18} /> Generate Lip Sync{priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}</>}
             </button>
           </div>
