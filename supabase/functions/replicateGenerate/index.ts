@@ -143,7 +143,7 @@ serveWithCors(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { method, photo_url, photo_urls, reference_video_url, reference_image_url, prompt_override, prompt, reference_image_urls, audio_url, aspect_ratio, costume_url, duration } = await req.json();
+    const { method, photo_url, photo_urls, reference_video_url, reference_image_url, prompt_override, prompt, reference_image_urls, audio_url, aspect_ratio, costume_url, duration, model_key } = await req.json();
 
     if (!method) return Response.json({ error: 'method is required' }, { status: 400 });
 
@@ -184,7 +184,7 @@ serveWithCors(async (req) => {
       billing.service,
       `replicateGenerate:${method}`,
       priceInput,
-      null,
+      model_key || null,
       ['faceswitch'].includes(method) ? 'processing' : ['character_photo','reference_sheet_swap','character_sheet','headshot','compose_scene'].includes(method) ? 'image' : 'video'
     );
     creditCharge = await reserveCredits({
