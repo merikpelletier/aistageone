@@ -113,3 +113,18 @@
     font-weight: 700;
   }
 }
+
+/* AISTAGE visual rule: yellow action/selected buttons must use black foreground.
+   This overrides legacy component classes such as text-white on yellow buttons. */
+button[class*="bg-yellow-"],
+[role="button"][class*="bg-yellow-"] {
+  color: #000 !important;
+}
+
+button[class*="bg-yellow-"] svg,
+[role="button"][class*="bg-yellow-"] svg,
+button[class*="bg-yellow-"] [class*="text-white"],
+[role="button"][class*="bg-yellow-"] [class*="text-white"] {
+  color: #000 !important;
+  stroke: currentColor;
+}
