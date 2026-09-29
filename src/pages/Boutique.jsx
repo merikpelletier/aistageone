@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
@@ -15,6 +15,8 @@ export default function Boutique() {
 
   const [activeCollectionId, setActiveCollectionId] = useState(null);
   const [activeProductType, setActiveProductType] = useState(null);
+  const collectionProductsRef = useRef(null);
+  const productTypeProductsRef = useRef(null);
 
   const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ['products'],
@@ -198,10 +200,16 @@ export default function Boutique() {
                 <button
                   type="button"
                   key={section.id}
-                  onClick={() =>
-                    setActiveCollectionId(
-                      activeCollectionId === section.id ? null : section.id
-                    )
+                  onClick={() => {
+                    const nextId = activeCollectionId === section.id ? null : section.id;
+                    setActiveCollectionId(nextId);
+                    if (nextId) {
+                      window.requestAnimationFrame(() => {
+                        window.requestAnimationFrame(() => {
+                          collectionProductsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+                      });
+                    }
                   }
                   className={`relative text-left min-h-[220px] overflow-hidden border transition-colors ${
                     activeCollectionId === section.id
@@ -229,7 +237,18 @@ export default function Boutique() {
           </div>
 
           {activeCollectionId && (
-            <div className="mt-8 border-t border-white/10 pt-8">
+            <div ref={collectionProductsRef} className="mt-8 scroll-mt-20 border-t border-white/10 pt-8">
+              <div className="mb-5 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-white/40 text-xs uppercase tracking-[0.22em]">Collection</p>
+                  <h3 className="mt-1 text-xl font-light">
+                    {topLevelSections.find((section) => section.id === activeCollectionId)?.name || 'Products'}
+                  </h3>
+                </div>
+                <span className="text-xs text-white/45">
+                  {getCollectionProducts(activeCollectionId).length} {getCollectionProducts(activeCollectionId).length === 1 ? 'product' : 'products'}
+                </span>
+              </div>
               {renderProductCards(getCollectionProducts(activeCollectionId))}
             </div>
           )}
@@ -261,7 +280,17 @@ export default function Boutique() {
                 <button
                   type="button"
                   key={type}
-                  onClick={() => setActiveProductType(activeProductType === type ? null : type)}
+                  onClick={() => {
+                    const nextType = activeProductType === type ? null : type;
+                    setActiveProductType(nextType);
+                    if (nextType) {
+                      window.requestAnimationFrame(() => {
+                        window.requestAnimationFrame(() => {
+                          productTypeProductsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+                      });
+                    }
+                  }
                   className={`relative shrink-0 w-[210px] h-[170px] overflow-hidden border text-left ${
                     activeProductType === type
                       ? 'border-white'
@@ -281,7 +310,16 @@ export default function Boutique() {
           </div>
 
           {activeProductType && (
-            <div className="mt-6">
+            <div ref={productTypeProductsRef} className="mt-6 scroll-mt-20 border-t border-white/10 pt-8">
+              <div className="mb-5 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-white/40 text-xs uppercase tracking-[0.22em]">Product type</p>
+                  <h3 className="mt-1 text-xl font-light">{activeProductType}</h3>
+                </div>
+                <span className="text-xs text-white/45">
+                  {products.filter(product => product.product_type === activeProductType).length} products
+                </span>
+              </div>
               {renderProductCards(
                 products.filter(product => product.product_type === activeProductType)
               )}
