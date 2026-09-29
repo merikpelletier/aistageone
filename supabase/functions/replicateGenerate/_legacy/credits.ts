@@ -78,24 +78,29 @@ export async function reserveCredits({
   toolId,
   provider,
   relatedEntity,
+  explicitCost,
 }: CreditBillingContext & {
   toolId: string;
   provider: string;
   relatedEntity?: string;
+  explicitCost?: number | null;
 }): Promise<CreditCharge> {
   await assertServiceEnabled();
   if (isAdmin(user)) {
     return { id: null, cost: 0, balanceAfter: null, bypassed: true };
   }
 
-  const { data, error } = await service.rpc('reserve_ai_credit_charge', {
+  const rpcName = explicitCost == null ? 'reserve_ai_credit_charge' : 'reserve_ai_credit_charge_dynamic';
+  const args: Record<string, unknown> = {
     p_user_id: user.id,
     p_user_email: user.email,
     p_tool_id: toolId,
     p_provider: provider,
     p_related_entity: relatedEntity || toolId,
     p_idempotency_key: idempotencyKey,
-  });
+  };
+  if (explicitCost != null) args.p_credit_cost = explicitCost;
+  const { data, error } = await service.rpc(rpcName, args);
   if (error) throw new Error(`Credit reservation failed: ${error.message}`);
 
   const result = data as ChargeResult;
