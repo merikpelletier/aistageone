@@ -2,7 +2,8 @@ import { installModelControl } from '../_shared/modelControlRuntime.ts';
 installModelControl('generateStoryBlock');
 import { createClientFromRequest } from './_legacy/base44Compat.ts';
 import { serveWithCors } from './_legacy/cors.ts';
-import { createCreditBillingContext, withCreditCharge } from './_legacy/credits.ts';
+import { createCreditBillingContext, withCreditCharge } from '../_shared/credits.ts';
+import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 
 serveWithCors(async (req) => {
   try {
@@ -11,7 +12,7 @@ serveWithCors(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { session_id, is_storyline_switch, override_hero_id, override_topic_id } = await req.json();
+    const { session_id, is_storyline_switch, override_hero_id, override_topic_id, model_key, model_keys } = await req.json();
     if (!session_id) return Response.json({ error: 'session_id required' }, { status: 400 });
     const isStorylineSwitch = is_storyline_switch === true;
 
@@ -37,29 +38,7 @@ serveWithCors(async (req) => {
     if (!hero) return Response.json({ error: 'Hero character not found' }, { status: 404 });
     if (!topic) return Response.json({ error: 'Starting topic not found' }, { status: 404 });
 
-    // ── 2. Check credit balance (NO deduction yet — that happens when plan completes) ──
-    const pricing = await base44.entities.ToolPricing.filter({ tool_id: 'story_block', is_active: true }).then(r => r[0]);
-    const tokenCost = pricing?.token_cost ?? theme.credit_cost_per_block ?? 10;
-
-    let balance = await base44.entities.UserTokenBalance.filter({ user_email: user.email }).then(r => r[0]);
-    if (!balance) {
-      balance = await base44.entities.UserTokenBalance.create({
-        user_email: user.email, balance: 0, last_updated: new Date().toISOString(),
-      });
-    }
-
-    const adminEmail = (Deno.env.get('ADMIN_EMAIL') || '').toLowerCase().trim();
-    const fullUser = await base44.asServiceRole.entities.User.filter({ email: user.email }).then(r => r[0]).catch(() => null);
-    const isAdmin = (fullUser?.role || user.role) === 'admin' || (user.email || '').toLowerCase().trim() === adminEmail;
-
-    if (!isAdmin && balance.balance < tokenCost) {
-      return Response.json({
-        error: 'Insufficient tokens',
-        required: tokenCost,
-        balance: balance.balance,
-        message: `Story Block requires ${tokenCost} tokens. Your balance: ${balance.balance}.`,
-      }, { status: 402 });
-    }
+    // Pricing is resolved from the central AI model catalog after the final story prompt is built.
 
     // ── 3. Load reference material ──────────────────────────────────────────────
     const heroPhotos = hero.photos || [];
@@ -458,6 +437,15 @@ ${session.director_note}
 
 ` : ''}Generate the next Story Block now. Return ONLY the JSON object.`;
 
+    const storyModelKey = model_keys?.text || model_key || null;
+    const storyQuote = await quoteAiService(
+      billing.service,
+      'generateStoryBlock',
+      { prompt, max_output_tokens: 5000 },
+      storyModelKey,
+      'text',
+    );
+
     // ── 6. Create conversation + send message to agent (NON-BLOCKING) ──────────
     const conversation = await base44.agents.createConversation({
       agent_name: 'story_orchestrator',
@@ -469,6 +457,7 @@ ${session.director_note}
       toolId: 'story_block',
       provider: 'replicate',
       relatedEntity: `story_session_${session_id}`,
+      explicitCost: storyQuote.credits,
     }, async () => {
       await base44.agents.startMessage(conversation, {
         role: 'user',
