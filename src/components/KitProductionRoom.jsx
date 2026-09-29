@@ -986,7 +986,7 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
 }
 
 // ── Main KitProductionRoom ────────────────────────────────────────────────────
-export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClose, initialBlockId, initialBlockType, producedMedia, onMediaProduced, referenceMedia = [], productionMethodFromUrl, blockDetailsFromStorage }) {
+export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClose, initialBlockId, initialBlockType, producedMedia, onMediaProduced, referenceMedia = [], productionMethodFromUrl, blockDetailsFromStorage, embedded = false }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { setAppContext } = useAppContext();
@@ -1432,7 +1432,9 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
         </div>
       )}
 
-      <div className="fixed inset-0 bg-black z-50 flex flex-col overflow-hidden">
+      <div className={embedded
+        ? "fixed top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] bg-black z-50 flex flex-col overflow-hidden"
+        : "fixed inset-0 bg-black z-50 flex flex-col overflow-hidden"}>
         <ProductionHeader
           productionName={productionName}
           setProductionName={setProductionName}
