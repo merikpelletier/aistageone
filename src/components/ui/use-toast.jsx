@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 
 const TOAST_LIMIT = 20;
-const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_REMOVE_DELAY = 4000;
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
@@ -133,6 +133,11 @@ function toast({ ...props }) {
       },
     },
   });
+
+  const duration = Number.isFinite(Number(props.duration)) ? Number(props.duration) : TOAST_REMOVE_DELAY;
+  if (duration > 0) {
+    setTimeout(() => dispatch({ type: actionTypes.REMOVE_TOAST, toastId: id }), duration);
+  }
 
   return {
     id,
