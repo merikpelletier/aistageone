@@ -8,6 +8,7 @@ import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const DURATIONS = [5, 10];
 const RATIOS = ['9:16', '16:9', '1:1', '4:3'];
@@ -144,6 +145,23 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
               <X size={20} className="text-black" />
             </button>
           )}
+        </div>
+
+        <div className="mb-4">
+          <p className="text-black text-xs font-bold uppercase tracking-wider mb-2">AI Model</p>
+          <select
+            value={modelKey}
+            onChange={e => setModelKey(e.target.value)}
+            disabled={modelsLoading || !modelOptions.length}
+            className="w-full bg-black/15 border border-black/25 rounded-xl px-4 py-3 text-black text-sm focus:outline-none focus:border-black/60"
+          >
+            {!modelOptions.length && <option value="">{modelsLoading ? 'Loading models…' : 'No model available'}</option>}
+            {modelOptions.map(o => (
+              <option key={o.model_key} value={o.model_key}>
+                {o.name || o.model_key}{o.recommended ? ' — Recommended' : ''}{o.credits ? ` — ${o.credits} credits` : ''}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Image Upload */}
