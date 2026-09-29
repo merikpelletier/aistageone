@@ -3,6 +3,8 @@ installModelControl('generateBlockVideos');
 import { createClientFromRequest } from './_legacy/base44Compat.ts';
 import { serveWithCors } from './_legacy/cors.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createCreditBillingContext, withCreditCharge } from '../_shared/credits.ts';
+import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 
 const REPLICATE_API = 'https://api.replicate.com/v1';
 const FALLBACK_POLL_MS = 5 * 1000;
@@ -41,11 +43,33 @@ function extractUrl(output) {
 
 serveWithCors(async (req) => {
   try {
+    const billing = await createCreditBillingContext(req);
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { block_id } = await req.json();
+    const { block_id, model_key, model_keys } = await req.json();
+    const imageModelKey = model_keys?.image || null;
+    const videoModelKey = model_keys?.video || model_key || null;
+    const speechModelKey = model_keys?.speech || null;
+
+    const chargeGeneration = async (kind, input, selectedModelKey, relatedEntity, operation) => {
+      const quote = await quoteAiService(
+        billing.service,
+        'generateBlockVideos',
+        input,
+        selectedModelKey || null,
+        kind,
+      );
+      return await withCreditCharge({
+        ...billing,
+        idempotencyKey: `${billing.idempotencyKey}:${relatedEntity}`,
+        toolId: `fotoplay_${kind}`,
+        provider: 'replicate',
+        relatedEntity,
+        explicitCost: quote.credits,
+      }, operation);
+    };
     if (!block_id) return Response.json({ error: 'block_id required' }, { status: 400 });
 
     const block = await base44.entities.StoryBlock.get(block_id);
@@ -167,11 +191,17 @@ serveWithCors(async (req) => {
         if (allMedia[i] && !narrationUrls[i] && segTtsText) {
           try {
             console.log(`[generateBlockMedia] Generating missing TTS for segment ${i + 1}`);
-            const speechRes = await base44.integrations.Core.GenerateSpeech({
-              text: segTtsText,
-              voice: session.narrator_voice || 'Rachel',
-              languageCode: session.narrator_language || 'en',
-            });
+            const { result: speechRes } = await chargeGeneration(
+              'speech',
+              { text: segTtsText, voice: session.narrator_voice || 'Rachel', language_code: session.narrator_language || 'en' },
+              speechModelKey,
+              `story_block_${block_id}_segment_${i}_speech`,
+              () => base44.integrations.Core.GenerateSpeech({
+                text: segTtsText,
+                voice: session.narrator_voice || 'Rachel',
+                languageCode: session.narrator_language || 'en',
+              }),
+            );
             if (speechRes?.url) {
               while (narrationUrls.length < i) narrationUrls.push('');
               narrationUrls[i] = speechRes.url;
@@ -262,11 +292,21 @@ serveWithCors(async (req) => {
                   };
                   const klingBody = { input: klingInput };
                   if (webhookUrl) { klingBody.webhook = webhookUrl; klingBody.webhook_events_filter = ['completed']; }
-                  const klingRes = await fetch(`${REPLICATE_API}/models/kwaivgi/kling-v2.6/predictions`, {
-                    method: 'POST',
-                    headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', 'Prefer': 'wait=5' },
-                    body: JSON.stringify(klingBody),
-                  });
+                  const { result: klingRes } = await chargeGeneration(
+                    'video',
+                    klingInput,
+                    videoModelKey,
+                    `story_block_${block_id}_segment_${nextSegmentIndex}_video`,
+                    async () => {
+                      const response = await fetch(`${REPLICATE_API}/models/kwaivgi/kling-v2.6/predictions`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', 'Prefer': 'wait=5' },
+                        body: JSON.stringify(klingBody),
+                      });
+                      if (!response.ok && response.status !== 429) throw new Error(`Video provider rejected request (HTTP ${response.status})`);
+                      return response;
+                    },
+                  );
                   const klingData = await klingRes.json();
                   if (klingRes.ok && klingData.id) {
                     const klingNow = new Date().toISOString();
@@ -337,11 +377,17 @@ serveWithCors(async (req) => {
     if (!narrationUrls[nextSegmentIndex] && ttsText) {
       try {
         console.log(`[generateBlockMedia] Generating TTS for segment ${nextSegmentIndex + 1}`);
-        const speechRes = await base44.integrations.Core.GenerateSpeech({
-          text: ttsText,
-          voice: session.narrator_voice || 'Rachel',
-              languageCode: session.narrator_language || 'en',
-        });
+        const { result: speechRes } = await chargeGeneration(
+          'speech',
+          { text: ttsText, voice: session.narrator_voice || 'Rachel', language_code: session.narrator_language || 'en' },
+          speechModelKey,
+          `story_block_${block_id}_segment_${nextSegmentIndex}_speech`,
+          () => base44.integrations.Core.GenerateSpeech({
+            text: ttsText,
+            voice: session.narrator_voice || 'Rachel',
+            languageCode: session.narrator_language || 'en',
+          }),
+        );
         if (speechRes?.url) {
           while (narrationUrls.length < nextSegmentIndex) narrationUrls.push(null);
           narrationUrls[nextSegmentIndex] = speechRes.url;
@@ -516,11 +562,21 @@ serveWithCors(async (req) => {
     console.log(`[generateBlockMedia] characterMap keys:`, JSON.stringify(Object.keys(characterMap)));
     console.log(`[generateBlockMedia] Full prompt (${segmentPrompt.length} chars):`, segmentPrompt.substring(0, 500) + '...');
 
-    const predRes = await fetch(`${REPLICATE_API}/models/${modelPath}/predictions`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', 'Prefer': 'wait=5' },
-      body: JSON.stringify(predictionBody),
-    });
+    const { result: predRes } = await chargeGeneration(
+      'image',
+      predictionBody.input,
+      imageModelKey,
+      `story_block_${block_id}_segment_${nextSegmentIndex}_image`,
+      async () => {
+        const response = await fetch(`${REPLICATE_API}/models/${modelPath}/predictions`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', 'Prefer': 'wait=5' },
+          body: JSON.stringify(predictionBody),
+        });
+        if (!response.ok && response.status !== 429) throw new Error(`Image provider rejected request (HTTP ${response.status})`);
+        return response;
+      },
+    );
     const predData = await predRes.json();
 
     if (!predRes.ok) {
