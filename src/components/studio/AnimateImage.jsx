@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import VaultPickerModal from '@/components/studio/VaultPickerModal';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 
 const DURATIONS = [5, 10];
 const RATIOS = ['9:16', '16:9', '1:1', '4:3'];
@@ -24,6 +25,11 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
   const [isSaving, setIsSaving] = useState(false);
   const [showVaultPicker, setShowVaultPicker] = useState(false);
   const [showSaveVault, setShowSaveVault] = useState(false);
+  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:animate_image',
+    kind: 'video',
+    input: { duration, aspect_ratio: ratio, prompt, audio_url: audioUrl || undefined },
+  });
 
   const handleUploadImage = async (file) => {
     setUploading(true);
@@ -221,12 +227,18 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
 
         {/* Generate */}
         {!result && (
-          <button onClick={handleGenerate} disabled={!imageUrl || isGenerating}
-            className="w-full py-4 bg-black text-yellow-400 font-bold rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2">
-            {isGenerating
-              ? <><Loader2 size={18} className="animate-spin" /> Animating… (~1–3 min)</>
-              : <><Film size={18} /> Animate Image</>}
-          </button>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-black/70">
+              <span>AI cost</span>
+              <span>{priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Calculated automatically'}</span>
+            </div>
+            <button onClick={handleGenerate} disabled={!imageUrl || isGenerating}
+              className="w-full py-4 bg-black text-yellow-400 font-bold rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2">
+              {isGenerating
+                ? <><Loader2 size={18} className="animate-spin" /> Animating… (~1–3 min)</>
+                : <><Film size={18} /> Animate Image{priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}</>}
+            </button>
+          </div>
         )}
 
         {/* Result */}
