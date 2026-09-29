@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, supabase } from '@/api/base44Client';
 import { Plus, Trash2, Edit, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useToast } from '@/components/ui/use-toast';
@@ -21,6 +21,7 @@ export default function AdminMembershipPricing() {
   const [editingMembership, setEditingMembership] = useState(null);
   const [editingPackage, setEditingPackage] = useState(null);
   const [activeTab, setActiveTab] = useState('memberships');
+  const [economySettings, setEconomySettings] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -28,15 +29,17 @@ export default function AdminMembershipPricing() {
 
   const fetchData = async () => {
     try {
-      const [pricing, packages] = await Promise.all([
+      const [pricing, packages, economyResult] = await Promise.all([
         base44.entities.MembershipPricing.list(),
-        base44.entities.TokenPackage.list()
+        base44.entities.TokenPackage.list(),
+        supabase.from('credit_economy_settings').select('credit_value_cad,usd_to_cad_rate,cost_buffer_pct').eq('id', true).maybeSingle()
       ]);
       // Sort by order field
       const sortedPricing = [...pricing].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       const sortedPackages = [...packages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       setMembershipPricing(sortedPricing);
       setTokenPackages(sortedPackages);
+      setEconomySettings(economyResult?.data || null);
     } catch (error) {
       toast({
         title: 'Error loading data',
@@ -70,10 +73,11 @@ export default function AdminMembershipPricing() {
 
   const handleSavePackage = async (data) => {
     try {
+      const saveData = { ...data, bonus_percentage: 0 };
       if (data.id) {
-        await base44.entities.TokenPackage.update(data.id, data);
+        await base44.entities.TokenPackage.update(data.id, saveData);
       } else {
-        await base44.entities.TokenPackage.create(data);
+        await base44.entities.TokenPackage.create(saveData);
       }
       await fetchData();
       setEditingPackage(null);
@@ -136,13 +140,13 @@ export default function AdminMembershipPricing() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-white text-xl font-light tracking-widest">MEMBERSHIP & TOKEN PRICING</h2>
+        <h2 className="text-white text-xl font-light tracking-widest">MEMBERSHIP & CREDIT PRICING</h2>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-neutral-900 border border-white/20 text-white">
           <TabsTrigger value="memberships" className="text-white data-[state=inactive]:text-white">Membership Pricing</TabsTrigger>
-          <TabsTrigger value="tokens" className="text-white data-[state=inactive]:text-white">Token Packages</TabsTrigger>
+          <TabsTrigger value="credits" className="text-white data-[state=inactive]:text-white">Credit Packages</TabsTrigger>
         </TabsList>
 
         {/* Membership Pricing Tab */}
@@ -212,18 +216,35 @@ export default function AdminMembershipPricing() {
           </Card>
         </TabsContent>
 
-        {/* Token Packages Tab */}
-        <TabsContent value="tokens" className="space-y-4">
+        {/* Credit Packages Tab */}
+        <TabsContent value="credits" className="space-y-4">
+          {economySettings && (
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-white/15 bg-neutral-950 p-4 text-white">
+                <p className="text-xs uppercase tracking-wider text-white/45">Credit value</p>
+                <p className="mt-1 text-lg font-semibold">1 credit = {Number(economySettings.credit_value_cad || 0).toFixed(2)} CAD</p>
+              </div>
+              <div className="rounded-lg border border-white/15 bg-neutral-950 p-4 text-white">
+                <p className="text-xs uppercase tracking-wider text-white/45">USD → CAD</p>
+                <p className="mt-1 text-lg font-semibold">1 USD = {Number(economySettings.usd_to_cad_rate || 0).toFixed(2)} CAD</p>
+              </div>
+              <div className="rounded-lg border border-white/15 bg-neutral-950 p-4 text-white">
+                <p className="text-xs uppercase tracking-wider text-white/45">AI margin</p>
+                <p className="mt-1 text-lg font-semibold">{Number(economySettings.cost_buffer_pct || 0)}%</p>
+              </div>
+            </div>
+          )}
+          <p className="text-sm text-white/55">Credit packs are sold in CAD. AI supplier costs quoted in USD are converted to CAD first, then the configured AI margin is applied before converting the result to credits.</p>
           <Card className="bg-neutral-900 border-white/20">
             <CardHeader>
               <CardTitle className="text-white flex items-center justify-between">
-                <span>Token Packages</span>
+                <span>Credit Packages</span>
                 <Button
                   size="sm"
                   onClick={() => setEditingPackage({
                     name: 'Starter Pack',
-                    token_amount: 100,
-                    price: 9.99,
+                    token_amount: 1000,
+                    price: 10,
                     bonus_percentage: 0,
                     is_active: true,
                     order: 0
@@ -240,7 +261,7 @@ export default function AdminMembershipPricing() {
                     <span className="text-white text-xs w-6">{index}</span>
                     <div className="flex-1">
                       <span className="text-white capitalize font-medium">{pkg.name}</span>
-                      <span className="text-white text-xs ml-2">{pkg.token_amount} tokens • {pkg.bonus_percentage}% bonus • ${pkg.price}</span>
+                      <span className="text-white text-xs ml-2">{pkg.token_amount} credits • ${pkg.price} CAD</span>
                     </div>
                     <span className={`px-2 py-1 rounded text-xs ${pkg.is_active ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
                       {pkg.is_active ? 'Active' : 'Inactive'}
@@ -290,11 +311,11 @@ export default function AdminMembershipPricing() {
         </DialogContent>
       </Dialog>
 
-      {/* Token Package Dialog */}
+      {/* Credit Package Dialog */}
       <Dialog open={!!editingPackage} onOpenChange={(open) => !open && setEditingPackage(null)}>
         <DialogContent className="bg-neutral-900 border-white/20 text-white">
           <DialogHeader>
-            <DialogTitle>{editingPackage?.id ? 'Edit' : 'Add'} Token Package</DialogTitle>
+            <DialogTitle>{editingPackage?.id ? 'Edit' : 'Add'} Credit Package</DialogTitle>
           </DialogHeader>
           <TokenPackageForm
             data={editingPackage}
@@ -412,7 +433,7 @@ function TokenPackageForm({ data, onSave, onCancel }) {
         />
       </div>
       <div>
-        <Label className="text-white">Token Amount</Label>
+        <Label className="text-white">Credit Amount</Label>
         <Input
           type="number"
           value={form.token_amount}
@@ -420,17 +441,9 @@ function TokenPackageForm({ data, onSave, onCancel }) {
           className="bg-neutral-800 border-white/20 text-white"
         />
       </div>
+      <p className="text-xs text-white/45">At the current central value, 100 credits = $1 CAD.</p>
       <div>
-        <Label className="text-white">Bonus Tokens (%)</Label>
-        <Input
-          type="number"
-          value={form.bonus_percentage}
-          onChange={(e) => setForm({ ...form, bonus_percentage: parseInt(e.target.value) || 0 })}
-          className="bg-neutral-800 border-white/20 text-white"
-        />
-      </div>
-      <div>
-        <Label className="text-white">Price ($)</Label>
+        <Label className="text-white">Price (CAD)</Label>
         <Input
           type="number"
           step="0.01"
