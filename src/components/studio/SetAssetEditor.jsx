@@ -46,11 +46,11 @@ function OloShopSetPicker({ selectedImages, onToggle, onClose }) {
     <motion.div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/90 p-3 backdrop-blur-md" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border border-cyan-300/25 bg-[#101012] shadow-2xl" initial={{ y: 24, scale: 0.98 }} animate={{ y: 0, scale: 1 }} exit={{ y: 24, scale: 0.98 }} onClick={event => event.stopPropagation()}>
         <header className="flex items-center justify-between border-b border-white/10 p-5">
-          <div><p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">OLOSHOP Inventory</p><h3 className="mt-1 text-2xl font-black text-white">Choose set references</h3><p className="mt-1 text-xs text-white/45">Every image attached to each published asset is available.</p></div>
+          <div><p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">Assets Shop</p><h3 className="mt-1 text-2xl font-black text-white">Choose set references</h3><p className="mt-1 text-xs text-white/45">Choose images from published Assets Shop items.</p></div>
           <button onClick={onClose} className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20"><X size={19} /></button>
         </header>
         <div className="space-y-3 border-b border-white/10 p-4">
-          <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search OLOSHOP inventory" className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-cyan-300" />
+          <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search Assets Shop" className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-cyan-300" />
           <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
             <button onClick={() => setCategoryId('all')} className={`flex-shrink-0 rounded-full px-4 py-2 text-xs font-black ${categoryId === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}>All</button>
             {categories.map(category => <button key={category.id} onClick={() => setCategoryId(category.id)} className={`flex-shrink-0 rounded-full px-4 py-2 text-xs font-black ${categoryId === category.id ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}>{category.label_en || category.label_fr || category.key}</button>)}
@@ -58,7 +58,7 @@ function OloShopSetPicker({ selectedImages, onToggle, onClose }) {
         </div>
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {isLoading ? <div className="flex min-h-64 items-center justify-center"><Loader2 className="animate-spin text-cyan-300" /></div>
-            : error ? <div className="rounded-2xl border border-red-400/25 bg-red-400/10 p-8 text-center text-red-100">OLOSHOP could not load. Try again.</div>
+            : error ? <div className="rounded-2xl border border-red-400/25 bg-red-400/10 p-8 text-center text-red-100">Assets Shop could not load. Try again.</div>
             : filteredAssets.length ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{filteredAssets.map(asset => {
               const gallery = catalogImages(asset);
               const selectedCount = gallery.filter(url => selectedImages.includes(url)).length;
@@ -67,14 +67,14 @@ function OloShopSetPicker({ selectedImages, onToggle, onClose }) {
                   const selected = selectedImages.includes(url);
                   const full = !selected && selectedImages.length >= 8;
                   return <button key={`${asset.id}-${url}`} onClick={() => onToggle(url)} disabled={full} className={`group relative aspect-[4/3] overflow-hidden rounded-lg border-2 transition ${selected ? 'border-cyan-300' : 'border-transparent hover:border-cyan-300/60'} ${full ? 'cursor-not-allowed opacity-35' : ''}`} title={`Use image ${index + 1} of ${asset.title || 'this asset'}`}>
-                    <img src={url} alt={`${asset.title || 'OLOSHOP asset'} · image ${index + 1}`} className="h-full w-full object-contain transition duration-300 group-hover:scale-105" />
+                    <img src={url} alt={`${asset.title || 'Assets Shop asset'} · image ${index + 1}`} className="h-full w-full object-contain transition duration-300 group-hover:scale-105" />
                     <span className={`absolute bottom-1.5 right-1.5 rounded-full px-2 py-0.5 text-[9px] font-black ${selected ? 'bg-cyan-300 text-black' : 'bg-black/80 text-white'}`}>{selected ? 'Selected' : `${index + 1}/${gallery.length}`}</span>
                   </button>;
                 })}</div>
-                <div className="p-3"><div className="flex items-center justify-between gap-3"><p className="truncate text-sm font-black text-white">{asset.title || 'Untitled'}</p><span className="flex-shrink-0 text-[10px] font-bold text-cyan-200/70">{gallery.length} image{gallery.length === 1 ? '' : 's'}</span></div><p className="mt-1 truncate text-[10px] text-white/40">{asset.creator_name || 'OLOSHOP'}{selectedCount ? ` · ${selectedCount} selected` : ''}</p></div>
+                <div className="p-3"><div className="flex items-center justify-between gap-3"><p className="truncate text-sm font-black text-white">{asset.title || 'Untitled'}</p><span className="flex-shrink-0 text-[10px] font-bold text-cyan-200/70">{gallery.length} image{gallery.length === 1 ? '' : 's'}</span></div><p className="mt-1 truncate text-[10px] text-white/40">{asset.creator_name || 'Assets Shop'}{selectedCount ? ` · ${selectedCount} selected` : ''}</p></div>
               </article>;
             })}</div>
-            : <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-white/15 text-sm text-white/45">No published OLOSHOP asset matches this search.</div>}
+            : <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-white/15 text-sm text-white/45">No published Assets Shop item matches this search.</div>}
         </div>
         <footer className="flex items-center justify-between border-t border-white/10 p-4"><span className="text-xs font-bold text-white/50">{selectedImages.length}/8 set images selected</span><button onClick={onClose} className="rounded-xl bg-cyan-300 px-6 py-3 text-sm font-black text-black">Done</button></footer>
       </motion.div>
@@ -155,7 +155,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
 
   return (
     <motion.div
-      className={`fixed z-[100] flex flex-col bg-black text-white overflow-y-auto ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)]' : 'inset-0'}`}
+      className={`fixed z-[100] flex flex-col bg-black text-white overflow-y-auto ${embedded ? 'top-14 right-0 bottom-[var(--bottom-nav-height)] left-0 lg:left-[var(--studio-toolbar-width)]' : 'inset-0'}`}
       initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 30, stiffness: 300 }}
     >
@@ -168,7 +168,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
           {!embedded && <button onClick={onClose} className="p-2 text-white hover:text-white/80"><X size={20} /></button>}
         </div>
 
-        <div className="flex-1 px-5 py-6 space-y-5 pb-24">
+        <div className="flex-1 w-full max-w-6xl mx-auto px-5 py-6 space-y-5 pb-32">
 
           {/* Name */}
           <div>
@@ -206,7 +206,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
               <button
                 type="submit"
                 disabled={!tagInput.trim()}
-                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-sm rounded-xl transition-colors"
+                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 disabled:bg-white/[0.06] disabled:text-white/45 disabled:opacity-100 text-white text-sm rounded-xl transition-colors"
               >
                 Add
               </button>
@@ -227,18 +227,18 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
 
           {/* Images */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
               <label className="text-white text-xs uppercase tracking-widest">
-                Sets ({images.length}/8)
+                Set Images ({images.length}/8)
               </label>
               <div className="flex flex-wrap justify-end gap-2">
                 {images.length < 8 && <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-xs font-bold text-black transition-colors hover:bg-yellow-300"><Upload size={14} />Import Image<input type="file" accept="image/*" className="hidden" onChange={handleUpload} /></label>}
                 {images.length < 8 && <button onClick={() => setVaultPickerOpen(true)} className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-white/20"><Bookmark size={14} />From Vault</button>}
-                <button onClick={() => setOloPickerOpen(true)} className="flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-2 text-xs font-bold text-black transition-colors hover:bg-cyan-200"><ShoppingBag size={14} />OLOSHOP</button>
+                <button onClick={() => setOloPickerOpen(true)} className="flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-2 text-xs font-bold text-black transition-colors hover:bg-cyan-200"><ShoppingBag size={14} />Assets Shop</button>
               </div>
             </div>
-            <p className="text-white/50 text-xs mb-4 leading-relaxed">Add up to 8 set/location images. Import an image, choose from your Vault, or select any image from an OLOSHOP asset gallery.</p>
-            <div className="grid grid-cols-3 gap-2 auto-rows-[minmax(0,auto)]">
+            <p className="text-white/50 text-xs mb-4 leading-relaxed">Add up to 8 reference images for this set or location. Import an image, choose one from your Vault, or select one from Assets Shop.</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-[minmax(0,auto)]">
               {images.map((url, idx) => (
                 <div key={idx} className="relative rounded-xl overflow-hidden bg-white/5">
                   <img src={url} alt="" className="w-full h-auto object-cover" />
@@ -263,7 +263,8 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 px-5 py-6 bg-black border-t border-white/10 z-10">
+        <div className="sticky bottom-0 bg-black border-t border-white/10 z-10">
+          <div className="w-full max-w-6xl mx-auto px-5 py-5">
           <button
             onClick={handleSave}
             disabled={saving || !name}
@@ -271,6 +272,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
           >
             {saving ? 'Saving...' : 'Save Set'}
           </button>
+          </div>
         </div>
       </div>
 
