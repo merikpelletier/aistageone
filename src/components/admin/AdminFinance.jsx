@@ -20,8 +20,19 @@ function RecordForm({title,fields,action,mutate,pending,extra={}}){
 function CostSettings({data,mutate,pending}){
   const [settings,setSettings]=useState(data.settings);
   const [rate,setRate]=useState({model_key:'',billing_type:'prediction',unit_price_usd:'',source_url:'',notes:'',quote_enabled:false});
+  const [converter,setConverter]=useState({amount:'10',currency:'CAD',apply_buffer:false});
   const [sim,setSim]=useState({model_key:data.models?.[0]?.model_key||'',units:5});
   const selectedModel=(data.models||[]).find(m=>m.model_key===sim.model_key);
+  const converterInput=Number(converter.amount||0);
+  const converterCad=converter.currency==='USD'
+    ? converterInput*Number(settings.usd_to_cad_rate||0)
+    : converterInput;
+  const converterCadWithBuffer=converter.apply_buffer
+    ? converterCad*(1+Number(settings.cost_buffer_pct||0)/100)
+    : converterCad;
+  const converterCredits=settings.credit_value_cad
+    ? Math.ceil(converterCadWithBuffer/Number(settings.credit_value_cad))
+    : null;
   const supplierUsd=selectedModel?Number(selectedModel.unit_price_usd||0)*Number(sim.units||0):0;
   const bufferedUsd=supplierUsd*(1+Number(settings.cost_buffer_pct||0)/100);
   const cad=bufferedUsd*Number(settings.usd_to_cad_rate||0);
@@ -39,6 +50,21 @@ function CostSettings({data,mutate,pending}){
           <span className="text-sm text-white/55">Exemple : {settings.credit_value_cad?Math.round(10/Number(settings.credit_value_cad)).toLocaleString('fr-CA'):'—'} crédits = 10 CAD</span>
         </div>
       </form>
+    </Panel>
+
+    <Panel title="Convertisseur automatique — services et outils">
+      <p className="text-sm text-white/60">Entre le coût réel d’un service ou d’un outil. AISTAGE.ONE calcule automatiquement son prix en crédits selon la valeur centrale du crédit.</p>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Field label="Coût" type="number" min="0" step="0.0001" value={converter.amount} onChange={e=>setConverter({...converter,amount:e.target.value})}/>
+        <label className="text-sm text-white/70">Devise<select className={fieldClass} value={converter.currency} onChange={e=>setConverter({...converter,currency:e.target.value})}><option value="CAD">CAD</option><option value="USD">USD</option></select></label>
+        <label className="flex items-end gap-2 pb-3 text-sm text-white/70"><input type="checkbox" checked={converter.apply_buffer} onChange={e=>setConverter({...converter,apply_buffer:e.target.checked})}/>Appliquer la marge de sécurité IA</label>
+        <div className="rounded border border-white/10 p-3">
+          <p className="text-xs text-white/50">Prix calculé</p>
+          <p className="text-2xl">{converterCredits==null?'—':`${converterCredits.toLocaleString('fr-CA')} crédits`}</p>
+          <p className="mt-1 text-xs text-white/45">{cash(converterCadWithBuffer,'CAD')} de valeur calculée</p>
+        </div>
+      </div>
+      <p className="text-xs text-white/45">Exemple : avec 1 crédit = {cash(settings.credit_value_cad||0,'CAD')}, un service de 10 CAD = {settings.credit_value_cad?Math.ceil(10/Number(settings.credit_value_cad)).toLocaleString('fr-CA'):'—'} crédits.</p>
     </Panel>
 
     <Panel title="Simulateur coût → crédits">
