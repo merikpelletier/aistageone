@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import TokenPurchaseModal from '@/components/studio/TokenPurchaseModal';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 
 const CATEGORIES = [
   { id: 'all', label: 'All' },
@@ -27,15 +29,33 @@ export default function SketchStudio({ user }) {
   const [result, setResult] = useState(null);
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [showBuyTokens, setShowBuyTokens] = useState(false);
-  const [cost, setCost] = useState(null);
+  const [selectedModel, setSelectedModel] = useState(null);
   const { balance, refresh: refreshBalance } = useTokenBalance(user?.email);
 
-  useEffect(() => {
-    base44.entities.ToolPricing.filter({ tool_id: 'ai_video', is_active: true })
-      .then((r) => setCost(r[0]?.token_cost ?? 0))
-      .catch(() => {});
-  }, []);
-
+  const currentEngine = (selected?.transformation_prompt || '').trim() ? 'kling_morph' : 'kling';
+  const pricingInput = {
+    prompt: (selected?.video_prompt || '').trim(),
+    image_url: photoUrl || undefined,
+    duration,
+    resolution: '720p',
+    aspect_ratio: aspectRatio,
+    generate_audio: currentEngine === 'kling_morph',
+  };
+  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
+    service: `generateVideo:${currentEngine}`,
+    kind: 'video',
+    input: pricingInput,
+    enabled: Boolean(selected),
+  });
+  const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
+    service: `generateVideo:${currentEngine}`,
+    kind: 'video',
+    input: pricingInput,
+    modelKey: effectiveModel,
+    enabled: Boolean(selected),
+  });
+  const cost = priceQuote?.credits ?? null;
   const insufficient = balance !== null && cost !== null && balance < cost;
 
   const { data: themes = [], isLoading } = useQuery({
@@ -153,6 +173,7 @@ export default function SketchStudio({ user }) {
         use_as_reference: true,
         engine: useMorph ? 'kling_morph' : 'kling',
         transformation_prompt: useMorph ? morphPrompt : undefined,
+        model_key: effectiveModel || undefined,
       });
       if (res.data?.file_url) {
         setResult(res.data.file_url);
@@ -164,7 +185,7 @@ export default function SketchStudio({ user }) {
       const data = err?.response?.data || {};
       const msg = data.error || data.message || err?.message || 'Failed to generate sketch';
       if (data.error === 'Insufficient tokens' || /insufficient tokens/i.test(String(msg))) {
-        toast.error('Not enough tokens — buy more to generate.');
+        toast.error('Not enough credits — buy more to generate.');
         setShowBuyTokens(true);
         refreshBalance();
       } else {
@@ -269,11 +290,6 @@ export default function SketchStudio({ user }) {
                       <Sparkles size={32} className="text-yellow-400" />
                     </div>
                   )}
-                  {cost !== null && (
-                    <span className="absolute top-2 right-2 bg-black/80 text-yellow-400 text-[11px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Coins size={11} /> {cost} Ⓣ
-                    </span>
-                  )}
                 </div>
                 <div className="p-3">
                   <p className="text-white text-sm font-bold truncate">{t.name}</p>
@@ -319,6 +335,29 @@ export default function SketchStudio({ user }) {
           </div>
         </div>
 
+        {/* AI Model */}
+        <div className="mb-5 space-y-2">
+          <p className="text-yellow-400 text-xs font-bold uppercase tracking-wide">AI Model</p>
+          <select
+            value={effectiveModel || ''}
+            onChange={e => setSelectedModel(e.target.value || null)}
+            disabled={modelsLoading || modelOptions.length === 0}
+            className="w-full bg-white/10 border border-white/15 rounded-xl px-4 py-3 text-yellow-400 text-sm font-bold outline-none disabled:opacity-50"
+          >
+            {modelsLoading && <option value="">Loading models…</option>}
+            {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
+            {modelOptions.map(m => (
+              <option key={m.model_key} value={m.model_key}>
+                {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
+              </option>
+            ))}
+          </select>
+          <div className="flex items-center justify-between text-xs text-white/60">
+            <span>AI cost</span>
+            <span>{priceLoading ? 'Calculating…' : cost !== null ? `${cost} credits` : 'Calculated automatically'}</span>
+          </div>
+        </div>
+
         {/* Options */}
         <div className="grid grid-cols-2 gap-3 mb-5">
           <div>
@@ -357,15 +396,15 @@ export default function SketchStudio({ user }) {
 
         {/* Cost & balance */}
         <div className="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2 mb-3">
-          <p className="text-white text-xs font-bold">Cost: <span className="text-yellow-400">{cost !== null ? `${cost} Ⓣ` : '…'}</span></p>
-          <p className="text-white text-xs font-bold">Balance: <span className={insufficient ? 'text-red-400' : 'text-yellow-400'}>{balance !== null ? `${balance} Ⓣ` : '…'}</span></p>
+          <p className="text-white text-xs font-bold">Cost: <span className="text-yellow-400">{priceLoading ? 'Calculating…' : cost !== null ? `${cost} credits` : '…'}</span></p>
+          <p className="text-white text-xs font-bold">Balance: <span className={insufficient ? 'text-red-400' : 'text-yellow-400'}>{balance !== null ? `${balance} credits` : '…'}</span></p>
         </div>
         {insufficient && (
           <button
             onClick={() => setShowBuyTokens(true)}
             className="w-full bg-red-500 text-white font-bold py-3 rounded-2xl mb-3 flex items-center justify-center gap-2"
           >
-            <Coins size={18} /> Not enough tokens — Buy more
+            <Coins size={18} /> Not enough credits — Buy more
           </button>
         )}
 
