@@ -947,12 +947,20 @@ function NewActorPanel({ userEmail, onClose, onPublish }) {
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generatedSheet, setGeneratedSheet] = useState(null);
-  const [tokenCost, setTokenCost] = useState(10);
-
-  useEffect(() => {
-    base44.entities.ToolPricing.filter({ tool_id: 'character_sheet', is_active: true })
-      .then(r => { if (r[0]) setTokenCost(r[0].token_cost); }).catch(() => {});
-  }, []);
+  const [selectedModel, setSelectedModel] = useState(null);
+  const characterPricingInput = { image_urls: PHOTO_SLOTS.map(s => photos[s.key]).filter(Boolean) };
+  const { options: characterModelOptions, loading: characterModelsLoading } = useAiModelOptions({
+    service: 'generateCharacterSheet',
+    kind: 'image',
+    input: characterPricingInput,
+  });
+  const effectiveCharacterModel = selectedModel || characterModelOptions.find(m => m.recommended)?.model_key || characterModelOptions[0]?.model_key || null;
+  const { quote: characterPriceQuote, loading: characterPriceLoading } = useAiPriceQuote({
+    service: 'generateCharacterSheet',
+    kind: 'image',
+    input: characterPricingInput,
+    modelKey: effectiveCharacterModel,
+  });
 
   const photoCount = Object.keys(photos).length;
 
@@ -970,7 +978,7 @@ function NewActorPanel({ userEmail, onClose, onPublish }) {
     if (photoCount === 0) return;
     setGenerating(true);
     const imageUrls = PHOTO_SLOTS.map(s => photos[s.key]).filter(Boolean);
-    const res = await base44.functions.invoke('generateCharacterSheet', { image_urls: imageUrls });
+    const res = await base44.functions.invoke('generateCharacterSheet', { image_urls: imageUrls, model_key: effectiveCharacterModel || undefined });
     if (res.data?.file_url) setGeneratedSheet(res.data.file_url);
     setGenerating(false);
   };
@@ -992,6 +1000,17 @@ function NewActorPanel({ userEmail, onClose, onPublish }) {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-2">
+        <label className="block text-white text-xs font-bold uppercase tracking-wider">AI Model
+          <select className="mt-2 w-full rounded-xl border border-white/15 bg-black px-4 py-3 text-sm font-bold text-yellow-400"
+            value={effectiveCharacterModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={characterModelsLoading || !characterModelOptions.length}>
+            {characterModelsLoading ? <option value="">Loading models…</option> : null}
+            {!characterModelsLoading && !characterModelOptions.length ? <option value="">No model available</option> : null}
+            {characterModelOptions.map(m => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}
+          </select>
+        </label>
+        <div className="flex items-center justify-between text-xs text-white/70"><span>AI cost</span><span>{characterPriceLoading ? 'Calculating…' : characterPriceQuote?.credits ? `${characterPriceQuote.credits} credits` : 'Calculated automatically'}</span></div>
+      </div>
       {/* Character Name */}
       <div>
         <label className="block text-white text-sm font-medium mb-2">Character Name</label>
@@ -1062,7 +1081,7 @@ function NewActorPanel({ userEmail, onClose, onPublish }) {
         )}
         <button onClick={handleGenerate} disabled={photoCount === 0 || generating}
           className="w-full py-4 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 disabled:cursor-not-allowed text-black text-base font-bold rounded-2xl transition-colors flex items-center justify-center gap-3">
-          {generating ? <><div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />Generating...</> : <><Sparkles size={18} />{generatedSheet ? 'Regenerate' : 'Generate my Character Sheet'}<span className="ml-2 px-3 py-1 bg-black/20 rounded-full text-xs font-black flex items-center gap-1"><Coins size={10} /> {tokenCost} Ⓣ</span></>}
+          {generating ? <><div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />Generating...</> : <><Sparkles size={18} />{generatedSheet ? 'Regenerate' : 'Generate my Character Sheet'}{characterPriceQuote?.credits ? <span className="ml-2 px-3 py-1 bg-black/20 rounded-full text-xs font-black flex items-center gap-1"><Coins size={10} /> {characterPriceQuote.credits} credits</span> : null}</>}
         </button>
       </div>
 
