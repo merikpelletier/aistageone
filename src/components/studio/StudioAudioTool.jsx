@@ -34,7 +34,7 @@ export default function StudioAudioTool({ tool, user }) {
     service,
     kind: 'audio',
     input: pricingInput,
-    enabled: tool === 'music',
+    enabled: true,
   });
   const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
   const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
@@ -42,7 +42,7 @@ export default function StudioAudioTool({ tool, user }) {
     kind: 'audio',
     input: pricingInput,
     modelKey: effectiveModel,
-    enabled: tool === 'music',
+    enabled: true,
   });
   const invoke = async body => (await base44.functions.invoke(service, body)).data;
   const remember = next => {
@@ -132,27 +132,23 @@ export default function StudioAudioTool({ tool, user }) {
   const busy = sending || !terminal(job);
   return (
     <div className="space-y-4 text-white">
-      {tool === 'music' ? (
-        <div className="space-y-2">
-          <label className="block">AI Model
-            <select className={field + ' bg-black'} value={effectiveModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={busy || modelsLoading || modelOptions.length === 0}>
-              {modelsLoading ? <option value="">Loading models…</option> : null}
-              {!modelsLoading && modelOptions.length === 0 ? <option value="">No model available</option> : null}
-              {modelOptions.map(m => (
-                <option key={m.model_key} value={m.model_key}>
-                  {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="flex items-center justify-between text-sm text-white/70">
-            <span>AI cost</span>
-            <span>{priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Calculated automatically'}</span>
-          </div>
+      <div className="space-y-2">
+        <label className="block">AI Model
+          <select className={field + ' bg-black'} value={effectiveModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={busy || modelsLoading || modelOptions.length === 0}>
+            {modelsLoading ? <option value="">Loading models…</option> : null}
+            {!modelsLoading && modelOptions.length === 0 ? <option value="">No model available</option> : null}
+            {modelOptions.map(m => (
+              <option key={m.model_key} value={m.model_key}>
+                {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="flex items-center justify-between text-sm text-white/70">
+          <span>AI cost</span>
+          <span>{priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Calculated automatically'}</span>
         </div>
-      ) : (
-        <p className="text-sm text-white/70">{config?.model || AUDIO_TOOLS[tool].model}</p>
-      )}
+      </div>
       <label className="block">Name
         <input className={field} maxLength={120} value={title} onChange={e => setTitle(e.target.value)} placeholder={AUDIO_TOOLS[tool].label} disabled={busy} />
       </label>
@@ -187,7 +183,7 @@ export default function StudioAudioTool({ tool, user }) {
       {error ? <p role="alert" className="text-red-300">{error}</p> : null}
       {job?.error ? <p role="status" className="text-yellow-300">{job.error}</p> : null}
       <button className="w-full rounded-xl bg-yellow-400 text-black font-bold p-3 disabled:opacity-50" disabled={loading || busy || !config?.ready} onClick={generate}>
-        {busy ? 'Generating… You can return later.' : 'Generate ' + AUDIO_TOOLS[tool].label + (tool === 'music' && priceQuote?.credits ? ' · ' + priceQuote.credits + ' credits' : '')}
+        {busy ? 'Generating… You can return later.' : 'Generate ' + AUDIO_TOOLS[tool].label + (priceQuote?.credits ? ' · ' + priceQuote.credits + ' credits' : '')}
       </button>
       {!loading && !config?.ready ? <p className="text-sm">Enable this tool in Admin before generating.</p> : null}
       {job?.status === 'succeeded' && job.file_url ? (
