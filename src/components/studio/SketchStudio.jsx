@@ -206,15 +206,15 @@ export default function SketchStudio({ user }) {
   // ── Theme picker (with upload at top) ──
   if (!selected) {
     return (
-      <div className="mt-6">
-        <div className="flex flex-col items-center mb-6">
+      <div className="mt-6 w-full max-w-6xl mx-auto px-4 pb-28 lg:pb-32">
+        <div className="flex flex-col items-center mb-5">
           <p className="text-black text-sm font-black tracking-widest uppercase">Sketch Generator</p>
           <p className="text-black text-xs font-semibold">Pick a funny theme, then upload your photo</p>
         </div>
 
         {/* Upload your photo — at the top */}
         {photoUrl ? (
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-5 max-w-3xl mx-auto">
             <img src={photoUrl} alt="you" className="w-12 h-12 rounded-xl object-cover" />
             <div className="flex-1 min-w-0">
               <p className="text-black text-sm font-bold">Your photo is ready</p>
@@ -225,7 +225,7 @@ export default function SketchStudio({ user }) {
             </button>
           </div>
         ) : (
-          <label className="block w-full aspect-[3/4] max-w-xs mx-auto bg-black rounded-3xl flex items-center justify-center cursor-pointer relative overflow-hidden mb-4">
+          <label className="block w-full aspect-[4/5] max-w-[260px] mx-auto bg-black rounded-3xl flex items-center justify-center cursor-pointer relative overflow-hidden mb-5">
             {uploadingPhoto ? (
               <div className="flex flex-col items-center text-yellow-400">
                 <Loader2 size={32} className="animate-spin" />
@@ -249,7 +249,7 @@ export default function SketchStudio({ user }) {
           </label>
         )}
 
-        <div className="flex gap-2 mb-4">
+        <div className="flex flex-wrap justify-center gap-2 mb-5">
           {CATEGORIES.map((c) => (
             <button
               key={c.id}
@@ -274,15 +274,15 @@ export default function SketchStudio({ user }) {
             <p className="text-black text-sm">Ask an admin to add funny themes in the Admin panel</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((t) => (
               <motion.button
                 key={t.id}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => openTheme(t)}
-                className="bg-black rounded-3xl overflow-hidden text-left active:opacity-90"
+                className="bg-black rounded-2xl overflow-hidden text-left active:opacity-90 border border-black/10"
               >
-                <div className="aspect-[4/3] bg-yellow-400/20 relative">
+                <div className="aspect-[16/10] bg-yellow-400/20 relative">
                   {t.cover_image ? (
                     <img src={t.cover_image} alt={t.name} className="w-full h-full object-cover" />
                   ) : (
@@ -291,7 +291,7 @@ export default function SketchStudio({ user }) {
                     </div>
                   )}
                 </div>
-                <div className="p-3">
+                <div className="p-3.5">
                   <p className="text-white text-sm font-bold truncate">{t.name}</p>
                   {t.description && (
                     <p className="text-yellow-400 text-xs mt-1 line-clamp-2">{t.description}</p>
