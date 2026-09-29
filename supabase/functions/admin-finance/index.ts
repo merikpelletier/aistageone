@@ -21,8 +21,12 @@ serveWithCors(async request=>{
     const creditValue=amount(p.credit_value_cad);
     const fx=amount(p.usd_to_cad_rate);
     const minimum=amount(p.minimum_purchase_cad);
+    const punchCredits=p.studio_punch_credits==null||p.studio_punch_credits===''?null:Number(p.studio_punch_credits);
+    const punchHours=p.studio_punch_duration_hours==null||p.studio_punch_duration_hours===''?24:Number(p.studio_punch_duration_hours);
+    if(punchCredits!=null&&(!Number.isInteger(punchCredits)||punchCredits<=0||punchCredits>1000000))throw httpError('Prix du Punch Studio invalide.');
+    if(!Number.isInteger(punchHours)||punchHours<=0||punchHours>168)throw httpError('Durée du Punch Studio invalide.');
     const now=new Date().toISOString();
-    const economy={credit_value_cad:creditValue,usd_to_cad_rate:fx,cost_buffer_pct:buffer,minimum_purchase_cad:minimum,updated_by:user.id,updated_at:now};
+    const economy={credit_value_cad:creditValue,usd_to_cad_rate:fx,cost_buffer_pct:buffer,minimum_purchase_cad:minimum,studio_punch_credits:punchCredits,studio_punch_duration_hours:punchHours,updated_by:user.id,updated_at:now};
     const saved=checked(await service.from('credit_economy_settings').update(economy).eq('id',true).select().single());
     checked(await service.from('ai_finance_settings').update({credit_value_cad:creditValue,usd_to_cad_rate:fx,cost_buffer_pct:buffer,quotes_enabled:false,updated_by:user.id,updated_at:now}).eq('id',true).select().single());
     return Response.json(saved);
