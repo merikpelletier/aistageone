@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import VaultPickerModal from '@/components/studio/VaultPickerModal';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const DURATIONS = [5, 10];
 const RATIOS = ['9:16', '16:9', '1:1', '4:3'];
@@ -25,10 +26,19 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
   const [isSaving, setIsSaving] = useState(false);
   const [showVaultPicker, setShowVaultPicker] = useState(false);
   const [showSaveVault, setShowSaveVault] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(null);
+  const pricingInput = { duration, aspect_ratio: ratio, prompt, audio_url: audioUrl || undefined };
+  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:animate_image',
+    kind: 'video',
+    input: pricingInput,
+  });
+  const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
   const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
     service: 'replicateGenerate:animate_image',
     kind: 'video',
-    input: { duration, aspect_ratio: ratio, prompt, audio_url: audioUrl || undefined },
+    input: pricingInput,
+    modelKey: effectiveModel,
   });
 
   const handleUploadImage = async (file) => {
@@ -58,6 +68,7 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
         aspect_ratio: ratio,
         prompt: prompt || undefined,
         audio_url: audioUrl || undefined,
+        model_key: effectiveModel || undefined,
       });
       if (res.data?.file_url) {
         setResult(res.data.file_url);
@@ -165,6 +176,24 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
           )}
         </div>
 
+        {/* AI Model */}
+        <div className="mb-4">
+          <p className="text-black text-xs font-bold uppercase tracking-wider mb-2">AI Model</p>
+          <select
+            value={effectiveModel || ''}
+            onChange={e => setSelectedModel(e.target.value || null)}
+            disabled={modelsLoading || modelOptions.length === 0}
+            className="w-full bg-black text-yellow-400 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+          >
+            {modelsLoading && <option value="">Loading models…</option>}
+            {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
+            {modelOptions.map(m => (
+              <option key={m.model_key} value={m.model_key}>
+                {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
         {/* Duration & Ratio */}
         <div className="mb-4 grid grid-cols-2 gap-4">
           <div>
