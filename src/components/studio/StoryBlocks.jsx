@@ -14,6 +14,8 @@ import StorySwitcher from './StorySwitcher';
 import UserCharacterEditor from './UserCharacterEditor';
 import SaveToVaultModal from './SaveToVaultModal';
 import AuthorStoryBlocks from './AuthorStoryBlocks';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 
 const DEFAULT_FOTOPLAY_VIEW_DEFAULTS = {
   gateway: { label: 'FotoPlay', description: 'Choose your experience' },
@@ -62,6 +64,78 @@ export default function StoryBlocks({ user, onBack }) {
   const [narratorLanguage, setNarratorLanguage] = useState('en');
   const [storyArc, setStoryArc] = useState(null); // { chapter_count, start, middle, reveal } — AI-proposed, user-editable
   const [proposingArc, setProposingArc] = useState(false);
+  const [selectedStoryModel, setSelectedStoryModel] = useState(null);
+  const [selectedVideoModel, setSelectedVideoModel] = useState(null);
+  const [selectedNarrationModel, setSelectedNarrationModel] = useState(null);
+
+  const storyPricingInput = {
+    prompt: [
+      selectedTheme?.title,
+      selectedTopic?.title,
+      selectedHero?.name,
+      directorNote,
+      storyArc?.start,
+      storyArc?.middle,
+      storyArc?.reveal,
+    ].filter(Boolean).join(' — ').slice(0, 12000) || 'FotoPlay story generation',
+    max_output_tokens: 5000,
+  };
+  const { options: storyModelOptions, loading: storyModelsLoading } = useAiModelOptions({
+    service: 'generateStoryBlock',
+    kind: 'text',
+    input: storyPricingInput,
+    enabled: true,
+  });
+  const effectiveStoryModel = selectedStoryModel || storyModelOptions.find((model) => model.recommended)?.model_key || storyModelOptions[0]?.model_key || null;
+  const { quote: storyPriceQuote, loading: storyPriceLoading } = useAiPriceQuote({
+    service: 'generateStoryBlock',
+    kind: 'text',
+    input: storyPricingInput,
+    modelKey: effectiveStoryModel,
+    enabled: Boolean(effectiveStoryModel),
+  });
+
+  const videoPricingInput = {
+    prompt: 'FotoPlay cinematic scene',
+    duration: 5,
+    aspect_ratio: '9:16',
+    resolution: '720p',
+    generate_audio: false,
+  };
+  const { options: videoModelOptions, loading: videoModelsLoading } = useAiModelOptions({
+    service: 'generateBlockVideos',
+    kind: 'video',
+    input: videoPricingInput,
+    enabled: true,
+  });
+  const effectiveVideoModel = selectedVideoModel || videoModelOptions.find((model) => model.recommended)?.model_key || videoModelOptions[0]?.model_key || null;
+  const { quote: videoPriceQuote, loading: videoPriceLoading } = useAiPriceQuote({
+    service: 'generateBlockVideos',
+    kind: 'video',
+    input: videoPricingInput,
+    modelKey: effectiveVideoModel,
+    enabled: Boolean(effectiveVideoModel),
+  });
+
+  const narrationPricingInput = {
+    text: blocks.flatMap((block) => (block.segment_instructions || []).map((segment) => [segment?.narration_text, segment?.dialogue].filter(Boolean).join(' '))).filter(Boolean).join(' ').slice(0, 12000) || 'FotoPlay narration',
+    voice: narratorVoice,
+    language_code: narratorLanguage || 'en',
+  };
+  const { options: narrationModelOptions, loading: narrationModelsLoading } = useAiModelOptions({
+    service: 'regenerateNarration',
+    kind: 'speech',
+    input: narrationPricingInput,
+    enabled: true,
+  });
+  const effectiveNarrationModel = selectedNarrationModel || narrationModelOptions.find((model) => model.recommended)?.model_key || narrationModelOptions[0]?.model_key || null;
+  const { quote: narrationPriceQuote, loading: narrationPriceLoading } = useAiPriceQuote({
+    service: 'regenerateNarration',
+    kind: 'speech',
+    input: narrationPricingInput,
+    modelKey: effectiveNarrationModel,
+    enabled: Boolean(effectiveNarrationModel),
+  });
 
 
   const [regeneratingAll, setRegeneratingAll] = useState(false);
@@ -118,6 +192,7 @@ export default function StoryBlocks({ user, onBack }) {
             block_id: block.id,
             voice: narratorVoice,
             language_code: narratorLanguage,
+            model_key: effectiveNarrationModel || undefined,
           });
           if (res.data?.narration_audio_urls) {
             const updatedUrls = res.data.narration_audio_urls;
@@ -154,7 +229,6 @@ export default function StoryBlocks({ user, onBack }) {
         if (res.data?.topics) setAllTopics(res.data.topics);
         if (res.data?.characters) setAllCharacters(res.data.characters);
         if (res.data?.sets) setAllSets(res.data.sets);
-        if (res.data?.token_cost) setTokenCost(res.data.token_cost);
       })
       .catch((error) => {
         console.error('Failed to load story data:', error);
@@ -214,6 +288,7 @@ export default function StoryBlocks({ user, onBack }) {
         is_storyline_switch: !!pendingOverride,
         override_hero_id: pendingOverride?.hero_id,
         override_topic_id: pendingOverride?.topic_id,
+        model_key: effectiveStoryModel || undefined,
       });
       setPendingOverride(null);
       if (res.data?.error) {
@@ -333,7 +408,7 @@ export default function StoryBlocks({ user, onBack }) {
         setGenProgress({ phase: 'video', completed: lastCompleted, total: totalSegments, message: `Generating scene ${lastCompleted}/${totalSegments}…` });
         if (!firstRequest) await new Promise(r => setTimeout(r, pollInterval));
         firstRequest = false;
-        const videoRes = await base44.functions.invoke('generateBlockVideos', { block_id: blockId });
+        const videoRes = await base44.functions.invoke('generateBlockVideos', { block_id: blockId, model_key: effectiveVideoModel || undefined });
         if (videoRes.data?.error) {
           if (videoRes.data.error.toLowerCase().includes('rate limit')) {
             pollInterval = 30000;
@@ -401,7 +476,7 @@ export default function StoryBlocks({ user, onBack }) {
         setGenProgress({ phase: 'video', completed: lastCompleted, total: totalSegments, message: `Generating scene ${lastCompleted}/${totalSegments}…` });
         if (!firstRequest) await new Promise(r => setTimeout(r, pollInterval));
         firstRequest = false;
-        const videoRes = await base44.functions.invoke('generateBlockVideos', { block_id: blockId });
+        const videoRes = await base44.functions.invoke('generateBlockVideos', { block_id: blockId, model_key: effectiveVideoModel || undefined });
         if (videoRes.data?.error) {
           if (videoRes.data.error.toLowerCase().includes('rate limit')) {
             pollInterval = 30000;
@@ -631,6 +706,7 @@ export default function StoryBlocks({ user, onBack }) {
         theme_id: selectedTheme.id,
         hero_character_id: selectedHero.id,
         starting_topic_id: topic.id,
+        model_key: effectiveStoryModel || undefined,
       });
       if (res.data?.error) {
         toast.error(res.data.error);
@@ -1366,15 +1442,63 @@ export default function StoryBlocks({ user, onBack }) {
                 )}
               </div>
             ) : (
-              <button
-                onClick={() => handleGenerate()}
-                disabled={!isAdmin && balance !== null && balance < tokenCost}
-                className="w-full py-5 bg-black text-yellow-400 font-bold rounded-3xl disabled:opacity-40 flex items-center justify-center gap-3 text-lg shadow-xl"
-              >
-                <Sparkles size={22} />
-                {blocks.length === 0 ? 'Begin Story' : 'Continue Story'}
-                <span className="text-yellow-400 text-sm font-bold ml-2">({tokenCost} Ⓣ)</span>
-              </button>
+              <div className="space-y-3">
+                <div className="grid gap-3 lg:grid-cols-3">
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-black/60">Story AI</span>
+                    <select
+                      value={effectiveStoryModel || ''}
+                      onChange={(event) => setSelectedStoryModel(event.target.value || null)}
+                      disabled={storyModelsLoading || !storyModelOptions.length}
+                      className="w-full rounded-xl border-2 border-black/20 bg-black px-3 py-2 text-xs font-bold text-yellow-400"
+                    >
+                      {storyModelsLoading && <option value="" className="bg-white text-black">Loading models…</option>}
+                      {!storyModelsLoading && !storyModelOptions.length && <option value="" className="bg-white text-black">No model available</option>}
+                      {storyModelOptions.map((model) => <option key={model.model_key} value={model.model_key} className="bg-white text-black">{model.name || model.model_key}{model.recommended ? ' — Recommended' : ''}{model.credits ? ` — ${model.credits} credits` : ''}</option>)}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-black/60">Video AI</span>
+                    <select
+                      value={effectiveVideoModel || ''}
+                      onChange={(event) => setSelectedVideoModel(event.target.value || null)}
+                      disabled={videoModelsLoading || !videoModelOptions.length}
+                      className="w-full rounded-xl border-2 border-black/20 bg-black px-3 py-2 text-xs font-bold text-yellow-400"
+                    >
+                      {videoModelsLoading && <option value="" className="bg-white text-black">Loading models…</option>}
+                      {!videoModelsLoading && !videoModelOptions.length && <option value="" className="bg-white text-black">No model available</option>}
+                      {videoModelOptions.map((model) => <option key={model.model_key} value={model.model_key} className="bg-white text-black">{model.name || model.model_key}{model.recommended ? ' — Recommended' : ''}{model.credits ? ` — ${model.credits} credits` : ''}</option>)}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-black/60">Narration AI</span>
+                    <select
+                      value={effectiveNarrationModel || ''}
+                      onChange={(event) => setSelectedNarrationModel(event.target.value || null)}
+                      disabled={narrationModelsLoading || !narrationModelOptions.length}
+                      className="w-full rounded-xl border-2 border-black/20 bg-black px-3 py-2 text-xs font-bold text-yellow-400"
+                    >
+                      {narrationModelsLoading && <option value="" className="bg-white text-black">Loading models…</option>}
+                      {!narrationModelsLoading && !narrationModelOptions.length && <option value="" className="bg-white text-black">No model available</option>}
+                      {narrationModelOptions.map((model) => <option key={model.model_key} value={model.model_key} className="bg-white text-black">{model.name || model.model_key}{model.recommended ? ' — Recommended' : ''}{model.credits ? ` — ${model.credits} credits` : ''}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-[10px] font-bold text-black/60">
+                  <div>Story: {storyPriceLoading ? '…' : storyPriceQuote?.credits ? `${storyPriceQuote.credits} credits` : 'automatic'}</div>
+                  <div>Video/scene: {videoPriceLoading ? '…' : videoPriceQuote?.credits ? `${videoPriceQuote.credits} credits` : 'automatic'}</div>
+                  <div>Narration: {narrationPriceLoading ? '…' : narrationPriceQuote?.credits ? `${narrationPriceQuote.credits} credits` : 'automatic'}</div>
+                </div>
+                <button
+                  onClick={() => handleGenerate()}
+                  disabled={!effectiveStoryModel || (!isAdmin && balance !== null && storyPriceQuote?.credits && balance < storyPriceQuote.credits)}
+                  className="w-full py-5 bg-black text-yellow-400 font-bold rounded-3xl disabled:opacity-40 flex items-center justify-center gap-3 text-lg shadow-xl"
+                >
+                  <Sparkles size={22} />
+                  {blocks.length === 0 ? 'Begin Story' : 'Continue Story'}
+                  {storyPriceQuote?.credits ? <span className="text-yellow-400 text-sm font-bold ml-2">({storyPriceQuote.credits} credits)</span> : null}
+                </button>
+              </div>
             )}
             <div className="grid grid-cols-2 gap-3 mt-3">
               <button
