@@ -9,6 +9,7 @@ import {
   reserveCredits,
 } from './_legacy/credits.ts';
 import type { CreditCharge, CreditBillingContext } from './_legacy/credits.ts';
+import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 
 const REPLICATE_API = 'https://api.replicate.com/v1';
 
@@ -35,18 +36,26 @@ serveWithCors(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { source_mode, reference_sheet_url, angle_urls, image_urls, costume_url, aspect_ratio, prompt_override, reference_layout_url, accessories, replace_preset } = await req.json();
+    const { source_mode, reference_sheet_url, angle_urls, image_urls, costume_url, aspect_ratio, prompt_override, reference_layout_url, accessories, replace_preset, model_key } = await req.json();
     const ratio = aspect_ratio || DEFAULT_RATIO;
     const { dims, resolvedRatio } = resolveDims(ratio);
 
     const TOKEN = Deno.env.get('REPLICATE_API_TOKEN');
     if (!TOKEN) throw new Error('REPLICATE_API_TOKEN not set');
 
+    const dynamicQuote = await quoteAiService(
+      billing.service,
+      'generateCharacterSheet',
+      { aspect_ratio: ratio, prompt: prompt_override || '', image_urls, angle_urls, reference_sheet_url, costume_url },
+      model_key || null,
+      'image'
+    );
     creditCharge = await reserveCredits({
       ...billing,
       toolId: 'character_sheet',
       provider: 'replicate',
       relatedEntity: 'character_sheet',
+      explicitCost: dynamicQuote.credits,
     });
 
     const sourceMode = source_mode === 'angles' ? 'angles' : 'sheet';
