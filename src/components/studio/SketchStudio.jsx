@@ -310,7 +310,7 @@ export default function SketchStudio({ user }) {
 
   // ── Generate / result ──
   return (
-    <div className="mt-6">
+    <div className="mt-6 w-full max-w-5xl mx-auto px-4 pb-28 lg:pb-32">
       <button
         onClick={() => { setSelected(null); setResult(null); }}
         className="flex items-center gap-2 text-black text-sm font-bold mb-4"
@@ -318,7 +318,7 @@ export default function SketchStudio({ user }) {
         <ChevronLeft size={20} /> Back to themes
       </button>
 
-      <div className="bg-black rounded-3xl p-6">
+      <div className="bg-black rounded-3xl p-5 md:p-6">
         <p className="text-yellow-400 font-black text-lg">{selected.name}</p>
         {selected.description && (
           <p className="text-white/70 text-sm mt-1 mb-4">{selected.description}</p>
@@ -352,14 +352,10 @@ export default function SketchStudio({ user }) {
               </option>
             ))}
           </select>
-          <div className="flex items-center justify-between text-xs text-white/60">
-            <span>AI cost</span>
-            <span>{priceLoading ? 'Calculating…' : cost !== null ? `${cost} credits` : 'Calculated automatically'}</span>
-          </div>
         </div>
 
         {/* Options */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,0.8fr)_minmax(360px,1.2fr)] gap-4 mb-5">
           <div>
             <p className="text-yellow-400 text-xs font-bold uppercase tracking-wide mb-1">Duration</p>
             <div className="flex gap-2">
@@ -367,7 +363,7 @@ export default function SketchStudio({ user }) {
                 <button
                   key={d}
                   onClick={() => setDuration(d)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${
+                  className={`flex-1 min-h-12 py-2 rounded-xl text-sm font-bold transition-all ${
                     duration === d ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white'
                   }`}
                 >
@@ -383,7 +379,7 @@ export default function SketchStudio({ user }) {
                 <button
                   key={r}
                   onClick={() => setAspectRatio(r)}
-                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                  className={`flex-1 min-h-12 py-2 rounded-xl text-xs font-bold transition-all ${
                     aspectRatio === r ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white'
                   }`}
                 >
@@ -395,7 +391,7 @@ export default function SketchStudio({ user }) {
         </div>
 
         {/* Cost & balance */}
-        <div className="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2 mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 bg-white/5 rounded-xl px-4 py-3 mb-4">
           <p className="text-white text-xs font-bold">Cost: <span className="text-yellow-400">{priceLoading ? 'Calculating…' : cost !== null ? `${cost} credits` : '…'}</span></p>
           <p className="text-white text-xs font-bold">Balance: <span className={insufficient ? 'text-red-400' : 'text-yellow-400'}>{balance !== null ? `${balance} credits` : '…'}</span></p>
         </div>
@@ -413,7 +409,7 @@ export default function SketchStudio({ user }) {
           <button
             onClick={handleGenerate}
             disabled={isGenerating || insufficient}
-            className="w-full bg-yellow-400 text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full min-h-14 bg-yellow-400 text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isGenerating ? (
               <><Loader2 size={20} className="animate-spin" /> Generating… (~2-3 min)</>
