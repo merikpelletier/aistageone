@@ -4,15 +4,18 @@ export function requiredPositive(value: unknown, label: string): number {
   return n;
 }
 
-export function creditQuote(costUsd: number, fx: number, creditValue: number, minimum = 1) {
+export function creditQuote(costUsd: number, fx: number, creditValue: number, minimum = 1, bufferPct = 0) {
   const cost = requiredPositive(costUsd, 'Coût fournisseur manquant');
   const rate = requiredPositive(fx, 'Taux USD/CAD manquant');
-  const value = requiredPositive(creditValue, 'Valeur nette CAD du crédit manquante');
-  const raw = cost * rate / 0.6 / value;
+  const value = requiredPositive(creditValue, 'Valeur CAD du crédit manquante');
+  const buffer = Number(bufferPct);
+  if (!Number.isFinite(buffer) || buffer < 0 || buffer > 100) throw new Error('Marge de sécurité invalide');
+  const costCad = cost * rate;
+  const bufferedCad = costCad * (1 + buffer / 100);
+  const raw = bufferedCad / value;
   if (!Number.isFinite(raw) || raw > 1e9) throw new Error('Prix hors limites');
-  let credits = Math.max(Math.ceil(raw), Math.ceil(minimum), 1);
-  if (credits * value * 0.6 < cost * rate) credits++;
-  return { credits, cost_cad: cost * rate, estimated_revenue_cad: credits * value };
+  const credits = Math.max(Math.ceil(raw), Math.ceil(minimum), 1);
+  return { credits, cost_cad: costCad, buffered_cost_cad: bufferedCad, estimated_revenue_cad: credits * value };
 }
 
 export type ModelRate = {
