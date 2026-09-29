@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { Upload, X, Loader2, Sparkles, Camera, CheckCircle2 } from 'lucide-react';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 // Curated headshot style presets. Each builds the prompt sent to Google Nano
 // Banana 2 (via the headshot method), which uses the uploaded portrait as its
@@ -37,6 +39,20 @@ export default function InlineHeadshot({ userEmail, onDone }) {
   const [error, setError] = useState('');
   const [resultUrl, setResultUrl] = useState(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(null);
+  const pricingInput = { aspect_ratio: format, prompt: addon || undefined, photo_url: photoUrl || undefined };
+  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:headshot',
+    kind: 'image',
+    input: pricingInput,
+  });
+  const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:headshot',
+    kind: 'image',
+    input: pricingInput,
+    modelKey: effectiveModel,
+  });
 
   const onUpload = async (file) => {
     if (!file) return;
@@ -66,6 +82,7 @@ export default function InlineHeadshot({ userEmail, onDone }) {
         photo_url: photoUrl,
         prompt: fullPrompt,
         aspect_ratio: format,
+        model_key: effectiveModel || undefined,
       });
       if (res.data?.file_url) {
         setResultUrl(res.data.file_url);
@@ -93,6 +110,25 @@ export default function InlineHeadshot({ userEmail, onDone }) {
 
   return (
     <div className="space-y-4">
+      {/* AI Model */}
+      <div>
+        <p className="text-white text-xs font-bold uppercase tracking-wider mb-2">AI Model</p>
+        <select
+          value={effectiveModel || ''}
+          onChange={e => setSelectedModel(e.target.value || null)}
+          disabled={modelsLoading || modelOptions.length === 0}
+          className="w-full bg-black text-yellow-400 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+        >
+          {modelsLoading && <option value="">Loading models…</option>}
+          {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
+          {modelOptions.map(m => (
+            <option key={m.model_key} value={m.model_key}>
+              {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Portrait upload */}
       <div>
         <p className="text-white text-xs font-bold uppercase tracking-wider mb-2">Actor Portrait</p>
@@ -165,7 +201,7 @@ export default function InlineHeadshot({ userEmail, onDone }) {
 
       <button onClick={handleGenerate} disabled={!photoUrl}
         className="w-full py-4 bg-rose-600 text-white font-bold rounded-2xl disabled:opacity-40 transition-opacity flex items-center justify-center gap-2">
-        <Sparkles size={18} /> Generate Headshot ({format}) →
+        <Sparkles size={18} /> Generate Headshot ({format}){priceLoading ? ' · calculating…' : priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''} →
       </button>
 
       {/* Result preview */}
