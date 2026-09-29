@@ -16,7 +16,7 @@ serveWithCors(async request=>{
   const service=serviceClient();const p=await request.json();
   const action=p.action || 'overview';
   if(action==='save_settings'){
-    const values={credit_value_cad:p.credit_value_cad==null||p.credit_value_cad===''?null:amount(p.credit_value_cad),usd_to_cad_rate:p.usd_to_cad_rate==null||p.usd_to_cad_rate===''?null:amount(p.usd_to_cad_rate),quotes_enabled:false,updated_by:user.id,updated_at:new Date().toISOString()};
+    const buffer=p.cost_buffer_pct==null||p.cost_buffer_pct===''?0:nonnegative(p.cost_buffer_pct);if(buffer>100)throw httpError('La marge de sécurité doit être entre 0 et 100 %.');const values={credit_value_cad:p.credit_value_cad==null||p.credit_value_cad===''?null:amount(p.credit_value_cad),usd_to_cad_rate:p.usd_to_cad_rate==null||p.usd_to_cad_rate===''?null:amount(p.usd_to_cad_rate),cost_buffer_pct:buffer,quotes_enabled:false,updated_by:user.id,updated_at:new Date().toISOString()};
     if(values.quotes_enabled && (!values.credit_value_cad||!values.usd_to_cad_rate))throw httpError('Renseignez la valeur du crédit et la conversion avant activation.');
     return Response.json(checked(await service.from('ai_finance_settings').update(values).eq('id',true).select().single()));
   }
@@ -36,6 +36,12 @@ serveWithCors(async request=>{
     const output=p.output_unit_price_usd==null||p.output_unit_price_usd===''?null:nonnegative(p.output_unit_price_usd);
     if(kind==='tokens'&&output==null)throw httpError('Tarif des unités de sortie requis');
     return Response.json(checked(await service.from('ai_model_rate').upsert({model_key:model,billing_type:kind,unit_price_usd:amount(p.unit_price_usd),output_unit_price_usd:output,max_runtime_seconds:max,source_url:source.href,notes:text(p.notes),quote_enabled:p.quote_enabled===true,updated_at:new Date().toISOString(),updated_by:user.id}).select().single()));
+  }
+  if(action==='save_tool_pricing'){
+    const id=requiredText(p.id,'Outil requis',200);
+    const cost=nonnegative(p.token_cost);
+    if(!Number.isInteger(cost)||cost>1000)throw httpError('Le coût fixe doit être un nombre entier de crédits.');
+    return Response.json(checked(await service.from('tool_pricing').update({token_cost:cost,updated_date:new Date().toISOString()}).eq('id',id).select().single()));
   }
   if(action==='record_entry'){
     if(!['expense','member_payout','income'].includes(p.entry_type)||!['CAD','USD','EUR'].includes(p.currency))throw httpError('Type ou devise invalide');
@@ -58,6 +64,8 @@ serveWithCors(async request=>{
   const requests={
     settings:service.from('ai_finance_settings').select('*').eq('id',true).single(),
     rates:service.from('ai_model_rate').select('*').order('model_key'),
+    models:service.from('ai_model_catalog').select('model_key,name,kind,billing_type,unit_price_usd,output_unit_price_usd,capabilities,enabled').eq('enabled',true).order('kind').order('name'),
+    routeOptions:service.from('ai_model_route_option').select('id,route_key,service,kind,model_key,enabled,recommended,credit_cost,display_order').order('service').order('display_order'),
     pricing:service.from('tool_pricing').select('id,tool_id,tool_name,token_cost,is_active,category').order('tool_id').limit(501),
     events:service.from('ai_usage_event').select('*').gte('created_at',start).lt('created_at',end).order('created_at',{ascending:false}).limit(501),
     quotes:service.from('ai_quote').select('id,function_name,tool_id,status,credit_price,charged_credits,credit_value_cad,cost_usd,usd_to_cad_rate,created_at,completed_at').gte('created_at',start).lt('created_at',end).order('created_at',{ascending:false}).limit(501),
