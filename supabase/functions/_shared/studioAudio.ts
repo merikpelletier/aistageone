@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.112.2';
-import { createCreditBillingContext, reserveCredits, completeCreditCharge } from '../generateSpeech/_legacy/credits.ts';
+import { createCreditBillingContext, reserveCredits, completeCreditCharge } from './credits.ts';
+import { quoteAiService } from './dynamicAiPrice.ts';
 import { AUDIO_TOOLS, audioInput, publicAudioJob } from './studioAudioInput.js';
 import { validateChoice, adaptInput } from './modelControlPolicy.ts';
 
@@ -87,10 +88,12 @@ export function audioHandler(tool: 'music' | 'sound_fx') {
     const db = billing.service;
     const body = await req.json();
     if (body.action === 'config') {
-      const assignment = check(await db.from('ai_model_assignment').select('model_key,enabled').eq('route_key', `${AUDIO_TOOLS[tool].service}|${AUDIO_TOOLS[tool].model}`).maybeSingle());
-      const pricing = check(await db.from('tool_pricing').select('token_cost,is_active').eq('tool_id', tool).limit(1).maybeSingle());
-      return Response.json({ model: assignment?.model_key || AUDIO_TOOLS[tool].model,
-        credit_cost: pricing?.token_cost ?? null, ready: Boolean(assignment?.enabled && pricing?.is_active && pricing.token_cost != null) });
+      const assignment = check(await db.from('ai_model_assignment').select('model_key,enabled,kind').eq('route_key', `${AUDIO_TOOLS[tool].service}|${AUDIO_TOOLS[tool].model}`).maybeSingle());
+      return Response.json({
+        model: assignment?.model_key || AUDIO_TOOLS[tool].model,
+        ready: Boolean(assignment?.enabled),
+        kind: assignment?.kind || 'audio',
+      });
     }
     if (body.action === 'list') {
       const jobs = check(await db.from(TABLE).select('*').eq('user_id', billing.user.id).eq('tool', tool)
@@ -106,11 +109,25 @@ export function audioHandler(tool: 'music' | 'sound_fx') {
     if (body.action !== 'start') fail('Unknown action', 400);
     if (existing) return Response.json({ job: publicAudioJob(existing) });
     const input = audioInput(tool, body);
-    // Validate the selected Admin model before reserving credits.
+    // Validate the selected model before reserving credits.
     const assignment = check(await db.from('ai_model_assignment').select('*').eq('route_key', `${AUDIO_TOOLS[tool].service}|${AUDIO_TOOLS[tool].model}`).maybeSingle());
-    const model = assignment?.model_key ? check(await db.from('ai_model_catalog').select('*').eq('model_key', assignment.model_key).maybeSingle()) : null;
-    validateChoice(assignment, model);
-    adaptInput(input, assignment, model);
+    const requestedModel = String(body.model_key || '').trim().toLowerCase();
+    const selectedModelKey = requestedModel || assignment?.model_key;
+    const model = selectedModelKey ? check(await db.from('ai_model_catalog').select('*').eq('model_key', selectedModelKey).eq('enabled', true).maybeSingle()) : null;
+    const option = requestedModel ? check(await db.from('ai_model_route_option').select('*').eq('service', AUDIO_TOOLS[tool].service).eq('kind', assignment?.kind || 'audio').eq('model_key', requestedModel).eq('enabled', true).limit(1).maybeSingle()) : null;
+    const choice = requestedModel
+      ? { ...assignment, model_key: selectedModelKey, input_mapping: option?.input_mapping ?? assignment?.input_mapping ?? {}, defaults: option?.defaults ?? assignment?.defaults ?? {}, enabled: true }
+      : assignment;
+    validateChoice(choice, model);
+    adaptInput(input, choice, model);
+
+    const dynamicQuote = await quoteAiService(
+      db,
+      AUDIO_TOOLS[tool].service,
+      input,
+      selectedModelKey || null,
+      assignment?.kind || 'audio'
+    );
     const providerHeaders = headers();
     const format = input.audio_format || input.output_format;
     const record = {
@@ -122,7 +139,14 @@ export function audioHandler(tool: 'music' | 'sound_fx') {
     if (inserted.error?.code === '23505') fail('Request already submitted. Check status.', 409);
     let job = check(inserted);
     try {
-      const charge = await reserveCredits({ ...billing, idempotencyKey: body.id, toolId: tool, provider: 'replicate', relatedEntity: `${AUDIO_TOOLS[tool].service}:${body.id}` });
+      const charge = await reserveCredits({
+        ...billing,
+        idempotencyKey: body.id,
+        toolId: tool,
+        provider: 'replicate',
+        relatedEntity: `${AUDIO_TOOLS[tool].service}:${body.id}`,
+        explicitCost: dynamicQuote.credits,
+      });
       job = { ...job, charge };
       await save(db, job.id, { charge });
     } catch (error) {
