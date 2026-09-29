@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useAppContext } from '@/lib/AppContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Layers, Camera, ChevronRight, ChevronLeft, ChevronDown, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench, PanelLeft, FolderOpen, Video, ListVideo, Wand2, Presentation, ShoppingBag, LayoutTemplate, MoreHorizontal, Volume2 } from 'lucide-react';
+import { Users, Layers, Camera, ChevronRight, ChevronLeft, ChevronDown, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench, PanelLeft, FolderOpen, Video, ListVideo, Wand2, Presentation, ShoppingBag, LayoutTemplate, MoreHorizontal, Volume2, Plug } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const HOME_ICON_MAP = { Home, Clapperboard, Theater, Wrench, Bookmark: undefined, BookOpen, Users, Layers, Film };
@@ -39,6 +39,7 @@ import AssetDetail from '@/pages/AssetDetail';
 import PitchDecks from '@/pages/PitchDecks';
 import PitchDeckEditor from '@/pages/PitchDeckEditor';
 import PitchDeckDetail from '@/pages/PitchDeckDetail';
+import AiConnections from '@/pages/AiConnections';
 import { Bookmark } from 'lucide-react';
 HOME_ICON_MAP.Bookmark = Bookmark;
 
@@ -90,6 +91,13 @@ const STUDIO_TOOL_SECTIONS = [
     tools: [
       { key: 'vault', label: 'Vault', icon: Bookmark, action: 'workspace' },
       { key: 'shop', label: 'Assets Shop', icon: ShoppingBag, action: 'workspace' },
+    ],
+  },
+  {
+    key: 'connections',
+    label: 'AI Connections',
+    tools: [
+      { key: 'ai_connections', label: 'My AI Connections', icon: Plug, action: 'workspace' },
     ],
   },
 ];
@@ -1202,6 +1210,15 @@ export default function Studio() {
               onOpenAsset={(assetId) => setActiveAssetId(assetId)}
             />
           )}
+        </div>
+      )}
+
+      {activeToolPanel === 'ai_connections' && (
+        <div className="absolute inset-0 z-20 bg-zinc-950">
+          <AiConnections
+            embedded
+            onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }}
+          />
         </div>
       )}
 
