@@ -161,7 +161,7 @@ for (const slug of ["agent-conversations","checkStoryBlockPlan","generate-image"
 const modelPolicy=read('supabase/functions/_shared/modelControlPolicy.ts');
 requireMarker('Blocked model policy',modelPolicy,"BLOCKED_MODEL='bytedance/seedream-4.5'");
 requireMarker('No automatic replacement',read('supabase/functions/_shared/modelControlRuntime.ts'),'if(context.failed)');
-requireMarker('Chosen model validation',read('supabase/functions/_shared/modelControlRuntime.ts'),'validateChoice(assignment,model)');
+requireMarker('Chosen model validation',read('supabase/functions/_shared/modelControlRuntime.ts'),'validateChoice(choice,model)');
 if (failures.length > 0) {
   console.error('Build blocked: Studio tool contracts failed:');
   for (const failure of failures) console.error(`- ${failure}`);
