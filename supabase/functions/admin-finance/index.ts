@@ -16,9 +16,16 @@ serveWithCors(async request=>{
   const service=serviceClient();const p=await request.json();
   const action=p.action || 'overview';
   if(action==='save_settings'){
-    const buffer=p.cost_buffer_pct==null||p.cost_buffer_pct===''?0:nonnegative(p.cost_buffer_pct);if(buffer>100)throw httpError('La marge de sécurité doit être entre 0 et 100 %.');const values={credit_value_cad:p.credit_value_cad==null||p.credit_value_cad===''?null:amount(p.credit_value_cad),usd_to_cad_rate:p.usd_to_cad_rate==null||p.usd_to_cad_rate===''?null:amount(p.usd_to_cad_rate),cost_buffer_pct:buffer,quotes_enabled:false,updated_by:user.id,updated_at:new Date().toISOString()};
-    if(values.quotes_enabled && (!values.credit_value_cad||!values.usd_to_cad_rate))throw httpError('Renseignez la valeur du crédit et la conversion avant activation.');
-    return Response.json(checked(await service.from('ai_finance_settings').update(values).eq('id',true).select().single()));
+    const buffer=p.cost_buffer_pct==null||p.cost_buffer_pct===''?0:nonnegative(p.cost_buffer_pct);
+    if(buffer>100)throw httpError('La marge de sécurité doit être entre 0 et 100 %.');
+    const creditValue=amount(p.credit_value_cad);
+    const fx=amount(p.usd_to_cad_rate);
+    const minimum=amount(p.minimum_purchase_cad);
+    const now=new Date().toISOString();
+    const economy={credit_value_cad:creditValue,usd_to_cad_rate:fx,cost_buffer_pct:buffer,minimum_purchase_cad:minimum,updated_by:user.id,updated_at:now};
+    const saved=checked(await service.from('credit_economy_settings').update(economy).eq('id',true).select().single());
+    checked(await service.from('ai_finance_settings').update({credit_value_cad:creditValue,usd_to_cad_rate:fx,cost_buffer_pct:buffer,quotes_enabled:false,updated_by:user.id,updated_at:now}).eq('id',true).select().single());
+    return Response.json(saved);
   }
   if(action==='save_rate'){
     if(user.id!=='fd3ceec1-0d99-4d7e-9793-284e342efe90')throw httpError('Seul Merik peut modifier les tarifs des modèles',403);
@@ -62,7 +69,7 @@ serveWithCors(async request=>{
   const {start,end}=monthRange(p.month || new Date().toISOString().slice(0,7));
   const month=start.slice(0,7);
   const requests={
-    settings:service.from('ai_finance_settings').select('*').eq('id',true).single(),
+    settings:service.from('credit_economy_settings').select('*').eq('id',true).single(),
     rates:service.from('ai_model_rate').select('*').order('model_key'),
     models:service.from('ai_model_catalog').select('model_key,name,kind,billing_type,unit_price_usd,output_unit_price_usd,capabilities,enabled').eq('enabled',true).order('kind').order('name'),
     routeOptions:service.from('ai_model_route_option').select('id,route_key,service,kind,model_key,enabled,recommended,credit_cost,display_order').order('service').order('display_order'),
