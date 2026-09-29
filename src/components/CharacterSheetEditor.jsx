@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import VaultDrawer from '@/components/VaultDrawer';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const PHOTO_SLOTS = [
   { key: 'front', label: 'Full front', hint: 'Neutral pose', short: 'FRONT', guide: '/actor-guides/front.webp', accent: 'border-[#ff7868]' },
@@ -253,10 +255,26 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const [uploading, setUploading] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [tokenCost, setTokenCost] = useState(10);
   const [picker, setPicker] = useState(null);
   const [vaultOpen, setVaultOpen] = useState(false);
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(null);
+  const pricingInput = {
+    aspect_ratio: aspectRatio,
+    prompt: transformationPrompt.trim() || characterDescription.trim() || undefined,
+  };
+  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
+    service: 'generateCharacterSheet',
+    kind: 'image',
+    input: pricingInput,
+  });
+  const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
+    service: 'generateCharacterSheet',
+    kind: 'image',
+    input: pricingInput,
+    modelKey: effectiveModel,
+  });
 
   useEffect(() => {
     if (sourceMode !== 'sheet' || !sourceSheet?.url || typeof window === 'undefined') {
@@ -373,6 +391,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
         character_description: characterDescription.trim(),
         prompt_override: sourcePrompt,
         replace_preset: true,
+        model_key: effectiveModel || undefined,
       });
       if (!response.data?.file_url) throw new Error(response.data?.error || 'Generation failed');
       setSourceSheet({ url: response.data.file_url, title: 'Generated from description', source: 'generated', sourceAssetId: null });
@@ -405,6 +424,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
         accessories,
         prompt_override: transformationPrompt.trim() || undefined,
         replace_preset: replacePreset && Boolean(transformationPrompt.trim()),
+        model_key: effectiveModel || undefined,
       });
       if (!response.data?.file_url) throw new Error(response.data?.error || 'Generation failed');
       setGeneratedSheet(response.data.file_url);
@@ -596,12 +616,12 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
               <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <StepTitle number="4" title="Create the character" description="Generate a consistent reference sheet from your selections." />
-                  <div className="flex flex-wrap items-center gap-2">{RATIOS.map((ratio) => <button type="button" key={ratio} onClick={() => { setAspectRatio(ratio); setDetectedRatio(null); }} className={`rounded-xl px-3 py-2 text-xs font-black ${aspectRatio === ratio ? 'bg-white text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>{ratio}</button>)}{detectedRatio && <span className="rounded-full bg-cyan-300/15 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan-200">Detected from reference</span>}</div>
+                  <div className="mb-3"><p className="mb-2 text-[10px] font-black uppercase tracking-widest text-white/45">AI Model</p><select value={effectiveModel || ''} onChange={(event) => setSelectedModel(event.target.value || null)} disabled={modelsLoading || modelOptions.length === 0} className="w-full rounded-xl bg-black px-3 py-3 text-sm font-black text-amber-300 disabled:opacity-50">{modelsLoading && <option value="">Loading models…</option>}{!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}{modelOptions.map((model) => <option key={model.model_key} value={model.model_key}>{model.name || model.model_key}{model.recommended ? ' — Recommended' : ''}{model.credits ? ` — ${model.credits} credits` : ''}</option>)}</select></div><div className="flex flex-wrap items-center gap-2">{RATIOS.map((ratio) => <button type="button" key={ratio} onClick={() => { setAspectRatio(ratio); setDetectedRatio(null); }} className={`rounded-xl px-3 py-2 text-xs font-black ${aspectRatio === ratio ? 'bg-white text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>{ratio}</button>)}{detectedRatio && <span className="rounded-full bg-cyan-300/15 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan-200">Detected from reference</span>}</div>
                 </div>
                 <button type="button" onClick={generate} disabled={!hasCharacterSource || generating} className="flex min-w-64 items-center justify-center gap-3 rounded-2xl bg-amber-300 px-6 py-4 font-black text-black transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-35">
                   {generating ? <Loader2 size={19} className="animate-spin" /> : <WandSparkles size={19} />}
                   {generating ? 'Creating character...' : generatedSheet ? 'Generate again' : sourceMode === 'sheet' ? 'Transform character' : 'Create reference sheet'}
-                  <span className="rounded-full bg-black/15 px-2.5 py-1 text-xs"><Coins size={11} className="mr-1 inline" />{tokenCost}</span>
+                  <span className="rounded-full bg-black/15 px-2.5 py-1 text-xs"><Coins size={11} className="mr-1 inline" />{priceLoading ? '…' : priceQuote?.credits || 'auto'}</span>
                 </button>
               </div>
             </section>
