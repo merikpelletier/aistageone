@@ -548,7 +548,7 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
           <Button
             onClick={handleGenerate}
             disabled={isGenerating || (mode === 'text' && !prompt.trim()) || (mode === 'image' && !imagePreview) || (mode === 'video' && (!imagePreview || !videoPreview))}
-            className="w-full bg-black hover:bg-black/90 text-yellow-400 font-bold py-4 rounded-2xl mb-4"
+            className="w-full bg-black hover:bg-black/90 text-yellow-400 font-bold py-4 rounded-2xl mb-4 disabled:bg-neutral-900 disabled:text-yellow-300 disabled:opacity-100 disabled:cursor-not-allowed"
           >
             {isGenerating ? (
               <>
