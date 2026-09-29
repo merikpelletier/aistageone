@@ -65,6 +65,7 @@ export default function StoryBlocks({ user, onBack }) {
   const [storyArc, setStoryArc] = useState(null); // { chapter_count, start, middle, reveal } — AI-proposed, user-editable
   const [proposingArc, setProposingArc] = useState(false);
   const [selectedStoryModel, setSelectedStoryModel] = useState(null);
+  const [selectedImageModel, setSelectedImageModel] = useState(null);
   const [selectedVideoModel, setSelectedVideoModel] = useState(null);
   const [selectedNarrationModel, setSelectedNarrationModel] = useState(null);
 
@@ -93,6 +94,27 @@ export default function StoryBlocks({ user, onBack }) {
     input: storyPricingInput,
     modelKey: effectiveStoryModel,
     enabled: Boolean(effectiveStoryModel),
+  });
+
+  const imagePricingInput = {
+    prompt: 'FotoPlay cinematic scene',
+    aspect_ratio: '9:16',
+    resolution: '2K',
+    output_format: 'jpg',
+  };
+  const { options: imageModelOptions, loading: imageModelsLoading } = useAiModelOptions({
+    service: 'generateBlockVideos',
+    kind: 'image',
+    input: imagePricingInput,
+    enabled: true,
+  });
+  const effectiveImageModel = selectedImageModel || imageModelOptions.find((model) => model.recommended)?.model_key || imageModelOptions[0]?.model_key || null;
+  const { quote: imagePriceQuote, loading: imagePriceLoading } = useAiPriceQuote({
+    service: 'generateBlockVideos',
+    kind: 'image',
+    input: imagePricingInput,
+    modelKey: effectiveImageModel,
+    enabled: Boolean(effectiveImageModel),
   });
 
   const videoPricingInput = {
@@ -193,6 +215,7 @@ export default function StoryBlocks({ user, onBack }) {
             voice: narratorVoice,
             language_code: narratorLanguage,
             model_key: effectiveNarrationModel || undefined,
+            model_keys: { speech: effectiveNarrationModel || undefined },
           });
           if (res.data?.narration_audio_urls) {
             const updatedUrls = res.data.narration_audio_urls;
@@ -289,6 +312,10 @@ export default function StoryBlocks({ user, onBack }) {
         override_hero_id: pendingOverride?.hero_id,
         override_topic_id: pendingOverride?.topic_id,
         model_key: effectiveStoryModel || undefined,
+        model_keys: {
+          text: effectiveStoryModel || undefined,
+          speech: effectiveNarrationModel || undefined,
+        },
       });
       setPendingOverride(null);
       if (res.data?.error) {
@@ -408,7 +435,14 @@ export default function StoryBlocks({ user, onBack }) {
         setGenProgress({ phase: 'video', completed: lastCompleted, total: totalSegments, message: `Generating scene ${lastCompleted}/${totalSegments}…` });
         if (!firstRequest) await new Promise(r => setTimeout(r, pollInterval));
         firstRequest = false;
-        const videoRes = await base44.functions.invoke('generateBlockVideos', { block_id: blockId, model_key: effectiveVideoModel || undefined });
+        const videoRes = await base44.functions.invoke('generateBlockVideos', {
+          block_id: blockId,
+          model_keys: {
+            image: effectiveImageModel || undefined,
+            video: effectiveVideoModel || undefined,
+            speech: effectiveNarrationModel || undefined,
+          },
+        });
         if (videoRes.data?.error) {
           if (videoRes.data.error.toLowerCase().includes('rate limit')) {
             pollInterval = 30000;
@@ -476,7 +510,14 @@ export default function StoryBlocks({ user, onBack }) {
         setGenProgress({ phase: 'video', completed: lastCompleted, total: totalSegments, message: `Generating scene ${lastCompleted}/${totalSegments}…` });
         if (!firstRequest) await new Promise(r => setTimeout(r, pollInterval));
         firstRequest = false;
-        const videoRes = await base44.functions.invoke('generateBlockVideos', { block_id: blockId, model_key: effectiveVideoModel || undefined });
+        const videoRes = await base44.functions.invoke('generateBlockVideos', {
+          block_id: blockId,
+          model_keys: {
+            image: effectiveImageModel || undefined,
+            video: effectiveVideoModel || undefined,
+            speech: effectiveNarrationModel || undefined,
+          },
+        });
         if (videoRes.data?.error) {
           if (videoRes.data.error.toLowerCase().includes('rate limit')) {
             pollInterval = 30000;
@@ -707,6 +748,7 @@ export default function StoryBlocks({ user, onBack }) {
         hero_character_id: selectedHero.id,
         starting_topic_id: topic.id,
         model_key: effectiveStoryModel || undefined,
+        model_keys: { text: effectiveStoryModel || undefined },
       });
       if (res.data?.error) {
         toast.error(res.data.error);
@@ -1443,7 +1485,7 @@ export default function StoryBlocks({ user, onBack }) {
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="grid gap-3 lg:grid-cols-3">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   <label className="block">
                     <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-black/60">Story AI</span>
                     <select
@@ -1455,6 +1497,19 @@ export default function StoryBlocks({ user, onBack }) {
                       {storyModelsLoading && <option value="" className="bg-white text-black">Loading models…</option>}
                       {!storyModelsLoading && !storyModelOptions.length && <option value="" className="bg-white text-black">No model available</option>}
                       {storyModelOptions.map((model) => <option key={model.model_key} value={model.model_key} className="bg-white text-black">{model.name || model.model_key}{model.recommended ? ' — Recommended' : ''}{model.credits ? ` — ${model.credits} credits` : ''}</option>)}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-black/60">Scene Image AI</span>
+                    <select
+                      value={effectiveImageModel || ''}
+                      onChange={(event) => setSelectedImageModel(event.target.value || null)}
+                      disabled={imageModelsLoading || !imageModelOptions.length}
+                      className="w-full rounded-xl border-2 border-black/20 bg-black px-3 py-2 text-xs font-bold text-yellow-400"
+                    >
+                      {imageModelsLoading && <option value="" className="bg-white text-black">Loading models…</option>}
+                      {!imageModelsLoading && !imageModelOptions.length && <option value="" className="bg-white text-black">No model available</option>}
+                      {imageModelOptions.map((model) => <option key={model.model_key} value={model.model_key} className="bg-white text-black">{model.name || model.model_key}{model.recommended ? ' — Recommended' : ''}{model.credits ? ` — ${model.credits} credits` : ''}</option>)}
                     </select>
                   </label>
                   <label className="block">
@@ -1484,8 +1539,9 @@ export default function StoryBlocks({ user, onBack }) {
                     </select>
                   </label>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-[10px] font-bold text-black/60">
+                <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-black/60 md:grid-cols-4">
                   <div>Story: {storyPriceLoading ? '…' : storyPriceQuote?.credits ? `${storyPriceQuote.credits} credits` : 'automatic'}</div>
+                  <div>Image/scene: {imagePriceLoading ? '…' : imagePriceQuote?.credits ? `${imagePriceQuote.credits} credits` : 'automatic'}</div>
                   <div>Video/scene: {videoPriceLoading ? '…' : videoPriceQuote?.credits ? `${videoPriceQuote.credits} credits` : 'automatic'}</div>
                   <div>Narration: {narrationPriceLoading ? '…' : narrationPriceQuote?.credits ? `${narrationPriceQuote.credits} credits` : 'automatic'}</div>
                 </div>
