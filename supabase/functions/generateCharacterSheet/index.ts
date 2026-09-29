@@ -7,8 +7,8 @@ import {
   createCreditBillingContext,
   refundCreditCharge,
   reserveCredits,
-} from './_legacy/credits.ts';
-import type { CreditCharge, CreditBillingContext } from './_legacy/credits.ts';
+} from '../_shared/credits.ts';
+import type { CreditCharge, CreditBillingContext } from '../_shared/credits.ts';
 import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 
 const REPLICATE_API = 'https://api.replicate.com/v1';
