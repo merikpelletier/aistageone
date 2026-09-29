@@ -20,13 +20,12 @@ function RecordForm({title,fields,action,mutate,pending,extra={}}){
 function CostSettings({data,mutate,pending}){
   const [settings,setSettings]=useState(data.settings);
   const [rate,setRate]=useState({model_key:'',billing_type:'prediction',unit_price_usd:'',source_url:'',notes:'',quote_enabled:false});
-  const [sim,setSim]=useState({model_key:data.models?.[0]?.model_key||'',units:5,tool_cost:2});
+  const [sim,setSim]=useState({model_key:data.models?.[0]?.model_key||'',units:5});
   const selectedModel=(data.models||[]).find(m=>m.model_key===sim.model_key);
   const supplierUsd=selectedModel?Number(selectedModel.unit_price_usd||0)*Number(sim.units||0):0;
   const bufferedUsd=supplierUsd*(1+Number(settings.cost_buffer_pct||0)/100);
   const cad=bufferedUsd*Number(settings.usd_to_cad_rate||0);
   const modelCredits=settings.credit_value_cad?Math.ceil(cad/Number(settings.credit_value_cad)):null;
-  const totalCredits=modelCredits==null?null:modelCredits+Number(sim.tool_cost||0);
   return <>
     <Panel title="Réglages du calcul des crédits">
       <p className="text-sm text-white/60">Source centrale de vérité pour toute l’économie AISTAGE.ONE : Studio, IA, Assets et Gift Shop. Les services utilisent cette conversion automatiquement.</p>
@@ -47,8 +46,7 @@ function CostSettings({data,mutate,pending}){
       <div className="grid gap-4 md:grid-cols-4">
         <label className="text-sm text-white/70">Modèle<select className={fieldClass} value={sim.model_key} onChange={e=>setSim({...sim,model_key:e.target.value})}>{(data.models||[]).map(m=><option key={m.model_key} value={m.model_key}>{m.name||m.model_key}</option>)}</select></label>
         <Field label="Unités facturées" type="number" min="0" step="any" value={sim.units} onChange={e=>setSim({...sim,units:e.target.value})}/>
-        <Field label="Coût fixe outil (crédits)" type="number" min="0" step="1" value={sim.tool_cost} onChange={e=>setSim({...sim,tool_cost:e.target.value})}/>
-        <div className="rounded border border-white/10 p-3 text-sm">
+        <div className="rounded border border-white/10 p-3 text-sm md:col-span-2">
           <p className="text-white/50">Type</p>
           <p>{selectedModel?.billing_type||'—'}</p>
         </div>
@@ -56,20 +54,25 @@ function CostSettings({data,mutate,pending}){
       <div className="grid gap-3 md:grid-cols-4">
         <div className="rounded border border-white/10 p-3"><p className="text-xs text-white/50">Coût fournisseur</p><p className="text-xl">{cash(supplierUsd,'USD')}</p></div>
         <div className="rounded border border-white/10 p-3"><p className="text-xs text-white/50">Avec sécurité</p><p className="text-xl">{cash(bufferedUsd,'USD')}</p></div>
-        <div className="rounded border border-white/10 p-3"><p className="text-xs text-white/50">Crédits modèle</p><p className="text-xl">{modelCredits==null?'Réglages requis':modelCredits}</p></div>
-        <div className="rounded border border-white/10 p-3"><p className="text-xs text-white/50">Total avec outil</p><p className="text-xl">{totalCredits==null?'—':`${totalCredits} crédits`}</p></div>
+        <div className="rounded border border-white/10 p-3 md:col-span-2"><p className="text-xs text-white/50">Coût IA calculé</p><p className="text-xl">{modelCredits==null?'Réglages requis':`${modelCredits} crédits`}</p></div>
       </div>
       {selectedModel?.capabilities?.pricing?.mode==='conditional'&&<p className="text-amber-200 text-sm">Ce modèle a une tarification conditionnelle. Le simulateur utilise ici son tarif unitaire de référence; vérifie les conditions dans Modèles IA pour un calcul exact.</p>}
     </Panel>
 
-    <Panel title="Coût fixe des outils">
-      <p className="text-sm text-white/60">Ce coût est la partie fixe AISTAGE.ONE. Le coût du modèle s’ajoute séparément.</p>
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {(data.pricing||[]).map(p=><form key={p.id} onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);mutate({action:'save_tool_pricing',id:p.id,token_cost:fd.get('token_cost')});}} className="rounded border border-white/10 p-3">
-          <div className="mb-2 flex items-center justify-between gap-2"><div><p>{p.tool_name||p.tool_id}</p><p className="text-xs text-white/40">{p.tool_id}</p></div><span className={p.is_active?'text-green-300':'text-white/40'}>{p.is_active?'Actif':'Inactif'}</span></div>
-          <div className="flex items-end gap-2"><Field name="token_cost" label="Crédits fixes" type="number" min="0" step="1" defaultValue={p.token_cost??0}/><button disabled={pending} className={buttonClass}>Sauver</button></div>
-        </form>)}
-      </div>
+    <Panel title="Tarification Studio — Punch 24 h">
+      <p className="text-sm text-white/60">Un seul Punch donne accès aux interfaces et outils du Studio pendant la durée configurée. Les coûts des moteurs IA sont débités séparément selon leur usage réel.</p>
+      <form onSubmit={e=>{e.preventDefault();mutate({action:'save_settings',...settings});}} className="grid gap-4 md:grid-cols-3">
+        <Field label="Prix du Punch (crédits)" type="number" min="1" step="1" value={settings.studio_punch_credits??''} onChange={e=>setSettings({...settings,studio_punch_credits:e.target.value})}/>
+        <Field label="Durée d’accès (heures)" type="number" min="1" max="168" step="1" value={settings.studio_punch_duration_hours??24} onChange={e=>setSettings({...settings,studio_punch_duration_hours:e.target.value})}/>
+        <div className="self-end rounded border border-white/10 p-3 text-sm">
+          <p className="text-white/50">Valeur CAD du Punch</p>
+          <p className="text-xl">{settings.studio_punch_credits&&settings.credit_value_cad?cash(Number(settings.studio_punch_credits)*Number(settings.credit_value_cad)):'—'}</p>
+        </div>
+        <div className="md:col-span-3">
+          <button disabled={pending} className={buttonClass}>Enregistrer la tarification Studio</button>
+        </div>
+      </form>
+      <p className="text-xs text-white/45">Les anciens coûts fixes par outil sont désormais considérés comme hérités et ne servent plus à définir le prix d’accès au Studio.</p>
     </Panel>
 
     <Panel title="Modèles disponibles et coût configuré">
