@@ -6,6 +6,9 @@ import VaultPickerModal from '@/components/studio/VaultPickerModal';
 import ImageCropModal from '@/components/studio/ImageCropModal';
 import VideoTools from '@/components/studio/VideoTools';
 import AnimateImage from '@/components/studio/AnimateImage';
+import TextToSpeech from '@/components/studio/TextToSpeech';
+import LipSync from '@/components/studio/LipSync';
+import DubbingStudio from '@/components/studio/DubbingStudio';
 
 const PHOTO_SLOTS = [
   { key: 'front',    label: 'Full Front',  placeholder: '/placeholders/silhouette-full.svg' },
@@ -1349,203 +1352,31 @@ function InlineToolPanel({ block, kitPage, referenceMedia, onPublish, onClose, o
 
   return (
     <div className="space-y-6">
-      {/* Text to Speech - Yellow modal design */}
+      {/* Text to Speech — central Studio component */}
       {isTTSMmode && (
-        <div className="space-y-5 bg-yellow-400 rounded-3xl p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
-                  <Sparkles size={16} className="text-yellow-400" />
-                </div>
-                <p className="text-black text-lg font-bold">Text to Speech</p>
-              </div>
-              <p className="text-black text-xs mt-1">ElevenLabs v3 with emotions</p>
-            </div>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors">
-              <X size={18} className="text-black" />
-            </button>
-          </div>
-
-          {/* Select Voice */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 bg-black rounded-full flex items-center justify-center">
-                <Users size={14} className="text-yellow-400" />
-              </div>
-              <p className="text-black text-sm font-bold">Select Voice</p>
-            </div>
-            <VoicePicker value={selectedVoice} onChange={setSelectedVoice} language={speechLanguage} onLanguageChange={setSpeechLanguage} />
-          </div>
-
-          {/* Emotion */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 bg-black rounded-full flex items-center justify-center">
-                <Sparkles size={14} className="text-yellow-400" />
-              </div>
-              <p className="text-black text-sm font-bold">Emotion</p>
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { emoji: '😐', label: 'None' },
-                { emoji: '🤩', label: 'Excited' },
-                { emoji: '🤫', label: 'Whispers' },
-                { emoji: '😮‍💨', label: 'Sighs' },
-                { emoji: '😂', label: 'Laughs' },
-                { emoji: '🙄', label: 'Sarcastic' },
-                { emoji: '😠', label: 'Angry' },
-                { emoji: '😢', label: 'Sad' },
-              ].map(emotion => (
-                <button
-                  key={emotion.label}
-                  onClick={() => setSelectedEmotion(emotion.label)}
-                  className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-all ${
-                    selectedEmotion === emotion.label
-                      ? 'bg-black text-white'
-                      : 'bg-yellow-500 text-black hover:bg-yellow-400'
-                  }`}
-                >
-                  <span className="text-xl">{emotion.emoji}</span>
-                  <span className={`text-[10px] font-medium ${selectedEmotion === emotion.label ? 'text-white' : 'text-black'}`}>{emotion.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Enter Text */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 bg-black rounded-full flex items-center justify-center">
-                <Type size={14} className="text-yellow-400" />
-              </div>
-              <p className="text-black text-sm font-bold">Enter Text</p>
-            </div>
-            <div className="bg-black rounded-2xl p-4">
-              <textarea
-                value={ttsText}
-                onChange={e => setTtsText(e.target.value)}
-                placeholder="Type or paste your text here..."
-                rows={4}
-                className="w-full bg-transparent text-white text-sm placeholder-white/30 focus:outline-none resize-none"
-              />
-            </div>
-            <p className="text-black text-xs text-right mt-1">{ttsText.length}/5000 characters</p>
-          </div>
-
-          {errorMsg && <p className="text-red-400 text-xs text-center">{errorMsg}</p>}
-
-          {ttsResultUrl && (
-            <div className="space-y-3">
-              <audio src={ttsResultUrl} controls className="w-full rounded-xl" />
-              <button
-                onClick={() => onPublish(ttsResultUrl, 'audio', 'tts', false)}
-                className="w-full py-3 bg-green-600 hover:bg-green-500 rounded-2xl text-white text-sm font-bold flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 size={16} />
-                Publish to Timeline
-              </button>
-            </div>
-          )}
-
-          {/* Action Button */}
-          <button
-            disabled={!ttsText.trim()}
-            onClick={async () => {
-              setStatus('generating'); setErrorMsg(''); setTtsResultUrl(null);
-              try {
-                const voice = selectedVoice || 'Rachel';
-                const emotionPrefix = selectedEmotion !== 'None' ? `[${selectedEmotion}] ` : '';
-                const res = await base44.integrations.Core.GenerateSpeech({ text: emotionPrefix + ttsText, voice, language_code: speechLanguage });
-                if (res?.url) { setTtsResultUrl(res.url); setStatus('idle'); }
-                else { setErrorMsg('Generation failed.'); setStatus('idle'); }
-              } catch (e) { setErrorMsg(e.message || 'Generation failed.'); setStatus('idle'); }
-            }}
-            className="w-full py-4 bg-black hover:bg-black/80 disabled:opacity-40 disabled:cursor-not-allowed text-yellow-400 text-base font-bold rounded-2xl transition-colors flex items-center justify-center gap-2"
-          >
-            <Sparkles size={18} />
-            Generate Speech
-            <Play size={18} className="fill-yellow-400" />
-          </button>
-        </div>
+        <TextToSpeech
+          inline
+          onComplete={(url) => onPublish(url, 'audio', 'tts', false)}
+          onClose={onClose}
+          episodePageId={episodePageId}
+          blockId={block?.id}
+          block={block}
+          character={character}
+          user={user}
+        />
       )}
 
-      {/* Dubbing Studio - Yellow modal design */}
+      {/* Dubbing Studio — central Studio component */}
       {isDubbingMode && (
-        <div className="space-y-5">
-          {/* Section 1: Your Voice */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
-                <Mic size={16} className="text-yellow-400" />
-              </div>
-              <p className="text-black text-sm font-bold">1. Your Voice</p>
-            </div>
-            <div className="bg-black rounded-2xl p-4">
-              {voiceUrl ? (
-                <div className="flex items-center gap-3">
-                  <audio src={voiceUrl} controls className="flex-1" />
-                  <button
-                    onClick={() => { setVoiceFile(null); setVoiceUrl(null); }}
-                    className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
-                  >
-                    <X size={14} className="text-white" />
-                  </button>
-                </div>
-              ) : (
-                <button className="w-full py-3 bg-yellow-400 hover:bg-yellow-300 text-black text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2">
-                  <Mic size={16} />
-                  Record Voice
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Section 2: Instrumental Track */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
-                <Music size={16} className="text-yellow-400" />
-              </div>
-              <p className="text-black text-sm font-bold">2. Instrumental Track</p>
-            </div>
-            <div className="bg-black rounded-2xl border-2 border-dashed border-white/20 p-8">
-              {instrumentalUrl ? (
-                <div className="flex items-center gap-3">
-                  <audio src={instrumentalUrl} controls className="flex-1" />
-                  <button
-                    onClick={() => { setInstrumentalFile(null); setInstrumentalUrl(null); }}
-                    className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
-                  >
-                    <X size={14} className="text-white" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center gap-2 cursor-pointer">
-                  <input type="file" accept="audio/*" className="hidden" onChange={e => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      setInstrumentalFile(file);
-                      setInstrumentalUrl(URL.createObjectURL(file));
-                    }
-                  }} />
-                  <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center">
-                    <Upload size={20} className="text-white" />
-                  </div>
-                  <p className="text-white text-sm font-medium">Upload Instrumental</p>
-                </label>
-              )}
-            </div>
-          </div>
-
-          {/* Action Button */}
-          <button className="w-full py-4 bg-yellow-400 hover:bg-yellow-300 text-black text-base font-bold rounded-2xl transition-colors flex items-center justify-center gap-2">
-            <Sparkles size={18} />
-            Mix & Generate
-            <Play size={18} className="fill-black" />
-          </button>
-        </div>
+        <DubbingStudio
+          inline
+          block={block}
+          onClose={onClose}
+          onComplete={(url) => onPublish(url, 'video', 'dubbing', false)}
+          episodePageId={episodePageId}
+          blockId={block?.id}
+          user={user}
+        />
       )}
 
       {/* Dress Actor - matches LabWorkspace InlineDressActor exactly */}
@@ -1558,239 +1389,29 @@ function InlineToolPanel({ block, kitPage, referenceMedia, onPublish, onClose, o
         <ComposeScene userEmail={userEmail} onClose={onClose} />
       )}
 
-      {/* Lip Sync - matches LipSync component exactly */}
+      {/* Lip Sync — central Studio component */}
       {isLipSyncMode && (
-        <LipSyncPanel onPublish={onPublish} onClose={onClose} referenceMedia={referenceMedia} userEmail={userEmail} />
+        <LipSync
+          inline
+          onComplete={(url) => onPublish(url, 'video', 'lip_sync', false)}
+          onClose={onClose}
+          episodePageId={episodePageId}
+          blockId={block?.id}
+          user={user}
+        />
       )}
 
-      {/* Animate - Full featured with Duration, Aspect Ratio, Audio */}
+      {/* Animate Image — central Studio component */}
       {toolType === 'animate_image' && (
-        <div className="space-y-5 bg-yellow-400 rounded-3xl p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
-                  <Film size={16} className="text-yellow-400" />
-                </div>
-                <p className="text-black text-lg font-bold">Animate Image</p>
-              </div>
-              <p className="text-black text-xs mt-1">Bring a still image to life with AI motion</p>
-            </div>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors">
-              <X size={18} className="text-black" />
-            </button>
-          </div>
-
-          {/* Reference Media Gallery */}
-          <div>
-            <p className="text-black text-xs font-bold uppercase tracking-wider mb-3">
-              Reference Images ({referenceMedia?.length || 0})
-            </p>
-            {referenceMedia && referenceMedia.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2">
-                {referenceMedia.map((url, idx) => {
-                  const isVideo = url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i);
-                  if (isVideo) return null;
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => setAnimateImageUrl(url)}
-                      className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
-                        animateImageUrl === url ? 'border-black ring-2 ring-black/20' : 'border-black/20 hover:border-black/40'
-                      }`}
-                    >
-                      <img src={url} alt="" className="w-full h-full object-cover" />
-                      {animateImageUrl === url && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                          <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
-                            <Film size={16} className="text-yellow-400" />
-                          </div>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="bg-yellow-500/30 border-2 border-dashed border-black/30 rounded-2xl p-6 text-center">
-                <p className="text-black text-sm mb-2">No reference images</p>
-                <p className="text-black text-xs">Upload in Admin → Episode Production → Block → Reference Media</p>
-              </div>
-            )}
-          </div>
-
-          {/* Image Upload */}
-          <div>
-            <p className="text-black text-xs font-bold uppercase tracking-wider mb-3">{referenceMedia?.length > 0 ? 'Or Upload New Image' : 'Upload Image'}</p>
-            {(() => {
-              const displayImageUrl = animateImageUrl || animateImage?.previewUrl;
-              if (displayImageUrl) {
-                return (
-                  <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-black/10">
-                    <img src={displayImageUrl} alt="" className="w-full h-full object-cover" onError={(e) => { console.error('Image load failed:', e.target.src, 'from referenceMedia:', referenceMedia); }} />
-                    <button onClick={() => { setAnimateImage(null); setAnimateImageUrl(null); }} className="absolute top-2 right-2 w-7 h-7 bg-black rounded-full flex items-center justify-center hover:bg-black/80 transition-colors">
-                      <X size={14} className="text-white" />
-                    </button>
-                  </div>
-                );
-              }
-              return (
-                <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-black/30 rounded-2xl cursor-pointer hover:border-black/50 transition-colors py-10 bg-yellow-500/30">
-                  <input type="file" accept="image/*" className="hidden" onChange={e => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      setAnimateImage({ file, previewUrl: URL.createObjectURL(file) });
-                    }
-                  }} />
-                  <div className="w-14 h-14 bg-black/10 rounded-full flex items-center justify-center">
-                    <Upload size={28} className="text-black" />
-                  </div>
-                  <p className="text-black text-sm font-medium">Upload an image to animate</p>
-                </label>
-              );
-            })()}
-          </div>
-
-          {/* Duration */}
-          <div>
-            <p className="text-black text-xs font-bold uppercase tracking-wider mb-3">Duration</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setDuration(5)}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold transition-colors ${
-                  duration === 5 ? 'bg-black text-yellow-400' : 'bg-yellow-500 text-black hover:bg-yellow-400'
-                }`}
-              >
-                5s
-              </button>
-              <button
-                onClick={() => setDuration(10)}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold transition-colors ${
-                  duration === 10 ? 'bg-black text-yellow-400' : 'bg-yellow-500 text-black hover:bg-yellow-400'
-                }`}
-              >
-                10s
-              </button>
-            </div>
-          </div>
-
-          {/* Aspect Ratio */}
-          <div>
-            <p className="text-black text-xs font-bold uppercase tracking-wider mb-3">Aspect Ratio</p>
-            <div className="grid grid-cols-4 gap-2">
-              <button
-                onClick={() => setAspectRatio('9:16')}
-                className={`py-3 rounded-xl text-sm font-bold transition-colors ${
-                  aspectRatio === '9:16' ? 'bg-black text-yellow-400' : 'bg-yellow-500 text-black hover:bg-yellow-400'
-                }`}
-              >
-                9:16
-              </button>
-              <button
-                onClick={() => setAspectRatio('16:9')}
-                className={`py-3 rounded-xl text-sm font-bold transition-colors ${
-                  aspectRatio === '16:9' ? 'bg-black text-yellow-400' : 'bg-yellow-500 text-black hover:bg-yellow-400'
-                }`}
-              >
-                16:9
-              </button>
-              <button
-                onClick={() => setAspectRatio('1:1')}
-                className={`py-3 rounded-xl text-sm font-bold transition-colors ${
-                  aspectRatio === '1:1' ? 'bg-black text-yellow-400' : 'bg-yellow-500 text-black hover:bg-yellow-400'
-                }`}
-              >
-                1:1
-              </button>
-              <button
-                onClick={() => setAspectRatio('4:3')}
-                className={`py-3 rounded-xl text-sm font-bold transition-colors ${
-                  aspectRatio === '4:3' ? 'bg-black text-yellow-400' : 'bg-yellow-500 text-black hover:bg-yellow-400'
-                }`}
-              >
-                4:3
-              </button>
-            </div>
-          </div>
-
-          {/* Motion Prompt */}
-          <div>
-            <p className="text-black text-xs font-bold uppercase tracking-wider mb-3">Motion Prompt (optional)</p>
-            <div className="bg-black rounded-2xl p-4">
-              <textarea
-                value={scenePrompt}
-                onChange={e => setScenePrompt(e.target.value)}
-                placeholder="Describe the motion... e.g. 'slow zoom in', 'hair blowing in the wind', 'camera pan left'"
-                rows={3}
-                className="w-full bg-transparent text-white text-sm placeholder-white/30 focus:outline-none resize-none"
-              />
-            </div>
-          </div>
-
-          {/* Audio */}
-          <div>
-            <p className="text-black text-xs font-bold uppercase tracking-wider mb-3">Audio (optional)</p>
-            {audioUrl ? (
-              <div className="relative rounded-2xl overflow-hidden bg-black/10 border border-black/20">
-                <audio src={audioUrl} controls className="w-full" />
-                <button
-                  onClick={() => { setAudioFile(null); setAudioUrl(null); }}
-                  className="absolute top-2 right-2 w-7 h-7 bg-black rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
-                >
-                  <X size={14} className="text-white" />
-                </button>
-              </div>
-            ) : (
-              <label className="flex items-center justify-center gap-2 border-2 border-dashed border-black/30 rounded-2xl cursor-pointer hover:border-black/50 transition-colors py-4 bg-yellow-500/30">
-                <input type="file" accept="audio/*" className="hidden" onChange={e => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    setAudioFile(file);
-                    setAudioUrl(URL.createObjectURL(file));
-                  }
-                }} />
-                <Music size={20} className="text-black" />
-                <span className="text-black text-sm font-medium">Add background audio / music</span>
-              </label>
-            )}
-          </div>
-
-          {/* Action Button */}
-          <button
-            onClick={async () => {
-              let photoUrl = animateImageUrl;
-              if (!photoUrl && animateImage?.file) { 
-                const r = await base44.integrations.Core.UploadFile({ file: animateImage.file }); 
-                photoUrl = r.file_url; 
-              }
-              if (!photoUrl) { setErrorMsg('Upload an image first.'); return; }
-              setStatus('generating'); setErrorMsg('');
-              try {
-                let audioUrlForApi = audioUrl;
-                if (audioFile && !audioUrlForApi) {
-                  const r = await base44.integrations.Core.UploadFile({ file: audioFile });
-                  audioUrlForApi = r.file_url;
-                }
-                const res = await base44.functions.invoke('replicateGenerate', { 
-                  method: 'animate_image', 
-                  photo_url: photoUrl, 
-                  prompt_override: scenePrompt || undefined,
-                  duration: duration,
-                  aspect_ratio: aspectRatio,
-                  audio_url: audioUrlForApi
-                });
-                if (res.data?.file_url) { setGeneratedMedia({ url: res.data.file_url, type: 'video' }); setStatus('preview'); }
-                else { setErrorMsg(res.data?.error || 'Generation failed.'); setStatus('idle'); }
-              } catch { setErrorMsg('Generation failed.'); setStatus('idle'); }
-            }}
-            disabled={!animateImageUrl && !animateImage}
-            className="w-full py-4 bg-black hover:bg-black/80 disabled:opacity-40 disabled:cursor-not-allowed text-yellow-400 text-base font-bold rounded-2xl transition-colors flex items-center justify-center gap-2"
-          >
-            <Film size={18} />
-            Animate Image
-          </button>
-        </div>
+        <AnimateImage
+          inline
+          onComplete={(url) => onPublish(url, 'video', 'animate_image', false)}
+          onClose={onClose}
+          episodePageId={episodePageId}
+          blockId={block?.id}
+          user={user}
+          initialPrompt={scenePrompt}
+        />
       )}
 
       {/* Animate with Reference - uses VideoTools in video mode */}
