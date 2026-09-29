@@ -2,7 +2,8 @@ import { installModelControl } from '../_shared/modelControlRuntime.ts';
 installModelControl('proposeStoryArc');
 import { createClientFromRequest } from './_legacy/base44Compat.ts';
 import { serveWithCors } from './_legacy/cors.ts';
-import { createCreditBillingContext, withCreditCharge } from './_legacy/credits.ts';
+import { createCreditBillingContext, withCreditCharge } from '../_shared/credits.ts';
+import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 
 serveWithCors(async (req) => {
   try {
@@ -11,7 +12,7 @@ serveWithCors(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { theme_id, hero_character_id, starting_topic_id } = await req.json();
+    const { theme_id, hero_character_id, starting_topic_id, model_key, model_keys } = await req.json();
     if (!theme_id || !hero_character_id || !starting_topic_id) {
       return Response.json({ error: 'theme_id, hero_character_id, and starting_topic_id are required' }, { status: 400 });
     }
@@ -82,11 +83,21 @@ The arc must be specific to this theme + hero + topic, dramatic, faithful to the
 
 Return ONLY the JSON object.`;
 
+    const arcModelKey = model_keys?.text || model_key || null;
+    const arcQuote = await quoteAiService(
+      billing.service,
+      'proposeStoryArc',
+      { prompt, max_output_tokens: 1600 },
+      arcModelKey,
+      'text',
+    );
+
     const { result: arc, charge } = await withCreditCharge({
       ...billing,
       toolId: 'ai_text',
       provider: 'replicate',
       relatedEntity: 'propose_story_arc',
+      explicitCost: arcQuote.credits,
     }, () => base44.integrations.Core.InvokeLLM({
         prompt,
         response_json_schema: {
