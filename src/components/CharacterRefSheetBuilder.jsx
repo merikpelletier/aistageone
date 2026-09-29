@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Upload, Loader2, Wand2, X, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const VIEWS = [
   { key: 'front',   label: 'Full Front' },
@@ -26,6 +28,20 @@ export default function CharacterRefSheetBuilder({ onDone, onCancel }) {
   const [format, setFormat] = useState('4:3');
   const [status, setStatus] = useState('idle'); // idle | uploading | generating | error
   const [errorMsg, setErrorMsg] = useState('');
+  const [selectedModel, setSelectedModel] = useState(null);
+  const pricingInput = { aspect_ratio: format, prompt: description || undefined };
+  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:character_sheet',
+    kind: 'image',
+    input: pricingInput,
+  });
+  const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:character_sheet',
+    kind: 'image',
+    input: pricingInput,
+    modelKey: effectiveModel,
+  });
 
   const handleFile = (key, file) => {
     setPhotos(prev => ({ ...prev, [key]: { file, previewUrl: URL.createObjectURL(file) } }));
@@ -51,6 +67,8 @@ export default function CharacterRefSheetBuilder({ onDone, onCancel }) {
         photo_urls: [],
         aspect_ratio: format,
         prompt_override: prompt,
+        model_key: effectiveModel || undefined,
+        model_key: effectiveModel || undefined,
       });
       if (res.data?.file_url) {
         setStatus('idle');
@@ -127,6 +145,24 @@ export default function CharacterRefSheetBuilder({ onDone, onCancel }) {
         <button onClick={onCancel} className="text-white text-xs hover:text-white flex items-center gap-1">
           <ChevronLeft size={14} /> Back
         </button>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-white text-xs font-bold uppercase tracking-wider">AI Model</p>
+        <select
+          value={effectiveModel || ''}
+          onChange={e => setSelectedModel(e.target.value || null)}
+          disabled={modelsLoading || modelOptions.length === 0}
+          className="w-full bg-black text-yellow-400 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+        >
+          {modelsLoading && <option value="">Loading models…</option>}
+          {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
+          {modelOptions.map(m => (
+            <option key={m.model_key} value={m.model_key}>
+              {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="grid grid-cols-3 gap-1.5 bg-white/5 rounded-lg p-1">
@@ -230,7 +266,7 @@ export default function CharacterRefSheetBuilder({ onDone, onCancel }) {
         className="w-full bg-red-600 hover:bg-red-700 text-white disabled:opacity-40"
       >
         <Wand2 size={16} className="mr-2" />
-        Generate Reference Sheet →
+        Generate Reference Sheet{priceLoading ? ' · calculating…' : priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''} →
       </Button>
     </div>
   );
