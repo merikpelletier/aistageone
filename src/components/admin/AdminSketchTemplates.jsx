@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Plus, Pencil, Trash2, X, Loader2, ImagePlus, Sparkles, Copy } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 
 const EMPTY = {
   name: '',
@@ -26,7 +28,23 @@ function ThemeEditor({ template, onClose }) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [generatingBase, setGeneratingBase] = useState(false);
+  const [selectedBaseModel, setSelectedBaseModel] = useState(null);
   const isEdit = !!template?.id;
+  const baseRatio = form.default_aspect_ratio || '9:16';
+  const basePromptText = (form.base_scene_prompt || '').trim();
+  const basePricingInput = { prompt: basePromptText, aspect_ratio: baseRatio };
+  const { options: baseModelOptions, loading: baseModelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: basePricingInput,
+  });
+  const effectiveBaseModel = selectedBaseModel || baseModelOptions.find(m => m.recommended)?.model_key || baseModelOptions[0]?.model_key || null;
+  const { quote: basePriceQuote, loading: basePriceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: basePricingInput,
+    modelKey: effectiveBaseModel,
+  });
 
   const setField = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -67,8 +85,13 @@ function ThemeEditor({ template, onClose }) {
     const prompt = `${orientation}. ${custom}`;
     setGeneratingBase(true);
     try {
-      const res = await base44.integrations.Core.GenerateImage({ prompt });
-      const url = res?.url || res?.file_url;
+      const res = await base44.functions.invoke('replicateGenerate', {
+        method: 'compose_scene',
+        prompt,
+        aspect_ratio: ratio,
+        model_key: effectiveBaseModel || undefined,
+      });
+      const url = res?.data?.file_url || res?.file_url;
       if (url) {
         setField('base_scene_image', url);
         toast.success('Base scene generated');
@@ -168,6 +191,28 @@ function ThemeEditor({ template, onClose }) {
             <p className="text-black/50 text-xs mb-2">
               The funny scene photo with a placeholder character. The user's uploaded face is swapped onto this character, then animated. Upload a clear shot framed to match the chosen aspect ratio.
             </p>
+            <div className="mb-3">
+              <label className="text-black/70 text-xs uppercase tracking-wide font-bold">AI Model</label>
+              <select
+                value={effectiveBaseModel || ''}
+                onChange={e => setSelectedBaseModel(e.target.value || null)}
+                disabled={baseModelsLoading || baseModelOptions.length === 0}
+                className="w-full bg-white border-2 border-black/15 rounded-xl px-3 py-2 mt-1 text-sm text-black font-bold disabled:opacity-50"
+              >
+                {baseModelsLoading && <option value="">Loading models…</option>}
+                {!baseModelsLoading && baseModelOptions.length === 0 && <option value="">No model available</option>}
+                {baseModelOptions.map(m => (
+                  <option key={m.model_key} value={m.model_key}>
+                    {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-1 flex items-center justify-between text-[11px] text-black/50">
+                <span>AI cost</span>
+                <span>{basePriceLoading ? 'Calculating…' : basePriceQuote?.credits ? `${basePriceQuote.credits} credits` : 'Calculated automatically'}</span>
+              </div>
+            </div>
+
             <div className="mb-2">
               <label className="text-black/70 text-xs uppercase tracking-wide font-bold">Image prompt</label>
               <p className="text-black/50 text-xs mb-1">The exact prompt sent to the image AI. Required — the base image won't generate without it.</p>
