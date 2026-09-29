@@ -41,7 +41,12 @@ export function installModelControl(slug:string){
   const client=db();
   const {data:assignment,error}=await client.from('ai_model_assignment').select('*').eq('route_key',key).maybeSingle();
   if(error)fail('Contrôle des modèles indisponible',503);
-  const requestedModel=String(original?.model_key||original?.ai_model_key||'').trim().toLowerCase();
+  const requestedModel=String(
+    original?.model_keys?.[assignment?.kind]
+    || original?.model_key
+    || original?.ai_model_key
+    || ''
+  ).trim().toLowerCase();
   let choice=assignment;
   let selectedModel:any=null;
   if(requestedModel){
