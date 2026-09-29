@@ -12,6 +12,8 @@ import { Wand2, Film, Mic, Upload, Type, Users, Layers, X, Loader2, MapPin, Shir
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const TOOL_GROUPS = [
   {
@@ -477,7 +479,6 @@ function InlineCompose({ userEmail, onDone }) {
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
   const [uploadedPhoto, setUploadedPhoto] = useState(null);
-  const [tokenCost, setTokenCost] = useState(10);
   const [aspectRatio, setAspectRatio] = useState('16:9');
   const [resultUrl, setResultUrl] = useState(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -488,12 +489,20 @@ function InlineCompose({ userEmail, onDone }) {
   const [oloSearch, setOloSearch] = useState('');
   const [loadingOlo, setLoadingOlo] = useState(true);
   const [oloError, setOloError] = useState('');
-
-  useEffect(() => {
-    base44.entities.ToolPricing.filter({ tool_id: 'compose_scene', is_active: true })
-      .then(pricing => { if (pricing[0]) setTokenCost(pricing[0].token_cost); })
-      .catch(() => {});
-  }, []);
+  const [selectedModel, setSelectedModel] = useState(null);
+  const composePricingInput = { aspect_ratio: aspectRatio, prompt };
+  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: composePricingInput,
+  });
+  const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: composePricingInput,
+    modelKey: effectiveModel,
+  });
 
   useEffect(() => {
     if (!userEmail) return;
@@ -608,7 +617,7 @@ function InlineCompose({ userEmail, onDone }) {
       ? `Cinematic production still: ${charName} in ${setName}. ${oloDirection} ${prompt} Professional film photography, dramatic lighting.`
       : `Cinematic production still: ${setName}. ${oloDirection} ${prompt} Professional film photography, dramatic lighting, atmospheric.`;
     try {
-      const res = await base44.functions.invoke('replicateGenerate', { method: 'compose_scene', prompt: genPrompt, reference_image_urls: refImages.slice(0, 3), aspect_ratio: aspectRatio });
+      const res = await base44.functions.invoke('replicateGenerate', { method: 'compose_scene', prompt: genPrompt, reference_image_urls: refImages.slice(0, 3), aspect_ratio: aspectRatio, model_key: effectiveModel || undefined });
       if (res.data?.file_url) { setResultUrl(res.data.file_url); setShowSaveModal(true); setStatus('idle'); }
       else if (res.data?.error) { setError(res.data.error.includes('Insufficient tokens') ? 'Not enough tokens. Please buy more.' : res.data.error); setStatus('idle'); }
       else { setError('Generation failed. Please try again.'); setStatus('idle'); }
@@ -628,6 +637,25 @@ function InlineCompose({ userEmail, onDone }) {
 
   return (
     <div className="space-y-4">
+      {/* AI Model */}
+      <div className="space-y-2">
+        <p className="text-white text-xs font-bold uppercase tracking-wider">AI Model</p>
+        <select
+          value={effectiveModel || ''}
+          onChange={e => setSelectedModel(e.target.value || null)}
+          disabled={modelsLoading || modelOptions.length === 0}
+          className="w-full bg-black text-yellow-400 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+        >
+          {modelsLoading && <option value="">Loading models…</option>}
+          {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
+          {modelOptions.map(m => (
+            <option key={m.model_key} value={m.model_key}>
+              {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Vault folders for picking characters */}
       <div className="space-y-2">
         <p className="text-white text-xs font-bold uppercase tracking-wider">Pick Character from Vault</p>
@@ -826,7 +854,7 @@ function InlineCompose({ userEmail, onDone }) {
 
       <button onClick={handleGenerate} disabled={(!selectedSet && !uploadedPhoto && !selectedOloAssets.length) || !prompt.trim() || tooManyOloReferences}
         className="w-full py-4 bg-yellow-400 text-black font-bold rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-yellow-300 transition-colors flex items-center justify-center gap-2 text-base">
-        <Wand2 size={18} /> Generate Scene → ({tokenCost} Ⓣ)
+        <Wand2 size={18} /> Generate Scene → {priceLoading ? '(Calculating…)' : priceQuote?.credits ? `(${priceQuote.credits} credits)` : '(auto)'}
       </button>
 
       {/* Result preview — shows after generation, before saving */}
