@@ -11,7 +11,7 @@ import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 const DURATIONS = [5, 10];
 const RATIOS = ['9:16', '16:9', '1:1', '4:3'];
 
-export default function AnimateImage({ onComplete, onClose, episodePageId, blockId, user, initialPrompt, embedded = false }) {
+export default function AnimateImage({ onComplete, onClose, episodePageId, blockId, user, initialPrompt, embedded = false, inline = false }) {
   const [imageUrl, setImageUrl] = useState(null);
   const [imageName, setImageName] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -122,12 +122,12 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
   };
 
   return (
-    <div className={`fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[calc(var(--bottom-nav-height)+1rem)] left-0 lg:left-[var(--studio-toolbar-width)] bg-yellow-400 overflow-y-auto' : 'inset-0 bg-black/80 flex items-center justify-center p-4'}`}>
+    <div className={inline ? 'relative w-full' : `fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[calc(var(--bottom-nav-height)+1rem)] left-0 lg:left-[var(--studio-toolbar-width)] bg-yellow-400 overflow-y-auto' : 'inset-0 bg-black/80 flex items-center justify-center p-4'}`}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className={embedded ? 'bg-yellow-400 min-h-full w-full p-5 pb-10 md:p-8 md:pb-12 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto'}
+        className={inline ? 'bg-yellow-400 rounded-3xl p-5 md:p-6 w-full' : (embedded ? 'bg-yellow-400 min-h-full w-full p-5 pb-10 md:p-8 md:pb-12 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto')}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
@@ -138,7 +138,7 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
             </h3>
             <p className="text-black text-sm">Bring a still image to life with AI motion</p>
           </div>
-          {!embedded && (
+          {!embedded && !inline && (
             <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
               <X size={20} className="text-black" />
             </button>
