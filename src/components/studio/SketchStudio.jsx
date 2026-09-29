@@ -344,10 +344,10 @@ export default function SketchStudio({ user }) {
             disabled={modelsLoading || modelOptions.length === 0}
             className="w-full bg-white/10 border border-white/15 rounded-xl px-4 py-3 text-yellow-400 text-sm font-bold outline-none disabled:opacity-50"
           >
-            {modelsLoading && <option value="">Loading models…</option>}
-            {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
+            {modelsLoading && <option value="" className="bg-white text-black">Loading models…</option>}
+            {!modelsLoading && modelOptions.length === 0 && <option value="" className="bg-white text-black">No model available</option>}
             {modelOptions.map(m => (
-              <option key={m.model_key} value={m.model_key}>
+              <option key={m.model_key} value={m.model_key} className="bg-white text-black">
                 {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
               </option>
             ))}
