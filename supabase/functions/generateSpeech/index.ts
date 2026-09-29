@@ -3,7 +3,8 @@ import { installModelControl } from '../_shared/modelControlRuntime.ts';
 installModelControl('generateSpeech');
 import { createClientFromRequest } from './_legacy/base44Compat.ts';
 import { serveWithCors } from './_legacy/cors.ts';
-import { createCreditBillingContext, withCreditCharge } from './_legacy/credits.ts';
+import { createCreditBillingContext, withCreditCharge } from '../_shared/credits.ts';
+import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 import { generateSpeech } from './_legacy/replicateAi.ts';
 
 const PREVIEW_TEXT = 'In a world of shadows and light, the story begins.';
@@ -26,6 +27,7 @@ serveWithCors(async (req) => {
       style = 0,
       language_code = 'en',
       preview = false,
+      model_key = null,
     } = await req.json();
 
     if (!ELEVENLABS_VOICES.has(voice)) return Response.json({ error: 'Unsupported voice' }, { status: 400 });
@@ -65,11 +67,28 @@ serveWithCors(async (req) => {
     const parsedSimilarityBoost = Number(similarity_boost);
     const parsedStyle = Number(style);
 
+    const dynamicQuote = await quoteAiService(
+      billing.service,
+      'generateSpeech',
+      {
+        text: text.slice(0, 5000),
+        voice,
+        speed: parsedSpeed,
+        stability: parsedStability,
+        similarity_boost: parsedSimilarityBoost,
+        style: parsedStyle,
+        language_code,
+      },
+      model_key || null,
+      'speech'
+    );
+
     const { result: res, charge } = await withCreditCharge({
       ...billing,
       toolId: 'tts',
       provider: 'replicate',
       relatedEntity: 'generateSpeech',
+      explicitCost: dynamicQuote.credits,
     }, () => base44.asServiceRole.integrations.Core.GenerateSpeech({
         text: text.slice(0, 5000),
         voice,
