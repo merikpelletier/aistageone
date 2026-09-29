@@ -55,7 +55,7 @@ export default function EpisodesTabBar({
                   return (
                     <div
                       key={ep.id}
-                      className={`flex items-center gap-2 px-3 py-2.5 mx-1 rounded-lg transition-colors ${isActive ? 'bg-yellow-400/15' : 'hover:bg-white/5'}`}
+                      className={`flex items-center gap-2 px-3 py-2.5 mx-1 rounded-lg border transition-colors ${isActive ? 'bg-white/10 border-yellow-400/50' : 'border-transparent hover:bg-white/5'}`}
                     >
                       <button
                         onClick={() => { selectEpisode(ep); setOpen(false); }}
