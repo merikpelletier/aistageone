@@ -68,6 +68,7 @@ export default function StoryBlocks({ user, onBack }) {
   const [selectedImageModel, setSelectedImageModel] = useState(null);
   const [selectedVideoModel, setSelectedVideoModel] = useState(null);
   const [selectedNarrationModel, setSelectedNarrationModel] = useState(null);
+  const [directorNote, setDirectorNote] = useState(''); // steering instruction for the next chapter only
 
   const storyPricingInput = {
     prompt: [
@@ -164,7 +165,6 @@ export default function StoryBlocks({ user, onBack }) {
   const [regenProgress, setRegenProgress] = useState(0);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [pendingOverride, setPendingOverride] = useState(null); // { hero_id, topic_id } — next-chapter pivot only, never mutates the session
-  const [directorNote, setDirectorNote] = useState(''); // steering instruction for the next chapter only
 
   const handlePublished = (dossierId) => {
     setActiveSession(prev => ({ ...prev, is_published: true, published_dossier_id: dossierId }));
