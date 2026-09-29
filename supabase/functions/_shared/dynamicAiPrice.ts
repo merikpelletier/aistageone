@@ -25,26 +25,48 @@ const textLength=(input:any)=>{
 
 export async function quoteAiService(serviceClient:any,service:string,rawInput:any={},requestedModel?:string|null,kind?:string|null){
   const preferredKind=kind||PRIMARY_KIND[service]||null;
-  let q=serviceClient.from('ai_model_route_option')
-    .select('route_key,service,kind,model_key,enabled,recommended,display_order,input_mapping,defaults')
-    .eq('service',service).eq('enabled',true);
-  if(preferredKind)q=q.eq('kind',preferredKind);
-  const {data:options,error}=await q.order('recommended',{ascending:false}).order('display_order',{ascending:true});
-  if(error)throw new Error(error.message);
-  let option=(options||[]).find((o:any)=>requestedModel&&o.model_key===requestedModel)
-    ||(options||[]).find((o:any)=>o.recommended)
-    ||(options||[])[0];
-  if(!option)throw new Error('Aucun modèle tarifable pour ce service');
 
-  const {data:model,error:modelError}=await serviceClient.from('ai_model_catalog').select('*').eq('model_key',option.model_key).eq('enabled',true).maybeSingle();
+  let assignmentsQuery=serviceClient.from('ai_model_assignment')
+    .select('route_key,service,kind,input_mapping,defaults,enabled,model_key')
+    .eq('service',service).eq('enabled',true);
+  if(preferredKind)assignmentsQuery=assignmentsQuery.eq('kind',preferredKind);
+  const {data:assignments,error:assignmentError}=await assignmentsQuery.limit(20);
+  if(assignmentError)throw new Error(assignmentError.message);
+  const baseAssignment=(assignments||[])[0];
+  if(!baseAssignment)throw new Error('Aucune étape compatible pour ce service');
+
+  let selectedModelKey=String(requestedModel||'').trim().toLowerCase();
+  let explicitOption:any=null;
+  if(selectedModelKey){
+    const {data:option,error:optionError}=await serviceClient.from('ai_model_route_option')
+      .select('route_key,service,kind,model_key,enabled,recommended,display_order,input_mapping,defaults')
+      .eq('service',service).eq('kind',baseAssignment.kind).eq('model_key',selectedModelKey).eq('enabled',true)
+      .order('recommended',{ascending:false}).order('display_order',{ascending:true}).limit(1).maybeSingle();
+    if(optionError)throw new Error(optionError.message);
+    explicitOption=option;
+  }else{
+    const {data:options,error:optionError}=await serviceClient.from('ai_model_route_option')
+      .select('route_key,service,kind,model_key,enabled,recommended,display_order,input_mapping,defaults')
+      .eq('service',service).eq('kind',baseAssignment.kind).eq('enabled',true)
+      .order('recommended',{ascending:false}).order('display_order',{ascending:true}).limit(1);
+    if(optionError)throw new Error(optionError.message);
+    explicitOption=(options||[])[0]||null;
+    selectedModelKey=explicitOption?.model_key||baseAssignment.model_key||'';
+  }
+  if(!selectedModelKey)throw new Error('Aucun modèle tarifable pour ce service');
+
+  const {data:model,error:modelError}=await serviceClient.from('ai_model_catalog').select('*')
+    .eq('model_key',selectedModelKey).eq('enabled',true).eq('kind',baseAssignment.kind).maybeSingle();
   if(modelError||!model)throw new Error(modelError?.message||'Modèle tarifable introuvable');
 
+  const mapping=explicitOption?.input_mapping??baseAssignment.input_mapping??{};
+  const defaults=explicitOption?.defaults??baseAssignment.defaults??{};
   const props=model.schema?.components?.schemas?.Input?.properties||{};
   const providerInput:any={...rawInput};
   for(const [key,field] of Object.entries(props)){
-    const source=option.input_mapping?.[key]||key;
+    const source=mapping?.[key]||key;
     if(providerInput[key]===undefined&&rawInput?.[source]!==undefined)providerInput[key]=rawInput[source];
-    if(providerInput[key]===undefined&&option.defaults?.[key]!==undefined)providerInput[key]=option.defaults[key];
+    if(providerInput[key]===undefined&&defaults?.[key]!==undefined)providerInput[key]=defaults[key];
     if(providerInput[key]===undefined&&(field as any)?.default!==undefined)providerInput[key]=(field as any).default;
   }
   if(providerInput.generate_audio===undefined&&rawInput?.audio_url!==undefined)providerInput.generate_audio=Boolean(rawInput.audio_url);
