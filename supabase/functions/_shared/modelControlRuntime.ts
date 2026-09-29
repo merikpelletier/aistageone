@@ -43,13 +43,23 @@ export function installModelControl(slug:string){
   if(error)fail('Contrôle des modèles indisponible',503);
   const requestedModel=String(original?.model_key||original?.ai_model_key||'').trim().toLowerCase();
   let choice=assignment;
+  let selectedModel:any=null;
   if(requestedModel){
-   const {data:option,error:oe}=await client.from('ai_model_route_option').select('*').eq('route_key',key).eq('model_key',requestedModel).eq('enabled',true).maybeSingle();
-   if(oe)fail('Choix de modèle indisponible',503);
-   if(!option)fail('Ce modèle n’est pas disponible pour cet outil',422);
-   choice={...assignment,model_key:option.model_key,input_mapping:option.input_mapping??assignment?.input_mapping??{},defaults:option.defaults??assignment?.defaults??{},enabled:option.enabled};
+   const {data:requested,error:re}=await client.from('ai_model_catalog').select('*').eq('model_key',requestedModel).eq('enabled',true).maybeSingle();
+   if(re)fail('Catalogue des modèles indisponible',503);
+   if(!requested)fail('Le modèle choisi n’est pas actif dans le catalogue',422);
+   selectedModel=requested;
+   // Apply the user's choice only to the matching creative route.
+   // Internal processing/transcription routes keep their own technical model.
+   if(assignment?.kind===requested.kind){
+    const {data:option,error:oe}=await client.from('ai_model_route_option').select('*').eq('route_key',key).eq('model_key',requestedModel).eq('enabled',true).maybeSingle();
+    if(oe)fail('Choix de modèle indisponible',503);
+    choice={...assignment,model_key:requestedModel,input_mapping:option?.input_mapping??assignment?.input_mapping??{},defaults:option?.defaults??assignment?.defaults??{},enabled:true};
+   }
   }
-  const {data:model,error:me}=choice?.model_key?await client.from('ai_model_catalog').select('*').eq('model_key',choice.model_key).maybeSingle():{data:null,error:null};
+  const {data:model,error:me}=selectedModel&&choice?.model_key===selectedModel.model_key
+    ? {data:selectedModel,error:null}
+    : choice?.model_key?await client.from('ai_model_catalog').select('*').eq('model_key',choice.model_key).maybeSingle():{data:null,error:null};
   if(me)fail('Catalogue des modèles indisponible',503);
   let providerInput;
   try{validateChoice(choice,model);providerInput=adaptInput(body.input,choice,model);}catch(e){context.failed=true;throw e;}
