@@ -626,11 +626,21 @@ serveWithCors(async (req) => {
             };
             const klingBody = { input: klingInput };
             if (webhookUrl) { klingBody.webhook = webhookUrl; klingBody.webhook_events_filter = ['completed']; }
-            const klingRes = await fetch(`${REPLICATE_API}/models/kwaivgi/kling-v2.6/predictions`, {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', 'Prefer': 'wait=5' },
-              body: JSON.stringify(klingBody),
-            });
+            const { result: klingRes } = await chargeGeneration(
+              'video',
+              klingInput,
+              videoModelKey,
+              `story_block_${block_id}_segment_${nextSegmentIndex}_video`,
+              async () => {
+                const response = await fetch(`${REPLICATE_API}/models/kwaivgi/kling-v2.6/predictions`, {
+                  method: 'POST',
+                  headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', 'Prefer': 'wait=5' },
+                  body: JSON.stringify(klingBody),
+                });
+                if (!response.ok && response.status !== 429) throw new Error(`Video provider rejected request (HTTP ${response.status})`);
+                return response;
+              },
+            );
             const klingData = await klingRes.json();
             if (klingRes.ok && klingData.id) {
               const klingNow = new Date().toISOString();
