@@ -636,7 +636,7 @@ function InlineCompose({ userEmail, onDone }) {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-28 lg:pb-32">
       {/* AI Model */}
       <div className="space-y-2">
         <p className="text-white text-xs font-bold uppercase tracking-wider">AI Model</p>
@@ -853,7 +853,7 @@ function InlineCompose({ userEmail, onDone }) {
       {error && <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>}
 
       <button onClick={handleGenerate} disabled={(!selectedSet && !uploadedPhoto && !selectedOloAssets.length) || !prompt.trim() || tooManyOloReferences}
-        className="w-full py-4 bg-yellow-400 text-black font-bold rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-yellow-300 transition-colors flex items-center justify-center gap-2 text-base">
+        className="w-full py-4 bg-yellow-400 text-black font-bold rounded-2xl disabled:bg-yellow-400/45 disabled:text-black/60 disabled:opacity-100 disabled:cursor-not-allowed hover:bg-yellow-300 transition-colors flex items-center justify-center gap-2 text-base">
         <Wand2 size={18} /> Generate Scene → {priceLoading ? '(Calculating…)' : priceQuote?.credits ? `(${priceQuote.credits} credits)` : '(auto)'}
       </button>
 
