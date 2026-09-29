@@ -9,6 +9,8 @@ import AnimateImage from '@/components/studio/AnimateImage';
 import TextToSpeech from '@/components/studio/TextToSpeech';
 import LipSync from '@/components/studio/LipSync';
 import DubbingStudio from '@/components/studio/DubbingStudio';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const PHOTO_SLOTS = [
   { key: 'front',    label: 'Full Front',  placeholder: '/placeholders/silhouette-full.svg' },
@@ -376,6 +378,20 @@ function DressActorPanel({ userEmail, onPublish, onClose }) {
   const [prompt, setPrompt] = useState('');
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
+  const [selectedModel, setSelectedModel] = useState(null);
+  const dressPricingInput = { prompt, aspect_ratio: '4:3' };
+  const { options: dressModelOptions, loading: dressModelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: dressPricingInput,
+  });
+  const effectiveDressModel = selectedModel || dressModelOptions.find(m => m.recommended)?.model_key || dressModelOptions[0]?.model_key || null;
+  const { quote: dressPriceQuote, loading: dressPriceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: dressPricingInput,
+    modelKey: effectiveDressModel,
+  });
 
   const folderColors = { red:'bg-red-500', orange:'bg-orange-500', yellow:'bg-yellow-400', green:'bg-green-500', blue:'bg-blue-500', purple:'bg-purple-500', pink:'bg-pink-500' };
 
@@ -415,7 +431,7 @@ function DressActorPanel({ userEmail, onPublish, onClose }) {
     } else if (selectedChar?.url) refImages.push(selectedChar.url);
     costumeUrls.forEach(u => refImages.push(u));
     const genPrompt = `Full body portrait of ${charName} wearing the exact costume shown in the reference image. ${prompt} High quality fashion photography, neutral background, full outfit visible.`;
-    const res = await base44.functions.invoke('replicateGenerate', { method: 'compose_scene', prompt: genPrompt, reference_image_urls: refImages.slice(0, 3), aspect_ratio: '4:3' });
+    const res = await base44.functions.invoke('replicateGenerate', { method: 'compose_scene', prompt: genPrompt, reference_image_urls: refImages.slice(0, 3), aspect_ratio: '4:3', model_key: effectiveDressModel || undefined });
     if (res.data?.file_url) {
       // Save to Vault automatically
       if (userEmail) {
@@ -457,6 +473,17 @@ function DressActorPanel({ userEmail, onPublish, onClose }) {
 
   return (
     <div className="space-y-4">
+      <div className="space-y-2">
+        <label className="block text-white text-xs font-bold uppercase tracking-wider">AI Model
+          <select className="mt-2 w-full rounded-xl border border-white/15 bg-black px-4 py-3 text-sm font-bold text-yellow-400"
+            value={effectiveDressModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={dressModelsLoading || !dressModelOptions.length}>
+            {dressModelsLoading ? <option value="">Loading models…</option> : null}
+            {!dressModelsLoading && !dressModelOptions.length ? <option value="">No model available</option> : null}
+            {dressModelOptions.map(m => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}
+          </select>
+        </label>
+        <div className="flex items-center justify-between text-xs text-white/70"><span>AI cost</span><span>{dressPriceLoading ? 'Calculating…' : dressPriceQuote?.credits ? `${dressPriceQuote.credits} credits` : 'Calculated automatically'}</span></div>
+      </div>
       {/* Actor Reference */}
       <div>
         <p className="text-white text-xs font-bold uppercase tracking-wider mb-2">Actor Reference</p>
@@ -602,16 +629,25 @@ function ComposeScene({ userEmail, onClose }) {
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
   const [uploadedPhoto, setUploadedPhoto] = useState(null);
-  const [tokenCost, setTokenCost] = useState(10);
   const [aspectRatio, setAspectRatio] = useState('16:9');
   const [generatedImageUrl, setGeneratedImageUrl] = useState(null);
+  const [selectedModel, setSelectedModel] = useState(null);
+  const composePricingInput = { prompt, aspect_ratio: aspectRatio };
+  const { options: composeModelOptions, loading: composeModelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: composePricingInput,
+  });
+  const effectiveComposeModel = selectedModel || composeModelOptions.find(m => m.recommended)?.model_key || composeModelOptions[0]?.model_key || null;
+  const { quote: composePriceQuote, loading: composePriceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: composePricingInput,
+    modelKey: effectiveComposeModel,
+  });
 
   const folderColors = { red:'bg-red-500', orange:'bg-orange-500', yellow:'bg-yellow-400', green:'bg-green-500', blue:'bg-blue-500', purple:'bg-purple-500', pink:'bg-pink-500' };
 
-  useEffect(() => {
-    base44.entities.ToolPricing.filter({ tool_id: 'compose_scene', is_active: true })
-      .then(r => { if (r[0]) setTokenCost(r[0].token_cost); }).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (!userEmail) return;
@@ -652,7 +688,7 @@ function ComposeScene({ userEmail, onClose }) {
       ? `Cinematic production still: ${charName} in ${setName}. ${prompt} Professional film photography, dramatic lighting.`
       : `Cinematic production still: ${setName}. ${prompt} Professional film photography, dramatic lighting, atmospheric.`;
     try {
-      const res = await base44.functions.invoke('replicateGenerate', { method: 'compose_scene', prompt: genPrompt, reference_image_urls: refImages.slice(0, 3), aspect_ratio: aspectRatio });
+      const res = await base44.functions.invoke('replicateGenerate', { method: 'compose_scene', prompt: genPrompt, reference_image_urls: refImages.slice(0, 3), aspect_ratio: aspectRatio, model_key: effectiveComposeModel || undefined });
       if (res.data?.file_url) {
         // Save to Vault automatically
         if (userEmail) {
@@ -691,6 +727,17 @@ function ComposeScene({ userEmail, onClose }) {
 
   return (
     <div className="space-y-4">
+      <div className="space-y-2">
+        <label className="block text-white text-xs font-bold uppercase tracking-wider">AI Model
+          <select className="mt-2 w-full rounded-xl border border-white/15 bg-black px-4 py-3 text-sm font-bold text-yellow-400"
+            value={effectiveComposeModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={composeModelsLoading || !composeModelOptions.length}>
+            {composeModelsLoading ? <option value="">Loading models…</option> : null}
+            {!composeModelsLoading && !composeModelOptions.length ? <option value="">No model available</option> : null}
+            {composeModelOptions.map(m => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}
+          </select>
+        </label>
+        <div className="flex items-center justify-between text-xs text-white/70"><span>AI cost</span><span>{composePriceLoading ? 'Calculating…' : composePriceQuote?.credits ? `${composePriceQuote.credits} credits` : 'Calculated automatically'}</span></div>
+      </div>
       {/* Debug info */}
       <div className="bg-white/5 rounded-lg p-3 text-xs text-white">
         <p>User: {userEmail || 'none'}</p>
