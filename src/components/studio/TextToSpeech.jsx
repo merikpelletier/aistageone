@@ -294,6 +294,16 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
           )}
         </div>
 
+        {/* AI Cost */}
+        <div className="mb-4 flex items-center justify-between text-sm font-semibold text-black">
+          <span>AI cost</span>
+          <span>
+            {text.trim()
+              ? (priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Unable to calculate')
+              : '0.10 USD / 1000 characters'}
+          </span>
+        </div>
+
         {/* Generate Button */}
         {!result && (
           <Button
@@ -309,7 +319,7 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
             ) : (
               <>
                 <Volume2 size={20} className="mr-2" />
-                Generate Speech{priceLoading ? ' · calculating…' : priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}
+                Generate Speech{text.trim() ? (priceLoading ? ' · calculating…' : priceQuote?.credits ? ` · ${priceQuote.credits} credits` : '') : ''}
               </>
             )}
           </Button>
