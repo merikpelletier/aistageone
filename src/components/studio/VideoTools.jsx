@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import ProductionContextInfo from '@/components/ProductionContextInfo';
 import VaultPickerModal from '@/components/studio/VaultPickerModal';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 
 const RATIOS = [
   { id: '16:9', label: 'Landscape', icon: '🎬' },
@@ -21,8 +22,8 @@ const MODES = [
 ];
 
 const DURATIONS = [
-  { id: 5, label: '5s', credits: '~$0.50' },
-  { id: 10, label: '10s', credits: '~$1.00' },
+  { id: 5, label: '5s' },
+  { id: 10, label: '10s' },
 ];
 
 const RESOLUTIONS = [
@@ -47,6 +48,12 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [userEmail, setUserEmail] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const quoteService = 'generateVideo:seedance';
+  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
+    service: quoteService,
+    kind: 'video',
+    input: { duration, resolution, aspect_ratio: aspectRatio, prompt, image_url: imagePreview || undefined, video_url: videoPreview || undefined },
+  });
 
   useEffect(() => {
     base44.auth.me().then(u => setUserEmail(u?.email)).catch(() => {});
@@ -478,7 +485,7 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
                   }`}
                 >
                   <p className="font-bold">{d.label}</p>
-                  <p className="text-xs opacity-60">{d.credits}</p>
+                  <p className="text-xs opacity-60">{duration === d.id ? (priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Automatic price') : 'Price updates automatically'}</p>
                 </button>
               ))}
             </div>
@@ -521,7 +528,7 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
             ) : (
               <>
                 <Film size={20} className="mr-2" />
-                Generate Video
+                Generate Video{priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}
               </>
             )}
           </Button>
