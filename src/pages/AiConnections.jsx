@@ -30,6 +30,8 @@ export default function AiConnections({ embedded = false, onClose = null }) {
   const [loading, setLoading] = useState(true);
   const [workingProvider, setWorkingProvider] = useState(null);
   const [notice, setNotice] = useState('');
+  const [openProvider, setOpenProvider] = useState(null);
+  const [credentialDrafts, setCredentialDrafts] = useState({});
 
   const load = async () => {
     setLoading(true);
@@ -68,25 +70,42 @@ export default function AiConnections({ embedded = false, onClose = null }) {
     if (!userId) return;
     setWorkingProvider(provider.id);
     setNotice('');
-    const existing = byProvider.get(provider.id)?.[0];
-    if (existing) {
-      setNotice(existing.status === 'connected'
-        ? `${provider.name} is already connected.`
-        : `${provider.name} is ready for credential setup.`);
-      setWorkingProvider(null);
-      return;
+    let existing = byProvider.get(provider.id)?.[0];
+    if (!existing) {
+      const { data: created, error } = await supabase.from('ai_user_connection').insert({
+        user_id: userId,
+        provider: provider.id,
+        connection_name: provider.name,
+        auth_mode: 'api_key',
+        status: 'pending',
+        metadata: { capabilities: provider.capabilities },
+      }).select('*').single();
+      if (error) {
+        setNotice(error.message);
+        setWorkingProvider(null);
+        return;
+      }
+      existing = created;
+      await load();
     }
-    const { error } = await supabase.from('ai_user_connection').insert({
-      user_id: userId,
-      provider: provider.id,
-      connection_name: provider.name,
-      auth_mode: 'api_key',
-      status: 'pending',
-      metadata: { capabilities: provider.capabilities },
-    });
-    if (error) setNotice(error.message);
-    else {
-      setNotice(`${provider.name} added. The secure credential step is next.`);
+    setOpenProvider(provider.id);
+    setWorkingProvider(null);
+  };
+
+  const runConnectionAction = async (provider, connection, action) => {
+    if (!connection) return;
+    setWorkingProvider(provider.id);
+    setNotice('');
+    const body = { action, connection_id: connection.id };
+    if (action === 'save') body.credential = credentialDrafts[provider.id] || '';
+    const { data, error } = await supabase.functions.invoke('ai-user-connection', { body });
+    if (error || data?.error) {
+      setNotice(data?.error || error?.message || 'Connection operation failed.');
+    } else {
+      setNotice(data?.message || (action === 'save' ? 'Credential saved and verified.' : 'Connection updated.'));
+      if (action === 'save') {
+        setCredentialDrafts((current) => ({ ...current, [provider.id]: '' }));
+      }
       await load();
     }
     setWorkingProvider(null);
@@ -95,10 +114,12 @@ export default function AiConnections({ embedded = false, onClose = null }) {
   const removeConnection = async (connection) => {
     setWorkingProvider(connection.provider);
     setNotice('');
+    await supabase.functions.invoke('ai-user-connection', { body: { action: 'remove_credential', connection_id: connection.id } }).catch(() => null);
     const { error } = await supabase.from('ai_user_connection').delete().eq('id', connection.id).eq('user_id', userId);
     if (error) setNotice(error.message);
     else {
       setNotice('Connection removed.');
+      setOpenProvider(null);
       await load();
     }
     setWorkingProvider(null);
@@ -190,6 +211,51 @@ export default function AiConnections({ embedded = false, onClose = null }) {
                       </button>
                     )}
                   </div>
+
+                  {connection && openProvider === provider.id && (
+                    <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+                      <label className="block text-[10px] font-bold uppercase tracking-wide text-white/45">
+                        API credential
+                        <input
+                          type="password"
+                          autoComplete="off"
+                          value={credentialDrafts[provider.id] || ''}
+                          onChange={(event) => setCredentialDrafts((current) => ({ ...current, [provider.id]: event.target.value }))}
+                          placeholder={connection.status === 'connected' ? 'Enter a new key to replace the saved credential' : 'Paste your API key'}
+                          className="mt-1 w-full border border-white/15 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-teal-400"
+                        />
+                      </label>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <button
+                          type="button"
+                          onClick={() => runConnectionAction(provider, connection, 'save')}
+                          disabled={busy || !(credentialDrafts[provider.id] || '').trim()}
+                          className="min-h-9 bg-teal-500 px-3 text-xs font-bold text-black disabled:opacity-40"
+                        >
+                          SAVE & VERIFY
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => runConnectionAction(provider, connection, 'test')}
+                          disabled={busy || connection.status === 'pending'}
+                          className="min-h-9 border border-white/15 px-3 text-xs font-bold text-white disabled:opacity-40"
+                        >
+                          TEST
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => runConnectionAction(provider, connection, 'discover')}
+                          disabled={busy || connection.status === 'pending'}
+                          className="min-h-9 border border-white/15 px-3 text-xs font-bold text-white disabled:opacity-40"
+                        >
+                          DISCOVER MODELS
+                        </button>
+                      </div>
+                      <p className="text-[10px] leading-4 text-white/40">
+                        The credential is sent directly to the secure server-side connection service and is never displayed again after saving.
+                      </p>
+                    </div>
+                  )}
                 </div>
               );
             })}
