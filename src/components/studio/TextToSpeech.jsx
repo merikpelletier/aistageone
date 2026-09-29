@@ -300,7 +300,7 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
           <span>
             {text.trim()
               ? (priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Unable to calculate')
-              : '0.10 USD / 1000 characters'}
+              : 'Cost calculated from your text'}
           </span>
         </div>
 
