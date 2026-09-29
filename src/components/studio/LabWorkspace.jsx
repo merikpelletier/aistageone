@@ -637,25 +637,6 @@ function InlineCompose({ userEmail, onDone }) {
 
   return (
     <div className="space-y-4 pb-28 lg:pb-32">
-      {/* AI Model */}
-      <div className="space-y-2">
-        <p className="text-white text-xs font-bold uppercase tracking-wider">AI Model</p>
-        <select
-          value={effectiveModel || ''}
-          onChange={e => setSelectedModel(e.target.value || null)}
-          disabled={modelsLoading || modelOptions.length === 0}
-          className="w-full bg-black text-yellow-400 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
-        >
-          {modelsLoading && <option value="">Loading models…</option>}
-          {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
-          {modelOptions.map(m => (
-            <option key={m.model_key} value={m.model_key}>
-              {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {/* Vault folders for picking characters */}
       <div className="space-y-2">
         <p className="text-white text-xs font-bold uppercase tracking-wider">Pick Character from Vault</p>
@@ -792,6 +773,29 @@ function InlineCompose({ userEmail, onDone }) {
           : <p className="rounded-xl border border-dashed border-white/15 p-6 text-center text-xs text-white/45">No published OLOSHOP asset matches this search.</p>}
 
         {tooManyOloReferences && <p className="text-xs font-semibold text-red-300">The current character, set and photo leave only {availableOloSlots} OLOSHOP slot{availableOloSlots === 1 ? '' : 's'}. Remove a selection before generating.</p>}
+      </div>
+
+      {/* AI Model — kept next to generation controls so the selected provider is always visible */}
+      <div className="space-y-2">
+        <p className="text-white text-xs font-bold uppercase tracking-wider">AI Model</p>
+        <select
+          value={effectiveModel || ''}
+          onChange={e => setSelectedModel(e.target.value || null)}
+          disabled={modelsLoading || modelOptions.length === 0}
+          className="w-full bg-black text-yellow-400 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+        >
+          {modelsLoading && <option value="">Loading models…</option>}
+          {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
+          {modelOptions.map(m => (
+            <option key={m.model_key} value={m.model_key}>
+              {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
+            </option>
+          ))}
+        </select>
+        <div className="flex items-center justify-between text-xs text-white/70">
+          <span>AI cost</span>
+          <span>{priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Calculated automatically'}</span>
+        </div>
       </div>
 
       {/* Aspect Ratio */}
