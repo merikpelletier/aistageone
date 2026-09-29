@@ -20,32 +20,69 @@ function RecordForm({title,fields,action,mutate,pending,extra={}}){
 function CostSettings({data,mutate,pending}){
   const [settings,setSettings]=useState(data.settings);
   const [rate,setRate]=useState({model_key:'',billing_type:'prediction',unit_price_usd:'',source_url:'',notes:'',quote_enabled:false});
+  const [sim,setSim]=useState({model_key:data.models?.[0]?.model_key||'',units:5,tool_cost:2});
+  const selectedModel=(data.models||[]).find(m=>m.model_key===sim.model_key);
+  const supplierUsd=selectedModel?Number(selectedModel.unit_price_usd||0)*Number(sim.units||0):0;
+  const bufferedUsd=supplierUsd*(1+Number(settings.cost_buffer_pct||0)/100);
+  const cad=bufferedUsd*Number(settings.usd_to_cad_rate||0);
+  const modelCredits=settings.credit_value_cad?Math.ceil(cad/Number(settings.credit_value_cad)):null;
+  const totalCredits=modelCredits==null?null:modelCredits+Number(sim.tool_cost||0);
   return <>
-    <Panel title="Réglages AISTAGE.ONE">
-      <p className="text-sm text-white/60">Les coûts Replicate sont en USD. Le taux de conversion et la valeur nette du crédit servent aux estimations administratives.</p>
-      <form onSubmit={e=>{e.preventDefault();mutate({action:'save_settings',...settings});}} className="grid gap-4 md:grid-cols-3">
+    <Panel title="Réglages du calcul des crédits">
+      <p className="text-sm text-white/60">Ces valeurs servent à convertir le coût fournisseur en crédits AISTAGE.ONE. Elles ne modifient aucun tarif de modèle.</p>
+      <form onSubmit={e=>{e.preventDefault();mutate({action:'save_settings',...settings});}} className="grid gap-4 md:grid-cols-4">
         <Field label="Valeur nette d’un crédit (CAD)" type="number" min="0.000001" step="any" value={settings.credit_value_cad??''} onChange={e=>setSettings({...settings,credit_value_cad:e.target.value})}/>
         <Field label="1 USD = … CAD" type="number" min="0.000001" step="any" value={settings.usd_to_cad_rate??''} onChange={e=>setSettings({...settings,usd_to_cad_rate:e.target.value})}/>
+        <Field label="Marge de sécurité (%)" type="number" min="0" max="100" step="0.1" value={settings.cost_buffer_pct??0} onChange={e=>setSettings({...settings,cost_buffer_pct:e.target.value})}/>
         <button disabled={pending} className={`${buttonClass} self-end`}>Enregistrer les réglages</button>
       </form>
-      <p className="text-xs text-white/50">Ces réglages servent au suivi des coûts. Ils ne modifient pas les prix facturés aux membres.</p>
     </Panel>
-    <Panel title="Tarifs Replicate">
-      <p className="text-sm text-white/60">Les modèles du catalogue et leurs tarifs selon paramètres se gèrent dans l’onglet Modèles IA. Ce formulaire concerne uniquement les anciens modèles hors catalogue.</p>
+
+    <Panel title="Simulateur coût → crédits">
+      <p className="text-sm text-white/60">Utilise ce calculateur pour décider du coût modèle en crédits avant de l’assigner à un outil.</p>
+      <div className="grid gap-4 md:grid-cols-4">
+        <label className="text-sm text-white/70">Modèle<select className={fieldClass} value={sim.model_key} onChange={e=>setSim({...sim,model_key:e.target.value})}>{(data.models||[]).map(m=><option key={m.model_key} value={m.model_key}>{m.name||m.model_key}</option>)}</select></label>
+        <Field label="Unités facturées" type="number" min="0" step="any" value={sim.units} onChange={e=>setSim({...sim,units:e.target.value})}/>
+        <Field label="Coût fixe outil (crédits)" type="number" min="0" step="1" value={sim.tool_cost} onChange={e=>setSim({...sim,tool_cost:e.target.value})}/>
+        <div className="rounded border border-white/10 p-3 text-sm">
+          <p className="text-white/50">Type</p>
+          <p>{selectedModel?.billing_type||'—'}</p>
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-4">
+        <div className="rounded border border-white/10 p-3"><p className="text-xs text-white/50">Coût fournisseur</p><p className="text-xl">{cash(supplierUsd,'USD')}</p></div>
+        <div className="rounded border border-white/10 p-3"><p className="text-xs text-white/50">Avec sécurité</p><p className="text-xl">{cash(bufferedUsd,'USD')}</p></div>
+        <div className="rounded border border-white/10 p-3"><p className="text-xs text-white/50">Crédits modèle</p><p className="text-xl">{modelCredits==null?'Réglages requis':modelCredits}</p></div>
+        <div className="rounded border border-white/10 p-3"><p className="text-xs text-white/50">Total avec outil</p><p className="text-xl">{totalCredits==null?'—':`${totalCredits} crédits`}</p></div>
+      </div>
+      {selectedModel?.capabilities?.pricing?.mode==='conditional'&&<p className="text-amber-200 text-sm">Ce modèle a une tarification conditionnelle. Le simulateur utilise ici son tarif unitaire de référence; vérifie les conditions dans Modèles IA pour un calcul exact.</p>}
+    </Panel>
+
+    <Panel title="Coût fixe des outils">
+      <p className="text-sm text-white/60">Ce coût est la partie fixe AISTAGE.ONE. Le coût du modèle s’ajoute séparément.</p>
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {(data.pricing||[]).map(p=><form key={p.id} onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);mutate({action:'save_tool_pricing',id:p.id,token_cost:fd.get('token_cost')});}} className="rounded border border-white/10 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2"><div><p>{p.tool_name||p.tool_id}</p><p className="text-xs text-white/40">{p.tool_id}</p></div><span className={p.is_active?'text-green-300':'text-white/40'}>{p.is_active?'Actif':'Inactif'}</span></div>
+          <div className="flex items-end gap-2"><Field name="token_cost" label="Crédits fixes" type="number" min="0" step="1" defaultValue={p.token_cost??0}/><button disabled={pending} className={buttonClass}>Sauver</button></div>
+        </form>)}
+      </div>
+    </Panel>
+
+    <Panel title="Modèles disponibles et coût configuré">
+      <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr>{['Modèle','Type','Tarification','Coût fournisseur','Utilisé dans'].map(h=><th key={h} className="p-3">{h}</th>)}</tr></thead><tbody>{(data.models||[]).map(m=>{const routes=(data.routeOptions||[]).filter(o=>o.model_key===m.model_key&&o.enabled);return <tr key={m.model_key} className="border-t border-white/10"><td className="p-3">{m.name||m.model_key}<div className="text-xs text-white/40">{m.model_key}</div></td><td className="p-3">{m.kind}</td><td className="p-3">{m.billing_type}</td><td className="p-3">{m.unit_price_usd==null?'—':`${m.unit_price_usd} USD`}</td><td className="p-3">{routes.length?routes.map(r=>r.service).join(', '):'Non assigné'}</td></tr>})}</tbody></table></div>
+    </Panel>
+
+    <Panel title="Tarifs Replicate hérités">
+      <p className="text-sm text-white/60">Réservé aux anciens modèles qui ne sont pas encore dans Modèles IA.</p>
       <label className="block text-sm">Modifier un tarif existant<select className={fieldClass} value={rate.model_key} onChange={e=>setRate(data.rates.find(r=>r.model_key===e.target.value)||{model_key:'',billing_type:'prediction',unit_price_usd:'',source_url:'',quote_enabled:false})}><option value="">Nouveau tarif</option>{data.rates.map(r=><option key={r.model_key}>{r.model_key}</option>)}</select></label>
       <form onSubmit={e=>{e.preventDefault();mutate({action:'save_rate',...rate});}} className="grid gap-3 md:grid-cols-3">
-        <Field required label="Identifiant du modèle" value={rate.model_key} placeholder="elevenlabs/v3" onChange={e=>setRate({...rate,model_key:e.target.value})}/>
+        <Field required label="Identifiant du modèle" value={rate.model_key} onChange={e=>setRate({...rate,model_key:e.target.value})}/>
         <label className="text-sm text-white/70">Facturation<select className={fieldClass} value={rate.billing_type} onChange={e=>setRate({...rate,billing_type:e.target.value})}>{[['prediction','Par prédiction'],['characters','Par 1 000 caractères'],['output_seconds','Par seconde produite'],['runtime_seconds','Par seconde de calcul'],['tokens','Par 1 000 unités texte']].map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
         <Field required label="Prix unitaire USD" type="number" min="0.000000001" step="any" value={rate.unit_price_usd} onChange={e=>setRate({...rate,unit_price_usd:e.target.value})}/>
-        {rate.billing_type==='tokens'&&<Field required label="Prix des 1 000 unités de sortie USD" type="number" min="0" step="any" value={rate.output_unit_price_usd??''} onChange={e=>setRate({...rate,output_unit_price_usd:e.target.value})}/>}
-        {rate.billing_type==='runtime_seconds'&&<Field required label="Limite de calcul (5 à 240 secondes)" type="number" min="5" max="240" value={rate.max_runtime_seconds??''} onChange={e=>setRate({...rate,max_runtime_seconds:e.target.value})}/>}
         <Field required label="Source officielle Replicate" type="url" value={rate.source_url} onChange={e=>setRate({...rate,source_url:e.target.value})}/>
-        <Field label="Notes et variantes couvertes" value={rate.notes??''} onChange={e=>setRate({...rate,notes:e.target.value})}/>
-        <label className="flex gap-2 text-sm md:col-span-3"><input type="checkbox" checked={rate.quote_enabled} onChange={e=>setRate({...rate,quote_enabled:e.target.checked})}/>Tarif vérifié et suffisamment prudent pour toutes les options accessibles de ce modèle.</label>
         <button disabled={pending} className={buttonClass}>Enregistrer le tarif</button>
       </form>
     </Panel>
-    <Panel title="Tarifs actuels"><div className="grid gap-2 md:grid-cols-3">{data.pricing.map(p=><div key={p.id} className="rounded border border-white/10 p-3"><p>{p.tool_name||p.tool_id}</p><p className="text-sm text-white/60">{p.is_active?`${p.token_cost??'—'} crédits`:'Inactif'}</p></div>)}</div></Panel>
   </>;
 }
 export default function AdminFinance({section='transactions'}){
