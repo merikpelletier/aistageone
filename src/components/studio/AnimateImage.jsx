@@ -7,6 +7,7 @@ import VaultPickerModal from '@/components/studio/VaultPickerModal';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const DURATIONS = [5, 10];
 const RATIOS = ['9:16', '16:9', '1:1', '4:3'];
@@ -194,6 +195,23 @@ export default function AnimateImage({ onComplete, onClose, episodePageId, block
             ))}
           </select>
         </div>
+        <div className="mb-4">
+          <p className="text-black text-xs font-bold uppercase tracking-wider mb-2">AI Model</p>
+          <select
+            value={activeModel}
+            onChange={e => setSelectedModel(e.target.value)}
+            disabled={modelsLoading || modelOptions.length === 0}
+            className="w-full bg-black text-yellow-400 rounded-xl px-4 py-3 text-sm font-bold"
+          >
+            {modelOptions.length === 0 && <option value="">{modelsLoading ? 'Loading models…' : 'No model available'}</option>}
+            {modelOptions.map(m => (
+              <option key={m.model_key} value={m.model_key}>
+                {m.name}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Duration & Ratio */}
         <div className="mb-4 grid grid-cols-2 gap-4">
           <div>
