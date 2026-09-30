@@ -71,7 +71,7 @@ export default function AdminDossiers() {
 
   const { data: allPages = [] } = useQuery({
     queryKey: ['adminDossierPages'],
-    queryFn: () => base44.entities.DossierPage.list('order', 1000),
+    queryFn: () => base44.entities.DossierPage.listAll('order'),
   });
 
   const createDossierMutation = useMutation({
