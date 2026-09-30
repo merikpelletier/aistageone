@@ -47,7 +47,47 @@ Deno.serve(async (req) => {
   const object = event.data?.object || {};
   const metadata = object.metadata || {};
 
-  if (event.type === 'checkout.session.completed') {
+  if (event.type === 'checkout.session.completed' && metadata.aistage_type === 'fan_donation') {
+    const donationId = metadata.aistage_donation_id;
+    if (donationId) {
+      const { data: donation } = await service.from('fan_donation').select('*').eq('id', donationId).maybeSingle();
+      if (donation) {
+        const paid = object.payment_status === 'paid';
+        await service.from('fan_donation').update({
+          stripe_account_id: accountId || donation.stripe_account_id,
+          stripe_checkout_session_id: object.id || donation.stripe_checkout_session_id,
+          stripe_payment_intent_id: object.payment_intent || null,
+          status: paid ? 'paid' : 'pending',
+          paid_at: paid ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString(),
+        }).eq('id', donationId);
+
+        if (paid) {
+          const { data: fanRows } = await service.from('profile_fan_subscription')
+            .select('*')
+            .eq('target_profile_id', donation.creator_email)
+            .eq('email', donation.donor_email)
+            .limit(1);
+
+          if (fanRows?.length) {
+            await service.from('profile_fan_subscription').update({
+              status: 'active',
+              unsubscribed_at: null,
+            }).eq('id', fanRows[0].id);
+          } else {
+            await service.from('profile_fan_subscription').insert({
+              target_profile_id: donation.creator_email,
+              email: donation.donor_email,
+              status: 'active',
+              created_at: new Date().toISOString(),
+            });
+          }
+        }
+      }
+    }
+  }
+
+  if (event.type === 'checkout.session.completed' && metadata.aistage_type !== 'fan_donation') {
     const creatorId = metadata.aistage_creator_id;
     const creatorEmail = metadata.aistage_creator_email;
     const subscriberId = metadata.aistage_subscriber_id;
