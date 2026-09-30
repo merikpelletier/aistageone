@@ -88,7 +88,7 @@ export default function AdminSponsorBrackets() {
           onClick={() => setAdding(!adding)}
           className="flex items-center gap-2 px-4 py-2 bg-white text-black text-sm font-medium rounded-lg hover:bg-white/90 transition-colors"
         >
-          <Plus size={15} /> Add Bracket
+          <Plus size={15} /> Add Sponsorship Package
         </button>
       </div>
 
@@ -102,7 +102,7 @@ export default function AdminSponsorBrackets() {
 
       {isLoading && <p className="text-white text-sm text-center py-8">Loading...</p>}
       {!isLoading && brackets.length === 0 && (
-        <p className="text-white text-sm text-center py-8">No pricing brackets yet.</p>
+        <p className="text-white text-sm text-center py-8">No sponsorship packages yet.</p>
       )}
 
       <div className="space-y-3">
