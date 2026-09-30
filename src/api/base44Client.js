@@ -63,6 +63,26 @@ function createEntityClient(entityName) {
       return data || [];
     },
 
+    async listAll(sort) {
+      const batchSize = 1000;
+      const rows = [];
+      let from = 0;
+
+      while (true) {
+        let query = supabase.from(table).select('*');
+        query = applyOrdering(query, sort);
+        query = query.range(from, from + batchSize - 1);
+        const { data, error } = await query;
+        throwIfError(error);
+        const batch = data || [];
+        rows.push(...batch);
+        if (batch.length < batchSize) break;
+        from += batchSize;
+      }
+
+      return rows;
+    },
+
     async filter(filters = {}, sort, limit = 100) {
       let query = supabase.from(table).select('*');
       query = applyFilters(query, filters);
@@ -71,6 +91,27 @@ function createEntityClient(entityName) {
       const { data, error } = await query;
       throwIfError(error);
       return data || [];
+    },
+
+    async filterAll(filters = {}, sort) {
+      const batchSize = 1000;
+      const rows = [];
+      let from = 0;
+
+      while (true) {
+        let query = supabase.from(table).select('*');
+        query = applyFilters(query, filters);
+        query = applyOrdering(query, sort);
+        query = query.range(from, from + batchSize - 1);
+        const { data, error } = await query;
+        throwIfError(error);
+        const batch = data || [];
+        rows.push(...batch);
+        if (batch.length < batchSize) break;
+        from += batchSize;
+      }
+
+      return rows;
     },
 
     async get(id) {
