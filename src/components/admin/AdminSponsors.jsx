@@ -5,10 +5,11 @@ import { Plus, Trash2, ExternalLink, Check, X } from 'lucide-react';
 import AdminSponsorBrackets from './AdminSponsorBrackets';
 import AdminSponsorSales from './AdminSponsorSales';
 import AdminSponsorRequests from './AdminSponsorRequests';
+import AdminFanDonations from './AdminFanDonations';
 
 export default function AdminSponsors() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState('requests'); // 'requests' | 'sponsors' | 'pricing' | 'sales'
+  const [tab, setTab] = useState('requests'); // 'requests' | 'sponsors' | 'pricing' | 'sales' | 'donations'
   const [newForm, setNewForm] = useState({ member_email: '', image_url: '', link: '' });
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -50,7 +51,7 @@ export default function AdminSponsors() {
     <div className="space-y-4">
       {/* Sub-tab toggle */}
       <div className="flex gap-2 border-b border-white/10 pb-3">
-        {[['requests', 'Requests'], ['sponsors', 'Active Sponsors'], ['pricing', 'Pricing Brackets'], ['sales', 'Sales & Payouts']].map(([key, label]) => (
+        {[['requests', 'Requests'], ['sponsors', 'Active Sponsors'], ['pricing', 'Pricing Brackets'], ['sales', 'Sales & Payouts'], ['donations', 'Fan Donations']].map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -66,6 +67,7 @@ export default function AdminSponsors() {
       {tab === 'requests' && <AdminSponsorRequests />}
       {tab === 'pricing' && <AdminSponsorBrackets />}
       {tab === 'sales' && <AdminSponsorSales />}
+      {tab === 'donations' && <AdminFanDonations />}
 
       {tab === 'sponsors' && <>
       {/* Add button */}
