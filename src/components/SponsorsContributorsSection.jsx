@@ -58,12 +58,14 @@ export default function SponsorsContributorsSection({ userEmail }) {
     enabled: !!userEmail,
   });
 
-  const totalMemberEarnings = sales.reduce((sum, s) => sum + (s.member_share || 0), 0);
+  const donationCreatorEarnings = donations.reduce((sum, d) => sum + Number(d.creator_share_cents || 0) / 100, 0);
+  const donationGross = donations.reduce((sum, d) => sum + Number(d.amount_cents || 0) / 100, 0);
+  const totalMemberEarnings = sales.reduce((sum, s) => sum + (s.member_share || 0), 0) + donationCreatorEarnings;
   const totalSalesAmount = sales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
   const activeSponsors = sponsors.filter(s => s.status === 'active' || s.status === 'approved');
   const activeFans = fans.filter(f => f.status === 'active');
 
-  if (sponsorsLoading || salesLoading || fansLoading) return null;
+  if (sponsorsLoading || salesLoading || fansLoading || donationsLoading) return null;
 
   const toggleSection = (section) => {
     setExpandedSection(prev => prev === section ? null : section);
@@ -243,7 +245,7 @@ export default function SponsorsContributorsSection({ userEmail }) {
             <Users size={16} className="text-blue-400" />
             <span className="text-white text-sm font-bold uppercase tracking-wide">Fans ({fans.length})</span>
           </div>
-          <span className="text-blue-400 text-sm font-bold">{activeFans.length} active</span>
+          <span className="text-blue-400 text-sm font-bold">{activeFans.length} active · ${donationGross.toFixed(2)} donated</span>
         </button>
 
         {expandedSection === 'fans' && (
