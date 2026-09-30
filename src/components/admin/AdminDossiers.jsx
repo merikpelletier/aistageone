@@ -47,7 +47,7 @@ function DossierPagesIndex({ pages, onManage }) {
 
 const PAGE_TYPE_ICONS = {
   cover: '🖼️', text: '📝', image: '🎨', video: '🎬', mixed: '🗂️',
-  join_cast: '🎭', episode: '🎬', series: '📺', member_episodes: '🌟', block_player: '▶', index: '☰', contest: '🏆',
+  join_cast: '🎭', episode: '🎬', series: '📺', member_episodes: '🌟', block_player: '▶', index: '☰', contest: '🏆', credits: '✦',
 };
 
 export default function AdminDossiers() {
@@ -778,6 +778,7 @@ function PageEditor({ dossier, pages, onClose }) {
                   <SelectItem value="cover">Cover</SelectItem>
                   <SelectItem value="index">☰ Visual Index</SelectItem>
                   <SelectItem value="contest">🏆 Contest / Open Call</SelectItem>
+                  <SelectItem value="credits">✦ Credits</SelectItem>
                   <SelectItem value="text">Text only</SelectItem>
                   <SelectItem value="image">Image only</SelectItem>
                   <SelectItem value="video">Video only</SelectItem>
@@ -796,6 +797,177 @@ function PageEditor({ dossier, pages, onClose }) {
               <div className="p-3 bg-neutral-800/50 border border-white/10 rounded space-y-2">
                 <p className="text-white text-sm font-medium">☰ Visual dossier index</p>
                 <p className="text-white/60 text-xs">This page automatically displays all other public dossier pages as visual cards. Use the title and text fields below for its heading and introduction.</p>
+              </div>
+            )}
+
+            {/* Credits fields */}
+            {editingPage.page_type === 'credits' && (
+              <div className="p-4 bg-neutral-800/50 border border-white/10 rounded space-y-4">
+                <div>
+                  <p className="text-white text-sm font-medium">✦ Structured Credits</p>
+                  <p className="text-white/55 text-xs mt-1">
+                    Add sections such as Characters & Actors, Director, Writer, Sets, Costumes or Sponsors. Each section can have an optional image. Product Placements are added automatically from the dossier.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  {(editingPage.credits_sections || []).map((section, sectionIndex) => (
+                    <div key={sectionIndex} className="border border-white/10 bg-neutral-950 p-4 space-y-3">
+                      <div className="flex gap-2 items-start">
+                        <Input
+                          value={section.title || ''}
+                          onChange={(e) => {
+                            const next = [...(editingPage.credits_sections || [])];
+                            next[sectionIndex] = { ...next[sectionIndex], title: e.target.value };
+                            setEditingPage({ ...editingPage, credits_sections: next });
+                          }}
+                          placeholder="Section title (e.g. Characters & Actors)"
+                          className="bg-neutral-900 border-white/10 text-white"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const next = (editingPage.credits_sections || []).filter((_, i) => i !== sectionIndex);
+                            setEditingPage({ ...editingPage, credits_sections: next });
+                          }}
+                          className="text-white hover:text-red-500"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-white/70 text-xs">Section image (optional)</label>
+                        {section.image_url ? (
+                          <div className="flex items-start gap-3">
+                            <img src={section.image_url} alt="" className="w-28 h-36 object-cover border border-white/10" />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => {
+                                const next = [...(editingPage.credits_sections || [])];
+                                next[sectionIndex] = { ...next[sectionIndex], image_url: '' };
+                                setEditingPage({ ...editingPage, credits_sections: next });
+                              }}
+                              className="text-white hover:text-red-500"
+                            >
+                              Remove image
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              id={`credit-section-image-${sectionIndex}`}
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                                const next = [...(editingPage.credits_sections || [])];
+                                next[sectionIndex] = { ...next[sectionIndex], image_url: file_url };
+                                setEditingPage({ ...editingPage, credits_sections: next });
+                              }}
+                            />
+                            <label htmlFor={`credit-section-image-${sectionIndex}`}>
+                              <Button type="button" asChild className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700">
+                                <span><Upload size={14} className="mr-2" />Add section image</span>
+                              </Button>
+                            </label>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-white/70 text-xs uppercase tracking-wider">Credits in this section</p>
+                        {(section.entries || []).map((entry, entryIndex) => (
+                          <div key={entryIndex} className="grid grid-cols-1 md:grid-cols-[180px_1fr_1fr_auto] gap-2 items-start">
+                            <Input
+                              value={entry.role || ''}
+                              onChange={(e) => {
+                                const next = [...(editingPage.credits_sections || [])];
+                                const entries = [...(next[sectionIndex].entries || [])];
+                                entries[entryIndex] = { ...entries[entryIndex], role: e.target.value };
+                                next[sectionIndex] = { ...next[sectionIndex], entries };
+                                setEditingPage({ ...editingPage, credits_sections: next });
+                              }}
+                              placeholder="Role / Character"
+                              className="bg-neutral-900 border-white/10 text-white"
+                            />
+                            <Input
+                              value={entry.name || ''}
+                              onChange={(e) => {
+                                const next = [...(editingPage.credits_sections || [])];
+                                const entries = [...(next[sectionIndex].entries || [])];
+                                entries[entryIndex] = { ...entries[entryIndex], name: e.target.value };
+                                next[sectionIndex] = { ...next[sectionIndex], entries };
+                                setEditingPage({ ...editingPage, credits_sections: next });
+                              }}
+                              placeholder="Name"
+                              className="bg-neutral-900 border-white/10 text-white"
+                            />
+                            <Input
+                              value={entry.note || ''}
+                              onChange={(e) => {
+                                const next = [...(editingPage.credits_sections || [])];
+                                const entries = [...(next[sectionIndex].entries || [])];
+                                entries[entryIndex] = { ...entries[entryIndex], note: e.target.value };
+                                next[sectionIndex] = { ...next[sectionIndex], entries };
+                                setEditingPage({ ...editingPage, credits_sections: next });
+                              }}
+                              placeholder="Note (optional)"
+                              className="bg-neutral-900 border-white/10 text-white"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                const next = [...(editingPage.credits_sections || [])];
+                                const entries = (next[sectionIndex].entries || []).filter((_, i) => i !== entryIndex);
+                                next[sectionIndex] = { ...next[sectionIndex], entries };
+                                setEditingPage({ ...editingPage, credits_sections: next });
+                              }}
+                              className="text-white hover:text-red-500"
+                            >
+                              <Trash2 size={15} />
+                            </Button>
+                          </div>
+                        ))}
+
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            const next = [...(editingPage.credits_sections || [])];
+                            const entries = [...(next[sectionIndex].entries || []), { role: '', name: '', note: '' }];
+                            next[sectionIndex] = { ...next[sectionIndex], entries };
+                            setEditingPage({ ...editingPage, credits_sections: next });
+                          }}
+                          className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"
+                        >
+                          <Plus size={14} className="mr-2" />Add credit
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <Button
+                    type="button"
+                    onClick={() => setEditingPage({
+                      ...editingPage,
+                      credits_sections: [
+                        ...(editingPage.credits_sections || []),
+                        { title: '', image_url: '', entries: [{ role: '', name: '', note: '' }] }
+                      ]
+                    })}
+                    className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"
+                  >
+                    <Plus size={14} className="mr-2" />Add credits section
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -1141,7 +1313,7 @@ function PageEditor({ dossier, pages, onClose }) {
             )}
 
             {/* Product Configuration */}
-            {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && <><div className="flex items-center gap-2 pt-2">
+            {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && editingPage.page_type !== 'credits' && <><div className="flex items-center gap-2 pt-2">
               <input
                 type="checkbox"
                 id="page-is-product"
