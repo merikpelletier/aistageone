@@ -21,7 +21,8 @@
         "member_episodes",
         "block_player",
         "index",
-        "contest"
+        "contest",
+        "credits"
       ],
       "description": "Type of content block"
     },
@@ -392,6 +393,28 @@
     "contest_accent_color": {
       "type": "string",
       "description": "Accent color used by the contest call-to-action"
+    },
+    "credits_sections": {
+      "type": "array",
+      "description": "Structured credits sections. Each section can optionally have an image and contains role/name/note entries.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "image_url": { "type": "string" },
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": { "type": "string" },
+                "name": { "type": "string" },
+                "note": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "required": [
