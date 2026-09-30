@@ -1,76 +1,37 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, CheckCircle, ChevronDown, AlertCircle, ExternalLink, ArrowLeft, ArrowRight, Image, MessageSquare } from 'lucide-react';
-import { addDays, addWeeks, addMonths, format } from 'date-fns';
-import PromoMessageSection from '@/components/PromoMessageSection';
-
-// ─── helpers ───────────────────────────────────────────────────────────────
-const isValidUrl = (val) => {
-  try { new URL(val.startsWith('http') ? val : `https://${val}`); return true; } catch { return false; }
-};
-
-const computeEndDate = (start, durationStr) => {
-  if (!durationStr) return null;
-  const s = durationStr.toLowerCase();
-  if (s.includes('week')) { const n = parseInt(s) || 1; return addWeeks(start, n); }
-  if (s.includes('month')) { const n = parseInt(s) || 1; return addMonths(start, n); }
-  if (s.includes('day')) { const n = parseInt(s) || 7; return addDays(start, n); }
-  return addDays(start, 30);
-};
+import { CheckCircle } from 'lucide-react';
 
 const MAX_FILE_MB = 2;
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
-const STEPS = ['profile', 'package', 'banner', 'contact', 'review'];
-const STEP_LABELS = { profile: 'Profile', package: 'Package', banner: 'Banner', contact: 'Contact', review: 'Review' };
-
-// ─── Step indicator ─────────────────────────────────────────────────────────
-function StepBar({ currentStep, skipProfile }) {
-  const steps = skipProfile ? STEPS.filter(s => s !== 'profile') : STEPS;
-  const idx = steps.indexOf(currentStep);
-  return (
-    <div className="flex items-center justify-center gap-1 mb-8">
-      {steps.map((s, i) => (
-        <React.Fragment key={s}>
-          <div className={`flex flex-col items-center`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${i < idx ? 'bg-black text-white' : i === idx ? 'bg-black text-white ring-4 ring-black/30' : 'bg-white border-2 border-black/30 text-black'}`}>
-              {i < idx ? <CheckCircle size={14} /> : i + 1}
-            </div>
-            <span className={`text-xs mt-1 tracking-wide font-medium ${i === idx ? 'text-black' : i < idx ? 'text-black' : 'text-black'}`}>{STEP_LABELS[s]}</span>
-          </div>
-          {i < steps.length - 1 && <div className={`flex-1 h-0.5 mx-1 mb-5 transition-colors ${i < idx ? 'bg-black' : 'bg-black/20'}`} />}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-}
-
-// ─── Main page ──────────────────────────────────────────────────────────────
 export default function SponsorRequest() {
   const [searchParams] = useSearchParams();
   const preselectedEmail = searchParams.get('member') || '';
-
-  const [sponsorType, setSponsorType] = useState(''); // 'banner' | 'message'
-  const [step, setStep] = useState(preselectedEmail ? 'package' : 'profile');
   const [profiles, setProfiles] = useState([]);
   const [brackets, setBrackets] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
+  const [contents, setContents] = useState([]);
+  const [loadingContents, setLoadingContents] = useState(false);
+  const [uploading, setUploading] = useState('');
+  const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [imageError, setImageError] = useState('');
-  const [linkError, setLinkError] = useState('');
-  const [submitted, setSubmitted] = useState(null);
-  const topRef = useRef(null);
-
   const [form, setForm] = useState({
     member_email: preselectedEmail,
+    target_content_id: '',
     bracket_id: '',
     sponsor_name: '',
     sponsor_email: '',
+    logo_url: '',
     image_url: '',
     link: '',
+    promo_title: '',
+    promo_text: '',
+    cta_label: 'Learn more',
+    placement_logo: true,
+    placement_link: true,
+    placement_promo: false,
+    placement_mention: false,
     terms_accepted: false,
   });
 
@@ -78,483 +39,185 @@ export default function SponsorRequest() {
     Promise.all([
       base44.entities.MemberProfile.list('display_name'),
       base44.entities.SponsorBracket.filter({ is_active: true }, 'name'),
-    ]).then(([p, b]) => { setProfiles(p); setBrackets(b); setLoadingData(false); });
+    ]).then(([p, b]) => {
+      setProfiles(p || []);
+      setBrackets(b || []);
+    });
   }, []);
 
-  const selectedBracket = brackets.find(b => b.id === form.bracket_id);
-  const selectedProfile = profiles.find(p => p.user_email === form.member_email);
+  useEffect(() => {
+    if (!form.member_email) {
+      setContents([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingContents(true);
+    base44.functions.invoke('getMemberDossiers', { memberEmail: form.member_email })
+      .then(res => { if (!cancelled) setContents(res.data?.dossiers || []); })
+      .catch(() => { if (!cancelled) setContents([]); })
+      .finally(() => { if (!cancelled) setLoadingContents(false); });
+    return () => { cancelled = true; };
+  }, [form.member_email]);
 
-  const goTo = (s) => { setStep(s); topRef.current?.scrollIntoView({ behavior: 'smooth' }); };
+  const selectedProfile = useMemo(() => profiles.find(p => p.user_email === form.member_email), [profiles, form.member_email]);
+  const selectedContent = useMemo(() => contents.find(d => String(d.id) === String(form.target_content_id)), [contents, form.target_content_id]);
+  const selectedBracket = useMemo(() => brackets.find(b => b.id === form.bracket_id), [brackets, form.bracket_id]);
 
-  // ── image upload with validation ──
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const upload = async (event, field) => {
+    const file = event.target.files?.[0];
     if (!file) return;
-    setImageError('');
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      setImageError('Only JPG, PNG, WebP, or GIF files are accepted.');
+    if (!ACCEPTED_TYPES.includes(file.type) || file.size > MAX_FILE_MB * 1024 * 1024) {
+      alert('Use JPG, PNG, WebP or GIF under 2 MB.');
       return;
     }
-    if (file.size > MAX_FILE_MB * 1024 * 1024) {
-      setImageError(`File must be under ${MAX_FILE_MB}MB.`);
-      return;
-    }
-    setUploading(true);
+    setUploading(field);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setForm(f => ({ ...f, image_url: file_url }));
+      const result = await base44.integrations.Core.UploadFile({ file });
+      setForm(f => ({ ...f, [field]: result.file_url }));
     } finally {
-      setUploading(false);
+      setUploading('');
     }
   };
 
-  const validateLink = (val) => {
-    if (!val) { setLinkError('Destination link is required.'); return false; }
-    if (!isValidUrl(val)) { setLinkError('Please enter a valid URL (e.g. https://example.com)'); return false; }
-    setLinkError('');
-    return true;
-  };
-
-  // ── submit ──
-  const handleSubmit = async () => {
-    if (!form.terms_accepted) return;
+  const submit = async () => {
+    if (!form.member_email || !selectedContent || !selectedBracket || !form.sponsor_name || !form.sponsor_email || !form.terms_accepted) return;
+    const price = Number(selectedBracket.price || 0);
     setSubmitting(true);
     try {
-      const price = selectedBracket?.price || 0;
-      const record = await base44.entities.ProfileSponsor.create({
+      await base44.entities.ProfileSponsor.create({
         member_email: form.member_email,
-        bracket_id: form.bracket_id,
-        bracket_name: selectedBracket?.name || '',
+        target_content_id: String(selectedContent.id),
+        target_content_title: selectedContent.title || 'Untitled content',
+        target_content_type: 'dossier',
+        bracket_id: selectedBracket.id,
+        bracket_name: selectedBracket.name || '',
         bracket_price: price,
-        bracket_duration: selectedBracket?.duration || '',
-        platform_share: parseFloat((price * 0.30).toFixed(2)),
-        member_share: parseFloat((price * 0.70).toFixed(2)),
+        bracket_duration: '',
+        platform_share: Number((price * 0.30).toFixed(2)),
+        member_share: Number((price * 0.70).toFixed(2)),
         sponsor_name: form.sponsor_name,
         sponsor_email: form.sponsor_email,
+        logo_url: form.logo_url,
         image_url: form.image_url,
-        link: form.link.startsWith('http') ? form.link : `https://${form.link}`,
+        link: form.link ? (form.link.startsWith('http') ? form.link : 'https://' + form.link) : '',
+        promo_title: form.promo_title,
+        promo_text: form.promo_text,
+        cta_label: form.cta_label || 'Learn more',
+        placement_logo: form.placement_logo,
+        placement_link: form.placement_link,
+        placement_promo: form.placement_promo,
+        placement_mention: form.placement_mention,
         is_active: false,
         status: 'pending',
         terms_accepted: true,
         submitted_at: new Date().toISOString(),
       });
-      setSubmitted(record);
+      setSubmitted(true);
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loadingData) {
-    return (
-      <div className="min-h-screen bg-yellow-400 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  // ── Success screen ──
   if (submitted) {
-    return (
-      <div className="min-h-screen bg-yellow-400 flex items-center justify-center px-4 pb-20">
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl p-10 text-center shadow-xl max-w-sm w-full">
-          <CheckCircle size={52} className="text-green-500 mx-auto mb-5" />
-          <h2 className="text-xl font-extralight tracking-widest mb-3">REQUEST SUBMITTED</h2>
-          <p className="text-black text-sm leading-relaxed mb-6">
-            Your sponsorship request is <strong className="text-black">pending review</strong>.<br />
-            We'll contact you at <strong>{form.sponsor_email}</strong> once approved.
-          </p>
-          <div className="bg-black/5 rounded-xl p-4 text-left space-y-2 text-xs text-black">
-            <div className="flex justify-between"><span>Profile</span><span className="text-black font-medium">{selectedProfile?.display_name || form.member_email}</span></div>
-            <div className="flex justify-between"><span>Package</span><span className="text-black font-medium">{selectedBracket?.name} — {selectedBracket?.duration}</span></div>
-            <div className="flex justify-between"><span>Amount</span><span className="text-black font-bold">${selectedBracket?.price}</span></div>
-            <div className="flex justify-between pt-2 border-t border-black/10"><span>Status</span><span className="text-yellow-600 font-semibold">Pending Review</span></div>
-          </div>
-        </motion.div>
+    return <div className="min-h-screen bg-yellow-400 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white p-8 text-center">
+        <CheckCircle size={48} className="mx-auto mb-4 text-green-600" />
+        <h1 className="text-2xl font-bold tracking-widest">REQUEST SUBMITTED</h1>
+        <p className="mt-3 text-sm">Your sponsorship request for <strong>{selectedContent?.title}</strong> is pending review.</p>
+        <div className="mt-5 border-t border-black/10 pt-4 text-left text-sm space-y-1">
+          <p><strong>Creator:</strong> {selectedProfile?.display_name || form.member_email}</p>
+          <p><strong>Content:</strong> {selectedContent?.title}</p>
+          <p><strong>Package:</strong> {selectedBracket?.name}</p>
+          <p><strong>Amount:</strong> {selectedBracket?.price} CAD</p>
+        </div>
       </div>
-    );
+    </div>;
   }
 
-  return (
-    <div className="min-h-screen bg-yellow-400 pb-24 px-4 pt-8" ref={topRef}>
-      <div className="max-w-lg mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-widest mb-2">BECOME A SPONSOR</h1>
-          <p className="text-black text-sm">Choose how you'd like to reach our community.</p>
+  return <div className="min-h-screen bg-yellow-400 p-4 pb-24">
+    <div className="max-w-2xl mx-auto bg-white p-6 md:p-8 space-y-7">
+      <div>
+        <h1 className="text-3xl font-bold tracking-widest">BECOME A SPONSOR</h1>
+        <p className="mt-2 text-sm text-black/70">Choose a creator and the exact content where your sponsor presence will appear.</p>
+      </div>
+
+      <section className="space-y-3">
+        <h2 className="font-bold tracking-wider">1. CREATOR</h2>
+        <select value={form.member_email} onChange={e => setForm(f => ({ ...f, member_email: e.target.value, target_content_id: '' }))} className="w-full border border-black/20 p-3">
+          <option value="">Choose a creator…</option>
+          {profiles.map(p => <option key={p.id} value={p.user_email}>{p.display_name || p.user_email}</option>)}
+        </select>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="font-bold tracking-wider">2. CONTENT TO SPONSOR</h2>
+        {!form.member_email ? <p className="text-sm text-black/50">Choose a creator first.</p> :
+          loadingContents ? <p className="text-sm">Loading published content…</p> :
+          contents.length === 0 ? <p className="text-sm text-black/50">This creator has no published content available.</p> :
+          <div className="grid gap-3 sm:grid-cols-2">
+            {contents.map(d => <button key={d.id} type="button" onClick={() => setForm(f => ({ ...f, target_content_id: String(d.id) }))} className={'text-left border p-3 ' + (String(form.target_content_id) === String(d.id) ? 'border-black bg-black text-white' : 'border-black/20')}>
+              {d.cover_image && <img src={d.cover_image} alt="" className="w-full h-28 object-cover mb-2" />}
+              <p className="font-semibold">{d.title || 'Untitled content'}</p>
+              {d.category && <p className="text-xs opacity-60 mt-1">{d.category}</p>}
+            </button>)}
+          </div>}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="font-bold tracking-wider">3. SPONSORSHIP PACKAGE</h2>
+        <div className="grid gap-2">
+          {brackets.map(b => <button key={b.id} type="button" onClick={() => setForm(f => ({ ...f, bracket_id: b.id }))} className={'flex items-center justify-between border p-4 ' + (form.bracket_id === b.id ? 'border-black bg-black text-white' : 'border-black/20')}>
+            <span className="font-semibold">{b.name}</span>
+            <span className="font-bold">{b.price} CAD</span>
+          </button>)}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="font-bold tracking-wider">4. SPONSOR PRESENCE</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[
+            ['placement_logo','Logo'],
+            ['placement_link','Clickable link'],
+            ['placement_promo','Promo block'],
+            ['placement_mention','Sponsor mention'],
+          ].map(([key,label]) => <label key={key} className="flex items-center gap-2 border border-black/15 p-3"><input type="checkbox" checked={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))}/><span>{label}</span></label>)}
         </div>
 
-        {/* ── Sponsor type selector ── */}
-        {!sponsorType && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-            <button
-              onClick={() => setSponsorType('banner')}
-              className="w-full flex items-start gap-4 bg-white rounded-2xl p-5 border-2 border-transparent hover:border-black transition-all text-left"
-            >
-              <div className="w-12 h-12 bg-black/5 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Image size={22} className="text-black" />
-              </div>
-              <div>
-                <p className="font-bold text-base">Profile Banner</p>
-                <p className="text-black text-sm mt-0.5">Place your banner image on a member's profile page for a chosen duration.</p>
-              </div>
-            </button>
-            <button
-              onClick={() => setSponsorType('message')}
-              className="w-full flex items-start gap-4 bg-white rounded-2xl p-5 border-2 border-transparent hover:border-black transition-all text-left"
-            >
-              <div className="w-12 h-12 bg-black/5 rounded-xl flex items-center justify-center flex-shrink-0">
-                <MessageSquare size={22} className="text-black" />
-              </div>
-              <div>
-                <p className="font-bold text-base">Promo Message</p>
-                <p className="text-black text-sm mt-0.5">Send a scheduled promotional message directly in one of our chat rooms.</p>
-              </div>
-            </button>
-          </motion.div>
-        )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="text-sm">Sponsor name<input className="mt-1 w-full border border-black/20 p-3" value={form.sponsor_name} onChange={e=>setForm(f=>({...f,sponsor_name:e.target.value}))}/></label>
+          <label className="text-sm">Sponsor email<input className="mt-1 w-full border border-black/20 p-3" type="email" value={form.sponsor_email} onChange={e=>setForm(f=>({...f,sponsor_email:e.target.value}))}/></label>
+        </div>
 
-        {/* ── Back to type selector ── */}
-        {sponsorType && (
-          <button
-            onClick={() => setSponsorType('')}
-            className="flex items-center gap-2 text-black hover:text-black text-sm mb-4 transition-colors"
-          >
-            <ArrowLeft size={14} /> Change type
-          </button>
-        )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="text-sm">Logo
+            <input className="mt-1 block w-full" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={e=>upload(e,'logo_url')}/>
+            {uploading==='logo_url' && <span className="text-xs">Uploading…</span>}
+            {form.logo_url && <img src={form.logo_url} alt="Sponsor logo" className="mt-2 h-16 max-w-full object-contain border border-black/10 p-2"/>}
+          </label>
+          <label className="text-sm">Promo image
+            <input className="mt-1 block w-full" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={e=>upload(e,'image_url')}/>
+            {uploading==='image_url' && <span className="text-xs">Uploading…</span>}
+            {form.image_url && <img src={form.image_url} alt="Promo" className="mt-2 h-24 w-full object-cover border border-black/10"/>}
+          </label>
+        </div>
 
-        {/* ── Promo Message Flow ── */}
-        {sponsorType === 'message' && <PromoMessageSection />}
+        <label className="text-sm block">Destination link<input className="mt-1 w-full border border-black/20 p-3" placeholder="https://…" value={form.link} onChange={e=>setForm(f=>({...f,link:e.target.value}))}/></label>
+        <label className="text-sm block">Promo title<input className="mt-1 w-full border border-black/20 p-3" value={form.promo_title} onChange={e=>setForm(f=>({...f,promo_title:e.target.value}))}/></label>
+        <label className="text-sm block">Promo text<textarea className="mt-1 w-full border border-black/20 p-3" rows="3" value={form.promo_text} onChange={e=>setForm(f=>({...f,promo_text:e.target.value}))}/></label>
+        <label className="text-sm block">CTA label<input className="mt-1 w-full border border-black/20 p-3" value={form.cta_label} onChange={e=>setForm(f=>({...f,cta_label:e.target.value}))}/></label>
+      </section>
 
-        {/* ── Banner Flow ── */}
-        {sponsorType === 'banner' && <>
-        <StepBar currentStep={step} skipProfile={!!preselectedEmail} />
+      {selectedBracket && <div className="border-t border-black/15 pt-4 text-sm">
+        <p>Total: <strong>{selectedBracket.price} CAD</strong></p>
+        <p>AISTAGE: {(Number(selectedBracket.price) * 0.30).toFixed(2)} · Creator: {(Number(selectedBracket.price) * 0.70).toFixed(2)}</p>
+      </div>}
 
-        <AnimatePresence mode="wait">
+      <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={form.terms_accepted} onChange={e=>setForm(f=>({...f,terms_accepted:e.target.checked}))}/><span>I confirm that I have the rights to the logo, images, text and links submitted for this sponsorship.</span></label>
 
-          {/* ── STEP 1: Profile ── */}
-          {step === 'profile' && (
-            <motion.div key="profile" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
-              <div className="bg-white rounded-2xl p-5 space-y-4">
-                <h2 className="text-sm font-semibold tracking-widest text-black">CHOOSE A PROFILE TO SPONSOR</h2>
-                <div className="relative">
-                  <select
-                    value={form.member_email}
-                    onChange={e => setForm(f => ({ ...f, member_email: e.target.value }))}
-                    className="w-full px-4 py-3 bg-black/5 border border-black/10 rounded-xl text-sm appearance-none focus:outline-none focus:border-black pr-10"
-                  >
-                    <option value="">Select a member profile...</option>
-                    {profiles.map(p => (
-                      <option key={p.id} value={p.user_email}>
-                        {p.display_name || p.user_email}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
-                </div>
-                {selectedProfile && (
-                  <div className="flex items-center gap-3 p-3 bg-black/5 rounded-xl">
-                    {selectedProfile.avatar_url && <img src={selectedProfile.avatar_url} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />}
-                    <div>
-                      <p className="font-semibold text-sm">{selectedProfile.display_name}</p>
-                      {selectedProfile.title && <p className="text-xs text-black">{selectedProfile.title}</p>}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <NavButtons
-                onNext={() => goTo('package')}
-                nextDisabled={!form.member_email}
-                hideBack
-              />
-            </motion.div>
-          )}
-
-          {/* ── STEP 2: Package ── */}
-          {step === 'package' && (
-            <motion.div key="package" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
-              <div className="bg-white rounded-2xl p-5 space-y-3">
-                <h2 className="text-sm font-semibold tracking-widest text-black">CHOOSE A SPONSORSHIP PACKAGE</h2>
-                {brackets.length === 0 && <p className="text-black text-sm py-4 text-center">No packages available at the moment.</p>}
-                {brackets.map(b => {
-                  const selected = form.bracket_id === b.id;
-                  const startDate = new Date();
-                  const endDate = computeEndDate(startDate, b.duration);
-                  return (
-                    <button
-                      key={b.id}
-                      onClick={() => setForm(f => ({ ...f, bracket_id: b.id }))}
-                      className={`w-full text-left px-4 py-4 rounded-xl border-2 transition-all ${selected ? 'border-black bg-black text-white' : 'border-black/25 bg-white hover:border-black/60 hover:shadow-sm'}`}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="font-bold text-base">{b.name}</p>
-                          <p className={`text-xs mt-0.5 font-medium ${selected ? 'text-white' : 'text-black/55'}`}>{b.duration}</p>
-                        </div>
-                        <span className="text-2xl font-bold">${b.price}</span>
-                      </div>
-                      {endDate && (
-                        <div className={`text-xs mt-2 pt-2 border-t font-medium ${selected ? 'border-white/20 text-white' : 'border-black/15 text-black/55'}`}>
-                          Active: {format(startDate, 'MMM d')} → {format(endDate, 'MMM d, yyyy')}
-                        </div>
-                      )}
-                      <div className={`mt-1.5 flex gap-3 text-xs ${selected ? 'text-white' : 'text-black'}`}>
-                        <span>Platform: ${(b.price * 0.30).toFixed(2)} (30%)</span>
-                        <span>·</span>
-                        <span>Member earns: ${(b.price * 0.70).toFixed(2)} (70%)</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              <NavButtons onBack={() => goTo('profile')} onNext={() => goTo('banner')} nextDisabled={!form.bracket_id} />
-            </motion.div>
-          )}
-
-          {/* ── STEP 3: Banner ── */}
-          {step === 'banner' && (
-            <motion.div key="banner" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
-              <div className="bg-white rounded-2xl p-5 space-y-4">
-                <div>
-                  <h2 className="text-sm font-semibold tracking-widest text-black mb-1">UPLOAD YOUR BANNER</h2>
-                  <p className="text-xs text-black">JPG, PNG, WebP or GIF · Max {MAX_FILE_MB}MB · Recommended: 1200×200px</p>
-                </div>
-
-                {form.image_url ? (
-                  <div className="space-y-2">
-                    <p className="text-xs text-black font-medium">Preview (as it appears on profile):</p>
-                    <div className="bg-black/5 border border-black/10 rounded-xl overflow-hidden p-2">
-                      <img src={form.image_url} alt="Banner preview" className="w-full h-20 object-contain rounded" />
-                    </div>
-                    <button onClick={() => { setForm(f => ({ ...f, image_url: '' })); setImageError(''); }} className="text-xs text-black hover:text-black underline">Remove & upload different image</button>
-                  </div>
-                ) : (
-                  <>
-                    <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${imageError ? 'border-red-400 bg-red-50' : 'border-black/20 hover:border-black/40 bg-black/3'}`}>
-                      <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleImageUpload} className="hidden" />
-                      {uploading ? (
-                        <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <Upload size={22} className="text-black mb-2" />
-                          <span className="text-sm text-black">Click to upload</span>
-                          <span className="text-xs text-black mt-1">JPG, PNG, WebP, GIF · Max {MAX_FILE_MB}MB</span>
-                        </>
-                      )}
-                    </label>
-                    {imageError && <p className="text-red-500 text-xs flex items-center gap-1"><AlertCircle size={12} /> {imageError}</p>}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-px bg-black/10" />
-                      <span className="text-xs text-black">or paste URL</span>
-                      <div className="flex-1 h-px bg-black/10" />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="https://example.com/banner.jpg"
-                      value={form.image_url}
-                      onChange={e => { setImageError(''); setForm(f => ({ ...f, image_url: e.target.value })); }}
-                      className="w-full px-4 py-3 bg-black/5 border border-black/10 rounded-xl text-sm focus:outline-none focus:border-black"
-                    />
-                  </>
-                )}
-
-                <div>
-                  <label className="block text-xs tracking-widest text-black mb-2">DESTINATION LINK *</label>
-                  <input
-                    type="text"
-                    placeholder="https://yourwebsite.com"
-                    value={form.link}
-                    onChange={e => { setForm(f => ({ ...f, link: e.target.value })); if (linkError) validateLink(e.target.value); }}
-                    onBlur={e => validateLink(e.target.value)}
-                    className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none ${linkError ? 'border-red-400 bg-red-50' : 'bg-black/5 border-black/10 focus:border-black'}`}
-                  />
-                  {linkError && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12} /> {linkError}</p>}
-                  {form.link && !linkError && isValidUrl(form.link) && (
-                    <a href={form.link.startsWith('http') ? form.link : `https://${form.link}`} target="_blank" rel="noreferrer" className="mt-1 text-xs text-black hover:text-black flex items-center gap-1">
-                      <ExternalLink size={10} /> Preview link
-                    </a>
-                  )}
-                </div>
-              </div>
-              <NavButtons
-                onBack={() => goTo('package')}
-                onNext={() => {
-                  if (!validateLink(form.link)) return;
-                  if (!form.image_url) { setImageError('Please upload or paste a banner image.'); return; }
-                  goTo('contact');
-                }}
-                nextDisabled={!form.image_url || !!linkError || !form.link}
-              />
-            </motion.div>
-          )}
-
-          {/* ── STEP 4: Contact ── */}
-          {step === 'contact' && (
-            <motion.div key="contact" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
-              <div className="bg-white rounded-2xl p-5 space-y-4">
-                <h2 className="text-sm font-semibold tracking-widest text-black">YOUR CONTACT INFO</h2>
-                <input
-                  type="text"
-                  placeholder="Company or your name *"
-                  value={form.sponsor_name}
-                  onChange={e => setForm(f => ({ ...f, sponsor_name: e.target.value }))}
-                  className="w-full px-4 py-3 bg-black/5 border border-black/10 rounded-xl text-sm focus:outline-none focus:border-black"
-                />
-                <input
-                  type="email"
-                  placeholder="Email address *"
-                  value={form.sponsor_email}
-                  onChange={e => setForm(f => ({ ...f, sponsor_email: e.target.value }))}
-                  className="w-full px-4 py-3 bg-black/5 border border-black/10 rounded-xl text-sm focus:outline-none focus:border-black"
-                />
-              </div>
-              <NavButtons
-                onBack={() => goTo('banner')}
-                onNext={() => goTo('review')}
-                nextDisabled={!form.sponsor_name || !form.sponsor_email || !form.sponsor_email.includes('@')}
-              />
-            </motion.div>
-          )}
-
-          {/* ── STEP 5: Review & Submit ── */}
-          {step === 'review' && (
-            <motion.div key="review" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
-
-              {/* Order summary */}
-              <div className="bg-white rounded-2xl p-5 space-y-4">
-                <h2 className="text-sm font-semibold tracking-widest text-black">ORDER SUMMARY</h2>
-
-                <div className="flex items-center gap-3 p-3 bg-black/5 rounded-xl">
-                  {selectedProfile?.avatar_url && <img src={selectedProfile.avatar_url} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />}
-                  <div>
-                    <p className="font-semibold text-sm">{selectedProfile?.display_name || form.member_email}</p>
-                    {selectedProfile?.title && <p className="text-xs text-black">{selectedProfile.title}</p>}
-                  </div>
-                </div>
-
-                {/* Banner preview */}
-                <div>
-                  <p className="text-xs text-black mb-1">Banner preview</p>
-                  <div className="bg-black/5 border border-black/10 rounded-xl overflow-hidden p-2">
-                    <img src={form.image_url} alt="Banner" className="w-full h-20 object-contain rounded" />
-                  </div>
-                  <a href={form.link.startsWith('http') ? form.link : `https://${form.link}`} target="_blank" rel="noreferrer" className="mt-1 text-xs text-black hover:text-black flex items-center gap-1">
-                    <ExternalLink size={10} /> {form.link}
-                  </a>
-                </div>
-
-                {/* Pricing breakdown */}
-                {selectedBracket && (() => {
-                  const start = new Date();
-                  const end = computeEndDate(start, selectedBracket.duration);
-                  return (
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between"><span className="text-black">Package</span><span>{selectedBracket.name}</span></div>
-                      <div className="flex justify-between"><span className="text-black">Duration</span><span>{selectedBracket.duration}</span></div>
-                      {end && <div className="flex justify-between"><span className="text-black">Active period</span><span>{format(start, 'MMM d')} – {format(end, 'MMM d, yyyy')}</span></div>}
-                      <div className="flex justify-between text-xs text-black pt-1">
-                        <span>Platform fee (30%)</span><span>${(selectedBracket.price * 0.30).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-xs text-black">
-                        <span>Member earnings (70%)</span><span>${(selectedBracket.price * 0.70).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-base pt-2 border-t border-black/10">
-                        <span>Total</span><span>${selectedBracket.price}</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                <div className="bg-black/5 rounded-xl p-3 space-y-1 text-xs text-black">
-                  <p><span className="font-medium text-black">From:</span> {form.sponsor_name} ({form.sponsor_email})</p>
-                </div>
-              </div>
-
-              {/* Sponsorship status info */}
-              <div className="bg-white rounded-2xl p-5">
-                <h2 className="text-sm font-semibold tracking-widest text-black mb-3">SUBMISSION STATUS</h2>
-                <div className="flex gap-3">
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-6 h-6 rounded-full bg-yellow-400 border-2 border-black flex items-center justify-center text-xs font-bold">1</div>
-                    <div className="flex-1 w-px bg-black/10" />
-                    <div className="w-6 h-6 rounded-full bg-black/10 border-2 border-black/20 flex items-center justify-center text-xs font-bold text-black">2</div>
-                    <div className="flex-1 w-px bg-black/10" />
-                    <div className="w-6 h-6 rounded-full bg-black/10 border-2 border-black/20 flex items-center justify-center text-xs font-bold text-black">3</div>
-                  </div>
-                  <div className="flex-1 space-y-4 text-xs">
-                    <div>
-                      <p className="font-semibold text-black">Pending Review</p>
-                      <p className="text-black">Your request is submitted and waiting for admin approval.</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-black">Approved</p>
-                      <p className="text-black">Admin approves and sets your banner live.</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-black">Active</p>
-                      <p className="text-black">Your banner is displayed on the selected profile.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Terms */}
-              <div className="bg-white rounded-2xl p-5">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.terms_accepted}
-                    onChange={e => setForm(f => ({ ...f, terms_accepted: e.target.checked }))}
-                    className="mt-1 w-4 h-4 accent-black cursor-pointer"
-                  />
-                  <span className="text-xs text-black leading-relaxed">
-                    I agree that my banner submission is subject to review and approval. I confirm that the banner content is legal, not misleading, and I accept the sponsorship terms. Sponsorship fees are non-refundable once the banner goes live.
-                  </span>
-                </label>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => goTo('contact')}
-                  className="flex items-center gap-2 px-5 py-3 bg-white text-black text-sm rounded-xl border border-black/10 hover:bg-black/5 transition-colors"
-                >
-                  <ArrowLeft size={15} /> Back
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={!form.terms_accepted || submitting}
-                  className="flex-1 py-3 bg-black text-white text-sm tracking-widest font-medium disabled:opacity-30 hover:bg-black/80 transition-colors rounded-xl"
-                >
-                  {submitting ? 'Submitting...' : 'SUBMIT REQUEST'}
-                </button>
-              </div>
-
-              <p className="text-center text-xs text-black/35 pb-4">
-                Payment will be arranged by our team after approval.
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        </>}
-      </div>
-    </div>
-  );
-}
-
-function NavButtons({ onBack, onNext, nextDisabled, hideBack }) {
-  return (
-    <div className="flex gap-3">
-      {!hideBack && (
-        <button onClick={onBack} className="flex items-center gap-2 px-5 py-3 bg-white text-black text-sm rounded-xl border border-black/10 hover:bg-black/5 transition-colors">
-          <ArrowLeft size={15} /> Back
-        </button>
-      )}
-      <button
-        onClick={onNext}
-        disabled={nextDisabled}
-        className="flex-1 flex items-center justify-center gap-2 py-3 bg-black text-white text-sm tracking-widest font-medium disabled:opacity-30 hover:bg-black/80 transition-colors rounded-xl"
-      >
-        Continue <ArrowRight size={15} />
+      <button type="button" onClick={submit} disabled={submitting || !form.member_email || !form.target_content_id || !form.bracket_id || !form.sponsor_name || !form.sponsor_email || !form.terms_accepted} className="w-full bg-black text-white py-4 font-bold tracking-wider disabled:opacity-30">
+        {submitting ? 'SUBMITTING…' : 'SUBMIT SPONSORSHIP REQUEST'}
       </button>
     </div>
-  );
+  </div>;
 }
