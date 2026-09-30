@@ -1,6 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 
+function isVideo(url) {
+  return /\.(mp4|webm|ogg)(\?|$)/i.test(url || '');
+}
+
 function formatDeadline(value) {
   if (!value) return '';
   const date = new Date(value);
