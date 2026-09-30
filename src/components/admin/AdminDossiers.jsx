@@ -806,7 +806,7 @@ function PageEditor({ dossier, pages, onClose }) {
                 <div>
                   <p className="text-white text-sm font-medium">✦ Structured Credits</p>
                   <p className="text-white/55 text-xs mt-1">
-                    Add sections such as Characters & Actors, Director, Writer, Sets, Costumes or Sponsors. Each section can have an optional image. Product Placements are added automatically from the dossier.
+                    Add sections such as Characters & Actors, Director, Writer, Sets, Costumes or Sponsors. Product Placements are added automatically from the dossier.
                   </p>
                 </div>
 
@@ -838,48 +838,6 @@ function PageEditor({ dossier, pages, onClose }) {
                         </Button>
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="text-white/70 text-xs">Section image (optional)</label>
-                        {section.image_url ? (
-                          <div className="flex items-start gap-3">
-                            <img src={section.image_url} alt="" className="w-28 h-36 object-cover border border-white/10" />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={() => {
-                                const next = [...(editingPage.credits_sections || [])];
-                                next[sectionIndex] = { ...next[sectionIndex], image_url: '' };
-                                setEditingPage({ ...editingPage, credits_sections: next });
-                              }}
-                              className="text-white hover:text-red-500"
-                            >
-                              Remove image
-                            </Button>
-                          </div>
-                        ) : (
-                          <>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              id={`credit-section-image-${sectionIndex}`}
-                              className="hidden"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                const { file_url } = await base44.integrations.Core.UploadFile({ file });
-                                const next = [...(editingPage.credits_sections || [])];
-                                next[sectionIndex] = { ...next[sectionIndex], image_url: file_url };
-                                setEditingPage({ ...editingPage, credits_sections: next });
-                              }}
-                            />
-                            <label htmlFor={`credit-section-image-${sectionIndex}`}>
-                              <Button type="button" asChild className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700">
-                                <span><Upload size={14} className="mr-2" />Add section image</span>
-                              </Button>
-                            </label>
-                          </>
-                        )}
-                      </div>
 
                       <div className="space-y-2">
                         <p className="text-white/70 text-xs uppercase tracking-wider">Credits in this section</p>
@@ -1002,7 +960,7 @@ function PageEditor({ dossier, pages, onClose }) {
                       ...editingPage,
                       credits_sections: [
                         ...(editingPage.credits_sections || []),
-                        { title: '', image_url: '', entries: [{ role: '', name: '', note: '' }] }
+                        { title: '', entries: [{ role: '', name: '', note: '' }] }
                       ]
                     })}
                     className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"
