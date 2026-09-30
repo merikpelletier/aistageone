@@ -17,6 +17,55 @@ function Panel({title,children}){return <section className="space-y-4 rounded-lg
 function RecordForm({title,fields,action,mutate,pending,extra={}}){
   return <Panel title={title}><form onSubmit={e=>{e.preventDefault();mutate({action,...Object.fromEntries(new FormData(e.currentTarget)),...extra});}} className="grid gap-3 md:grid-cols-3">{fields.map(f=><Field key={f.name} required {...f}/>)}<div className="self-end"><button disabled={pending} className={buttonClass}>Enregistrer</button></div></form></Panel>;
 }
+function DonationSettings({data,mutate,pending}) {
+  const [settings,setSettings]=useState({
+    platform_fee_percent:data?.platform_fee_percent ?? 10,
+    minimum_amount_cents:data?.minimum_amount_cents ?? 200,
+    maximum_amount_cents:data?.maximum_amount_cents ?? 100000,
+  });
+  const minCad=Number(settings.minimum_amount_cents||0)/100;
+  const maxCad=Number(settings.maximum_amount_cents||0)/100;
+  return <Panel title="Fan Donations">
+    <p className="text-sm text-white/60">Configure AISTAGE's percentage on each fan donation and the allowed donation range.</p>
+    <form
+      onSubmit={e=>{e.preventDefault();mutate({action:'save_donation_settings',...settings});}}
+      className="grid gap-4 md:grid-cols-3"
+    >
+      <Field
+        label="AISTAGE share (%)"
+        type="number"
+        min="0"
+        max="100"
+        step="0.1"
+        value={settings.platform_fee_percent}
+        onChange={e=>setSettings({...settings,platform_fee_percent:e.target.value})}
+      />
+      <Field
+        label="Minimum donation (CAD)"
+        type="number"
+        min="1"
+        step="1"
+        value={minCad}
+        onChange={e=>setSettings({...settings,minimum_amount_cents:Math.round(Number(e.target.value||0)*100)})}
+      />
+      <Field
+        label="Maximum donation (CAD)"
+        type="number"
+        min="1"
+        step="1"
+        value={maxCad}
+        onChange={e=>setSettings({...settings,maximum_amount_cents:Math.round(Number(e.target.value||0)*100)})}
+      />
+      <div className="md:col-span-3 flex flex-wrap items-center gap-4">
+        <button disabled={pending} className={buttonClass}>Save donation settings</button>
+        <span className="text-sm text-white/55">
+          Example: a $100 CAD donation gives AISTAGE {(100*Number(settings.platform_fee_percent||0)/100).toFixed(2)} CAD and the creator {(100*(1-Number(settings.platform_fee_percent||0)/100)).toFixed(2)} CAD.
+        </span>
+      </div>
+    </form>
+  </Panel>;
+}
+
 function CostSettings({data,mutate,pending}){
   const [settings,setSettings]=useState(data.settings);
   const [rate,setRate]=useState({model_key:'',billing_type:'prediction',unit_price_usd:'',source_url:'',notes:'',quote_enabled:false});
@@ -147,7 +196,8 @@ export default function AdminFinance({section='transactions'}){
     {section==='costs'?<>
       <div className="grid gap-3 md:grid-cols-4">{[['Coûts USD connus',cash(knownUsd,'USD')],['Crédits consommés',credits],['Coûts inconnus',unknown],['Marge estimée CAD',margin==null?'Non déterminable':cash(margin)]].map(([label,value])=><Panel key={label} title={label}><p className="text-2xl">{value}</p></Panel>)}</div>
       <p className="text-sm text-white/60">Les coûts sont des estimations, conservées avec leur tarif et leur conversion. Les crédits ne sont pas des encaissements. Un historique incomplet empêche le calcul d’une marge globale fiable.</p>
-      <p className="text-sm text-white/60">Les appels récents disponibles chez Replicate sont importés à l’ouverture du registre. Les générations antérieures à cette collecte peuvent manquer. {data.sync?.warning}</p><CostSettings key={data.settings.updated_at} data={data} mutate={mutate} pending={mutation.isPending}/>
+      <p className="text-sm text-white/60">Les appels récents disponibles chez Replicate sont importés à l’ouverture du registre. Les générations antérieures à cette collecte peuvent manquer. {data.sync?.warning}</p><DonationSettings key={data.donationSettings?.updated_at || 'donations'} data={data.donationSettings} mutate={mutate} pending={mutation.isPending}/>
+      <CostSettings key={data.settings.updated_at} data={data} mutate={mutate} pending={mutation.isPending}/>
       <Panel title="Appels Replicate"><div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr>{['Date UTC','Outil','Modèle','Durée calcul','Coût USD','État'].map(h=><th key={h} className="p-3">{h}</th>)}</tr></thead><tbody>{events.map(e=><tr key={e.prediction_id} className="border-t border-white/10"><td className="p-3">{dateLabel(e.created_at)}</td><td className="p-3">{e.tool_id||e.function_name||'Interne'}</td><td className="p-3">{e.model_key}</td><td className="p-3">{e.usage?.runtime_seconds==null?'—':`${e.usage.runtime_seconds} s`}</td><td className="p-3">{cash(e.cost_usd,'USD')}</td><td className="p-3">{e.status}</td></tr>)}</tbody></table>{!events.length&&<p className="p-5 text-white/60">Aucun appel enregistré pour cette période.</p>}</div></Panel>
     </>:<>
       <p className="text-sm text-white/60">Les commandes, crédits, commandites et achats numériques sont présentés séparément pour éviter de compter deux fois une vente. La devise des anciennes commandes n’est pas renseignée. Leurs taxes doivent être vérifiées sur les justificatifs.</p>
