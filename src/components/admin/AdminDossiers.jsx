@@ -884,7 +884,8 @@ function PageEditor({ dossier, pages, onClose }) {
                       <div className="space-y-2">
                         <p className="text-white/70 text-xs uppercase tracking-wider">Credits in this section</p>
                         {(section.entries || []).map((entry, entryIndex) => (
-                          <div key={entryIndex} className="grid grid-cols-1 md:grid-cols-[180px_1fr_1fr_auto] gap-2 items-start">
+                          <div key={entryIndex} className="space-y-2 border-b border-white/10 pb-3 last:border-b-0">
+                            <div className="grid grid-cols-1 md:grid-cols-[180px_1fr_1fr_auto] gap-2 items-start">
                             <Input
                               value={entry.role || ''}
                               onChange={(e) => {
@@ -935,6 +936,47 @@ function PageEditor({ dossier, pages, onClose }) {
                             >
                               <Trash2 size={15} />
                             </Button>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                              {entry.image_url && <img src={entry.image_url} alt="" className="h-14 w-14 object-cover border border-white/10" />}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                id={`credit-entry-image-${sectionIndex}-${entryIndex}`}
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                                  const next = [...(editingPage.credits_sections || [])];
+                                  const entries = [...(next[sectionIndex].entries || [])];
+                                  entries[entryIndex] = { ...entries[entryIndex], image_url: file_url };
+                                  next[sectionIndex] = { ...next[sectionIndex], entries };
+                                  setEditingPage({ ...editingPage, credits_sections: next });
+                                }}
+                              />
+                              <label htmlFor={`credit-entry-image-${sectionIndex}-${entryIndex}`}>
+                                <Button type="button" asChild className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700">
+                                  <span><Upload size={14} className="mr-2" />{entry.image_url ? 'Change photo' : 'Add photo'}</span>
+                                </Button>
+                              </label>
+                              {entry.image_url && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    const next = [...(editingPage.credits_sections || [])];
+                                    const entries = [...(next[sectionIndex].entries || [])];
+                                    entries[entryIndex] = { ...entries[entryIndex], image_url: '' };
+                                    next[sectionIndex] = { ...next[sectionIndex], entries };
+                                    setEditingPage({ ...editingPage, credits_sections: next });
+                                  }}
+                                  className="text-white hover:text-red-500"
+                                >
+                                  Remove photo
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         ))}
 

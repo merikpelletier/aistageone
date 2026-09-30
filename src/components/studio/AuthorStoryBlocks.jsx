@@ -88,6 +88,11 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
     try {
       const payload = { title: sourceProject.title.trim(), genre: sourceProject.genre?.trim() || null, story_description: sourceProject.story_description.trim(), tone_rules: sourceProject.tone_rules?.trim() || null, story_rules: sourceProject.story_rules?.trim() || null, cover_image: sourceProject.cover_image || null, author_name: sourceProject.author_name?.trim() || user?.full_name || user?.email || '', contributors: Array.isArray(sourceProject.contributors) ? sourceProject.contributors : [], characters: sourceProject.characters || [], locations: sourceProject.locations || [], topics: sourceProject.topics || [], chapters: sourceProject.chapters || [], production_settings: sourceProject.production_settings || {}, status: sourceProject.status || 'draft' };
       const saved = sourceProject.id ? await base44.entities.AuthorStoryProject.update(sourceProject.id, payload) : await base44.entities.AuthorStoryProject.create(payload);
+      if (saved?.published_dossier_id) {
+        await base44.functions.invoke('syncPublishedCredits', { project_id: saved.id }).catch((error) => {
+          console.warn('Published credits sync failed:', error);
+        });
+      }
       setProject(saved);
       setProjects((current) => [saved, ...current.filter((item) => item.id !== saved.id)]);
       setView(nextView);
