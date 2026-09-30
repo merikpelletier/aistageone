@@ -369,6 +369,29 @@
     "contest_cta_label": {
       "type": "string",
       "description": "Public submit button label"
+    },
+    "hide_title": {
+      "type": "boolean",
+      "default": false,
+      "description": "Keep the page title in admin/navigation but hide it in the public page layout"
+    },
+    "contest_media_style": {
+      "type": "string",
+      "enum": [
+        "hero",
+        "background",
+        "none"
+      ],
+      "default": "hero",
+      "description": "How contest media is presented"
+    },
+    "contest_overlay_opacity": {
+      "type": "number",
+      "description": "Dark overlay opacity percentage for contest media"
+    },
+    "contest_accent_color": {
+      "type": "string",
+      "description": "Accent color used by the contest call-to-action"
     }
   },
   "required": [

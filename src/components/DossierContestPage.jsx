@@ -1,6 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 
+function isVideo(url) {
+  return /\.(mp4|webm|ogg)(\?|$)/i.test(url || '');
+}
+
 function formatDeadline(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -63,21 +67,34 @@ export default function DossierContestPage({ page, dossier }) {
   };
 
   const hero = page?.media_url_landscape || page?.media_url;
+  const mediaStyle = page?.contest_media_style || 'hero';
+  const overlayOpacity = Math.min(90, Math.max(0, Number(page?.contest_overlay_opacity ?? 45))) / 100;
+  const accent = page?.contest_accent_color || '#ffffff';
 
   return (
     <div className="absolute inset-0 bg-black overflow-y-auto pointer-events-auto">
-      {hero && (
-        <div className="relative w-full h-[34vh] min-h-56 border-b border-white/15 overflow-hidden">
-          {/\.(mp4|webm|ogg)(\?|$)/i.test(hero) ? (
+      {hero && mediaStyle === 'background' && (
+        <div className="fixed inset-0 z-0 pointer-events-none">
+          {isVideo(hero) ? (
+            <video src={hero} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+          ) : (
+            <img src={hero} alt="" className="w-full h-full object-cover" />
+          )}
+          <div className="absolute inset-0 bg-black" style={{ opacity: overlayOpacity }} />
+        </div>
+      )}
+      {hero && mediaStyle === 'hero' && (
+        <div className="relative z-10 w-full h-[34vh] min-h-56 border-b border-white/15 overflow-hidden">
+          {isVideo(hero) ? (
             <video src={hero} autoPlay muted loop playsInline controls className="w-full h-full object-cover" />
           ) : (
             <img src={hero} alt="" className="w-full h-full object-cover" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-black pointer-events-none" style={{ opacity: overlayOpacity * 0.6 }} />
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-5 md:px-10 pt-8 pb-32">
+      <div className="relative z-10 max-w-5xl mx-auto px-5 md:px-10 pt-8 pb-32">
         <div className="flex flex-wrap gap-2 mb-4">
           <span className="border border-white/25 px-3 py-1 text-white/70 text-[11px] uppercase tracking-[0.2em]">
             {page?.contest_category || 'Open Call'}
@@ -92,9 +109,11 @@ export default function DossierContestPage({ page, dossier }) {
           </span>
         </div>
 
-        <h2 className="text-white text-3xl md:text-5xl font-extralight tracking-wide leading-tight">
-          {page?.title || 'Contest'}
-        </h2>
+        {!page?.hide_title && (
+          <h2 className="text-white text-3xl md:text-5xl font-extralight tracking-wide leading-tight">
+            {page?.title || 'Contest'}
+          </h2>
+        )}
 
         {page?.content && (
           <div
@@ -187,7 +206,8 @@ export default function DossierContestPage({ page, dossier }) {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full md:w-auto px-8 py-3 bg-white text-black font-medium tracking-wide disabled:opacity-50 hover:bg-white/90 transition-colors"
+                className="w-full md:w-auto px-8 py-3 font-medium tracking-wide disabled:opacity-50 transition-opacity"
+                style={{ backgroundColor: accent, color: '#000000' }}
               >
                 {submitting ? 'Submitting…' : (page?.contest_cta_label || 'Submit entry')}
               </button>

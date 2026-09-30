@@ -342,7 +342,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
                 <img src={activeMediaUrl} alt="" className="w-full object-contain flex-shrink-0 cursor-pointer" style={{ maxHeight: '50vh' }} onClick={() => setFullscreenImage(activeMediaUrl)} />
               )}
               <div className={`flex flex-col px-6 py-4 flex-1 ${page?.text_color === 'black' ? 'text-black' : 'text-white'}`}>
-                {page?.title && (
+                {page?.title && !page?.hide_title && (
                   <h2 className="text-3xl font-extralight tracking-widest mb-4 flex-shrink-0">{page.title}</h2>
                 )}
                 {page?.content && (
@@ -408,7 +408,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
                 </div>
               )}
               <div className={`flex flex-col justify-center px-10 py-12 overflow-y-auto ${page?.media_url ? 'w-1/2' : 'w-full'}`}>
-                {page?.title && (
+                {page?.title && !page?.hide_title && (
                   <h2 className="text-3xl md:text-4xl font-extralight tracking-widest mb-6 text-white">
                     {page.title}
                   </h2>
@@ -583,7 +583,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
           {/* Portrait Content */}
           {!page?.is_product && page?.page_type !== 'join_cast' && page?.page_type !== 'episode' && page?.page_type !== 'series' && page?.page_type !== 'member_episodes' && page?.page_type !== 'block_player' && page?.page_type !== 'index' && page?.page_type !== 'contest' && !(page?.page_type === 'mixed' && page?.image_layout !== 'background') && (
             <div className={`${isLandscape ? 'hidden' : ''} absolute inset-0 flex flex-col px-6 pt-16 pb-20 pointer-events-none`}>
-              {page?.title && (
+              {page?.title && !page?.hide_title && (
                 <h2 className={`text-3xl md:text-5xl font-extralight tracking-widest mb-6 flex-shrink-0 ${
                   page?.text_color === 'black' ? 'text-black' : 'text-white'
                 }`}>

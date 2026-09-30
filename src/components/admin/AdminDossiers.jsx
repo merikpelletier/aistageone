@@ -838,6 +838,48 @@ function PageEditor({ dossier, pages, onClose }) {
                   placeholder="Button label (default: Submit entry)"
                   className="bg-neutral-900 border-white/10 text-white"
                 />
+                <div className="pt-2 border-t border-white/10 space-y-3">
+                  <p className="text-white text-sm font-medium">Appearance</p>
+                  <Select
+                    value={editingPage.contest_media_style || 'hero'}
+                    onValueChange={(value) => setEditingPage({ ...editingPage, contest_media_style: value })}
+                  >
+                    <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hero">Media as hero banner</SelectItem>
+                      <SelectItem value="background">Media as full-page background</SelectItem>
+                      <SelectItem value="none">Do not display page media</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div>
+                    <label className="text-white text-sm block mb-2">Background overlay: {editingPage.contest_overlay_opacity ?? 45}%</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="90"
+                      step="5"
+                      value={editingPage.contest_overlay_opacity ?? 45}
+                      onChange={(e) => setEditingPage({ ...editingPage, contest_overlay_opacity: Number(e.target.value) })}
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-white text-sm block mb-2">Accent color</label>
+                    <div className="flex gap-3 items-center">
+                      <input
+                        type="color"
+                        value={editingPage.contest_accent_color || '#ffffff'}
+                        onChange={(e) => setEditingPage({ ...editingPage, contest_accent_color: e.target.value })}
+                        className="w-14 h-10 bg-transparent border border-white/20"
+                      />
+                      <Input
+                        value={editingPage.contest_accent_color || '#ffffff'}
+                        onChange={(e) => setEditingPage({ ...editingPage, contest_accent_color: e.target.value })}
+                        className="bg-neutral-900 border-white/10 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
                 <Select
                   value={editingPage.contest_status || 'open'}
                   onValueChange={(value) => setEditingPage({ ...editingPage, contest_status: value })}
@@ -1060,6 +1102,7 @@ function PageEditor({ dossier, pages, onClose }) {
             )}
 
             {editingPage.page_type !== 'join_cast' && (
+              <>
               <div>
                 <label className="text-white text-sm block mb-2">Title (optional)</label>
                 <Input
@@ -1069,6 +1112,19 @@ function PageEditor({ dossier, pages, onClose }) {
                   className="bg-neutral-900 border-white/10 text-white"
                 />
               </div>
+              <label className="flex items-center gap-3 p-3 border border-white/10 bg-neutral-900/50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editingPage.hide_title || false}
+                  onChange={(e) => setEditingPage({ ...editingPage, hide_title: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <div>
+                  <p className="text-white text-sm font-medium">Hide page title</p>
+                  <p className="text-white/50 text-xs">Keep the title for admin/navigation, but do not display it on the public page.</p>
+                </div>
+              </label>
+              </>
             )}
 
             {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && (
