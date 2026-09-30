@@ -702,17 +702,20 @@ export default function DossierViewer({ pages, onClose, dossier }) {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto py-2">
-              {filteredPages.map((p, idx) => {
+              {filteredPages
+                .map((p, originalIndex) => ({ p, originalIndex }))
+                .filter(({ p }) => p.page_type !== 'index')
+                .map(({ p, originalIndex }) => {
                 const pageTypeIcon = {
                   cover: '🖼️', text: '📝', image: '🖼️', video: '🎬', mixed: '📰',
                   join_cast: '🎭', episode: '🎬', series: '📺', production_kit: '🎬', member_episodes: '🌟', index: '☰', contest: '🏆'
                 }[p.page_type] || '📄';
                 const label = p.episode_title || p.title || p.page_type;
-                const isActive = idx === currentPage;
+                const isActive = originalIndex === currentPage;
                 return (
                   <button
-                    key={p.id || idx}
-                    onClick={() => { setCurrentPage(idx); setShowIndex(false); }}
+                    key={p.id || originalIndex}
+                    onClick={() => { setCurrentPage(originalIndex); setShowIndex(false); }}
                     className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors ${
                       isActive ? 'bg-white/10 text-white' : 'text-white hover:text-white hover:bg-white/5'
                     }`}
