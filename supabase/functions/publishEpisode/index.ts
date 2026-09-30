@@ -1,5 +1,6 @@
 import { createClientFromRequest } from '../_shared/base44Compat.ts';
 import { serveWithCors } from '../_shared/cors.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 serveWithCors(async (req) => {
   try {
@@ -76,6 +77,73 @@ serveWithCors(async (req) => {
       });
       dossierId = dossier.id;
     }
+
+    const lineageService = createClient(
+      Deno.env.get('SUPABASE_URL') || '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
+      { auth: { persistSession: false } },
+    );
+    const { data: placementData, error: placementError } = await lineageService.rpc('refresh_dossier_product_placements', {
+      p_dossier_id: dossierId,
+    });
+    if (placementError) {
+      console.error('[publishEpisode] Product placement refresh failed:', placementError.message);
+    }
+
+    const contributors = Array.isArray(production.contributors) ? production.contributors : [];
+    const placements = Array.isArray(placementData) ? placementData : [];
+    const creditsPages = await base44.entities.DossierPage.filter({ dossier_id: dossierId, page_type: 'credits' });
+    const creditsPage = creditsPages[0] || null;
+    const generatedTitles = new Set(['production credits', 'product placements']);
+    const manualSections = Array.isArray(creditsPage?.credits_sections)
+      ? creditsPage.credits_sections.filter((section: any) => {
+          const title = String(section?.title || '').trim().toLowerCase();
+          return !['timeline', 'product_placement_auto'].includes(section?.source)
+            && !generatedTitles.has(title);
+        })
+      : [];
+    const creditsSections = [
+      {
+        title: 'Production Credits',
+        image_url: '',
+        source: 'timeline',
+        entries: [
+          { role: 'Author', name: production.author_name || user.full_name || user.email, note: '' },
+          ...contributors
+            .filter((item: any) => item && (item.name || item.role || item.user_email))
+            .map((item: any) => ({
+              role: item.role || 'Collaborator',
+              name: item.name || item.user_email || 'Collaborator',
+              note: item.user_email ? `AISTAGE.ONE member · ${item.user_email}` : '',
+            })),
+        ],
+      },
+      ...(placements.length ? [{
+        title: 'Product Placements',
+        image_url: '',
+        source: 'product_placement_auto',
+        entries: placements
+          .filter((item: any) => item && (item.name || item.brand_name))
+          .map((item: any) => ({
+            role: item.brand_name || 'Product Placement',
+            name: item.name || item.brand_name || 'Product Placement',
+            note: item.description || '',
+            image_url: item.image_url || '',
+            url: item.url || '',
+          })),
+      }] : []),
+      ...manualSections,
+    ];
+    const creditsData = {
+      dossier_id: dossierId,
+      page_type: 'credits',
+      order: 1,
+      title: 'Credits',
+      content: '',
+      credits_sections: creditsSections,
+    };
+    if (creditsPage) await base44.entities.DossierPage.update(creditsPage.id, creditsData);
+    else await base44.entities.DossierPage.create(creditsData);
 
     // Mark the TimelineStory as published
     await base44.entities.TimelineStory.update(production_id, { is_published: true });

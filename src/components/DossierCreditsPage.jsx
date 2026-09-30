@@ -15,7 +15,11 @@ export default function DossierCreditsPage({ page, dossier }) {
       entries: (section.entries || []).filter((entry) => clean(entry?.name) || clean(entry?.role) || clean(entry?.note)),
     }));
 
-  if (placements.length > 0) {
+  const hasProductPlacementSection = sections.some(
+    (section) => String(section?.title || '').trim().toLowerCase() === 'product placements'
+  );
+
+  if (placements.length > 0 && !hasProductPlacementSection) {
     sections.push({
       title: 'Product Placements',
       image_url: '',
