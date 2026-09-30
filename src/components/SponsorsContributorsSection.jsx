@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, supabase } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { HandCoins, Users, TrendingUp, ChevronDown, ChevronRight, Mail, DollarSign } from 'lucide-react';
@@ -33,6 +33,21 @@ export default function SponsorsContributorsSection({ userEmail }) {
   const { data: fans = [], isLoading: fansLoading } = useQuery({
     queryKey: ['fanSubscriptions', userEmail],
     queryFn: () => base44.entities.ProfileFanSubscription.filter({ target_profile_id: userEmail }, '-created_at'),
+    enabled: !!userEmail,
+  });
+
+  const { data: donations = [], isLoading: donationsLoading } = useQuery({
+    queryKey: ['fanDonations', userEmail],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('fan_donation')
+        .select('*')
+        .eq('creator_email', String(userEmail || '').toLowerCase())
+        .eq('status', 'paid')
+        .order('paid_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
     enabled: !!userEmail,
   });
 
