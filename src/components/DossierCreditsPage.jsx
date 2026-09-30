@@ -9,7 +9,7 @@ export default function DossierCreditsPage({ page, dossier }) {
   const placements = Array.isArray(dossier?.product_placements) ? dossier.product_placements : [];
 
   const sections = manualSections
-    .filter((section) => clean(section?.title) || clean(section?.image_url) || (section?.entries || []).some((entry) => clean(entry?.name) || clean(entry?.role)))
+    .filter((section) => clean(section?.title) || (section?.entries || []).some((entry) => clean(entry?.name) || clean(entry?.role)))
     .map((section) => ({
       ...section,
       entries: (section.entries || []).filter((entry) => clean(entry?.name) || clean(entry?.role) || clean(entry?.note)),
@@ -22,7 +22,6 @@ export default function DossierCreditsPage({ page, dossier }) {
   if (placements.length > 0 && !hasProductPlacementSection) {
     sections.push({
       title: 'Product Placements',
-      image_url: '',
       automatic: true,
       entries: [...placements]
         .sort((a, b) => (a.order || 0) - (b.order || 0))
@@ -56,17 +55,7 @@ export default function DossierCreditsPage({ page, dossier }) {
 
         <div className="space-y-16 md:space-y-20">
           {sections.map((section, sectionIndex) => (
-            <section key={`${section.title || 'section'}-${sectionIndex}`} className="grid gap-6 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)] md:gap-10 lg:grid-cols-[340px_minmax(0,1fr)]">
-              <div>
-                {section.image_url ? (
-                  <div className="aspect-[4/5] overflow-hidden bg-neutral-900">
-                    <img src={section.image_url} alt="" className="h-full w-full object-cover" />
-                  </div>
-                ) : (
-                  <div className="hidden aspect-[4/5] border border-white/10 md:block" />
-                )}
-              </div>
-
+            <section key={`${section.title || 'section'}-${sectionIndex}`} className="min-w-0">
               <div className="min-w-0">
                 <div className="mb-5 flex items-end justify-between gap-4 border-b border-white/15 pb-4">
                   <div>
