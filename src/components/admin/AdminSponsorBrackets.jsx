@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Check, X, Edit2 } from 'lucide-react';
 
+// Sponsorship packages are content-based; no duration field.
 const EMPTY_FORM = { name: '', price: '', is_active: true };
 
 function BracketForm({ initial = EMPTY_FORM, onSave, onCancel, saving }) {
