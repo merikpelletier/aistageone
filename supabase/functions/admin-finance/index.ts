@@ -31,6 +31,20 @@ serveWithCors(async request=>{
     checked(await service.from('ai_finance_settings').update({credit_value_cad:creditValue,usd_to_cad_rate:fx,cost_buffer_pct:buffer,quotes_enabled:false,updated_by:user.id,updated_at:now}).eq('id',true).select().single());
     return Response.json(saved);
   }
+  if(action==='save_donation_settings'){
+    const fee=nonnegative(p.platform_fee_percent);
+    if(fee>100)throw httpError('La commission des dons doit être entre 0 et 100 %.');
+    const minimum=Math.round(amount(p.minimum_amount_cents));
+    const maximum=Math.round(amount(p.maximum_amount_cents));
+    if(minimum<100||maximum<minimum)throw httpError('Limites de dons invalides.');
+    return Response.json(checked(await service.from('fan_donation_settings').update({
+      platform_fee_percent:fee,
+      minimum_amount_cents:minimum,
+      maximum_amount_cents:maximum,
+      updated_at:new Date().toISOString(),
+      updated_by:user.id,
+    }).eq('id',true).select().single()));
+  }
   if(action==='save_rate'){
     if(user.id!=='fd3ceec1-0d99-4d7e-9793-284e342efe90')throw httpError('Seul Merik peut modifier les tarifs des modèles',403);
     const model=requiredText(p.model_key,'Modèle requis',200);
@@ -74,6 +88,7 @@ serveWithCors(async request=>{
   const month=start.slice(0,7);
   const requests={
     settings:service.from('credit_economy_settings').select('*').eq('id',true).single(),
+    donationSettings:service.from('fan_donation_settings').select('*').eq('id',true).single(),
     rates:service.from('ai_model_rate').select('*').order('model_key'),
     models:service.from('ai_model_catalog').select('model_key,name,kind,billing_type,unit_price_usd,output_unit_price_usd,capabilities,enabled').eq('enabled',true).order('kind').order('name'),
     routeOptions:service.from('ai_model_route_option').select('id,route_key,service,kind,model_key,enabled,recommended,credit_cost,display_order').order('service').order('display_order'),
