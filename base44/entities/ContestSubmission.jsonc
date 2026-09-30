@@ -1,0 +1,22 @@
+{
+  "name": "ContestSubmission",
+  "type": "object",
+  "properties": {
+    "dossier_id": { "type": "string" },
+    "contest_page_id": { "type": "string" },
+    "applicant_name": { "type": "string" },
+    "applicant_email": { "type": "string" },
+    "portfolio_url": { "type": "string" },
+    "message": { "type": "string" },
+    "media_urls": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["submitted", "shortlisted", "winner", "rejected"],
+      "default": "submitted"
+    }
+  },
+  "required": ["dossier_id", "contest_page_id"]
+}

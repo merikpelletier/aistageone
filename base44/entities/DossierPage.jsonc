@@ -19,7 +19,9 @@
         "series",
         "production_kit",
         "member_episodes",
-        "block_player"
+        "block_player",
+        "index",
+        "contest"
       ],
       "description": "Type of content block"
     },
@@ -325,6 +327,48 @@
       "type": "boolean",
       "default": false,
       "description": "Show banner 'AVAILABLE IN THE STUDIO ON THE STAGE SECTION' (for series pages)"
+    },
+    "contest_category": {
+      "type": "string",
+      "description": "Contest/open-call category, such as Next Face, Designer, or Actor"
+    },
+    "contest_deadline": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional deadline for contest submissions"
+    },
+    "contest_reward": {
+      "type": "string",
+      "description": "Prize, opportunity, role, or other reward"
+    },
+    "contest_rules": {
+      "type": "string",
+      "description": "Contest eligibility and entry rules"
+    },
+    "contest_submission_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "text",
+          "link",
+          "media"
+        ]
+      },
+      "description": "Accepted submission content types"
+    },
+    "contest_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "open",
+        "closed"
+      ],
+      "default": "open"
+    },
+    "contest_cta_label": {
+      "type": "string",
+      "description": "Public submit button label"
     }
   },
   "required": [
