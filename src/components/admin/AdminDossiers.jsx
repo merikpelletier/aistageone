@@ -47,7 +47,7 @@ function DossierPagesIndex({ pages, onManage }) {
 
 const PAGE_TYPE_ICONS = {
   cover: '🖼️', text: '📝', image: '🎨', video: '🎬', mixed: '🗂️',
-  join_cast: '🎭', episode: '🎬', series: '📺', member_episodes: '🌟', block_player: '▶',
+  join_cast: '🎭', episode: '🎬', series: '📺', member_episodes: '🌟', block_player: '▶', index: '☰', contest: '🏆',
 };
 
 export default function AdminDossiers() {
@@ -776,6 +776,8 @@ function PageEditor({ dossier, pages, onClose }) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cover">Cover</SelectItem>
+                  <SelectItem value="index">☰ Visual Index</SelectItem>
+                  <SelectItem value="contest">🏆 Contest / Open Call</SelectItem>
                   <SelectItem value="text">Text only</SelectItem>
                   <SelectItem value="image">Image only</SelectItem>
                   <SelectItem value="video">Video only</SelectItem>
@@ -788,6 +790,89 @@ function PageEditor({ dossier, pages, onClose }) {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Index page fields */}
+            {editingPage.page_type === 'index' && (
+              <div className="p-3 bg-neutral-800/50 border border-white/10 rounded space-y-2">
+                <p className="text-white text-sm font-medium">☰ Visual dossier index</p>
+                <p className="text-white/60 text-xs">This page automatically displays all other public dossier pages as visual cards. Use the title and text fields below for its heading and introduction.</p>
+              </div>
+            )}
+
+            {/* Contest fields */}
+            {editingPage.page_type === 'contest' && (
+              <div className="p-3 bg-neutral-800/50 border border-white/10 rounded space-y-3">
+                <p className="text-white text-sm font-medium">🏆 Contest / Open Call</p>
+                <Input
+                  value={editingPage.contest_category || ''}
+                  onChange={(e) => setEditingPage({ ...editingPage, contest_category: e.target.value })}
+                  placeholder="Category (e.g. Next Face, Designer, Actor)"
+                  className="bg-neutral-900 border-white/10 text-white"
+                />
+                <div>
+                  <label className="text-white text-sm block mb-2">Deadline</label>
+                  <Input
+                    type="datetime-local"
+                    value={editingPage.contest_deadline ? String(editingPage.contest_deadline).slice(0, 16) : ''}
+                    onChange={(e) => setEditingPage({ ...editingPage, contest_deadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                    className="bg-neutral-900 border-white/10 text-white"
+                  />
+                </div>
+                <Textarea
+                  value={editingPage.contest_reward || ''}
+                  onChange={(e) => setEditingPage({ ...editingPage, contest_reward: e.target.value })}
+                  placeholder="Opportunity / prize"
+                  className="bg-neutral-900 border-white/10 text-white"
+                  rows={3}
+                />
+                <Textarea
+                  value={editingPage.contest_rules || ''}
+                  onChange={(e) => setEditingPage({ ...editingPage, contest_rules: e.target.value })}
+                  placeholder="How to enter / eligibility / rules"
+                  className="bg-neutral-900 border-white/10 text-white"
+                  rows={4}
+                />
+                <Input
+                  value={editingPage.contest_cta_label || ''}
+                  onChange={(e) => setEditingPage({ ...editingPage, contest_cta_label: e.target.value })}
+                  placeholder="Button label (default: Submit entry)"
+                  className="bg-neutral-900 border-white/10 text-white"
+                />
+                <Select
+                  value={editingPage.contest_status || 'open'}
+                  onValueChange={(value) => setEditingPage({ ...editingPage, contest_status: value })}
+                >
+                  <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div>
+                  <p className="text-white text-sm mb-2">Accepted submission content</p>
+                  <div className="flex flex-wrap gap-4">
+                    {[['text','Message'], ['link','Portfolio / link'], ['media','Image / video']].map(([value, label]) => {
+                      const selected = (editingPage.contest_submission_types || ['text','link','media']).includes(value);
+                      return (
+                        <label key={value} className="flex items-center gap-2 text-white/80 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={(e) => {
+                              const current = editingPage.contest_submission_types || ['text','link','media'];
+                              const next = e.target.checked ? Array.from(new Set([...current, value])) : current.filter((item) => item !== value);
+                              setEditingPage({ ...editingPage, contest_submission_types: next });
+                            }}
+                          />
+                          {label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Join the Cast: episode list preview */}
             {editingPage.page_type === 'join_cast' && (
