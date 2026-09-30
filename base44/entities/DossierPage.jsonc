@@ -409,7 +409,10 @@
               "properties": {
                 "role": { "type": "string" },
                 "name": { "type": "string" },
-                "note": { "type": "string" }
+                "note": { "type": "string" },
+                "image_url": { "type": "string" },
+                "url": { "type": "string" },
+                "source_asset_id": { "type": "string" }
               }
             }
           }
