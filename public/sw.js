@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'aistage-pwa-';
-const CACHE_NAME = `${CACHE_PREFIX}v1`;
+const CACHE_NAME = `${CACHE_PREFIX}v2`;
 const APP_SHELL = [
   '/',
   '/manifest.json',
@@ -51,6 +51,21 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (!['script', 'style', 'image', 'font'].includes(request.destination)) return;
+
+  if (request.destination === 'script' || request.destination === 'style') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request)),
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then((cached) => {
