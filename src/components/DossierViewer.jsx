@@ -14,6 +14,7 @@ import SeriesPageViewer from '@/components/SeriesPageViewer';
 import ProductionKitViewer from '@/components/ProductionKitViewer';
 import MemberEpisodesPage from '@/components/MemberEpisodesPage';
 import BlockPlayer from '@/components/production/BlockPlayer';
+import SponsorContentPlacement from '@/components/SponsorContentPlacement';
 // Small helper: loads EpisodeProduction and shows a "Watch Blocks" button
 function EpisodeBlocksButton({ episodePageId, dossierId, onPlay }) {
   const [epProd, setEpProd] = React.useState(null);
@@ -284,6 +285,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
+      <SponsorContentPlacement dossierId={dossier?.id} />
       <AnimatePresence mode="wait">
          <motion.div
            key={currentPage}
