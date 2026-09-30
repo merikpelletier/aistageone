@@ -16,6 +16,17 @@ export default function FanDonationButton({ creatorEmail }) {
       .catch(() => setSettings(null));
   }, [open]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+    if (params.get('donation') !== 'success' || !sessionId) return;
+    base44.functions.invoke('fan-donations', { action: 'verify-session', session_id: sessionId })
+      .then((res) => {
+        if (res.data?.paid) toast.success('Thank you. Your donation was received.');
+      })
+      .catch(() => {});
+  }, []);
+
   const donate = async () => {
     const value = Number(amount);
     if (!Number.isFinite(value) || value <= 0) {
