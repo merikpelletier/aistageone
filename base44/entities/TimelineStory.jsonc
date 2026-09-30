@@ -38,6 +38,19 @@
       "type": "string",
       "description": "Author name for this story"
     },
+    "contributors": {
+      "type": "array",
+      "description": "Structured collaborators for this production",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "role": { "type": "string" },
+          "user_email": { "type": "string" },
+          "is_external": { "type": "boolean" }
+        }
+      }
+    },
     "publication_date": {
       "type": "string",
       "format": "date",
