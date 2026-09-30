@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Film, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import ProjectCreditsFields from '@/components/studio/ProjectCreditsFields';
 
 export default function EpisodeCreationForm({ 
   episodeTitle, 
@@ -14,6 +15,8 @@ export default function EpisodeCreationForm({
   setPosterImage,
   authorName,
   setAuthorName,
+  contributors,
+  setContributors,
   publicationDate,
   setPublicationDate,
   category,
@@ -102,17 +105,14 @@ export default function EpisodeCreationForm({
         className={`w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 resize-none ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
       />
       
-      {/* Author */}
-      <div>
-        <p className="text-white text-xs uppercase tracking-widest font-semibold mb-1">Author</p>
-        <input
-          value={authorName}
-          onChange={e => setAuthorName(e.target.value)}
-          placeholder="Author name"
-          disabled={isLocked}
-          className={`w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-        />
-      </div>
+      <ProjectCreditsFields
+        dark
+        disabled={isLocked}
+        authorName={authorName}
+        onAuthorChange={setAuthorName}
+        contributors={contributors || []}
+        onContributorsChange={setContributors}
+      />
       
       {/* Publication Date */}
       <div>

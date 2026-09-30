@@ -108,6 +108,7 @@ export const normalizeChapter = (chapter, index) => {
 
 export const normalizeAuthorProject = (row = {}) => ({
   title: '', genre: '', story_description: '', tone_rules: '', story_rules: '', cover_image: '',
+  author_name: '', contributors: [],
   characters: [], locations: [], topics: [], chapters: [], status: 'draft',
   production_settings: emptyProductionSettings(),
   ...row,
@@ -115,6 +116,7 @@ export const normalizeAuthorProject = (row = {}) => ({
   locations: Array.isArray(row.locations) ? row.locations : [],
   topics: Array.isArray(row.topics) ? row.topics : [],
   chapters: Array.isArray(row.chapters) ? row.chapters.map(normalizeChapter) : [],
+  contributors: Array.isArray(row.contributors) ? row.contributors : [],
   production_settings: { ...emptyProductionSettings(), ...(row.production_settings || {}) },
 });
 

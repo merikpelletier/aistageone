@@ -1004,6 +1004,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
   const [posterImage, setPosterImage] = useState('');
   const [seriesDesc, setSeriesDesc] = useState('');
   const [authorName, setAuthorName] = useState('');
+  const [contributors, setContributors] = useState([]);
   const [publicationDate, setPublicationDate] = useState('');
   const [category, setCategory] = useState('');
   const [episodeProduction, setEpisodeProduction] = useState(null);
@@ -1054,6 +1055,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
     setPosterImage(ep.poster_image || '');
     setSeriesDesc(ep.series_description || '');
     setAuthorName(ep.author_name || '');
+    setContributors(Array.isArray(ep.contributors) ? ep.contributors : []);
     setPublicationDate(ep.publication_date || '');
     setCategory(ep.category || '');
     setEditingBlock(null);
@@ -1066,6 +1068,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
       setPosterImage(production.poster_image || '');
       setSeriesDesc(production.series_description || '');
       setAuthorName(production.author_name || '');
+      setContributors(Array.isArray(production.contributors) ? production.contributors : []);
       setPublicationDate(production.publication_date || '');
       setCategory(production.category || '');
     }
@@ -1158,6 +1161,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
       poster_image: '',
       series_description: '',
       author_name: me.full_name || '',
+      contributors: [],
       publication_date: '',
       category: '',
       blocks: []
@@ -1192,6 +1196,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
         poster_image: posterImage,
         series_description: seriesDesc,
         author_name: authorName,
+        contributors,
         publication_date: publicationDate,
         category: category || '',
         blocks: Array.isArray(blocksArray) ? blocksArray : []
@@ -1571,6 +1576,8 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                   setPosterImage={setPosterImage}
                   authorName={authorName}
                   setAuthorName={setAuthorName}
+                  contributors={contributors}
+                  setContributors={setContributors}
                   publicationDate={publicationDate}
                   setPublicationDate={setPublicationDate}
                   category={category}
@@ -1583,6 +1590,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                 posterImage={posterImage}
                 seriesDesc={seriesDesc}
                 authorName={authorName}
+                contributors={contributors}
                 publicationDate={publicationDate}
                 episodeTitle={episodeTitle}
                 episodeDesc={episodeDesc}
@@ -1592,6 +1600,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                 onDescChange={setEpisodeDesc}
                 onSeriesChange={setSeriesDesc}
                 onAuthorChange={setAuthorName}
+                onContributorsChange={setContributors}
                 onPubDateChange={setPublicationDate}
                 onCategoryChange={setCategory}
                 onPosterChange={setPosterImage}

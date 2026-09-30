@@ -7,7 +7,7 @@ serveWithCors(async (request) => {
   const user = await base44.auth.me();
   const {
     project_id: projectId, chapter_ids: chapterIds, title: publicTitle,
-    description: publicDescription, author_name: publicAuthor, dossier_class: dossierClass,
+    description: publicDescription, author_name: publicAuthor, contributors: publicContributors, dossier_class: dossierClass,
     category: publicCategory, cover_image: publicCover, content_rating: contentRating,
     original_language: originalLanguage, public_promo_confirmed: publicPromoConfirmed,
   } = await request.json();
@@ -67,18 +67,47 @@ serveWithCors(async (request) => {
     dossier_id: dossier.id, user_email: user.email, production_name: dossierData.title,
     episode_title: dossierData.title, episode_description: dossierData.description,
     poster_image: dossierData.cover_image, series_description: dossierData.description,
-    author_name: dossierData.author_name, publication_date: now.slice(0, 10), category: project.genre || 'Story',
+    author_name: dossierData.author_name, contributors: Array.isArray(publicContributors) ? publicContributors : (Array.isArray(project.contributors) ? project.contributors : []), publication_date: now.slice(0, 10), category: project.genre || 'Story',
     blocks, is_published: true,
   };
   const story = existingStories[0]
     ? await service.entities.TimelineStory.update(existingStories[0].id, storyData)
     : await service.entities.TimelineStory.create(storyData);
 
-  const existingPages = await service.entities.DossierPage.filter({ dossier_id: dossier.id }, 'order', 20);
+  const existingPages = await service.entities.DossierPage.filter({ dossier_id: dossier.id }, 'order', 50);
   const pageData = { dossier_id: dossier.id, page_type: 'block_player', order: 0, title: dossierData.title, content: dossierData.description, media_url: dossierData.cover_image, block_player_episode_page_id: story.id, block_player_block_ids: [] };
   const page = existingPages.find((item: any) => item.page_type === 'block_player');
   if (page) await service.entities.DossierPage.update(page.id, pageData);
   else await service.entities.DossierPage.create(pageData);
+
+  const contributors = Array.isArray(publicContributors)
+    ? publicContributors
+    : (Array.isArray(project.contributors) ? project.contributors : []);
+  const creditsSections = [{
+    title: 'Production Credits',
+    image_url: '',
+    entries: [
+      { role: 'Author', name: publicAuthor.trim(), note: '' },
+      ...contributors
+        .filter((item: any) => item && (item.name || item.role))
+        .map((item: any) => ({
+          role: item.role || 'Collaborator',
+          name: item.name || item.user_email || 'Collaborator',
+          note: item.user_email ? `AISTAGE.ONE member · ${item.user_email}` : '',
+        })),
+    ],
+  }];
+  const creditsData = {
+    dossier_id: dossier.id,
+    page_type: 'credits',
+    order: 1,
+    title: 'Credits',
+    content: '',
+    credits_sections: creditsSections,
+  };
+  const creditsPage = existingPages.find((item: any) => item.page_type === 'credits');
+  if (creditsPage) await service.entities.DossierPage.update(creditsPage.id, creditsData);
+  else await service.entities.DossierPage.create(creditsData);
 
   const lineageService = createClient(
     Deno.env.get('SUPABASE_URL') || '',

@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpen, Check, ChevronRight, Clock3, Film, Image as ImageI
 import { toast } from 'sonner';
 import VaultPickerModal from './VaultPickerModal';
 import AuthorProductionWorkspace from './AuthorProductionWorkspace';
+import ProjectCreditsFields from './ProjectCreditsFields';
 import { normalizeAuthorProject } from './authorStoryModel';
 
 const IMAGE_TYPES = ['Wide shot', 'Full shot', 'Medium shot', 'Close-up', 'Detail shot', 'Aerial view', 'Other'];
@@ -85,7 +86,7 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
     if (!sourceProject?.title?.trim()) { toast.error('Add a story title'); return null; }
     setSaving(true);
     try {
-      const payload = { title: sourceProject.title.trim(), genre: sourceProject.genre?.trim() || null, story_description: sourceProject.story_description.trim(), tone_rules: sourceProject.tone_rules?.trim() || null, story_rules: sourceProject.story_rules?.trim() || null, cover_image: sourceProject.cover_image || null, characters: sourceProject.characters || [], locations: sourceProject.locations || [], topics: sourceProject.topics || [], chapters: sourceProject.chapters || [], production_settings: sourceProject.production_settings || {}, status: sourceProject.status || 'draft' };
+      const payload = { title: sourceProject.title.trim(), genre: sourceProject.genre?.trim() || null, story_description: sourceProject.story_description.trim(), tone_rules: sourceProject.tone_rules?.trim() || null, story_rules: sourceProject.story_rules?.trim() || null, cover_image: sourceProject.cover_image || null, author_name: sourceProject.author_name?.trim() || user?.full_name || user?.email || '', contributors: Array.isArray(sourceProject.contributors) ? sourceProject.contributors : [], characters: sourceProject.characters || [], locations: sourceProject.locations || [], topics: sourceProject.topics || [], chapters: sourceProject.chapters || [], production_settings: sourceProject.production_settings || {}, status: sourceProject.status || 'draft' };
       const saved = sourceProject.id ? await base44.entities.AuthorStoryProject.update(sourceProject.id, payload) : await base44.entities.AuthorStoryProject.create(payload);
       setProject(saved);
       setProjects((current) => [saved, ...current.filter((item) => item.id !== saved.id)]);
@@ -245,6 +246,12 @@ function ProjectSetup({ user, project, setProject, shopCharacters, shopSets, sav
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(420px,.9fr)]">
       <section className="space-y-5 rounded-[2rem] bg-black/5 p-5 lg:p-7">
         <div><label className={labelClass}>Story title *</label><input className={fieldClass} value={project.title} onChange={(e) => setProject({ ...project, title: e.target.value })} placeholder="Title of your story" /></div>
+        <ProjectCreditsFields
+          authorName={project.author_name || user?.full_name || user?.email || ''}
+          onAuthorChange={(value) => setProject({ ...project, author_name: value })}
+          contributors={project.contributors || []}
+          onContributorsChange={(contributors) => setProject({ ...project, contributors })}
+        />
         <div><label className={labelClass}>Genre</label><input className={fieldClass} value={project.genre || ''} onChange={(e) => setProject({ ...project, genre: e.target.value })} placeholder="Drama, comedy, thriller, science fiction..." /></div>
         <div><label className={labelClass}>Story definition *</label><textarea className={`${fieldClass} min-h-36 resize-y`} value={project.story_description} onChange={(e) => setProject({ ...project, story_description: e.target.value })} placeholder="Define the story, its world, central conflict and direction." /></div>
         <div className="grid gap-4 md:grid-cols-2"><div><label className={labelClass}>Tone and atmosphere</label><textarea className={`${fieldClass} min-h-28`} value={project.tone_rules || ''} onChange={(e) => setProject({ ...project, tone_rules: e.target.value })} /></div><div><label className={labelClass}>Story rules</label><textarea className={`${fieldClass} min-h-28`} value={project.story_rules || ''} onChange={(e) => setProject({ ...project, story_rules: e.target.value })} /></div></div>
