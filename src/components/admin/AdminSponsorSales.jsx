@@ -86,7 +86,6 @@ export default function AdminSponsorSales() {
       member_email: form.member_email,
       bracket_id: selectedBracket.id,
       bracket_name: selectedBracket.name,
-      duration: selectedBracket.duration,
       total_amount: total,
       platform_share: platform,
       member_share: member,
@@ -244,7 +243,7 @@ export default function AdminSponsorSales() {
                     .map(s => (
                       <div key={s.id} className="flex items-center gap-2 py-1.5 border-b border-white/5 last:border-0">
                         <div className="flex-1 min-w-0">
-                          <p className="text-white text-xs">{s.bracket_name} <span className="text-white">({s.duration})</span></p>
+                          <p className="text-white text-xs">{s.bracket_name}</p>
                           {s.notes && <p className="text-white text-xs">{s.notes}</p>}
                           <p className="text-white text-xs">{format(new Date(s.sale_date), 'MMM d, yyyy')}</p>
                         </div>
