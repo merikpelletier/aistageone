@@ -80,46 +80,105 @@ serveWithCors(async (request) => {
   if (page) await service.entities.DossierPage.update(page.id, pageData);
   else await service.entities.DossierPage.create(pageData);
 
+  const lineageService = createClient(
+    Deno.env.get('SUPABASE_URL') || '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
+    { auth: { persistSession: false } },
+  );
+  const { data: placementData, error: placementError } = await lineageService.rpc('refresh_dossier_product_placements', {
+    p_dossier_id: dossier.id,
+  });
+  if (placementError) {
+    console.error('[publishAuthorStory] Product placement refresh failed:', placementError.message);
+  }
+
   const contributors = Array.isArray(publicContributors)
     ? publicContributors
     : (Array.isArray(project.contributors) ? project.contributors : []);
-  const creditsSections = [{
-    title: 'Production Credits',
-    image_url: '',
-    entries: [
-      { role: 'Author', name: publicAuthor.trim(), note: '' },
-      ...contributors
-        .filter((item: any) => item && (item.name || item.role))
+  const characters = Array.isArray(project.characters) ? project.characters : [];
+  const locations = Array.isArray(project.locations) ? project.locations : [];
+  const placements = Array.isArray(placementData) ? placementData : [];
+
+  const autoCreditsSections = [
+    {
+      title: 'Production Credits',
+      image_url: '',
+      source: 'fotoplay',
+      entries: [
+        { role: 'Author', name: publicAuthor.trim(), note: '' },
+        ...contributors
+          .filter((item: any) => item && (item.name || item.role || item.user_email))
+          .map((item: any) => ({
+            role: item.role || 'Collaborator',
+            name: item.name || item.user_email || 'Collaborator',
+            note: item.user_email ? `AISTAGE.ONE member · ${item.user_email}` : '',
+          })),
+      ],
+    },
+    ...(characters.length ? [{
+      title: 'Characters',
+      image_url: '',
+      source: 'fotoplay',
+      entries: characters
+        .filter((item: any) => item && item.name)
         .map((item: any) => ({
-          role: item.role || 'Collaborator',
-          name: item.name || item.user_email || 'Collaborator',
-          note: item.user_email ? `AISTAGE.ONE member · ${item.user_email}` : '',
+          role: 'Character',
+          name: item.name,
+          note: item.description || '',
+          image_url: item.image_url || '',
+          source_asset_id: item.id || null,
         })),
-    ],
-  }];
+    }] : []),
+    ...(locations.length ? [{
+      title: 'Sets / Locations',
+      image_url: '',
+      source: 'fotoplay',
+      entries: locations
+        .filter((item: any) => item && item.name)
+        .map((item: any) => ({
+          role: 'Set / Location',
+          name: item.name,
+          note: item.description || '',
+          image_url: item.image_url || '',
+          source_asset_id: item.id || null,
+        })),
+    }] : []),
+    ...(placements.length ? [{
+      title: 'Product Placements',
+      image_url: '',
+      source: 'product_placement_auto',
+      entries: placements
+        .filter((item: any) => item && (item.name || item.brand_name))
+        .map((item: any) => ({
+          role: item.brand_name || 'Product Placement',
+          name: item.name || item.brand_name || 'Product Placement',
+          note: item.description || '',
+          image_url: item.image_url || '',
+          url: item.url || '',
+        })),
+    }] : []),
+  ];
+
+  const creditsPage = existingPages.find((item: any) => item.page_type === 'credits');
+  const generatedTitles = new Set(['production credits', 'characters', 'sets / locations', 'sets', 'locations', 'product placements']);
+  const manualSections = Array.isArray(creditsPage?.credits_sections)
+    ? creditsPage.credits_sections.filter((section: any) => {
+        const title = String(section?.title || '').trim().toLowerCase();
+        return !['fotoplay', 'product_placement_auto'].includes(section?.source)
+          && !generatedTitles.has(title);
+      })
+    : [];
+
   const creditsData = {
     dossier_id: dossier.id,
     page_type: 'credits',
     order: 1,
     title: 'Credits',
     content: '',
-    credits_sections: creditsSections,
+    credits_sections: [...autoCreditsSections, ...manualSections],
   };
-  const creditsPage = existingPages.find((item: any) => item.page_type === 'credits');
   if (creditsPage) await service.entities.DossierPage.update(creditsPage.id, creditsData);
   else await service.entities.DossierPage.create(creditsData);
-
-  const lineageService = createClient(
-    Deno.env.get('SUPABASE_URL') || '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
-    { auth: { persistSession: false } },
-  );
-  const { error: placementError } = await lineageService.rpc('refresh_dossier_product_placements', {
-    p_dossier_id: dossier.id,
-  });
-  if (placementError) {
-    console.error('[publishAuthorStory] Product placement refresh failed:', placementError.message);
-  }
 
   await service.entities.AuthorStoryProject.update(project.id, { status: 'published', published_dossier_id: dossier.id });
   return Response.json({ success: true, dossier_id: dossier.id, story_id: story.id, chapter_count: chapters.length, segment_count: blocks.length, republished });
