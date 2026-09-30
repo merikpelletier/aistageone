@@ -2,16 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, XCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
-import { format, addDays, addWeeks, addMonths } from 'date-fns';
-
-const computeEndDate = (start, durationStr) => {
-  if (!durationStr) return null;
-  const s = durationStr.toLowerCase();
-  if (s.includes('week')) { const n = parseInt(s) || 1; return addWeeks(start, n); }
-  if (s.includes('month')) { const n = parseInt(s) || 1; return addMonths(start, n); }
-  if (s.includes('day')) { const n = parseInt(s) || 7; return addDays(start, n); }
-  return addDays(start, 30);
-};
+import { format } from 'date-fns';
 
 const STATUS_COLORS = {
   pending: 'bg-yellow-500/20 text-yellow-400',
@@ -44,16 +35,14 @@ export default function AdminSponsorRequests() {
   });
 
   const approve = (r) => {
-    const startDate = new Date();
-    const endDate = computeEndDate(startDate, r.bracket_duration);
     updateMutation.mutate({
       id: r.id,
       data: {
         status: 'approved',
         is_active: true,
-        approved_at: startDate.toISOString(),
-        start_date: startDate.toISOString(),
-        end_date: endDate ? endDate.toISOString() : null,
+        approved_at: new Date().toISOString(),
+        start_date: null,
+        end_date: null,
         admin_notes: notes[r.id] ?? r.admin_notes ?? '',
       },
     });
@@ -127,8 +116,12 @@ export default function AdminSponsorRequests() {
                     <p className="text-white">{r.bracket_duration} · ${r.bracket_price}</p>
                   </div>
                   <div>
-                    <p className="text-white mb-0.5">Target profile</p>
+                    <p className="text-white mb-0.5">Creator</p>
                     <p className="text-white">{r.member_email}</p>
+                  </div>
+                  <div>
+                    <p className="text-white mb-0.5">Sponsored content</p>
+                    <p className="text-white">{r.target_content_title || r.target_content_id || '—'}</p>
                   </div>
                   <div>
                     <p className="text-white mb-0.5">Submitted</p>
@@ -142,29 +135,25 @@ export default function AdminSponsorRequests() {
                     <p className="text-white mb-0.5">Member share (70%)</p>
                     <p className="text-white">${r.member_share?.toFixed(2) ?? (r.bracket_price * 0.70).toFixed(2)}</p>
                   </div>
-                  {r.start_date && (
-                    <div>
-                      <p className="text-white mb-0.5">Start date</p>
-                      <p className="text-white">{format(new Date(r.start_date), 'MMM d, yyyy')}</p>
-                    </div>
-                  )}
-                  {r.end_date && (
-                    <div>
-                      <p className="text-white mb-0.5">End date</p>
-                      <p className="text-white">{format(new Date(r.end_date), 'MMM d, yyyy')}</p>
-                    </div>
-                  )}
                   <div>
                     <p className="text-white mb-0.5">Terms accepted</p>
                     <p className={r.terms_accepted ? 'text-green-400' : 'text-red-400'}>{r.terms_accepted ? 'Yes' : 'No'}</p>
                   </div>
                 </div>
 
-                {/* Banner preview */}
-                {r.image_url && (
-                  <div>
-                    <p className="text-white text-xs mb-1">Banner preview</p>
-                    <img src={r.image_url} alt="banner" className="w-full h-20 object-contain rounded bg-white/5 border border-white/10" />
+                {(r.logo_url || r.image_url || r.promo_title || r.promo_text) && (
+                  <div className="space-y-3 border border-white/10 rounded-lg p-3">
+                    <p className="text-white text-xs font-medium">Sponsor presence</p>
+                    {r.logo_url && <img src={r.logo_url} alt="logo" className="h-16 max-w-full object-contain bg-white/5 p-2" />}
+                    {r.image_url && <img src={r.image_url} alt="promo" className="w-full max-h-48 object-contain bg-white/5" />}
+                    {r.promo_title && <p className="text-white text-sm font-semibold">{r.promo_title}</p>}
+                    {r.promo_text && <p className="text-white/70 text-xs">{r.promo_text}</p>}
+                    <div className="flex flex-wrap gap-2 text-xs text-white/60">
+                      {r.placement_logo && <span>Logo</span>}
+                      {r.placement_link && <span>Link</span>}
+                      {r.placement_promo && <span>Promo</span>}
+                      {r.placement_mention && <span>Mention</span>}
+                    </div>
                   </div>
                 )}
 
