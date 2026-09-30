@@ -2,11 +2,13 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Film, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import ProjectCreditsFields from '@/components/studio/ProjectCreditsFields';
 
 export default function EpisodeMetadataDisplay({ 
   posterImage, 
   seriesDesc, 
   authorName, 
+  contributors,
   publicationDate,
   episodeTitle,
   episodeDesc,
@@ -16,6 +18,7 @@ export default function EpisodeMetadataDisplay({
   onDescChange,
   onSeriesChange,
   onAuthorChange,
+  onContributorsChange,
   onPubDateChange,
   onCategoryChange,
   onPosterChange,
@@ -122,30 +125,27 @@ export default function EpisodeMetadataDisplay({
         className={`w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
       />
       
-      {/* Author & Publication Date */}
-      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
-        <div>
-          <p className="text-white text-[10px] uppercase tracking-widest mb-1">Author</p>
-          <input
-            value={authorName || ''}
-            onChange={e => onAuthorChange?.(e.target.value)}
-            onBlur={onSave}
-            placeholder="Author name"
-            disabled={isLocked}
-            className={`w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-          />
-        </div>
-        <div>
-          <p className="text-white text-[10px] uppercase tracking-widest mb-1">Publication Date</p>
-          <input
-            type="date"
-            value={publicationDate || ''}
-            onChange={e => onPubDateChange?.(e.target.value)}
-            onBlur={onSave}
-            disabled={isLocked}
-            className={`w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-          />
-        </div>
+      <div className="pt-2 border-t border-white/10">
+        <ProjectCreditsFields
+          dark
+          disabled={isLocked}
+          authorName={authorName}
+          onAuthorChange={onAuthorChange}
+          contributors={contributors || []}
+          onContributorsChange={onContributorsChange}
+        />
+      </div>
+
+      <div>
+        <p className="text-white text-[10px] uppercase tracking-widest mb-1">Publication Date</p>
+        <input
+          type="date"
+          value={publicationDate || ''}
+          onChange={e => onPubDateChange?.(e.target.value)}
+          onBlur={onSave}
+          disabled={isLocked}
+          className={`w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+        />
       </div>
     </div>
   );
