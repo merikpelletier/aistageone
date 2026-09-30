@@ -1,5 +1,9 @@
 import React from 'react';
 
+function isVideoUrl(url = '') {
+  return /\.(mp4|webm|ogg)(\?|$)/i.test(url);
+}
+
 const PAGE_META = {
   cover: { icon: '🖼️', label: 'Cover' },
   text: { icon: '📝', label: 'Story' },
@@ -16,7 +20,13 @@ const PAGE_META = {
 };
 
 export default function DossierIndexPage({ page, pages, dossier, onNavigate }) {
-  const entries = (pages || []).filter((item) => item.id !== page?.id && item.page_type !== 'index');
+  const entries = Array.from(
+    new Map(
+      (pages || [])
+        .filter((item) => item && item.id && item.page_type !== 'index' && item.id !== page?.id)
+        .map((item) => [item.id, item])
+    ).values()
+  );
 
   return (
     <div className="absolute inset-0 bg-black overflow-y-auto pointer-events-auto">
@@ -37,7 +47,15 @@ export default function DossierIndexPage({ page, pages, dossier, onNavigate }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-white/15 border border-white/15">
           {entries.map((item, index) => {
             const meta = PAGE_META[item.page_type] || { icon: '📄', label: item.page_type || 'Page' };
-            const thumb = item.media_url_landscape || item.media_url || (item.page_type === 'cover' ? dossier?.cover_image_landscape || dossier?.cover_image : '');
+            const sourceMedia = item.media_url_landscape || item.media_url || '';
+            const sourceIsVideo = item.page_type === 'video' || isVideoUrl(sourceMedia);
+            const videoPoster = (item.images || []).find((url) => url && !isVideoUrl(url))
+              || dossier?.cover_image_landscape
+              || dossier?.cover_image
+              || '';
+            const thumb = sourceIsVideo
+              ? videoPoster
+              : (sourceMedia || (item.page_type === 'cover' ? dossier?.cover_image_landscape || dossier?.cover_image : ''));
             const title = item.episode_title || item.title || meta.label;
             const description = item.episode_description || item.content || '';
 
@@ -49,15 +67,16 @@ export default function DossierIndexPage({ page, pages, dossier, onNavigate }) {
                 className="group text-left bg-neutral-950 hover:bg-neutral-900 transition-colors min-h-44 flex flex-col"
               >
                 {thumb ? (
-                  <div className="h-36 w-full overflow-hidden bg-black">
-                    {item.page_type === 'video' || /\.(mp4|webm|ogg)(\?|$)/i.test(thumb) ? (
-                      <video src={thumb} muted playsInline preload="metadata" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                    ) : (
-                      <img src={thumb} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative h-36 w-full overflow-hidden bg-black">
+                    <img src={thumb} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                    {sourceIsVideo && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <span className="w-11 h-11 border border-white/50 bg-black/55 flex items-center justify-center text-white text-lg">▶</span>
+                      </div>
                     )}
                   </div>
                 ) : (
-                  <div className="h-24 flex items-center justify-center border-b border-white/10 text-3xl">{meta.icon}</div>
+                  <div className="h-24 bg-neutral-950 flex items-center justify-center border-b border-white/10 text-3xl">{meta.icon}</div>
                 )}
 
                 <div className="p-4 flex-1">
