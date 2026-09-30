@@ -736,17 +736,21 @@ export default function DossierViewer({ pages, onClose, dossier }) {
         )}
       </AnimatePresence>
 
-       {/* Page Indicators */}
+       {/* Page Indicators — content pages only; visual index is navigation, not a content tile */}
        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 flex gap-2 z-40 pointer-events-auto">
-        {filteredPages.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrentPage(idx)}
-            className={`w-2 h-2 rounded-full transition-colors ${
-              idx === currentPage ? 'bg-white' : 'bg-white/30'
-            }`}
-          />
-        ))}
+        {filteredPages
+          .map((p, originalIndex) => ({ p, originalIndex }))
+          .filter(({ p }) => p.page_type !== 'index')
+          .map(({ p, originalIndex }) => (
+            <button
+              key={p.id || originalIndex}
+              onClick={() => setCurrentPage(originalIndex)}
+              aria-label={p.episode_title || p.title || p.page_type || 'Page'}
+              className={`w-2 h-2 rounded-full transition-colors ${
+                originalIndex === currentPage ? 'bg-white' : 'bg-white/30'
+              }`}
+            />
+          ))}
       </div>
 
       {/* Product Info (for products) */}
