@@ -7,18 +7,6 @@ import FanDonationButton from '@/components/FanDonationButton';
 
 export default function ProfileFansSponsors({ profile, user }) {
   const email = profile?.user_email || user?.email;
-  const [sponsor, setSponsor] = useState(null);
-
-  useEffect(() => {
-    if (!email) return;
-    base44.entities.ProfileSponsor.filter({ member_email: email, is_active: true })
-      .then(sponsors => {
-        if (sponsors.length > 0) {
-          setSponsor(sponsors[Math.floor(Math.random() * sponsors.length)]);
-        }
-      })
-      .catch(() => {});
-  }, [email]);
 
   return (
     <div className="py-2 space-y-3">
@@ -33,11 +21,6 @@ export default function ProfileFansSponsors({ profile, user }) {
         <Handshake size={13} />
         Sponsor
       </Link>
-      {sponsor && (
-        <div className="text-white/50 text-xs">
-          Sponsored by <span className="text-white/80 font-medium">{sponsor.sponsor_name || 'a partner'}</span>
-        </div>
-      )}
     </div>
   );
 }
