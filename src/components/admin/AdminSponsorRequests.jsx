@@ -57,7 +57,7 @@ export default function AdminSponsorRequests() {
     <div className="space-y-4">
       {/* Filter tabs */}
       <div className="flex gap-2 flex-wrap">
-        {['pending', 'approved', 'active', 'rejected', 'expired', 'all'].map(f => (
+        {['pending', 'approved', 'active', 'rejected', 'all'].map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -203,7 +203,7 @@ export default function AdminSponsorRequests() {
                     Revoke & Deactivate
                   </button>
                 )}
-                {(r.status === 'rejected' || r.status === 'expired') && (
+                {r.status === 'rejected' && (
                   <button
                     onClick={() => approve(r)}
                     className="w-full py-2 text-xs text-green-400/70 hover:text-green-400 transition-colors border border-green-400/20 rounded-lg"
