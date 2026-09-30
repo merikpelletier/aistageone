@@ -17,6 +17,7 @@ import BlockPlayer from '@/components/production/BlockPlayer';
 import SponsorContentPlacement from '@/components/SponsorContentPlacement';
 import DossierIndexPage from '@/components/DossierIndexPage';
 import DossierContestPage from '@/components/DossierContestPage';
+import DossierCreditsPage from '@/components/DossierCreditsPage';
 // Small helper: loads EpisodeProduction and shows a "Watch Blocks" button
 function EpisodeBlocksButton({ episodePageId, dossierId, onPlay }) {
   const [epProd, setEpProd] = React.useState(null);
@@ -527,6 +528,11 @@ export default function DossierViewer({ pages, onClose, dossier }) {
             <DossierContestPage page={page} dossier={dossier} />
           )}
 
+          {/* Credits page */}
+          {page?.page_type === 'credits' && (
+            <DossierCreditsPage page={page} dossier={dossier} />
+          )}
+
           {/* Member Episodes page */}
           {page?.page_type === 'member_episodes' && (
             <MemberEpisodesPage page={page} dossier={dossier} pages={pages} />
@@ -581,7 +587,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
           )}
 
           {/* Portrait Content */}
-          {!page?.is_product && page?.page_type !== 'join_cast' && page?.page_type !== 'episode' && page?.page_type !== 'series' && page?.page_type !== 'member_episodes' && page?.page_type !== 'block_player' && page?.page_type !== 'index' && page?.page_type !== 'contest' && !(page?.page_type === 'mixed' && page?.image_layout !== 'background') && (
+          {!page?.is_product && page?.page_type !== 'join_cast' && page?.page_type !== 'episode' && page?.page_type !== 'series' && page?.page_type !== 'member_episodes' && page?.page_type !== 'block_player' && page?.page_type !== 'index' && page?.page_type !== 'contest' && page?.page_type !== 'credits' && !(page?.page_type === 'mixed' && page?.image_layout !== 'background') && (
             <div className={`${isLandscape ? 'hidden' : ''} absolute inset-0 flex flex-col px-6 pt-16 pb-20 pointer-events-none`}>
               {page?.title && !page?.hide_title && (
                 <h2 className={`text-3xl md:text-5xl font-extralight tracking-widest mb-6 flex-shrink-0 ${
@@ -708,7 +714,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
                 .map(({ p, originalIndex }) => {
                 const pageTypeIcon = {
                   cover: '🖼️', text: '📝', image: '🖼️', video: '🎬', mixed: '📰',
-                  join_cast: '🎭', episode: '🎬', series: '📺', production_kit: '🎬', member_episodes: '🌟', index: '☰', contest: '🏆'
+                  join_cast: '🎭', episode: '🎬', series: '📺', production_kit: '🎬', member_episodes: '🌟', index: '☰', contest: '🏆', credits: '✦'
                 }[p.page_type] || '📄';
                 const label = p.episode_title || p.title || p.page_type;
                 const isActive = originalIndex === currentPage;

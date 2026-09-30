@@ -17,6 +17,7 @@ const PAGE_LABELS = {
   member_episodes: 'Member Episodes',
   block_player: 'Episode',
   contest: 'Open Call',
+  credits: 'Credits',
 };
 
 function plainText(value = '') {
