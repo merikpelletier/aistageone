@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Check, X, Edit2 } from 'lucide-react';
 
-const EMPTY_FORM = { name: '', price: '', duration: '', is_active: true };
+const EMPTY_FORM = { name: '', price: '', is_active: true };
 
 function BracketForm({ initial = EMPTY_FORM, onSave, onCancel, saving }) {
   const [form, setForm] = useState(initial);
@@ -16,8 +16,7 @@ function BracketForm({ initial = EMPTY_FORM, onSave, onCancel, saving }) {
         onChange={e => setForm({ ...form, name: e.target.value })}
         className="w-full px-3 py-2 bg-white/10 border border-white/10 rounded-lg text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/30"
       />
-      <div className="flex gap-3">
-        <div className="relative flex-1">
+      <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white text-sm">$</span>
           <input
             type="number"
@@ -29,14 +28,6 @@ function BracketForm({ initial = EMPTY_FORM, onSave, onCancel, saving }) {
             className="w-full pl-7 pr-3 py-2 bg-white/10 border border-white/10 rounded-lg text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/30"
           />
         </div>
-        <input
-          type="text"
-          placeholder="Duration (e.g. 1 month)"
-          value={form.duration}
-          onChange={e => setForm({ ...form, duration: e.target.value })}
-          className="flex-1 px-3 py-2 bg-white/10 border border-white/10 rounded-lg text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/30"
-        />
-      </div>
       <label className="flex items-center gap-2 cursor-pointer">
         <input
           type="checkbox"
@@ -49,7 +40,7 @@ function BracketForm({ initial = EMPTY_FORM, onSave, onCancel, saving }) {
       <div className="flex gap-2 pt-1">
         <button
           onClick={() => onSave({ ...form, price: parseFloat(form.price) || 0 })}
-          disabled={!form.name || !form.price || !form.duration || saving}
+          disabled={!form.name || !form.price || saving}
           className="flex items-center gap-2 px-4 py-2 bg-white text-black text-sm rounded-lg hover:bg-white/90 disabled:opacity-40 transition-colors"
         >
           <Check size={14} /> Save
@@ -119,7 +110,7 @@ export default function AdminSponsorBrackets() {
           <div key={b.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
             {editingId === b.id ? (
               <BracketForm
-                initial={{ name: b.name, price: b.price, duration: b.duration, is_active: b.is_active }}
+                initial={{ name: b.name, price: b.price, is_active: b.is_active }}
                 onSave={(data) => updateMutation.mutate({ id: b.id, data })}
                 onCancel={() => setEditingId(null)}
                 saving={updateMutation.isPending}
@@ -128,7 +119,6 @@ export default function AdminSponsorBrackets() {
               <div className="flex items-center gap-4 p-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-white font-medium text-sm">{b.name}</p>
-                  <p className="text-white text-xs mt-0.5">{b.duration}</p>
                 </div>
                 <p className="text-white font-semibold text-base">${b.price.toLocaleString()}</p>
                 <button
