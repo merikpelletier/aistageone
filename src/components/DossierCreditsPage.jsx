@@ -72,30 +72,49 @@ export default function DossierCreditsPage({ page, dossier }) {
                 </div>
 
                 <div className="divide-y divide-white/10">
-                  {(section.entries || []).map((entry, entryIndex) => (
-                    <div key={`${entry.name || entry.role || 'credit'}-${entryIndex}`} className="grid gap-1 py-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-5 md:py-5">
-                      <div className="text-[10px] uppercase tracking-[0.22em] text-white/35">
-                        {entry.role || ''}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-start gap-3">
-                          {entry.image_url && (
-                            <img src={entry.image_url} alt="" className="h-12 w-12 flex-shrink-0 object-cover" />
-                          )}
-                          <div>
-                            {entry.url ? (
-                              <a href={entry.url} target="_blank" rel="noopener noreferrer" className="text-base font-light text-white underline-offset-4 hover:underline md:text-lg">
-                                {entry.name || entry.role}
-                              </a>
-                            ) : (
-                              <p className="text-base font-light text-white md:text-lg">{entry.name || entry.role}</p>
+                  {(section.entries || []).map((entry, entryIndex) => {
+                    const sectionTitle = String(section.title || '').trim().toLowerCase();
+                    const entryRole = String(entry.role || '').trim().toLowerCase();
+                    const hideRedundantRole =
+                      (sectionTitle === 'characters' || sectionTitle === 'characters & actors') &&
+                      (entryRole === 'character' || entryRole === 'characters');
+
+                    return (
+                      <div
+                        key={`${entry.name || entry.role || 'credit'}-${entryIndex}`}
+                        className={hideRedundantRole
+                          ? 'py-4 md:py-5'
+                          : 'grid gap-1 py-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-5 md:py-5'}
+                      >
+                        {!hideRedundantRole && (
+                          <div className="text-[10px] uppercase tracking-[0.22em] text-white/35">
+                            {entry.role || ''}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-start gap-4">
+                            {entry.image_url && (
+                              <img
+                                src={entry.image_url}
+                                alt=""
+                                className="h-24 w-20 flex-shrink-0 object-cover md:h-28 md:w-24"
+                              />
                             )}
-                            {entry.note && <p className="mt-1 text-xs font-light leading-relaxed text-white/45 md:text-sm">{entry.note}</p>}
+                            <div className="min-w-0 pt-0.5">
+                              {entry.url ? (
+                                <a href={entry.url} target="_blank" rel="noopener noreferrer" className="text-base font-light text-white underline-offset-4 hover:underline md:text-lg">
+                                  {entry.name || entry.role}
+                                </a>
+                              ) : (
+                                <p className="text-base font-light text-white md:text-lg">{entry.name || entry.role}</p>
+                              )}
+                              {entry.note && <p className="mt-1 text-xs font-light leading-relaxed text-white/45 md:text-sm">{entry.note}</p>}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </section>
