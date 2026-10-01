@@ -229,14 +229,37 @@ export default function Magazine() {
             <LayoutGrid size={16} className="text-black" />
           </Link>
 
-          {/* Content rating badge — always visible on the cover when classified */}
-          {currentDossier?.content_rating && (
+          {/* Classification + language — always visible on the cover */}
+          {(currentDossier?.content_rating || currentDossier?.default_language || currentDossier?.original_language) && (
             <div
-              className="absolute top-[60px] right-4 z-20 min-w-[52px] h-9 px-3 flex items-center justify-center border border-white/80 bg-black/80 text-white text-xs font-black tracking-[0.12em] uppercase backdrop-blur-sm"
-              aria-label={`Content rating ${currentDossier.content_rating}`}
+              className="absolute top-[60px] right-4 z-[60] flex items-center gap-2"
               onClick={(e) => e.stopPropagation()}
             >
-              {currentDossier.content_rating === 'all' ? 'ALL' : currentDossier.content_rating}
+              {currentDossier?.content_rating && (
+                <div
+                  className="min-w-[52px] h-9 px-3 flex items-center justify-center border border-white bg-black text-white text-xs font-black tracking-[0.12em] uppercase"
+                  aria-label={`Content rating ${currentDossier.content_rating}`}
+                >
+                  {currentDossier.content_rating === 'all' ? 'ALL' : currentDossier.content_rating}
+                </div>
+              )}
+              {(currentDossier?.default_language || currentDossier?.original_language) && (
+                <div
+                  className="h-9 px-3 flex items-center justify-center border border-white bg-black text-white text-xs font-black tracking-[0.12em] uppercase"
+                  aria-label={`Language ${currentDossier.default_language || currentDossier.original_language}`}
+                >
+                  {({
+                    en: 'EN',
+                    fr: 'FR',
+                    es: 'ES',
+                    English: 'EN',
+                    Français: 'FR',
+                    French: 'FR',
+                    Español: 'ES',
+                    Spanish: 'ES',
+                  })[currentDossier.default_language || currentDossier.original_language] || String(currentDossier.default_language || currentDossier.original_language).toUpperCase()}
+                </div>
+              )}
             </div>
           )}
 
