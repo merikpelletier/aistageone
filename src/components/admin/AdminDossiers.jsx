@@ -191,6 +191,16 @@ export default function AdminDossiers() {
                         {dossier.category}
                       </span>
                     )}
+                    {dossier.content_rating && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-red-900/40 text-red-300 border border-red-500/20">
+                        {dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}
+                      </span>
+                    )}
+                    {(dossier.default_language || dossier.original_language) && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-sky-900/40 text-sky-300 border border-sky-500/20 uppercase">
+                        {dossier.default_language || dossier.original_language}
+                      </span>
+                    )}
                     <button
                       onClick={() => toggleExpand(dossier.id)}
                       className="text-white text-xs hover:text-white flex items-center gap-1 transition-colors"
@@ -322,6 +332,114 @@ export default function AdminDossiers() {
                 </p>
               </div>
 
+              <div className="pt-3 border-t border-white/10 space-y-4">
+                <div>
+                  <p className="text-white text-sm font-medium">Classification & Languages</p>
+                  <p className="text-white/50 text-xs mt-1">
+                    These fields are required before a dossier can be published.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-white text-sm mb-2">Content rating</label>
+                    <Select
+                      value={editingDossier.content_rating || '__none__'}
+                      onValueChange={(value) => setEditingDossier({ ...editingDossier, content_rating: value === '__none__' ? null : value })}
+                    >
+                      <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— Not classified —</SelectItem>
+                        <SelectItem value="all">All audiences</SelectItem>
+                        <SelectItem value="13+">13+</SelectItem>
+                        <SelectItem value="18+">18+</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="block text-white text-sm mb-2">Access model</label>
+                    <Select
+                      value={editingDossier.access_model || '__none__'}
+                      onValueChange={(value) => setEditingDossier({ ...editingDossier, access_model: value === '__none__' ? null : value })}
+                    >
+                      <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— Not set —</SelectItem>
+                        <SelectItem value="free">Free</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-white text-sm mb-2">Original language</label>
+                    <Input
+                      value={editingDossier.original_language || ''}
+                      onChange={(e) => setEditingDossier({ ...editingDossier, original_language: e.target.value })}
+                      placeholder="en, fr, English…"
+                      className="bg-neutral-900 border-white/10 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-white text-sm mb-2">Default language</label>
+                    <Input
+                      value={editingDossier.default_language || ''}
+                      onChange={(e) => setEditingDossier({ ...editingDossier, default_language: e.target.value })}
+                      placeholder="en, fr, English…"
+                      className="bg-neutral-900 border-white/10 text-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-white text-sm mb-2">Audio languages</label>
+                  <Input
+                    value={(editingDossier.audio_languages || []).join(', ')}
+                    onChange={(e) => setEditingDossier({
+                      ...editingDossier,
+                      audio_languages: e.target.value.split(',').map(v => v.trim()).filter(Boolean)
+                    })}
+                    placeholder="en, fr"
+                    className="bg-neutral-900 border-white/10 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-white text-sm mb-2">Subtitle languages</label>
+                  <Input
+                    value={(editingDossier.subtitle_languages || []).join(', ')}
+                    onChange={(e) => setEditingDossier({
+                      ...editingDossier,
+                      subtitle_languages: e.target.value.split(',').map(v => v.trim()).filter(Boolean)
+                    })}
+                    placeholder="en, fr"
+                    className="bg-neutral-900 border-white/10 text-white"
+                  />
+                </div>
+
+                <label className="flex items-start gap-3 cursor-pointer bg-neutral-900/60 border border-white/10 p-3 rounded">
+                  <input
+                    type="checkbox"
+                    checked={editingDossier.public_promo_confirmed || false}
+                    onChange={(e) => setEditingDossier({ ...editingDossier, public_promo_confirmed: e.target.checked })}
+                    className="w-5 h-5 mt-0.5 accent-white cursor-pointer"
+                  />
+                  <span>
+                    <span className="block text-white text-sm">Public publication confirmed</span>
+                    <span className="block text-white/50 text-xs mt-1">
+                      Required for published dossiers. 18+ content automatically requires the adult gate and warning page.
+                    </span>
+                  </span>
+                </label>
+              </div>
+
               <div>
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
@@ -419,6 +537,7 @@ export default function AdminDossiers() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="pending_review">Pending review</SelectItem>
                   <SelectItem value="published">Published</SelectItem>
                   <SelectItem value="unpublished">Unpublished</SelectItem>
                 </SelectContent>
