@@ -1522,8 +1522,12 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
               if (res.data?.success) {
                 qc.invalidateQueries({ queryKey: ['dossiers'] });
                 qc.invalidateQueries({ queryKey: ['publishedDossiers'] });
-                toast.success('Episode published! Redirecting to Magazine…');
-                navigate(`/Magazine?dossier=${res.data.dossier_id}`);
+                if (res.data?.status === 'published') {
+                  toast.success('Episode published! Redirecting to Magazine…');
+                  navigate(`/Magazine?dossier=${res.data.dossier_id}`);
+                } else {
+                  toast.success('Episode submitted for review. Complete the publication controls before it goes live.');
+                }
               } else {
                 toast.error(res.data?.error || 'Publish failed — no success response');
               }
