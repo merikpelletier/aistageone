@@ -229,6 +229,17 @@ export default function Magazine() {
             <LayoutGrid size={16} className="text-black" />
           </Link>
 
+          {/* Content rating badge — always visible on the cover when classified */}
+          {currentDossier?.content_rating && (
+            <div
+              className="absolute top-[60px] right-4 z-20 min-w-[52px] h-9 px-3 flex items-center justify-center border border-white/80 bg-black/80 text-white text-xs font-black tracking-[0.12em] uppercase backdrop-blur-sm"
+              aria-label={`Content rating ${currentDossier.content_rating}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {currentDossier.content_rating === 'all' ? 'ALL' : currentDossier.content_rating}
+            </div>
+          )}
+
           {/* Content */}
           {magazineSections.cover_text.visible && !currentDossier?.hide_text_on_cover && (
             <div className="absolute top-[108px] left-0 right-0 px-6">
