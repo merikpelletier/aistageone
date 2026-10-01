@@ -687,6 +687,8 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
   const [productionInstructions, setProductionInstructions] = useState(block.production_instructions || '');
   const [mediaUrl, setMediaUrl] = useState(block.media_url || null);
   const [mediaType, setMediaType] = useState(block.media_type || null);
+  const [videoLink, setVideoLink] = useState('');
+  const [videoLinkError, setVideoLinkError] = useState('');
   const [vaultAssets, setVaultAssets] = useState([]);
   const [vaultFolders, setVaultFolders] = useState([]);
   const [showVaultPicker, setShowVaultPicker] = useState(false);
@@ -732,6 +734,20 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
     setMediaType(type);
     const autoTitle = title || (type === 'image' ? 'Scene' : type === 'video' ? 'Video' : 'Audio');
     onUpdate({ ...block, title: autoTitle, description, block_type: blockType, dialogue, production_instructions: productionInstructions, media_url: url, media_type: type });
+  };
+
+  const useVideoLink = () => {
+    const value = videoLink.trim();
+    if (!value) return;
+    try {
+      const parsed = new URL(value);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('invalid protocol');
+      setVideoLinkError('');
+      handleMediaDone(value, 'video');
+      setVideoLink('');
+    } catch {
+      setVideoLinkError('Enter a valid http(s) video URL.');
+    }
   };
 
   const save = () => {
@@ -795,6 +811,28 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
                 <Bookmark size={20} className="text-red-400" />
               </button>
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-white text-[10px] uppercase tracking-widest font-semibold">Video Link</p>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={videoLink}
+                onChange={e => { setVideoLink(e.target.value); if (videoLinkError) setVideoLinkError(''); }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); useVideoLink(); } }}
+                placeholder="Paste a video URL…"
+                className="min-w-0 flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50"
+              />
+              <button
+                type="button"
+                onClick={useVideoLink}
+                disabled={!videoLink.trim()}
+                className="px-4 py-2.5 border border-white/60 rounded-xl text-white text-xs font-semibold hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Use Link
+              </button>
+            </div>
+            {videoLinkError && <p className="text-red-400 text-xs">{videoLinkError}</p>}
           </div>
           {showVaultPicker && (
             <div className="space-y-2">
