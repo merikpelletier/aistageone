@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
       subtitle: production.episode_description || '',
       class: 'Story',
       category: production.category || '',
-      status: 'published',
+      status: 'pending_review',
       order: Date.now(),
       author_name: production.author_name || user.full_name || user.email,
       cover_image: coverImage,
@@ -50,8 +50,11 @@ Deno.serve(async (req) => {
     let dossierId;
 
     if (existingPage) {
-      // Update the existing Dossier in place — no duplicates
-      await base44.entities.Dossier.update(existingPage.dossier_id, dossierData);
+      // Preserve an already-published dossier; otherwise keep it in review until
+      // the publication controls are completed.
+      const existingDossier = await base44.entities.Dossier.get(existingPage.dossier_id);
+      const nextStatus = existingDossier?.status === 'published' ? 'published' : 'pending_review';
+      await base44.entities.Dossier.update(existingPage.dossier_id, { ...dossierData, status: nextStatus });
       // Update the existing DossierPage too
       await base44.entities.DossierPage.update(existingPage.id, {
         title: dossierData.title,
@@ -75,13 +78,18 @@ Deno.serve(async (req) => {
       dossierId = dossier.id;
     }
 
-    // Mark the TimelineStory as published
-    await base44.entities.TimelineStory.update(production_id, { is_published: true });
+    const finalDossier = await base44.entities.Dossier.get(dossierId);
+    const finalStatus = finalDossier?.status || 'pending_review';
+
+    await base44.entities.TimelineStory.update(production_id, { is_published: finalStatus === 'published' });
 
     return Response.json({
       success: true,
       dossier_id: dossierId,
-      message: 'Episode published successfully!'
+      status: finalStatus,
+      message: finalStatus === 'published'
+        ? 'Episode published successfully!'
+        : 'Episode submitted for review. Publication controls must be completed before it can go live.'
     });
   } catch (error) {
     console.error('Error publishing episode:', error);
