@@ -8,7 +8,16 @@ serveWithCors(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { kit_page_id, dossier_id, production_id, access_level = 'public' } = await req.json();
+    const {
+      kit_page_id,
+      dossier_id,
+      production_id,
+      access_level = 'public',
+      finalize = false,
+      content_rating: contentRating,
+      original_language: originalLanguage,
+      public_promo_confirmed: publicPromoConfirmed,
+    } = await req.json();
 
     if (!production_id) {
       return Response.json({ error: 'Missing production_id' }, { status: 400 });
@@ -28,12 +37,27 @@ serveWithCors(async (req) => {
     // Use poster_image as cover, fallback to first block's media
     const coverImage = production.poster_image || blocks[0]?.media_url || null;
 
+    const wantsPublish = finalize === true;
+    if (wantsPublish) {
+      if (!['all', '13+', '18+'].includes(contentRating)) {
+        return Response.json({ error: 'Choose a valid content rating' }, { status: 400 });
+      }
+      if (!originalLanguage || !/^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(originalLanguage)) {
+        return Response.json({ error: 'Choose the story language' }, { status: 400 });
+      }
+      if (publicPromoConfirmed !== true) {
+        return Response.json({ error: 'Public Magazine publication must be confirmed' }, { status: 400 });
+      }
+    }
+
+    const service = base44.asServiceRole;
+
     const dossierData = {
       title: production.episode_title || 'My Episode',
       subtitle: production.episode_description || '',
       class: 'Story',
       category: production.category || '',
-      status: 'pending_review',
+      status: wantsPublish ? 'published' : 'pending_review',
       order: Date.now(),
       author_name: production.author_name || user.full_name || user.email,
       cover_image: coverImage,
@@ -42,12 +66,23 @@ serveWithCors(async (req) => {
       submitted_by_email: user.email,
       submitted_by_name: user.full_name || user.email,
       submitted_at: new Date().toISOString(),
-      approved_at: new Date().toISOString(),
+      approved_at: wantsPublish ? new Date().toISOString() : null,
       access_level: access_level === 'subscribers' ? 'subscribers' : 'public',
+      ...(wantsPublish ? {
+        content_rating: contentRating,
+        rating_reasons: [],
+        public_promo_confirmed: true,
+        public_promo_confirmed_by: user.id,
+        access_model: 'free',
+        original_language: originalLanguage,
+        audio_languages: [originalLanguage],
+        subtitle_languages: [],
+        default_language: originalLanguage,
+      } : {}),
     };
 
     // Check if a Dossier already exists for this production (via its block_player page)
-    const existingPages = await base44.entities.DossierPage.filter({ block_player_episode_page_id: production_id });
+    const existingPages = await service.entities.DossierPage.filter({ block_player_episode_page_id: production_id });
     const existingPage = existingPages.find(p => p.page_type === 'block_player');
 
     let dossierId;
@@ -55,11 +90,11 @@ serveWithCors(async (req) => {
     if (existingPage) {
       // Preserve an already-published dossier; otherwise keep it in review until
       // the publication controls (rating, access, language, promo confirmation) are completed.
-      const existingDossier = await base44.entities.Dossier.get(existingPage.dossier_id);
-      const nextStatus = existingDossier?.status === 'published' ? 'published' : 'pending_review';
-      await base44.entities.Dossier.update(existingPage.dossier_id, { ...dossierData, status: nextStatus });
+      const existingDossier = await service.entities.Dossier.get(existingPage.dossier_id);
+      const nextStatus = wantsPublish || existingDossier?.status === 'published' ? 'published' : 'pending_review';
+      await service.entities.Dossier.update(existingPage.dossier_id, { ...dossierData, status: nextStatus });
       // Update the existing DossierPage too
-      await base44.entities.DossierPage.update(existingPage.id, {
+      await service.entities.DossierPage.update(existingPage.id, {
         title: dossierData.title,
         content: production.episode_description || '',
         media_url: coverImage,
@@ -68,8 +103,8 @@ serveWithCors(async (req) => {
       dossierId = existingPage.dossier_id;
     } else {
       // First publish — create new Dossier + page
-      const dossier = await base44.entities.Dossier.create(dossierData);
-      await base44.entities.DossierPage.create({
+      const dossier = await service.entities.Dossier.create(dossierData);
+      await service.entities.DossierPage.create({
         dossier_id: dossier.id,
         page_type: 'block_player',
         order: 0,
@@ -95,7 +130,7 @@ serveWithCors(async (req) => {
 
     const contributors = Array.isArray(production.contributors) ? production.contributors : [];
     const placements = Array.isArray(placementData) ? placementData : [];
-    const creditsPages = await base44.entities.DossierPage.filter({ dossier_id: dossierId, page_type: 'credits' });
+    const creditsPages = await service.entities.DossierPage.filter({ dossier_id: dossierId, page_type: 'credits' });
     const creditsPage = creditsPages[0] || null;
     const generatedTitles = new Set(['production credits', 'product placements']);
     const manualSections = Array.isArray(creditsPage?.credits_sections)
@@ -145,14 +180,14 @@ serveWithCors(async (req) => {
       content: '',
       credits_sections: creditsSections,
     };
-    if (creditsPage) await base44.entities.DossierPage.update(creditsPage.id, creditsData);
-    else await base44.entities.DossierPage.create(creditsData);
+    if (creditsPage) await service.entities.DossierPage.update(creditsPage.id, creditsData);
+    else await service.entities.DossierPage.create(creditsData);
 
-    const finalDossier = await base44.entities.Dossier.get(dossierId);
+    const finalDossier = await service.entities.Dossier.get(dossierId);
     const finalStatus = finalDossier?.status || 'pending_review';
 
     // Only mark the TimelineStory as published when the dossier is actually public.
-    await base44.entities.TimelineStory.update(production_id, { is_published: finalStatus === 'published' });
+    await service.entities.TimelineStory.update(production_id, { is_published: finalStatus === 'published' });
 
     return Response.json({
       success: true,
