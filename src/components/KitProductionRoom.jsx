@@ -1565,7 +1565,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
         </div>
       )}
 
-      {/* Block Player */
+      {/* Block Player */}
       {showBlockPlayer && masterTimeline.length > 0 && (
         <BlockPlayer
           blocks={masterTimeline}
