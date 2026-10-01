@@ -1085,6 +1085,12 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
   const [savingBlockId, setSavingBlockId] = useState(null); // Track which block is being saved
   const [showBlockPlayer, setShowBlockPlayer] = useState(false);
   const [showEpisodePreview, setShowEpisodePreview] = useState(false);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [publishRating, setPublishRating] = useState('all');
+  const [publishLanguage, setPublishLanguage] = useState('en');
+  const [publishAccess, setPublishAccess] = useState('public');
+  const [publishConfirmed, setPublishConfirmed] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [episodePage, setEpisodePage] = useState(null);
 
   // Broadcast KitProductionRoom context
@@ -1452,7 +1458,114 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
         />
       )}
 
-      {/* Block Player */}
+      {showPublishModal && production && (
+        <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-neutral-950 border border-white/15 rounded-2xl p-5 space-y-4">
+            <div>
+              <p className="text-white text-lg font-bold">Publish Timeline</p>
+              <p className="text-white/50 text-xs mt-1">Complete the required publication controls before going live.</p>
+            </div>
+
+            <div>
+              <label className="text-white text-xs font-bold block mb-1.5">Content rating</label>
+              <select
+                value={publishRating}
+                onChange={(e) => setPublishRating(e.target.value)}
+                className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-3 text-white"
+              >
+                <option value="all">All audiences</option>
+                <option value="13+">13+</option>
+                <option value="18+">18+</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-white text-xs font-bold block mb-1.5">Original language</label>
+              <select
+                value={publishLanguage}
+                onChange={(e) => setPublishLanguage(e.target.value)}
+                className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-3 text-white"
+              >
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="es">Español</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-white text-xs font-bold block mb-1.5">Audience access</label>
+              <select
+                value={publishAccess}
+                onChange={(e) => setPublishAccess(e.target.value)}
+                className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-3 text-white"
+              >
+                <option value="public">Public</option>
+                <option value="subscribers">Subscribers only</option>
+              </select>
+            </div>
+
+            <label className="flex items-start gap-3 bg-neutral-900 border border-white/10 rounded-xl p-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={publishConfirmed}
+                onChange={(e) => setPublishConfirmed(e.target.checked)}
+                className="mt-0.5 h-4 w-4"
+              />
+              <span className="text-white text-xs">
+                I confirm that this Timeline may be published in the AISTAGE.ONE Magazine.
+              </span>
+            </label>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowPublishModal(false)}
+                disabled={publishing}
+                className="flex-1 py-3 rounded-xl border border-white/20 text-white text-sm font-bold disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={publishing || !publishConfirmed}
+                onClick={async () => {
+                  setPublishing(true);
+                  try {
+                    const res = await base44.functions.invoke('publishEpisode', {
+                      kit_page_id: kitPageProp?.id || 'free_timeline',
+                      dossier_id: dossier?.id,
+                      production_id: production.id,
+                      access_level: publishAccess,
+                      finalize: true,
+                      content_rating: publishRating,
+                      original_language: publishLanguage,
+                      public_promo_confirmed: true,
+                    });
+                    if (res.data?.success && res.data?.status === 'published') {
+                      qc.invalidateQueries({ queryKey: ['dossiers'] });
+                      qc.invalidateQueries({ queryKey: ['publishedDossiers'] });
+                      setShowPublishModal(false);
+                      toast.success('Timeline published!');
+                      navigate(`/Magazine?dossier=${res.data.dossier_id}`);
+                    } else {
+                      toast.error(res.data?.error || 'Timeline was not published');
+                    }
+                  } catch (err) {
+                    toast.error(err.response?.data?.error || err.message || 'Publish failed');
+                  } finally {
+                    setPublishing(false);
+                  }
+                }}
+                className="flex-1 py-3 rounded-xl bg-yellow-400 text-black text-sm font-black disabled:opacity-50"
+              >
+                {publishing ? 'Publishing…' : 'Publish'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Block Player */
       {showBlockPlayer && masterTimeline.length > 0 && (
         <BlockPlayer
           blocks={masterTimeline}
@@ -1510,30 +1623,11 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
           saving={saving}
           onClose={onClose}
           onPreview={() => setShowEpisodePreview(true)}
-          onPublish={async () => {
+          onPublish={() => {
             if (!production?.id) { toast.error('No episode selected to publish'); return; }
             if (!production?.blocks?.filter(b => b.media_url).length) { toast.error('Add media to your scenes before publishing'); return; }
-            try {
-              const res = await base44.functions.invoke('publishEpisode', {
-                kit_page_id: kitPageProp?.id || 'free_timeline',
-                dossier_id: dossier?.id,
-                production_id: production.id
-              });
-              if (res.data?.success) {
-                qc.invalidateQueries({ queryKey: ['dossiers'] });
-                qc.invalidateQueries({ queryKey: ['publishedDossiers'] });
-                if (res.data?.status === 'published') {
-                  toast.success('Episode published! Redirecting to Magazine…');
-                  navigate(`/Magazine?dossier=${res.data.dossier_id}`);
-                } else {
-                  toast.success('Episode submitted for review. Complete the publication controls before it goes live.');
-                }
-              } else {
-                toast.error(res.data?.error || 'Publish failed — no success response');
-              }
-            } catch (err) {
-              toast.error(err.response?.data?.error || err.message || 'Publish failed');
-            }
+            setPublishConfirmed(false);
+            setShowPublishModal(true);
           }}
           hasBlocks={production?.blocks?.length > 0}
           dossier={dossier}
