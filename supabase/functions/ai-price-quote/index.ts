@@ -23,25 +23,21 @@ serveWithCors(async request=>{
       const effectiveKind=requestedKind||(assignments||[])[0]?.kind||null;
       if(!effectiveKind)return Response.json({options:[]});
 
+      const {data:catalog,error:ce}=await serviceClient.from('ai_model_catalog')
+        .select('model_key,name,description,kind,enabled')
+        .eq('kind',effectiveKind).eq('enabled',true)
+        .neq('model_key','bytedance/seedream-4.5')
+        .order('name',{ascending:true});
+      if(ce)throw ce;
+
       const {data:routeOptions,error:oe}=await serviceClient.from('ai_model_route_option')
         .select('model_key,recommended,display_order,kind')
         .eq('service',service).eq('kind',effectiveKind).eq('enabled',true);
       if(oe)throw oe;
-      if(!(routeOptions||[]).length)return Response.json({options:[]});
-
-      const optionMap=new Map((routeOptions||[]).map((o:any)=>[String(o.model_key).toLowerCase(),o]));
-      const allowedModelKeys=[...optionMap.keys()];
-      const {data:catalog,error:ce}=await serviceClient.from('ai_model_catalog')
-        .select('model_key,name,description,kind,enabled')
-        .eq('kind',effectiveKind).eq('enabled',true)
-        .in('model_key',allowedModelKeys)
-        .order('name',{ascending:true});
-      if(ce)throw ce;
-
+      const optionMap=new Map((routeOptions||[]).map((o:any)=>[o.model_key,o]));
       const results=[];
       for(const model of catalog||[]){
-        const explicit=optionMap.get(String(model.model_key).toLowerCase());
-        if(!explicit)continue;
+        const explicit=optionMap.get(model.model_key);
         try{
           const quote=await quoteAiService(serviceClient,service,body.input||{},model.model_key,effectiveKind);
           results.push({
