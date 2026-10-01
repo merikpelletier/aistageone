@@ -46,7 +46,7 @@ export default function SceneListView({
           {/* Scene card */}
           <div
             onClick={() => handleViewBlock(block)}
-            className="relative rounded-xl overflow-hidden bg-[#1a1a1a] border border-white/10 cursor-pointer group min-h-[200px]"
+            className="relative rounded-xl overflow-hidden bg-[#1a1a1a] border border-white/10 cursor-pointer group min-h-[200px] md:h-[280px] lg:h-[320px] xl:h-[340px]"
           >
             {block.media_url ? (
               block.media_type === 'video' || block.media_url.match(/\.(mp4|webm|ogg|mov)$/i) ? (
