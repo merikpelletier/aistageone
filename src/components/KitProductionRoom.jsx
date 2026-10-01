@@ -899,6 +899,31 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
           )}
         </div>
       )}
+      {!mediaUrl && (
+        <div className="space-y-2">
+          <p className="text-white text-[10px] uppercase tracking-widest font-semibold">Paste Video Link</p>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={videoLink}
+              onChange={e => { setVideoLink(e.target.value); setVideoLinkError(''); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); useVideoLink(); } }}
+              placeholder="https://…"
+              className="min-w-0 flex-1 bg-[#1a1a1a] border border-white/20 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50"
+            />
+            <button
+              type="button"
+              onClick={useVideoLink}
+              disabled={!videoLink.trim()}
+              className="px-5 py-3 bg-white text-black rounded-xl text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Add Video
+            </button>
+          </div>
+          {videoLinkError && <p className="text-red-400 text-xs">{videoLinkError}</p>}
+        </div>
+      )}
+
       <div className="space-y-3">
         <div>
           <p className="text-white text-[10px] uppercase tracking-widest mb-1">Title</p>
