@@ -34,6 +34,23 @@ function DossierCard({ dossier }) {
           <img src={dossier.cover_template_image} alt="" className="absolute inset-0 w-full h-full object-contain" />
           {img && <div className="absolute left-[8%] right-[8%] top-[9%] bottom-[27%] flex items-center justify-center overflow-hidden"><img src={img} alt={dossier.title} className="w-full h-full object-cover" /></div>}
           {!dossier.hide_text_on_cover && <div className="absolute top-0 left-0 right-0 px-2 pt-2 text-center"><p className="text-white text-xl font-black uppercase tracking-wide leading-tight line-clamp-2 drop-shadow-[0_1px_6px_rgba(0,0,0,0.95)]">{dossier.title}</p></div>}
+          {(dossier.content_rating || dossier.default_language || dossier.original_language) && (
+            <div className="absolute top-2 right-2 z-30 flex items-center gap-1.5">
+              {dossier.content_rating && (
+                <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">
+                  {dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}
+                </span>
+              )}
+              {(dossier.default_language || dossier.original_language) && (
+                <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">
+                  {({
+                    en: 'EN', fr: 'FR', es: 'ES',
+                    English: 'EN', French: 'FR', Français: 'FR', Spanish: 'ES', Español: 'ES'
+                  })[dossier.default_language || dossier.original_language] || String(dossier.default_language || dossier.original_language).toUpperCase()}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </Link>
     );
@@ -44,6 +61,23 @@ function DossierCard({ dossier }) {
       <div className="aspect-[9/16] overflow-hidden rounded-md bg-black relative border border-white/15 shadow-md group-hover/card:border-2 group-hover/card:border-red-600 group-hover/card:shadow-xl group-hover/card:scale-105 transition-all duration-200">
         {img ? <><img src={img} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-xl" /><img src={img} alt={dossier.title} className="relative h-full w-full object-contain" /></> : <div className="w-full h-full flex items-center justify-center bg-black p-3"><span className="text-white text-sm font-extrabold text-center uppercase tracking-wide leading-tight">{dossier.title}</span></div>}
         {!dossier.hide_text_on_cover && <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black via-black/90 to-transparent pb-14 pt-2.5 px-2.5"><p className="text-white text-xl font-black uppercase leading-none tracking-tight line-clamp-3 drop-shadow-[0_2px_6px_rgba(0,0,0,1)]" style={{ WebkitTextStroke: '1.5px #FFC107' }}>{dossier.title}</p></div>}
+        {(dossier.content_rating || dossier.default_language || dossier.original_language) && (
+          <div className="absolute top-2 right-2 z-30 flex items-center gap-1.5">
+            {dossier.content_rating && (
+              <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">
+                {dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}
+              </span>
+            )}
+            {(dossier.default_language || dossier.original_language) && (
+              <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">
+                {({
+                  en: 'EN', fr: 'FR', es: 'ES',
+                  English: 'EN', French: 'FR', Français: 'FR', Spanish: 'ES', Español: 'ES'
+                })[dossier.default_language || dossier.original_language] || String(dossier.default_language || dossier.original_language).toUpperCase()}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </Link>
   );
@@ -113,6 +147,23 @@ function DesktopDossierTile({ dossier, size }) {
         {image && <img src={image} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-2xl" />}
         {media ? <video ref={videoRef} src={media} poster={image || undefined} muted loop playsInline preload="metadata" className="relative h-full w-full object-contain" /> : image ? <img src={image} alt={dossier.title} className="relative h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center p-6 text-center text-white/60">{dossier.title}</div>}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/5 to-transparent opacity-90" />
+        {(dossier.content_rating || dossier.default_language || dossier.original_language) && (
+          <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
+            {dossier.content_rating && (
+              <span className="bg-black/90 border border-white text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em]">
+                {dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}
+              </span>
+            )}
+            {(dossier.default_language || dossier.original_language) && (
+              <span className="bg-black/90 border border-white text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em]">
+                {({
+                  en: 'EN', fr: 'FR', es: 'ES',
+                  English: 'EN', French: 'FR', Français: 'FR', Spanish: 'ES', Español: 'ES'
+                })[dossier.default_language || dossier.original_language] || String(dossier.default_language || dossier.original_language).toUpperCase()}
+              </span>
+            )}
+          </div>
+        )}
         <div className="absolute inset-x-0 bottom-0 p-3 md:p-4">
           <div className="mb-2 flex items-center gap-2"><span className={`h-1.5 w-1.5 rounded-full ${accent}`} /><span className="text-[9px] font-black uppercase tracking-[.18em] text-white/60">{dossier.class || dossier.category || 'AISTAGE.ONE'}</span></div>
           {!dossier.hide_text_on_cover && <h2 className={`${size === 'small' ? 'text-sm' : size === 'medium' ? 'text-xl' : 'text-3xl'} font-black leading-tight text-white drop-shadow-lg`}>{dossier.title}</h2>}
