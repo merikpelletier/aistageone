@@ -10,6 +10,7 @@ import { Plus, Edit2, Trash2, Eye, EyeOff, Layers, Upload, ChevronDown, ChevronR
 import AdminDossierCategories from './AdminDossierCategories';
 import AdminEpisodeProduction from './AdminEpisodeProduction';
 import SeriesPageEditor from './SeriesPageEditor';
+import { toast } from 'sonner';
 
 function DossierPagesIndex({ pages, onManage }) {
   const sorted = [...pages].sort((a, b) => a.order - b.order);
@@ -79,6 +80,10 @@ export default function AdminDossiers() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminDossiers'] });
       setEditingDossier(null);
+      toast.success('Dossier saved');
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Unable to save dossier');
     }
   });
 
@@ -87,6 +92,10 @@ export default function AdminDossiers() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminDossiers'] });
       setEditingDossier(null);
+      toast.success('Dossier saved');
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Unable to save dossier');
     }
   });
 
@@ -96,10 +105,55 @@ export default function AdminDossiers() {
   });
 
   const handleSaveDossier = () => {
-    if (editingDossier.id) {
-      updateDossierMutation.mutate({ id: editingDossier.id, data: editingDossier });
+    if (!editingDossier) return;
+
+    const data = {
+      ...editingDossier,
+      original_language: (editingDossier.original_language || '').trim() || null,
+      default_language: (editingDossier.default_language || '').trim() || null,
+      audio_languages: Array.isArray(editingDossier.audio_languages) ? editingDossier.audio_languages.filter(Boolean) : [],
+      subtitle_languages: Array.isArray(editingDossier.subtitle_languages) ? editingDossier.subtitle_languages.filter(Boolean) : [],
+    };
+
+    if (data.status === 'published') {
+      if (!data.content_rating) {
+        toast.error('Choose a content rating before saving a published dossier.');
+        return;
+      }
+      if (!data.access_model) {
+        toast.error('Choose an access model before saving a published dossier.');
+        return;
+      }
+      if (!data.original_language) {
+        toast.error('Choose an original language before saving a published dossier.');
+        return;
+      }
+      if (!data.default_language) {
+        data.default_language = data.original_language;
+      }
+      if (data.default_language !== data.original_language && !data.audio_languages.includes(data.default_language)) {
+        toast.error('Default language must be the original language or one of the audio languages.');
+        return;
+      }
+      if (!data.public_promo_confirmed) {
+        toast.error('Confirm public publication before saving a published dossier.');
+        return;
+      }
+
+      // These are platform safety/access requirements, not extra user-entered metadata.
+      if (data.content_rating === '18+') {
+        data.adult_age_gate_required = true;
+        data.adult_warning_page_required = true;
+      }
+      if (data.access_model === 'paid') {
+        data.commercial_access_required = true;
+      }
+    }
+
+    if (data.id) {
+      updateDossierMutation.mutate({ id: data.id, data });
     } else {
-      createDossierMutation.mutate(editingDossier);
+      createDossierMutation.mutate(data);
     }
   };
 
