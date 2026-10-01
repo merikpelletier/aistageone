@@ -46,11 +46,11 @@ export default function SceneListView({
           {/* Scene card */}
           <div
             onClick={() => handleViewBlock(block)}
-            className="relative rounded-xl overflow-hidden bg-[#1a1a1a] border border-white/10 cursor-pointer group min-h-[200px] md:h-[280px] lg:h-[320px] xl:h-[340px]"
+            className="relative rounded-xl overflow-hidden bg-black border border-white/10 cursor-pointer group min-h-[200px] md:h-[420px] lg:h-[460px] xl:h-[500px]"
           >
             {block.media_url ? (
               block.media_type === 'video' || block.media_url.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                <video src={block.media_url} className="w-full h-full object-cover" />
+                <video src={block.media_url} className="w-full h-full object-contain bg-black" />
               ) : block.media_type === 'audio' ? (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-red-600/20 flex items-center justify-center">
