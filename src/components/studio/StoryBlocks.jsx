@@ -857,7 +857,7 @@ export default function StoryBlocks({ user, onBack }) {
                 <div>
                   <motion.button whileHover={{ y: -4 }} whileTap={{ scale: 0.99 }} onClick={() => setView('author')} className="group min-h-[360px] w-full overflow-hidden rounded-[2rem] border-2 border-black bg-yellow-400 p-7 text-left shadow-2xl lg:min-h-[520px] lg:p-10" style={authorView.background_image ? { backgroundImage: `url(${authorView.background_image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
                     <div className="flex h-full flex-col">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-black text-yellow-400 lg:h-20 lg:w-20"><PenTool size={32} /></div>
+                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-black lg:h-20 lg:w-20"><PenTool size={32} color="#facc15" strokeWidth={2.25} /></div>
                       <div className="mt-auto pt-16">
                         <p className="mb-3 text-xs font-black uppercase tracking-[0.24em] text-black/60">One private author workspace</p>
                         <h3 className="text-3xl font-black leading-tight text-black lg:text-5xl">{authorView.label || 'FotoPlay Author'}</h3>
