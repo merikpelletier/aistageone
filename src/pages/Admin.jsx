@@ -57,6 +57,7 @@ import AdminStyleReferences from '@/components/admin/AdminStyleReferences';
 import AdminProductionKits from '@/components/admin/AdminProductionKits';
 import AdminPitchDecks from '@/components/admin/AdminPitchDecks';
 import AdminProductPlacements from '@/components/admin/AdminProductPlacements';
+import Admin3DLibrary from '@/components/admin/Admin3DLibrary';
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState('dossiers');
@@ -384,7 +385,7 @@ export default function Admin() {
         <TabsContent value="pitch-decks" className="mt-6">
           <AdminPitchDecks />
         </TabsContent>
-      <TabsContent value="finance-transactions" className="mt-6"><AdminFinance section="transactions" /></TabsContent><TabsContent value="finance-costs" className="mt-6"><AdminFinance section="costs" /></TabsContent><TabsContent value="ai-models" className="mt-6"><AdminModels /></TabsContent></Tabs>
+      <TabsContent value="finance-transactions" className="mt-6"><AdminFinance section="transactions" /></TabsContent><TabsContent value="finance-costs" className="mt-6"><AdminFinance section="costs" /></TabsContent><TabsContent value="ai-models" className="mt-6"><AdminModels /></TabsContent><TabsContent value="studio-3d-library" className="mt-6"><Admin3DLibrary /></TabsContent></Tabs>
     </div>
   );
 }
