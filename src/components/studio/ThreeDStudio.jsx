@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Users, ShoppingBag, FolderOpen, Layers, Sparkles, Upload, Image as ImageIcon, Type, Grid3X3, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { Box, Users, ShoppingBag, FolderOpen, Layers, Sparkles, Upload, Image as ImageIcon, Type, Grid3X3, SlidersHorizontal, ChevronDown, Search, Tag, Download, ShoppingCart } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
 
 const MODES = [
@@ -16,23 +16,175 @@ const GENERATION_TYPES = [
   { key: 'multi', label: 'Multi-view', icon: Grid3X3, hint: 'Front, back, left and right references.' },
 ];
 
-function EmptyLibrary({ title, description, icon: Icon }) {
+function LibraryCatalog({ title, description, icon: Icon, assetTypes }) {
+  const [assets, setAssets] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
+  const [purchases, setPurchases] = useState(new Set());
+  const [search, setSearch] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [subcategoryId, setSubcategoryId] = useState('');
+  const [sort, setSort] = useState('featured');
+  const [loading, setLoading] = useState(true);
+  const [errorText, setErrorText] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      setErrorText('');
+      const [{ data: assetRows, error: assetError }, { data: categoryRows }, { data: subcategoryRows }, { data: purchaseRows }] = await Promise.all([
+        supabase.from('studio_3d_asset').select('id,asset_type,category_id,subcategory_id,name,slug,description,preview_url,badges,price_credits,featured,sort_order,created_at').in('asset_type', assetTypes).eq('active', true),
+        supabase.from('studio_3d_category').select('id,asset_type,name,slug,sort_order').in('asset_type', assetTypes).eq('active', true).order('sort_order').order('name'),
+        supabase.from('studio_3d_subcategory').select('id,category_id,name,slug,sort_order').eq('active', true).order('sort_order').order('name'),
+        supabase.from('studio_3d_purchase').select('asset_id'),
+      ]);
+      if (!mounted) return;
+      if (assetError) {
+        setAssets([]);
+        setErrorText(assetError.message || 'Unable to load 3D library.');
+      } else {
+        setAssets(assetRows || []);
+      }
+      setCategories(categoryRows || []);
+      setSubcategories(subcategoryRows || []);
+      setPurchases(new Set((purchaseRows || []).map((row) => row.asset_id)));
+      setLoading(false);
+    })();
+    return () => { mounted = false; };
+  }, [assetTypes.join('|')]);
+
+  useEffect(() => {
+    setSubcategoryId('');
+  }, [categoryId]);
+
+  const availableSubcategories = useMemo(
+    () => subcategories.filter((item) => !categoryId || item.category_id === categoryId),
+    [subcategories, categoryId]
+  );
+
+  const filteredAssets = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    const rows = assets.filter((asset) => {
+      if (categoryId && asset.category_id !== categoryId) return false;
+      if (subcategoryId && asset.subcategory_id !== subcategoryId) return false;
+      if (needle && ![asset.name, asset.description, ...(asset.badges || [])].filter(Boolean).join(' ').toLowerCase().includes(needle)) return false;
+      return true;
+    });
+    return [...rows].sort((a, b) => {
+      if (sort === 'price_low') return (a.price_credits || 0) - (b.price_credits || 0);
+      if (sort === 'price_high') return (b.price_credits || 0) - (a.price_credits || 0);
+      if (sort === 'name') return String(a.name || '').localeCompare(String(b.name || ''));
+      if (sort === 'newest') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      if (a.featured !== b.featured) return a.featured ? -1 : 1;
+      return (a.sort_order || 0) - (b.sort_order || 0);
+    });
+  }, [assets, search, categoryId, subcategoryId, sort]);
+
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-[#d8d8d3] text-black p-6 md:p-10">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-[#d8d8d3] text-black p-4 md:p-6 lg:p-8">
+      <div className="max-w-[1500px] mx-auto">
+        <div className="mb-6">
           <div className="w-11 h-11 bg-black text-[#d5a928] flex items-center justify-center mb-4"><Icon size={22} /></div>
-          <p className="text-[10px] uppercase tracking-[0.28em] font-bold text-black/45">AISTAGE.ONE · 3D</p>
+          <p className="text-[10px] uppercase tracking-[0.28em] font-bold text-black/45">AISTAGE.ONE · 3D Library</p>
           <h1 className="text-4xl md:text-5xl font-black tracking-tight mt-2">{title}</h1>
-          <p className="text-black/55 mt-3 max-w-2xl">{description}</p>
+          <p className="text-black/55 mt-3 max-w-3xl">{description}</p>
         </div>
-        <div className="border border-black/15 bg-white/55 min-h-[420px] flex items-center justify-center">
-          <div className="text-center px-8 max-w-xl">
-            <Icon size={42} className="mx-auto text-black/30 mb-4" />
-            <p className="font-bold text-lg">3D library ready for Cloudflare R2</p>
-            <p className="text-sm text-black/50 mt-2">This area will display AISTAGE-owned 3D assets only. No external creator marketplace.</p>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_210px_210px_170px] gap-3 mb-5">
+          <label className="relative">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/45 pointer-events-none" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search 3D assets…"
+              className="w-full h-12 border border-black/20 bg-white/80 pl-10 pr-3 font-semibold outline-none focus:border-black"
+            />
+          </label>
+          <select
+            value={categoryId}
+            onChange={(event) => setCategoryId(event.target.value)}
+            className="h-12 border border-black/20 bg-white/80 px-3 font-bold outline-none focus:border-black"
+          >
+            <option value="">All categories</option>
+            {categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+          <select
+            value={subcategoryId}
+            onChange={(event) => setSubcategoryId(event.target.value)}
+            disabled={!availableSubcategories.length}
+            className="h-12 border border-black/20 bg-white/80 px-3 font-bold outline-none focus:border-black disabled:opacity-45"
+          >
+            <option value="">All subcategories</option>
+            {availableSubcategories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+          <select
+            value={sort}
+            onChange={(event) => setSort(event.target.value)}
+            className="h-12 border border-black/20 bg-white/80 px-3 font-bold outline-none focus:border-black"
+          >
+            <option value="featured">Featured</option>
+            <option value="newest">Newest</option>
+            <option value="name">Name</option>
+            <option value="price_low">Price ↑</option>
+            <option value="price_high">Price ↓</option>
+          </select>
+        </div>
+
+        {loading ? (
+          <div className="border border-black/15 bg-white/55 min-h-[360px] flex items-center justify-center font-bold text-black/50">Loading 3D library…</div>
+        ) : errorText ? (
+          <div className="border border-red-300 bg-red-50 p-5 font-semibold text-red-800">{errorText}</div>
+        ) : filteredAssets.length ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+            {filteredAssets.map((asset) => {
+              const owned = purchases.has(asset.id);
+              return (
+                <article key={asset.id} className="border border-black/15 bg-white/75 overflow-hidden">
+                  <div className="aspect-[4/3] bg-[#cfd0cb] relative overflow-hidden">
+                    {asset.preview_url ? (
+                      <img src={asset.preview_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-black/20"><Box size={52} strokeWidth={1.3} /></div>
+                    )}
+                    {asset.featured && <span className="absolute left-2 top-2 bg-black text-[#d5a928] px-2 py-1 text-[10px] font-black uppercase tracking-wider">Featured</span>}
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-black text-lg leading-tight">{asset.name}</h3>
+                        {asset.description && <p className="mt-1 text-sm text-black/55 line-clamp-2">{asset.description}</p>}
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className="text-[10px] uppercase tracking-wider text-black/45 font-bold">Price</div>
+                        <div className="font-black">{asset.price_credits} cr</div>
+                      </div>
+                    </div>
+                    {(asset.badges || []).length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {(asset.badges || []).map((badge) => <span key={badge} className="border border-black/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wide"><Tag size={10} className="inline mr-1" />{badge}</span>)}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="mt-4 w-full h-11 bg-black text-white font-black text-xs uppercase tracking-[0.12em] flex items-center justify-center gap-2"
+                    >
+                      {owned ? <><Download size={15} /> Download</> : <><ShoppingCart size={15} /> Buy · {asset.price_credits} credits</>}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
-        </div>
+        ) : (
+          <div className="border border-black/15 bg-white/55 min-h-[360px] flex items-center justify-center">
+            <div className="text-center px-8 max-w-xl">
+              <Icon size={42} className="mx-auto text-black/25 mb-4" />
+              <p className="font-black text-lg">{assets.length ? 'No assets match these filters' : 'No 3D assets published yet'}</p>
+              <p className="text-sm text-black/50 mt-2">{assets.length ? 'Change the search, category or subcategory.' : 'Published AISTAGE-owned 3D products will appear here.'}</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -254,8 +406,8 @@ function Generate3D() {
 
 export default function ThreeDStudio({ mode = 'generate_3d' }) {
   if (mode === 'generate_3d') return <Generate3D />;
-  if (mode === 'characters_3d') return <EmptyLibrary title="Characters" description="AISTAGE-owned premium 3D characters, prepared for Studio workflows." icon={Users} />;
-  if (mode === 'clothing_3d') return <EmptyLibrary title="Clothing & Accessories" description="Wardrobe, hair and accessories sold directly by AISTAGE.ONE." icon={ShoppingBag} />;
-  if (mode === 'props_3d') return <EmptyLibrary title="Props & Sets" description="Props, furniture, environments and set pieces from the AISTAGE 3D library." icon={Layers} />;
-  return <EmptyLibrary title="My 3D Assets" description="Purchased and generated 3D assets available to the member across Studio." icon={FolderOpen} />;
+  if (mode === 'characters_3d') return <LibraryCatalog title="Characters" description="AISTAGE-owned premium 3D characters, prepared for Studio workflows." icon={Users} assetTypes={['character']} />;
+  if (mode === 'clothing_3d') return <LibraryCatalog title="Clothing & Accessories" description="Wardrobe and accessories sold directly by AISTAGE.ONE." icon={ShoppingBag} assetTypes={['clothing', 'accessory']} />;
+  if (mode === 'props_3d') return <LibraryCatalog title="Props & Sets" description="Props, furniture, environments and set pieces from the AISTAGE 3D library." icon={Layers} assetTypes={['prop', 'set']} />;
+  return <LibraryCatalog title="My 3D Assets" description="3D products already purchased by this member." icon={FolderOpen} assetTypes={['character', 'clothing', 'accessory', 'prop', 'set']} />;
 }
