@@ -88,8 +88,8 @@ function Generate3D() {
   }, [generationType, enabledForMode, selectedModel]);
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-[#d8d8d3] text-black pb-28 lg:pb-24">
-      <div className="max-w-[1600px] mx-auto p-3 md:p-4 lg:p-5 flex flex-col">
+    <div className="h-[calc(100vh-3.5rem)] min-h-0 bg-[#d8d8d3] text-black overflow-y-auto pb-24">
+      <div className="h-full min-h-0 max-w-[1600px] mx-auto p-3 md:p-4 lg:p-5 flex flex-col">
         <div className="mb-3 flex-shrink-0">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-9 h-9 bg-black text-[#d5a928] flex items-center justify-center"><Box size={20} /></div>
@@ -101,7 +101,7 @@ function Generate3D() {
           <p className="text-black/55 text-xs md:text-sm">One workspace for every 3D engine you enable in Admin.</p>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_300px] border border-black/20 bg-[#eeeeea] min-h-[650px]">
+        <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_300px] border border-black/20 bg-[#eeeeea] overflow-hidden">
           <aside className="min-h-0 overflow-y-auto border-b xl:border-b-0 xl:border-r border-black/15 p-3 bg-[#1d2024] text-white">
             <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/45 mb-2">Input</p>
             <div className="space-y-2">
