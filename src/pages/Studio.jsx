@@ -40,6 +40,7 @@ import PitchDecks from '@/pages/PitchDecks';
 import PitchDeckEditor from '@/pages/PitchDeckEditor';
 import PitchDeckDetail from '@/pages/PitchDeckDetail';
 import AiConnections from '@/pages/AiConnections';
+import ThreeDStudio from '@/components/studio/ThreeDStudio';
 import { Bookmark } from 'lucide-react';
 HOME_ICON_MAP.Bookmark = Bookmark;
 
@@ -63,6 +64,17 @@ const STUDIO_TOOL_SECTIONS = [
       { key: 'ai_video', label: 'AI Video', icon: Camera, action: 'ai_video' },
       { key: 'video_tools', label: 'Video Reference', icon: Video, action: 'video_ref' },
       { key: 'lip_sync', label: 'Lip Sync', icon: Mic, action: 'lip_sync' },
+    ],
+  },
+  {
+    key: 'three_d',
+    label: '3D',
+    tools: [
+      { key: 'generate_3d', label: 'Generate 3D', icon: Layers, action: 'workspace' },
+      { key: 'characters_3d', label: 'Characters', icon: Users, action: 'workspace' },
+      { key: 'clothing_3d', label: 'Clothing & Accessories', icon: ShoppingBag, action: 'workspace' },
+      { key: 'props_3d', label: 'Props & Sets', icon: Layers, action: 'workspace' },
+      { key: 'my_3d_assets', label: 'My 3D Assets', icon: FolderOpen, action: 'workspace' },
     ],
   },
   {
@@ -1210,6 +1222,12 @@ export default function Studio() {
               onOpenAsset={(assetId) => setActiveAssetId(assetId)}
             />
           )}
+        </div>
+      )}
+
+      {['generate_3d', 'characters_3d', 'clothing_3d', 'props_3d', 'my_3d_assets'].includes(activeToolPanel) && (
+        <div className="absolute inset-0 z-20 bg-[#d8d8d3]">
+          <ThreeDStudio mode={activeToolPanel} />
         </div>
       )}
 
