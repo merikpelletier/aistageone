@@ -88,8 +88,8 @@ function Generate3D() {
   }, [generationType, enabledForMode, selectedModel]);
 
   return (
-    <div className="h-full min-h-0 bg-[#d8d8d3] text-black overflow-y-auto overscroll-contain pb-[calc(96px+env(safe-area-inset-bottom))]">
-      <div className="min-h-full max-w-[1600px] mx-auto p-3 md:p-4 lg:p-5 flex flex-col">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-[#d8d8d3] text-black">
+      <div className="min-h-[calc(100vh-3.5rem)] max-w-[1600px] mx-auto p-3 md:p-4 lg:p-5 flex flex-col">
         <div className="mb-3 flex-shrink-0">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-9 h-9 bg-black text-[#d5a928] flex items-center justify-center"><Box size={20} /></div>
