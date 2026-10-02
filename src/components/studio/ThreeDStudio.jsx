@@ -88,8 +88,8 @@ function Generate3D() {
   }, [generationType, enabledForMode, selectedModel]);
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-[#d8d8d3] text-black">
-      <div className="min-h-[calc(100vh-3.5rem)] max-w-[1600px] mx-auto p-3 md:p-4 lg:p-5 flex flex-col">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-[#d8d8d3] text-black pb-28 lg:pb-24">
+      <div className="max-w-[1600px] mx-auto p-3 md:p-4 lg:p-5 flex flex-col">
         <div className="mb-3 flex-shrink-0">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-9 h-9 bg-black text-[#d5a928] flex items-center justify-center"><Box size={20} /></div>
@@ -101,8 +101,8 @@ function Generate3D() {
           <p className="text-black/55 text-xs md:text-sm">One workspace for every 3D engine you enable in Admin.</p>
         </div>
 
-        <div className="flex-1 min-h-[620px] grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_300px] border border-black/20 bg-[#eeeeea]">
-          <aside className="border-b xl:border-b-0 xl:border-r border-black/15 p-3 bg-[#1d2024] text-white">
+        <div className="grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_300px] border border-black/20 bg-[#eeeeea] min-h-[650px]">
+          <aside className="min-h-0 overflow-y-auto border-b xl:border-b-0 xl:border-r border-black/15 p-3 bg-[#1d2024] text-white">
             <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/45 mb-2">Input</p>
             <div className="space-y-2">
               {GENERATION_TYPES.map((item) => {
@@ -179,7 +179,7 @@ function Generate3D() {
             )}
           </aside>
 
-          <section className="min-w-0 p-3 md:p-4 flex flex-col">
+          <section className="min-w-0 min-h-0 p-3 md:p-4 flex flex-col overflow-y-auto">
             <div className="flex-1 min-h-[320px] border border-black/15 bg-[#cfd0cb] relative flex items-center justify-center overflow-hidden">
               <div className="absolute inset-0 opacity-[0.18]" style={{ backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
               <div className="relative text-center px-8">
@@ -215,7 +215,7 @@ function Generate3D() {
             </div>
           </section>
 
-          <aside className="border-t xl:border-t-0 xl:border-l border-black/15 bg-white/65 p-3">
+          <aside className="min-h-0 overflow-y-auto border-t xl:border-t-0 xl:border-l border-black/15 bg-white/65 p-3">
             <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-black/45 mb-3">Output</p>
             <div className="space-y-2">
               <div className="border border-black/15 p-3">
