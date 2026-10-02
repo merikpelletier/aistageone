@@ -1226,7 +1226,7 @@ export default function Studio() {
       )}
 
       {['generate_3d', 'characters_3d', 'clothing_3d', 'props_3d', 'my_3d_assets'].includes(activeToolPanel) && (
-        <div className="absolute inset-0 z-20 bg-[#d8d8d3]">
+        <div className="absolute inset-0 z-20 bg-[#d8d8d3] overflow-y-auto overscroll-contain pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0">
           <ThreeDStudio mode={activeToolPanel} />
         </div>
       )}
