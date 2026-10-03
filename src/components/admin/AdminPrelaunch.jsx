@@ -72,15 +72,35 @@ function ItemEditor({ item, onSaved }) {
 export default function AdminPrelaunch() {
   const qc = useQueryClient();
   const [view, setView] = useState('content');
+  const [guestEmail, setGuestEmail] = useState('');
+  const [accessMessage, setAccessMessage] = useState('');
   const { data: sections = [] } = useQuery({ queryKey:['admin-prelaunch-sections'], queryFn: async()=>{const {data,error}=await supabase.from('landing_sections').select('*').order('sort_order'); if(error) throw error; return data||[];}});
   const { data: items = [] } = useQuery({ queryKey:['admin-prelaunch-items'], queryFn: async()=>{const {data,error}=await supabase.from('landing_section_items').select('*').order('section_key').order('sort_order'); if(error) throw error; return data||[];}});
   const { data: waitlist = [] } = useQuery({ queryKey:['admin-waitlist'], queryFn: async()=>{const {data,error}=await supabase.from('waitlist_subscribers').select('*').order('created_at',{ascending:false}); if(error) throw error; return data||[];}});
   const { data: team = [] } = useQuery({ queryKey:['admin-team-apps'], queryFn: async()=>{const {data,error}=await supabase.from('team_applications').select('*').order('created_at',{ascending:false}); if(error) throw error; return data||[];}});
-  const refreshAll = ()=>{ ['admin-prelaunch-sections','admin-prelaunch-items','admin-waitlist','admin-team-apps','prelaunch-sections','prelaunch-items'].forEach(key=>qc.invalidateQueries({queryKey:[key]})); };
+  const { data: access = [] } = useQuery({ queryKey:['admin-prelaunch-access'], queryFn: async()=>{ const { data, error } = await supabase.functions.invoke('prelaunch-access', { body: { action: 'list' } }); if(error) throw error; if(data?.error) throw new Error(data.error); return data?.users || []; }});
+  const refreshAll = ()=>{ ['admin-prelaunch-sections','admin-prelaunch-items','admin-waitlist','admin-team-apps','admin-prelaunch-access','prelaunch-sections','prelaunch-items'].forEach(key=>qc.invalidateQueries({queryKey:[key]})); };
   const grouped = useMemo(()=>items.reduce((a,i)=>{(a[i.section_key] ||= []).push(i); return a;},{}),[items]);
 
   const updateWait = async (id, patch) => { const {error}=await supabase.from('waitlist_subscribers').update(patch).eq('id',id); if(error) alert(error.message); else qc.invalidateQueries({queryKey:['admin-waitlist']}); };
   const updateTeam = async (id, patch) => { const {error}=await supabase.from('team_applications').update(patch).eq('id',id); if(error) alert(error.message); else qc.invalidateQueries({queryKey:['admin-team-apps']}); };
+  const inviteGuest = async (event) => {
+    event.preventDefault();
+    setAccessMessage('');
+    const { data, error } = await supabase.functions.invoke('prelaunch-access', { body: { action: 'invite_guest', email: guestEmail, redirect_to: `${window.location.origin}/Login` } });
+    if (error || data?.error) { setAccessMessage(data?.error || error?.message || 'Unable to invite guest.'); return; }
+    setGuestEmail('');
+    setAccessMessage('Guest access is ready. If this is a new account, an invitation email was sent.');
+    qc.invalidateQueries({queryKey:['admin-prelaunch-access']});
+  };
+  const revokeGuest = async (userId) => {
+    setAccessMessage('');
+    const { data, error } = await supabase.functions.invoke('prelaunch-access', { body: { action: 'revoke_guest', user_id: userId } });
+    if (error || data?.error) { setAccessMessage(data?.error || error?.message || 'Unable to revoke guest access.'); return; }
+    setAccessMessage('Guest access removed.');
+    qc.invalidateQueries({queryKey:['admin-prelaunch-access']});
+  };
+
   const exportWaitlist = () => {
     const rows=[['Name','Email','Language','Interest','Status','Priority','Created'],...waitlist.map(x=>[x.name,x.email,x.language,x.interest,x.status,x.priority?'yes':'no',x.created_at])];
     const csv=rows.map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');
@@ -89,7 +109,7 @@ export default function AdminPrelaunch() {
 
   return <div className="text-white">
     <div className="mb-5 flex flex-wrap items-center gap-2">
-      {['content','waitlist','team'].map(v=><button key={v} onClick={()=>setView(v)} className={`border px-4 py-2 text-xs font-black uppercase tracking-wider ${view===v?'border-white bg-white text-black':'border-white/20 text-white'}`}>{v==='content'?'Landing content':v}</button>)}
+      {['content','waitlist','team','access'].map(v=><button key={v} onClick={()=>setView(v)} className={`border px-4 py-2 text-xs font-black uppercase tracking-wider ${view===v?'border-white bg-white text-black':'border-white/20 text-white'}`}>{v==='content'?'Landing content':v==='access'?'Guest access':v}</button>)}
       <a href="/" target="_blank" rel="noreferrer" className="ml-auto inline-flex items-center gap-2 border border-teal-300/50 px-3 py-2 text-xs font-black uppercase tracking-wider text-teal-200">Open landing <ExternalLink size={13}/></a>
       <button onClick={refreshAll} className="inline-flex items-center gap-2 border border-white/20 px-3 py-2 text-xs font-black uppercase tracking-wider"><RefreshCw size={13}/>Refresh</button>
     </div>
@@ -102,6 +122,16 @@ export default function AdminPrelaunch() {
     {view==='waitlist' && <div>
       <div className="mb-4 flex items-center justify-between"><div><h3 className="text-xl font-black uppercase">Pre-registration list</h3><p className="text-sm text-white/50">{waitlist.length} people</p></div><button onClick={exportWaitlist} className={btn}>Export CSV</button></div>
       <div className="overflow-x-auto border border-white/10"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-white/5 text-[10px] uppercase tracking-wider text-white/50"><tr><th className="p-3">Name</th><th>Email</th><th>Interest</th><th>Status</th><th>Priority</th><th>Notes</th><th>Created</th></tr></thead><tbody>{waitlist.map(x=><tr key={x.id} className="border-t border-white/10"><td className="p-3 font-bold">{x.name}</td><td>{x.email}</td><td>{x.interest}</td><td><select value={x.status} onChange={e=>updateWait(x.id,{status:e.target.value})} className="bg-black border border-white/15 px-2 py-1"><option>new</option><option>contacted</option><option>approved</option><option>invited</option><option>archived</option></select></td><td><input type="checkbox" checked={x.priority} onChange={e=>updateWait(x.id,{priority:e.target.checked})}/></td><td><input defaultValue={x.notes||''} onBlur={e=>updateWait(x.id,{notes:e.target.value})} className="w-48 bg-black border border-white/15 px-2 py-1"/></td><td className="text-white/45">{new Date(x.created_at).toLocaleDateString()}</td></tr>)}</tbody></table></div>
+    </div>}
+
+    {view==='access' && <div>
+      <div className="mb-5"><h3 className="text-xl font-black uppercase">Private Preview Access</h3><p className="mt-1 text-sm text-white/50">Only Admin and Guest roles can enter the full platform during pre-launch.</p></div>
+      <form onSubmit={inviteGuest} className="mb-6 flex max-w-2xl gap-2">
+        <input required type="email" value={guestEmail} onChange={e=>setGuestEmail(e.target.value)} placeholder="guest@email.com" className={input}/>
+        <button className={btn + " whitespace-nowrap"}>Invite / Grant Guest</button>
+      </form>
+      {accessMessage && <p className="mb-5 text-sm font-semibold text-[#d7b773]">{accessMessage}</p>}
+      <div className="overflow-x-auto border border-white/10"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-white/5 text-[10px] uppercase tracking-wider text-white/50"><tr><th className="p-3">Email</th><th>Role</th><th>Created</th><th>Last sign in</th><th></th></tr></thead><tbody>{access.map(x=><tr key={x.id} className="border-t border-white/10"><td className="p-3 font-bold">{x.email}</td><td className="uppercase text-[#7ec7c1]">{x.role}</td><td className="text-white/45">{x.created_at ? new Date(x.created_at).toLocaleDateString() : '—'}</td><td className="text-white/45">{x.last_sign_in_at ? new Date(x.last_sign_in_at).toLocaleDateString() : 'Never'}</td><td className="p-3 text-right">{x.role==='guest' && <button onClick={()=>revokeGuest(x.id)} className="border border-red-400/30 px-3 py-1 text-xs font-bold text-red-300">Remove access</button>}</td></tr>)}</tbody></table></div>
     </div>}
 
     {view==='team' && <div>
