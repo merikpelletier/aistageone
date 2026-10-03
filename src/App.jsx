@@ -22,9 +22,7 @@ import { AppContextProvider } from '@/lib/AppContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PrelaunchLanding from './pages/PrelaunchLanding';
 
-const { Pages, Layout, mainPage } = pagesConfig;
-const mainPageKey = mainPage ?? Object.keys(Pages)[0];
-const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
+const { Pages, Layout } = pagesConfig;
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
@@ -34,13 +32,13 @@ const PrivateRoute = ({ children }) => {
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
   const location = useLocation();
   if (isLoadingAuth) return <div className="fixed inset-0 flex items-center justify-center bg-black"><div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" /></div>;
-  if (!isAuthenticated) return <Navigate to={\`/Login?returnTo=\${encodeURIComponent(location.pathname + location.search + location.hash)}\`} replace />;
+  if (!isAuthenticated) return <Navigate to={`/Login?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`} replace />;
   if (!['admin', 'guest'].includes(user?.role)) return <Navigate to="/" replace />;
   return children;
 };
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings && isLoadingAuth) {
