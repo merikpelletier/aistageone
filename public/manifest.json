@@ -1,14 +1,14 @@
 {
   "name": "AISTAGE.ONE",
   "short_name": "AISTAGE",
-  "description": "Création et production de contenus audiovisuels assistées par l’IA.",
+  "description": "Create, perform and publish on a new global AI-powered creative stage.",
   "id": "/",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "background_color": "#0a0a0a",
-  "theme_color": "#facc15",
+  "theme_color": "#070b0d",
   "orientation": "portrait",
   "categories": ["entertainment", "photo", "video"],
   "icons": [
