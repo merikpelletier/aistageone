@@ -72,11 +72,10 @@ function ItemEditor({ item, onSaved }) {
 export default function AdminPrelaunch() {
   const qc = useQueryClient();
   const [view, setView] = useState('content');
-  const { data: sections = [], isFetching: fs } = useQuery({ queryKey:['admin-prelaunch-sections'], queryFn: async()=>{const {data,error}=await supabase.from('landing_sections').select('*').order('sort_order'); if(error) throw error; return data||[];}});
-  const { data: items = [], isFetching: fi } = useQuery({ queryKey:['admin-prelaunch-items'], queryFn: async()=>{const {data,error}=await supabase.from('landing_section_items').select('*').order('section_key').order('sort_order'); if(error) throw error; return data||[];}});
-  const { data: waitlist = [], isFetching: fw } = useQuery({ queryKey:['admin-waitlist'], queryFn: async()=>{const {data,error}=await supabase.from('waitlist_subscribers').select('*').order('created_at',{ascending:false}); if(error) throw error; return data||[];}});
-  const { data: team = [], isFetching: ft } = useQuery({ queryKey:['admin-team-apps'], queryFn: async()=>{const {data,error}=await supabase.from('team_applications').select('*').order('created_at',{ascending:false}); if(error) throw error; return data||[];}});
-  const refresh = ()=>qc.invalidateQueries({queryKey:['admin-prelaunch']});
+  const { data: sections = [] } = useQuery({ queryKey:['admin-prelaunch-sections'], queryFn: async()=>{const {data,error}=await supabase.from('landing_sections').select('*').order('sort_order'); if(error) throw error; return data||[];}});
+  const { data: items = [] } = useQuery({ queryKey:['admin-prelaunch-items'], queryFn: async()=>{const {data,error}=await supabase.from('landing_section_items').select('*').order('section_key').order('sort_order'); if(error) throw error; return data||[];}});
+  const { data: waitlist = [] } = useQuery({ queryKey:['admin-waitlist'], queryFn: async()=>{const {data,error}=await supabase.from('waitlist_subscribers').select('*').order('created_at',{ascending:false}); if(error) throw error; return data||[];}});
+  const { data: team = [] } = useQuery({ queryKey:['admin-team-apps'], queryFn: async()=>{const {data,error}=await supabase.from('team_applications').select('*').order('created_at',{ascending:false}); if(error) throw error; return data||[];}});
   const refreshAll = ()=>{ ['admin-prelaunch-sections','admin-prelaunch-items','admin-waitlist','admin-team-apps','prelaunch-sections','prelaunch-items'].forEach(key=>qc.invalidateQueries({queryKey:[key]})); };
   const grouped = useMemo(()=>items.reduce((a,i)=>{(a[i.section_key] ||= []).push(i); return a;},{}),[items]);
 
