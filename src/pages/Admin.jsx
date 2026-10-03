@@ -58,6 +58,7 @@ import AdminProductionKits from '@/components/admin/AdminProductionKits';
 import AdminPitchDecks from '@/components/admin/AdminPitchDecks';
 import AdminProductPlacements from '@/components/admin/AdminProductPlacements';
 import Admin3DLibrary from '@/components/admin/Admin3DLibrary';
+import AdminPrelaunch from '@/components/admin/AdminPrelaunch';
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState('dossiers');
@@ -132,6 +133,13 @@ export default function Admin() {
       {/* Admin Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4">
         <TabsList className="w-full bg-neutral-900 border border-white/20 rounded-sm h-auto flex-wrap text-white">
+          <TabsTrigger
+            value="prelaunch"
+            className="flex-1 py-3 text-xs tracking-wide text-white hover:text-white data-[state=active]:bg-white data-[state=active]:text-black rounded-sm"
+          >
+            <Users size={14} className="mr-2" />
+            Pre-launch
+          </TabsTrigger>
           <TabsTrigger
             value="pages-tools"
             className="flex-1 py-3 text-xs tracking-wide text-white hover:text-white data-[state=active]:bg-white data-[state=active]:text-black rounded-sm"
@@ -310,6 +318,9 @@ export default function Admin() {
 
         <TabsTrigger value="finance-transactions" className="data-[state=active]:bg-white data-[state=active]:text-black">Transactions</TabsTrigger><TabsTrigger value="finance-costs" className="data-[state=active]:bg-white data-[state=active]:text-black">Coûts IA</TabsTrigger><TabsTrigger value="ai-models">Modèles IA</TabsTrigger></TabsList>
 
+        <TabsContent value="prelaunch" className="mt-6">
+          <AdminPrelaunch />
+        </TabsContent>
         <TabsContent value="pages-tools" className="mt-6">
           <AdminPagesTools />
         </TabsContent>
