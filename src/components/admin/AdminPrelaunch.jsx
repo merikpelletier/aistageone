@@ -58,9 +58,24 @@ function UploadControl({ label, accept, onUploaded }) {
   </div>;
 }
 
-function MediaUrlEditor({ label, value, onChange, accept = 'image/*,video/*', uploadLabel = 'Upload media', onFileUploaded }) {
+function MediaPreview({ value, kind = 'auto' }) {
+  if (!value) return null;
+  const clean = value.split('?')[0].toLowerCase();
+  const looksVideo = kind === 'video' || (kind === 'auto' && /\.(mp4|webm|mov|m4v|ogg)$/.test(clean));
+
+  return <div className="overflow-hidden border border-white/10 bg-black">
+    {looksVideo ? (
+      <video src={value} controls preload="metadata" className="max-h-56 w-full bg-black object-contain" />
+    ) : (
+      <img src={value} alt="Current media preview" className="max-h-56 w-full bg-black object-contain" />
+    )}
+  </div>;
+}
+
+function MediaUrlEditor({ label, value, onChange, accept = 'image/*,video/*', uploadLabel = 'Upload media', onFileUploaded, previewKind = 'auto' }) {
   return <Field label={label}>
     <div className="space-y-2">
+      <MediaPreview value={value} kind={previewKind}/>
       <input className={input} value={value || ''} onChange={e=>onChange(e.target.value)} placeholder="Paste URL or upload a file"/>
       <UploadControl
         label={uploadLabel}
@@ -70,7 +85,6 @@ function MediaUrlEditor({ label, value, onChange, accept = 'image/*,video/*', up
           onFileUploaded?.(file);
         }}
       />
-      {value && <a href={value} target="_blank" rel="noreferrer" className="block truncate text-[11px] text-teal-300 underline">Open current file</a>}
     </div>
   </Field>;
 }
@@ -151,10 +165,11 @@ function SectionEditor({ section, onSaved, onMove }) {
           value={form.media_url}
           onChange={url=>setForm(v=>({...v,media_url:url}))}
           accept="image/*,video/*"
+          previewKind={form.media_type === 'video' || form.media_type === 'background_video' ? 'video' : form.media_type === 'image' ? 'image' : 'auto'}
           onFileUploaded={file=>setForm(v=>({...v, media_type: file.type?.startsWith('video/') ? (v.media_type === 'background_video' ? 'background_video' : 'video') : 'image'}))}
         />
         <div className="md:col-span-2">
-          <MediaUrlEditor label="Video poster URL" value={form.poster_url} onChange={url=>setForm(v=>({...v,poster_url:url}))} accept="image/*" uploadLabel="Upload poster"/>
+          <MediaUrlEditor label="Video poster URL" value={form.poster_url} onChange={url=>setForm(v=>({...v,poster_url:url}))} accept="image/*" uploadLabel="Upload poster" previewKind="image"/>
         </div>
       </>}
     </div>
@@ -214,10 +229,11 @@ function ItemEditor({ item, onSaved, onDelete, onMove }) {
           value={form.media_url}
           onChange={url=>setForm(v=>({...v,media_url:url}))}
           accept="image/*,video/*"
+          previewKind={form.media_type === 'video' ? 'video' : form.media_type === 'image' ? 'image' : 'auto'}
           onFileUploaded={file=>setForm(v=>({...v,media_type:file.type?.startsWith('video/') ? 'video' : 'image'}))}
         />
         <div className="md:col-span-2">
-          <MediaUrlEditor label="Poster URL" value={form.poster_url} onChange={url=>setForm(v=>({...v,poster_url:url}))} accept="image/*" uploadLabel="Upload poster"/>
+          <MediaUrlEditor label="Poster URL" value={form.poster_url} onChange={url=>setForm(v=>({...v,poster_url:url}))} accept="image/*" uploadLabel="Upload poster" previewKind="image"/>
         </div>
       </>}
     </div>
@@ -322,7 +338,7 @@ export default function AdminPrelaunch() {
     </div>
 
     {view==='content' && <div className="space-y-8">
-      <div className="border border-teal-300/20 bg-teal-300/[.04] p-4 text-sm text-white/70">Everything visible on the pre-launch landing is controlled here. Media can now be uploaded directly from the admin; the public URL is filled automatically, while manual URLs remain available.</div>
+      <div className="border border-teal-300/20 bg-teal-300/[.04] p-4 text-sm text-white/70">Everything visible on the pre-launch landing is controlled here. Media can be uploaded directly from the admin; the public URL is filled automatically, while manual URLs remain available.</div>
       <section><h3 className="mb-3 text-xl font-black uppercase">Page sections</h3><div className="space-y-4">{sections.map(s=><SectionEditor key={s.id} section={s} onSaved={refreshAll} onMove={moveSection}/>)}</div></section>
       <NewItem onCreated={refreshAll}/>
       {Object.entries(grouped).map(([key,list])=><section key={key}><h3 className="mb-3 text-xl font-black uppercase">{key.replaceAll('_',' ')}</h3><div className="grid gap-3 xl:grid-cols-2">{list.map(i=><ItemEditor key={i.id} item={i} onSaved={refreshAll} onDelete={deleteItem} onMove={moveItem}/>)}</div></section>)}
