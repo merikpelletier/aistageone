@@ -85,7 +85,7 @@ const AuthenticatedApp = () => {
       <Route path="/CampaignSubscribe" element={<PrivateRoute><LayoutWrapper currentPageName="CampaignSubscribe"><CampaignSubscribePage /></LayoutWrapper></PrivateRoute>} />
       <Route path="/Login" element={<LoginPage />} />
       <Route path="/ResetPassword" element={<ResetPasswordPage />} />
-      <Route path="/PitchDeckShare" element={<PrivateRoute><PitchDeckSharePage /></PrivateRoute>} />
+      <Route path="/PitchDeckShare" element={<PitchDeckSharePage />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
