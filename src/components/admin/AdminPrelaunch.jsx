@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/base44Client';
-import { Save, RefreshCw, ExternalLink, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { base44, supabase } from '@/api/base44Client';
+import { Save, RefreshCw, ExternalLink, Plus, Trash2, ChevronUp, ChevronDown, Upload } from 'lucide-react';
 
 const input = 'w-full border border-white/15 bg-black px-3 py-2 text-sm text-white outline-none focus:border-white/50';
 const btn = 'border border-white/25 bg-white px-3 py-2 text-xs font-black uppercase tracking-wider text-black disabled:opacity-50';
@@ -25,6 +25,54 @@ const SECTION_HELP = {
 
 function Field({ label, children, className = '' }) {
   return <label className={`block ${className}`}><span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-white/45">{label}</span>{children}</label>;
+}
+
+function UploadControl({ label, accept, onUploaded }) {
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const handleFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    setMessage('');
+    try {
+      const result = await base44.integrations.Core.UploadFile({ file });
+      if (!result?.file_url) throw new Error('Upload completed without a public URL.');
+      onUploaded(result.file_url, file);
+      setMessage('Uploaded');
+    } catch (error) {
+      setMessage(error?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return <div>
+    <label className={`${darkBtn} inline-flex cursor-pointer items-center gap-2 ${uploading ? 'pointer-events-none opacity-50' : ''}`}>
+      <Upload size={13}/>{uploading ? 'Uploading…' : label}
+      <input type="file" accept={accept} className="hidden" onChange={handleFile}/>
+    </label>
+    {message && <div className={`mt-1 text-[11px] ${message === 'Uploaded' ? 'text-teal-300' : 'text-red-300'}`}>{message}</div>}
+  </div>;
+}
+
+function MediaUrlEditor({ label, value, onChange, accept = 'image/*,video/*', uploadLabel = 'Upload media', onFileUploaded }) {
+  return <Field label={label}>
+    <div className="space-y-2">
+      <input className={input} value={value || ''} onChange={e=>onChange(e.target.value)} placeholder="Paste URL or upload a file"/>
+      <UploadControl
+        label={uploadLabel}
+        accept={accept}
+        onUploaded={(url, file) => {
+          onChange(url);
+          onFileUploaded?.(file);
+        }}
+      />
+      {value && <a href={value} target="_blank" rel="noreferrer" className="block truncate text-[11px] text-teal-300 underline">Open current file</a>}
+    </div>
+  </Field>;
 }
 
 function SectionEditor({ section, onSaved, onMove }) {
@@ -98,8 +146,16 @@ function SectionEditor({ section, onSaved, onMove }) {
       </>}
       {showMedia && <>
         <Field label="Media type"><select className={input} value={form.media_type || 'image'} onChange={e=>setForm({...form,media_type:e.target.value})}><option value="image">Image</option><option value="video">Video</option><option value="background_video">Background video</option><option value="embed">Embed</option></select></Field>
-        <Field label="Media URL"><input className={input} value={form.media_url || ''} onChange={e=>setForm({...form,media_url:e.target.value})}/></Field>
-        <Field label="Video poster URL" className="md:col-span-2"><input className={input} value={form.poster_url || ''} onChange={e=>setForm({...form,poster_url:e.target.value})}/></Field>
+        <MediaUrlEditor
+          label="Media URL"
+          value={form.media_url}
+          onChange={url=>setForm(v=>({...v,media_url:url}))}
+          accept="image/*,video/*"
+          onFileUploaded={file=>setForm(v=>({...v, media_type: file.type?.startsWith('video/') ? (v.media_type === 'background_video' ? 'background_video' : 'video') : 'image'}))}
+        />
+        <div className="md:col-span-2">
+          <MediaUrlEditor label="Video poster URL" value={form.poster_url} onChange={url=>setForm(v=>({...v,poster_url:url}))} accept="image/*" uploadLabel="Upload poster"/>
+        </div>
       </>}
     </div>
     <button disabled={saving} onClick={save} className={`${btn} mt-4 inline-flex items-center gap-2`}><Save size={14}/>{saving ? 'Saving…' : 'Save section'}</button>
@@ -153,8 +209,16 @@ function ItemEditor({ item, onSaved, onDelete, onMove }) {
       </>}
       {mediaGroup && <>
         <Field label="Media type"><select className={input} value={form.media_type || 'image'} onChange={e=>setForm({...form,media_type:e.target.value})}><option value="image">Image</option><option value="video">Video</option><option value="embed">Embed</option></select></Field>
-        <Field label="Media URL"><input className={input} value={form.media_url || ''} onChange={e=>setForm({...form,media_url:e.target.value})}/></Field>
-        <Field label="Poster URL" className="md:col-span-2"><input className={input} value={form.poster_url || ''} onChange={e=>setForm({...form,poster_url:e.target.value})}/></Field>
+        <MediaUrlEditor
+          label="Media URL"
+          value={form.media_url}
+          onChange={url=>setForm(v=>({...v,media_url:url}))}
+          accept="image/*,video/*"
+          onFileUploaded={file=>setForm(v=>({...v,media_type:file.type?.startsWith('video/') ? 'video' : 'image'}))}
+        />
+        <div className="md:col-span-2">
+          <MediaUrlEditor label="Poster URL" value={form.poster_url} onChange={url=>setForm(v=>({...v,poster_url:url}))} accept="image/*" uploadLabel="Upload poster"/>
+        </div>
       </>}
     </div>
     <div className="mt-3 flex gap-2">
@@ -258,7 +322,7 @@ export default function AdminPrelaunch() {
     </div>
 
     {view==='content' && <div className="space-y-8">
-      <div className="border border-teal-300/20 bg-teal-300/[.04] p-4 text-sm text-white/70">Everything visible on the pre-launch landing is controlled here. Use <b>Visible</b> to hide/show a section or block, the arrows/order field to reposition it, and the repeating-block editor to add or remove navigation links, cards and select options.</div>
+      <div className="border border-teal-300/20 bg-teal-300/[.04] p-4 text-sm text-white/70">Everything visible on the pre-launch landing is controlled here. Media can now be uploaded directly from the admin; the public URL is filled automatically, while manual URLs remain available.</div>
       <section><h3 className="mb-3 text-xl font-black uppercase">Page sections</h3><div className="space-y-4">{sections.map(s=><SectionEditor key={s.id} section={s} onSaved={refreshAll} onMove={moveSection}/>)}</div></section>
       <NewItem onCreated={refreshAll}/>
       {Object.entries(grouped).map(([key,list])=><section key={key}><h3 className="mb-3 text-xl font-black uppercase">{key.replaceAll('_',' ')}</h3><div className="grid gap-3 xl:grid-cols-2">{list.map(i=><ItemEditor key={i.id} item={i} onSaved={refreshAll} onDelete={deleteItem} onMove={moveItem}/>)}</div></section>)}
