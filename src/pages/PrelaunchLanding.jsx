@@ -28,6 +28,11 @@ function SmartLink({ to, children, className = '' }) {
   return <Link to={to} className={className}>{children}</Link>;
 }
 
+function OptionalLink({ to, children, className = '' }) {
+  if (!to) return <div className={className}>{children}</div>;
+  return <SmartLink to={to} className={className}>{children}</SmartLink>;
+}
+
 function CTA({ label, url, primary = false }) {
   if (!label || !url) return null;
   const cls = `inline-flex items-center justify-center gap-2 border px-5 py-3 text-xs font-black tracking-[.16em] transition hover:-translate-y-0.5 ${primary ? 'border-[#c8a45f] bg-[#c8a45f] text-black hover:bg-[#d7b773]' : 'border-white/30 bg-black/35 text-white hover:border-white'}`;
@@ -149,16 +154,16 @@ export default function PrelaunchLanding() {
   const renderPillars = () => (
     <section key="pillars" id="vision" className="mx-auto grid max-w-[1500px] grid-cols-1 border-l border-t border-white/10 md:grid-cols-2 xl:grid-cols-4">
       {pillars.map((item, index) => (
-        <SmartLink key={item.id} to={item.link_url || '#studio'} className="group relative block min-h-[440px] overflow-hidden border-b border-r border-white/10">
+        <OptionalLink key={item.id} to={item.link_url} className="group relative block min-h-[440px] overflow-hidden border-b border-r border-white/10">
           <Media item={item} className="transition duration-700 group-hover:scale-105" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-black/10" />
-          <div className="absolute inset-x-0 bottom-0 p-6">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/25 to-black/10" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 p-6">
             <div className="text-[10px] font-black tracking-[.2em] text-[#7ec7c1]">{String(index + 1).padStart(2, '0')}</div>
             <h2 className="mt-2 text-4xl font-black uppercase">{item.title}</h2>
             {item.body && <p className="mt-2 max-w-xs text-sm font-medium leading-6 text-white/70">{item.body}</p>}
-            {item.link_label && <span className="mt-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-[#e0c17e]">{item.link_label}<ArrowRight size={13}/></span>}
+            {item.link_label && item.link_url && <span className="mt-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-[#e0c17e]">{item.link_label}<ArrowRight size={13}/></span>}
           </div>
-        </SmartLink>
+        </OptionalLink>
       ))}
     </section>
   );
