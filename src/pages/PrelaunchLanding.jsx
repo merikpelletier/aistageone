@@ -156,7 +156,7 @@ export default function PrelaunchLanding() {
       {pillars.map((item, index) => {
         const isVideo = item.media_type === 'video';
         return (
-          <OptionalLink key={item.id} to={item.link_url} className="group relative block min-h-[440px] overflow-hidden border-b border-r border-white/10">
+          <OptionalLink key={item.id} to={item.link_url} className="group relative block min-h-[440px] overflow-hidden border-b border-r border-white/10 lg:aspect-[9/16] lg:min-h-0">
             <Media item={item} className={isVideo ? '' : 'transition duration-700 group-hover:scale-105'} />
             {!isVideo && <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/25 to-black/10" />}
             <div className={`pointer-events-none absolute inset-x-0 p-6 ${isVideo ? 'top-0 bg-gradient-to-b from-black/85 via-black/45 to-transparent' : 'bottom-0'}`}>
