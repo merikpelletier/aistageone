@@ -12,7 +12,7 @@ function Media({ item, className = '' }) {
     return <video src={item.media_url} poster={item.poster_url || undefined} muted loop autoPlay playsInline className={`h-full w-full object-cover ${className}`} />;
   }
   if (item.media_type === 'video') {
-    return <video src={item.media_url} poster={item.poster_url || undefined} controls playsInline preload="metadata" className={`h-full w-full object-cover ${className}`} />;
+    return <video src={item.media_url} poster={item.poster_url || undefined} controls playsInline preload="metadata" className={`h-full w-full object-contain bg-black ${className}`} />;
   }
   if (item.media_type === 'embed') {
     return <iframe src={item.media_url} title={item.title || 'AI STAGE ONE media'} className={`h-full w-full ${className}`} allow="autoplay; fullscreen; picture-in-picture" />;
@@ -153,18 +153,21 @@ export default function PrelaunchLanding() {
 
   const renderPillars = () => (
     <section key="pillars" id="vision" className="mx-auto grid max-w-[1500px] grid-cols-1 border-l border-t border-white/10 md:grid-cols-2 xl:grid-cols-4">
-      {pillars.map((item, index) => (
-        <OptionalLink key={item.id} to={item.link_url} className="group relative block min-h-[440px] overflow-hidden border-b border-r border-white/10">
-          <Media item={item} className="transition duration-700 group-hover:scale-105" />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/25 to-black/10" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 p-6">
-            <div className="text-[10px] font-black tracking-[.2em] text-[#7ec7c1]">{String(index + 1).padStart(2, '0')}</div>
-            <h2 className="mt-2 text-4xl font-black uppercase">{item.title}</h2>
-            {item.body && <p className="mt-2 max-w-xs text-sm font-medium leading-6 text-white/70">{item.body}</p>}
-            {item.link_label && item.link_url && <span className="mt-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-[#e0c17e]">{item.link_label}<ArrowRight size={13}/></span>}
-          </div>
-        </OptionalLink>
-      ))}
+      {pillars.map((item, index) => {
+        const isVideo = item.media_type === 'video';
+        return (
+          <OptionalLink key={item.id} to={item.link_url} className={`group relative block overflow-hidden border-b border-r border-white/10 ${isVideo ? 'xl:h-[calc(100vh-64px)] xl:min-h-0' : 'min-h-[440px]'}`}>
+            <Media item={item} className={isVideo ? '' : 'transition duration-700 group-hover:scale-105'} />
+            {!isVideo && <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/25 to-black/10" />}
+            <div className={`pointer-events-none absolute inset-x-0 bottom-0 p-6 ${isVideo ? 'bg-gradient-to-t from-black/85 via-black/45 to-transparent' : ''}`}>
+              <div className="text-[10px] font-black tracking-[.2em] text-[#7ec7c1]">{String(index + 1).padStart(2, '0')}</div>
+              <h2 className="mt-2 text-4xl font-black uppercase">{item.title}</h2>
+              {item.body && <p className="mt-2 max-w-xs text-sm font-medium leading-6 text-white/70">{item.body}</p>}
+              {item.link_label && item.link_url && <span className="mt-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-[#e0c17e]">{item.link_label}<ArrowRight size={13}/></span>}
+            </div>
+          </OptionalLink>
+        );
+      })}
     </section>
   );
 
