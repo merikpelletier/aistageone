@@ -8,8 +8,11 @@ const ROLE_ICONS = [Users, PenTool, Code2, Handshake];
 
 function Media({ item, className = '' }) {
   if (!item?.media_url) return <div className={`bg-neutral-900 ${className}`} />;
-  if (item.media_type === 'video' || item.media_type === 'background_video') {
+  if (item.media_type === 'background_video') {
     return <video src={item.media_url} poster={item.poster_url || undefined} muted loop autoPlay playsInline className={`h-full w-full object-cover ${className}`} />;
+  }
+  if (item.media_type === 'video') {
+    return <video src={item.media_url} poster={item.poster_url || undefined} controls playsInline preload="metadata" className={`h-full w-full object-cover ${className}`} />;
   }
   if (item.media_type === 'embed') {
     return <iframe src={item.media_url} title={item.title || 'AI STAGE ONE media'} className={`h-full w-full ${className}`} allow="autoplay; fullscreen; picture-in-picture" />;
