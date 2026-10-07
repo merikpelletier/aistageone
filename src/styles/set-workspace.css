@@ -1,0 +1,127 @@
+/* Set workspace — visual unification only */
+
+.studio-shell main > div.fixed.z-\[100\] {
+  background: var(--studio-bg) !important;
+  color: var(--studio-text) !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] > div {
+  background: var(--studio-bg) !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] > div > div:first-child {
+  background: var(--studio-surface) !important;
+  border-bottom: 1px solid var(--studio-border) !important;
+  padding: 14px 20px !important;
+  min-height: 64px !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] > div > div:first-child h2 {
+  font-size: 20px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] .max-w-6xl {
+  max-width: 1180px !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] .space-y-5 > div {
+  background: var(--studio-surface) !important;
+  border: 1px solid var(--studio-border) !important;
+  padding: 16px !important;
+  border-radius: 4px !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] label[class*="uppercase"] {
+  color: var(--studio-text-muted) !important;
+  letter-spacing: 0.12em !important;
+  font-weight: 800 !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] input,
+.studio-shell main > div.fixed.z-\[100\] textarea {
+  background: rgba(0,0,0,0.24) !important;
+  border-color: var(--studio-border-strong) !important;
+  border-radius: 3px !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] input:focus,
+.studio-shell main > div.fixed.z-\[100\] textarea:focus {
+  border-color: var(--studio-accent) !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] button,
+.studio-shell main > div.fixed.z-\[100\] label[class*="cursor-pointer"] {
+  border-radius: 3px !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] label.bg-yellow-400 {
+  background: var(--studio-accent) !important;
+  color: #071211 !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] button.bg-cyan-300 {
+  background: rgba(35,199,190,0.12) !important;
+  border: 1px solid rgba(35,199,190,0.35) !important;
+  color: var(--studio-accent) !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] span.bg-yellow-400\/15 {
+  background: rgba(35,199,190,0.10) !important;
+  color: #8ee9e4 !important;
+  border: 1px solid rgba(35,199,190,0.24) !important;
+  border-radius: 3px !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] button.bg-yellow-400 {
+  background: rgba(35,199,190,0.12) !important;
+  color: var(--studio-accent) !important;
+  border: 1px solid rgba(35,199,190,0.28) !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] .grid > div[class*="rounded-xl"] {
+  border-radius: 4px !important;
+  border: 1px solid var(--studio-border) !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] > div > div.sticky.bottom-0 {
+  background: rgba(23,25,29,0.96) !important;
+  border-top-color: var(--studio-border) !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] > div > div.sticky.bottom-0 > div {
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] > div > div.sticky.bottom-0 button {
+  width: auto !important;
+  min-width: 180px !important;
+  margin-left: auto !important;
+  display: block !important;
+  padding: 12px 20px !important;
+  background: var(--studio-accent) !important;
+  color: #071211 !important;
+  border: 1px solid var(--studio-accent) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em !important;
+  border-radius: 3px !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\] > div > div.sticky.bottom-0 button:disabled {
+  background: rgba(255,255,255,0.06) !important;
+  color: var(--studio-text-faint) !important;
+  border-color: var(--studio-border) !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 700px) {
+  .studio-shell main > div.fixed.z-\[100\] .space-y-5 > div {
+    padding: 14px !important;
+  }
+
+  .studio-shell main > div.fixed.z-\[100\] > div > div.sticky.bottom-0 button {
+    width: 100% !important;
+  }
+}
