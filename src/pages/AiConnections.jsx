@@ -93,11 +93,32 @@ export default function AiConnections({ embedded = false, onClose = null }) {
   };
 
   const runConnectionAction = async (provider, connection, action) => {
-    if (!connection) return;
+    if (!userId) return;
     setWorkingProvider(provider.id);
     setNotice('');
-    const body = { action, connection_id: connection.id };
+
+    const { data: freshConnection, error: freshError } = await supabase
+      .from('ai_user_connection')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('provider', provider.id)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (freshError || !freshConnection) {
+      setNotice(freshError?.message || `${provider.name} connection could not be refreshed.`);
+      setWorkingProvider(null);
+      return;
+    }
+
+    const body = {
+      action,
+      connection_id: freshConnection.id,
+      provider: provider.id,
+    };
     if (action === 'save') body.credential = credentialDrafts[provider.id] || '';
+
     const { data, error } = await supabase.functions.invoke('ai-user-connection', { body });
     if (error || data?.error) {
       setNotice(data?.error || error?.message || 'Connection operation failed.');
