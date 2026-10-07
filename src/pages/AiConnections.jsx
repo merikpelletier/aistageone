@@ -28,34 +28,55 @@ export default function AiConnections({ embedded = false, onClose = null }) {
   const [connections, setConnections] = useState([]);
   const [models, setModels] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [workingProvider, setWorkingProvider] = useState(null);
   const [notice, setNotice] = useState('');
   const [openProvider, setOpenProvider] = useState(null);
   const [credentialDrafts, setCredentialDrafts] = useState({});
 
-  const load = async () => {
-    setLoading(true);
+  const load = async ({ silent = false } = {}) => {
+    if (silent) setRefreshing(true);
+    else setLoading(true);
     setNotice('');
-    const { data: auth, error: authError } = await supabase.auth.getUser();
-    if (authError || !auth?.user) {
-      setNotice('Sign in is required to manage AI connections.');
+
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const sessionUser = sessionData?.session?.user || null;
+      if (sessionError || !sessionUser) {
+        setNotice('Sign in is required to manage AI connections.');
+        return;
+      }
+
+      setUserId(sessionUser.id);
+
+      const [connectionResult, modelResult] = await Promise.all([
+        supabase.from('ai_user_connection').select('*').eq('user_id', sessionUser.id).order('created_at'),
+        supabase.from('ai_user_connected_model').select('*').eq('user_id', sessionUser.id).order('display_name'),
+      ]);
+
+      if (connectionResult.error || modelResult.error) {
+        setNotice(connectionResult.error?.message || modelResult.error?.message || 'Unable to load AI connections.');
+      }
+
+      setConnections(connectionResult.data || []);
+      setModels(modelResult.data || []);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Unable to load AI connections.');
+    } finally {
       setLoading(false);
-      return;
+      setRefreshing(false);
     }
-    setUserId(auth.user.id);
-    const [{ data: connectionRows, error: connectionError }, { data: modelRows, error: modelError }] = await Promise.all([
-      supabase.from('ai_user_connection').select('*').eq('user_id', auth.user.id).order('created_at'),
-      supabase.from('ai_user_connected_model').select('*').eq('user_id', auth.user.id).order('display_name'),
-    ]);
-    if (connectionError || modelError) {
-      setNotice(connectionError?.message || modelError?.message || 'Unable to load AI connections.');
-    }
-    setConnections(connectionRows || []);
-    setModels(modelRows || []);
-    setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let active = true;
+    const start = async () => {
+      if (!active) return;
+      await load();
+    };
+    start();
+    return () => { active = false; };
+  }, []);
 
   const byProvider = useMemo(() => {
     const map = new Map();
@@ -86,7 +107,7 @@ export default function AiConnections({ embedded = false, onClose = null }) {
         return;
       }
       existing = created;
-      await load();
+      await load({ silent: true });
     }
     setOpenProvider(provider.id);
     setWorkingProvider(null);
@@ -97,51 +118,54 @@ export default function AiConnections({ embedded = false, onClose = null }) {
     setWorkingProvider(provider.id);
     setNotice('');
 
-    const { data: freshConnection, error: freshError } = await supabase
-      .from('ai_user_connection')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('provider', provider.id)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    try {
+      const { data: freshConnection, error: freshError } = await supabase
+        .from('ai_user_connection')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('provider', provider.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (freshError || !freshConnection) {
-      setNotice(freshError?.message || `${provider.name} connection could not be refreshed.`);
-      setWorkingProvider(null);
-      return;
-    }
+      if (freshError || !freshConnection) {
+        throw new Error(freshError?.message || `${provider.name} connection could not be refreshed.`);
+      }
 
-    const body = {
-      action,
-      connection_id: freshConnection.id,
-      provider: provider.id,
-    };
-    if (action === 'save') body.credential = credentialDrafts[provider.id] || '';
+      const body = {
+        action,
+        connection_id: freshConnection.id,
+        provider: provider.id,
+      };
+      if (action === 'save') body.credential = credentialDrafts[provider.id] || '';
 
-    const { data, error } = await supabase.functions.invoke('ai-user-connection', { body });
-    if (error || data?.error) {
-      setNotice(data?.error || error?.message || 'Connection operation failed.');
-    } else {
+      const { data, error } = await supabase.functions.invoke('ai-user-connection', { body });
+      if (error || data?.error) {
+        throw new Error(data?.error || error?.message || 'Connection operation failed.');
+      }
+
       setNotice(data?.message || (action === 'save' ? 'Credential saved and verified.' : 'Connection updated.'));
       if (action === 'save') {
         setCredentialDrafts((current) => ({ ...current, [provider.id]: '' }));
       }
-      await load();
+      await load({ silent: true });
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Connection operation failed.');
+    } finally {
+      setWorkingProvider(null);
     }
-    setWorkingProvider(null);
   };
 
   const removeConnection = async (connection) => {
     setWorkingProvider(connection.provider);
     setNotice('');
-    await supabase.functions.invoke('ai-user-connection', { body: { action: 'remove_credential', connection_id: connection.id } }).catch(() => null);
+    await supabase.functions.invoke('ai-user-connection', { body: { action: 'remove_credential', connection_id: connection.id, provider: connection.provider } }).catch(() => null);
     const { error } = await supabase.from('ai_user_connection').delete().eq('id', connection.id).eq('user_id', userId);
     if (error) setNotice(error.message);
     else {
       setNotice('Connection removed.');
       setOpenProvider(null);
-      await load();
+      await load({ silent: true });
     }
     setWorkingProvider(null);
   };
@@ -160,8 +184,8 @@ export default function AiConnections({ embedded = false, onClose = null }) {
             </p>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={load} className="inline-flex items-center gap-2 border border-white/15 bg-white/5 px-3 py-2 text-xs font-bold text-white hover:bg-white/10">
-              <RefreshCw size={14} /> Refresh
+            <button type="button" onClick={() => load({ silent: true })} disabled={refreshing} className="inline-flex items-center gap-2 border border-white/15 bg-white/5 px-3 py-2 text-xs font-bold text-white hover:bg-white/10 disabled:opacity-50">
+              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} /> Refresh
             </button>
             {onClose && <button type="button" onClick={onClose} className="border border-white/15 px-3 py-2 text-xs font-bold">Close</button>}
           </div>
@@ -179,109 +203,116 @@ export default function AiConnections({ embedded = false, onClose = null }) {
           </div>
         </div>
 
-        {notice && <div className="mb-5 border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/75">{notice}</div>}
-
-        {loading ? (
-          <div className="flex min-h-[280px] items-center justify-center gap-3 text-white/60"><Loader2 className="animate-spin" size={20} /> Loading connections…</div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {PROVIDERS.map((provider) => {
-              const connection = byProvider.get(provider.id)?.[0] || null;
-              const providerModels = connection ? models.filter((model) => model.connection_id === connection.id) : [];
-              const busy = workingProvider === provider.id;
-              return (
-                <div key={provider.id} className="border border-white/10 bg-[#17191d] p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-base font-semibold">{provider.name}</h2>
-                      <p className={`mt-1 text-[11px] font-bold uppercase tracking-wide ${connection?.status === 'connected' ? 'text-emerald-400' : connection ? 'text-amber-300' : 'text-white/35'}`}>
-                        {statusLabel(connection?.status)}
-                      </p>
-                    </div>
-                    <div className="flex h-9 w-9 items-center justify-center border border-white/10 bg-white/5 text-sm font-black text-teal-300">
-                      {provider.name.slice(0, 2).toUpperCase()}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    {provider.capabilities.map((capability) => (
-                      <span key={capability} className="border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-white/65">{capability}</span>
-                    ))}
-                  </div>
-
-                  {connection && (
-                    <div className="mt-4 border-t border-white/10 pt-3 text-xs text-white/50">
-                      <div className="flex justify-between gap-3"><span>Connection</span><span className="truncate text-white/75">{connection.connection_name}</span></div>
-                      <div className="mt-1 flex justify-between gap-3"><span>Models</span><span className="text-white/75">{providerModels.length}</span></div>
-                    </div>
-                  )}
-
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => beginSetup(provider)}
-                      disabled={busy}
-                      className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 bg-teal-500 px-3 text-xs font-bold text-black disabled:opacity-50"
-                    >
-                      {busy ? <Loader2 size={13} className="animate-spin" /> : <Link2 size={13} />}
-                      {connection ? (connection.status === 'connected' ? 'MANAGE' : 'CONTINUE SETUP') : 'SET UP'}
-                    </button>
-                    {connection && (
-                      <button type="button" onClick={() => removeConnection(connection)} disabled={busy} className="flex h-9 w-9 items-center justify-center border border-white/10 text-white/45 hover:text-red-400 disabled:opacity-50" aria-label={`Remove ${provider.name}`}>
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-
-                  {connection && openProvider === provider.id && (
-                    <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
-                      <label className="block text-[10px] font-bold uppercase tracking-wide text-white/45">
-                        API credential
-                        <input
-                          type="password"
-                          autoComplete="off"
-                          value={credentialDrafts[provider.id] || ''}
-                          onChange={(event) => setCredentialDrafts((current) => ({ ...current, [provider.id]: event.target.value }))}
-                          placeholder={connection.status === 'connected' ? 'Enter a new key to replace the saved credential' : 'Paste your API key'}
-                          className="mt-1 w-full border border-white/15 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-teal-400"
-                        />
-                      </label>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        <button
-                          type="button"
-                          onClick={() => runConnectionAction(provider, connection, 'save')}
-                          disabled={busy || !(credentialDrafts[provider.id] || '').trim()}
-                          className="min-h-9 bg-teal-500 px-3 text-xs font-bold text-black disabled:opacity-40"
-                        >
-                          SAVE & VERIFY
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => runConnectionAction(provider, connection, 'test')}
-                          disabled={busy || connection.status === 'pending'}
-                          className="min-h-9 border border-white/15 px-3 text-xs font-bold text-white disabled:opacity-40"
-                        >
-                          TEST
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => runConnectionAction(provider, connection, 'discover')}
-                          disabled={busy || connection.status === 'pending'}
-                          className="min-h-9 border border-white/15 px-3 text-xs font-bold text-white disabled:opacity-40"
-                        >
-                          DISCOVER MODELS
-                        </button>
-                      </div>
-                      <p className="text-[10px] leading-4 text-white/40">
-                        The credential is sent directly to the secure server-side connection service and is never displayed again after saving.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+        {notice && (
+          <div className="mb-5 border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/75 flex items-center justify-between gap-3">
+            <span>{notice}</span>
+            <button type="button" onClick={() => load({ silent: true })} className="text-xs font-bold text-teal-300 hover:text-teal-200">Retry</button>
           </div>
         )}
+
+        {loading && (
+          <div className="mb-4 flex items-center gap-2 text-xs text-white/45">
+            <Loader2 className="animate-spin" size={15} /> Loading saved connections…
+          </div>
+        )}
+
+        <div className={`grid gap-3 sm:grid-cols-2 xl:grid-cols-3 ${loading ? 'opacity-60' : ''}`}>
+          {PROVIDERS.map((provider) => {
+            const connection = byProvider.get(provider.id)?.[0] || null;
+            const providerModels = connection ? models.filter((model) => model.connection_id === connection.id) : [];
+            const busy = workingProvider === provider.id;
+            return (
+              <div key={provider.id} className="border border-white/10 bg-[#17191d] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-semibold">{provider.name}</h2>
+                    <p className={`mt-1 text-[11px] font-bold uppercase tracking-wide ${connection?.status === 'connected' ? 'text-emerald-400' : connection ? 'text-amber-300' : 'text-white/35'}`}>
+                      {loading && !connection ? 'Loading…' : statusLabel(connection?.status)}
+                    </p>
+                  </div>
+                  <div className="flex h-9 w-9 items-center justify-center border border-white/10 bg-white/5 text-sm font-black text-teal-300">
+                    {provider.name.slice(0, 2).toUpperCase()}
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-1.5">
+                  {provider.capabilities.map((capability) => (
+                    <span key={capability} className="border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-white/65">{capability}</span>
+                  ))}
+                </div>
+
+                {connection && (
+                  <div className="mt-4 border-t border-white/10 pt-3 text-xs text-white/50">
+                    <div className="flex justify-between gap-3"><span>Connection</span><span className="truncate text-white/75">{connection.connection_name}</span></div>
+                    <div className="mt-1 flex justify-between gap-3"><span>Models</span><span className="text-white/75">{providerModels.length}</span></div>
+                  </div>
+                )}
+
+                <div className="mt-4 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => beginSetup(provider)}
+                    disabled={busy || loading || !userId}
+                    className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 bg-teal-500 px-3 text-xs font-bold text-black disabled:opacity-50"
+                  >
+                    {busy ? <Loader2 size={13} className="animate-spin" /> : <Link2 size={13} />}
+                    {connection ? (connection.status === 'connected' ? 'MANAGE' : 'CONTINUE SETUP') : 'SET UP'}
+                  </button>
+                  {connection && (
+                    <button type="button" onClick={() => removeConnection(connection)} disabled={busy} className="flex h-9 w-9 items-center justify-center border border-white/10 text-white/45 hover:text-red-400 disabled:opacity-50" aria-label={`Remove ${provider.name}`}>
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {connection && openProvider === provider.id && (
+                  <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+                    <label className="block text-[10px] font-bold uppercase tracking-wide text-white/45">
+                      API credential
+                      <input
+                        type="password"
+                        autoComplete="off"
+                        value={credentialDrafts[provider.id] || ''}
+                        onChange={(event) => setCredentialDrafts((current) => ({ ...current, [provider.id]: event.target.value }))}
+                        placeholder={connection.status === 'connected' ? 'Enter a new key to replace the saved credential' : 'Paste your API key'}
+                        className="mt-1 w-full border border-white/15 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-teal-400"
+                      />
+                    </label>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <button
+                        type="button"
+                        onClick={() => runConnectionAction(provider, connection, 'save')}
+                        disabled={busy || !(credentialDrafts[provider.id] || '').trim()}
+                        className="min-h-9 bg-teal-500 px-3 text-xs font-bold text-black disabled:opacity-40"
+                      >
+                        {busy ? 'VERIFYING…' : 'SAVE & VERIFY'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runConnectionAction(provider, connection, 'test')}
+                        disabled={busy || connection.status === 'pending'}
+                        className="min-h-9 border border-white/15 px-3 text-xs font-bold text-white disabled:opacity-40"
+                      >
+                        TEST
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runConnectionAction(provider, connection, 'discover')}
+                        disabled={busy || connection.status === 'pending'}
+                        className="min-h-9 border border-white/15 px-3 text-xs font-bold text-white disabled:opacity-40"
+                      >
+                        DISCOVER MODELS
+                      </button>
+                    </div>
+                    <p className="text-[10px] leading-4 text-white/40">
+                      The credential is sent directly to the secure server-side connection service and is never displayed again after saving.
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
