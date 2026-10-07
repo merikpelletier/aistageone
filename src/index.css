@@ -75,11 +75,27 @@
   }
 }
 
-
-
 :root {
   --bottom-nav-height: calc(56px + env(safe-area-inset-bottom));
   --studio-mobile-nav-height: calc(64px + env(safe-area-inset-bottom));
+
+  /* AI Stage One Studio design tokens */
+  --studio-bg: #202328;
+  --studio-surface: #17191d;
+  --studio-surface-2: #1d2126;
+  --studio-surface-3: #24282e;
+  --studio-border: rgba(255, 255, 255, 0.09);
+  --studio-border-strong: rgba(255, 255, 255, 0.16);
+  --studio-text: #f4f6f7;
+  --studio-text-muted: rgba(255, 255, 255, 0.56);
+  --studio-text-faint: rgba(255, 255, 255, 0.34);
+  --studio-accent: #23c7be;
+  --studio-accent-hover: #35d8cf;
+  --studio-gold: #c8a96b;
+  --studio-danger: #e5484d;
+  --studio-success: #35c98a;
+  --studio-radius: 2px;
+  --studio-control-height: 42px;
 }
 
 .magazine-cover {
@@ -114,8 +130,7 @@
   }
 }
 
-/* AISTAGE visual rule: yellow action/selected buttons must use black foreground.
-   This overrides legacy component classes such as text-white on yellow buttons. */
+/* Legacy yellow rule outside Studio. */
 button[class*="bg-yellow-"],
 [role="button"][class*="bg-yellow-"] {
   color: #000 !important;
@@ -129,15 +144,195 @@ button[class*="bg-yellow-"] [class*="text-white"],
   stroke: currentColor;
 }
 
-/* Studio utility tools: keep the toolbar visually unified.
-   Color is used as a restrained accent, never as a full button fill. */
+/* =========================================================
+   AI STAGE ONE — STUDIO VISUAL SYSTEM
+   Shared language for every Studio tool.
+   ========================================================= */
+
+.studio-shell,
+.studio-tool-root {
+  background: var(--studio-bg);
+  color: var(--studio-text);
+}
+
+.studio-tool-panel,
+.studio-panel {
+  background: var(--studio-surface);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius);
+}
+
+.studio-tool-panel-secondary,
+.studio-panel-secondary {
+  background: var(--studio-surface-2);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius);
+}
+
+.studio-tool-header {
+  min-height: 64px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--studio-surface);
+  border-bottom: 1px solid var(--studio-border);
+}
+
+.studio-tool-eyebrow {
+  color: var(--studio-accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.studio-tool-title {
+  color: var(--studio-text);
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.studio-tool-subtitle,
+.studio-muted {
+  color: var(--studio-text-muted);
+}
+
+.studio-control,
+.studio-input,
+.studio-select,
+.studio-textarea {
+  background: rgba(0, 0, 0, 0.24);
+  border: 1px solid var(--studio-border-strong);
+  color: var(--studio-text);
+  border-radius: var(--studio-radius);
+  outline: none;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.studio-control:focus,
+.studio-input:focus,
+.studio-select:focus,
+.studio-textarea:focus {
+  border-color: var(--studio-accent);
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.studio-button {
+  min-height: var(--studio-control-height);
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--studio-border-strong);
+  border-radius: var(--studio-radius);
+  font-size: 12px;
+  font-weight: 800;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+
+.studio-button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.studio-button-primary {
+  background: var(--studio-accent);
+  border-color: var(--studio-accent);
+  color: #071211;
+}
+
+.studio-button-primary:hover:not(:disabled) {
+  background: var(--studio-accent-hover);
+  border-color: var(--studio-accent-hover);
+}
+
+.studio-button-secondary {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--studio-text);
+}
+
+.studio-button-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.studio-button-danger {
+  background: rgba(229, 72, 77, 0.08);
+  border-color: rgba(229, 72, 77, 0.35);
+  color: #ffb1b4;
+}
+
+.studio-button-danger:hover:not(:disabled) {
+  background: rgba(229, 72, 77, 0.16);
+}
+
+.studio-icon-button {
+  width: var(--studio-control-height);
+  height: var(--studio-control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--studio-border);
+  color: var(--studio-text-muted);
+  border-radius: var(--studio-radius);
+}
+
+.studio-icon-button:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--studio-text);
+}
+
+.studio-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 22px;
+  padding: 0 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--studio-border);
+  color: var(--studio-text-muted);
+  border-radius: var(--studio-radius);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.studio-badge-connected { color: #8ce9c1; border-color: rgba(53, 201, 138, 0.28); }
+.studio-badge-warning { color: #e5c78f; border-color: rgba(200, 169, 107, 0.28); }
+.studio-badge-danger { color: #ffb1b4; border-color: rgba(229, 72, 77, 0.28); }
+.studio-badge-accent { color: #85eee8; border-color: rgba(35, 199, 190, 0.28); }
+
+.studio-divider {
+  border-color: var(--studio-border);
+}
+
+/* Unified Studio sidebar selected state: no yellow blocks. */
+aside button.bg-yellow-400 {
+  background: var(--studio-surface-2) !important;
+  color: var(--studio-text) !important;
+  box-shadow: inset 2px 0 0 var(--studio-accent) !important;
+}
+
+aside button.bg-yellow-400 svg,
+aside button.bg-yellow-400 [class*="text-white"] {
+  color: var(--studio-accent) !important;
+  stroke: currentColor !important;
+}
+
+/* Studio utility tools: color only as a restrained accent. */
 button[aria-label="My AI Connections"],
 button[aria-label="Open Studio Recorder"],
 button[aria-label="Open AI Assistant"] {
   position: relative;
-  background: #17191d !important;
+  background: var(--studio-surface) !important;
   color: rgba(255, 255, 255, 0.82) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-top: 1px solid var(--studio-border) !important;
   border-bottom: 0 !important;
   box-shadow: inset 2px 0 0 transparent;
   transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
@@ -146,7 +341,7 @@ button[aria-label="Open AI Assistant"] {
 button[aria-label="My AI Connections"]:hover,
 button[aria-label="Open Studio Recorder"]:hover,
 button[aria-label="Open AI Assistant"]:hover {
-  background: #202328 !important;
+  background: var(--studio-surface-2) !important;
   color: #ffffff !important;
 }
 
@@ -157,7 +352,7 @@ button[aria-label="Open AI Assistant"] {
 
 button[aria-label="My AI Connections"] svg,
 button[aria-label="Open AI Assistant"] svg {
-  color: #23c7be !important;
+  color: var(--studio-accent) !important;
   stroke: currentColor !important;
 }
 
@@ -166,7 +361,7 @@ button[aria-label="Open Studio Recorder"] {
 }
 
 button[aria-label="Open Studio Recorder"] svg {
-  color: #e5484d !important;
+  color: var(--studio-danger) !important;
   stroke: currentColor !important;
   fill: currentColor !important;
 }
