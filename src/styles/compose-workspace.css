@@ -1,0 +1,130 @@
+/* Compose Scene / LabWorkspace visual unification */
+
+.studio-shell div.space-y-6:has(> #active-tool-panel) > div.bg-black.rounded-2xl {
+  background: var(--studio-surface) !important;
+  border: 1px solid var(--studio-border) !important;
+  border-radius: 4px !important;
+  padding: 12px 14px !important;
+  box-shadow: none !important;
+}
+
+.studio-shell div.space-y-6:has(> #active-tool-panel) > div.bg-black.rounded-2xl > div:first-child > div:first-child {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 3px !important;
+  background: rgba(35,199,190,0.12) !important;
+  border: 1px solid rgba(35,199,190,0.35) !important;
+}
+
+.studio-shell div.space-y-6:has(> #active-tool-panel) > div.bg-black.rounded-2xl > div:first-child > div:first-child span {
+  color: var(--studio-accent) !important;
+}
+
+.studio-shell div.space-y-6:has(> #active-tool-panel) > div.bg-black.rounded-2xl p.text-yellow-400 {
+  color: var(--studio-accent) !important;
+  font-size: 18px !important;
+}
+
+.studio-shell div.space-y-6:has(> #active-tool-panel) > div.bg-black.rounded-2xl > button {
+  background: var(--studio-accent) !important;
+  border: 1px solid var(--studio-accent) !important;
+  color: #071211 !important;
+  border-radius: 3px !important;
+  min-height: 40px !important;
+  padding: 0 14px !important;
+}
+
+.studio-shell #active-tool-panel {
+  background: var(--studio-surface) !important;
+  border: 1px solid var(--studio-border-strong) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  padding: 20px !important;
+}
+
+.studio-shell #active-tool-panel > div:first-child {
+  margin-bottom: 16px !important;
+  padding-bottom: 12px !important;
+  border-bottom-color: var(--studio-border) !important;
+}
+
+.studio-shell #active-tool-panel > div:first-child > div:first-child > div:first-child {
+  background: rgba(35,199,190,0.12) !important;
+  border: 1px solid rgba(35,199,190,0.35) !important;
+  color: var(--studio-accent) !important;
+  border-radius: 3px !important;
+}
+
+.studio-shell #active-tool-panel h2,
+.studio-shell #active-tool-panel h3,
+.studio-shell #active-tool-panel [class*="text-yellow-"] {
+  color: var(--studio-accent) !important;
+}
+
+.studio-shell #active-tool-panel [class*="border-yellow-"] {
+  border-color: rgba(35,199,190,0.35) !important;
+}
+
+.studio-shell #active-tool-panel [class*="bg-yellow-"] {
+  background-color: var(--studio-accent) !important;
+  color: #071211 !important;
+}
+
+.studio-shell #active-tool-panel button[class*="bg-yellow-"] {
+  border-radius: 3px !important;
+  box-shadow: none !important;
+}
+
+.studio-shell #active-tool-panel input,
+.studio-shell #active-tool-panel textarea,
+.studio-shell #active-tool-panel select {
+  border-radius: 3px !important;
+  background: rgba(0,0,0,0.24) !important;
+  border-color: var(--studio-border-strong) !important;
+}
+
+.studio-shell #active-tool-panel input:focus,
+.studio-shell #active-tool-panel textarea:focus,
+.studio-shell #active-tool-panel select:focus {
+  border-color: var(--studio-accent) !important;
+}
+
+.studio-shell #active-tool-panel button[class*="rounded-xl"],
+.studio-shell #active-tool-panel button[class*="rounded-2xl"],
+.studio-shell #active-tool-panel div[class*="rounded-xl"],
+.studio-shell #active-tool-panel div[class*="rounded-2xl"],
+.studio-shell #active-tool-panel section[class*="rounded-xl"],
+.studio-shell #active-tool-panel section[class*="rounded-2xl"] {
+  border-radius: 4px !important;
+}
+
+.studio-shell #active-tool-panel button[class*="border-white/10"],
+.studio-shell #active-tool-panel button[class*="border-white/20"] {
+  background: rgba(255,255,255,0.04) !important;
+  border-color: var(--studio-border-strong) !important;
+}
+
+.studio-shell #active-tool-panel button[class*="border-white/10"]:hover,
+.studio-shell #active-tool-panel button[class*="border-white/20"]:hover {
+  background: rgba(255,255,255,0.08) !important;
+}
+
+.studio-shell #active-tool-panel [class*="bg-cyan-300"] {
+  background: rgba(35,199,190,0.12) !important;
+  color: var(--studio-accent) !important;
+  border-color: rgba(35,199,190,0.35) !important;
+}
+
+.studio-shell #active-tool-panel [class*="text-cyan-"] {
+  color: var(--studio-accent) !important;
+}
+
+.studio-shell #active-tool-panel [class*="rounded-full"] {
+  border-radius: 3px !important;
+}
+
+@media (max-width: 700px) {
+  .studio-shell #active-tool-panel {
+    padding: 14px !important;
+  }
+}
