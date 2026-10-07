@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { motion } from 'framer-motion';
@@ -19,10 +19,10 @@ const CATEGORIES = [
 export default function SketchStudio({ user }) {
   const qc = useQueryClient();
   const [category, setCategory] = useState('all');
-  const [photoUrl, setPhotoUrl] = useState(null);      // uploaded photo file_url (preview)
-  const [photoFile, setPhotoFile] = useState(null);    // original File, for cropping at gen time
+  const [photoUrl, setPhotoUrl] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [selected, setSelected] = useState(null);      // theme object
+  const [selected, setSelected] = useState(null);
   const [duration, setDuration] = useState(5);
   const [aspectRatio, setAspectRatio] = useState('9:16');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -63,7 +63,6 @@ export default function SketchStudio({ user }) {
     queryFn: () => base44.entities.SketchTemplate.filter({ is_active: true }, 'order', 100),
     staleTime: 60 * 1000,
   });
-
   const filtered = category === 'all' ? themes : themes.filter((t) => t.category === category);
 
   const handlePhotoUpload = async (file) => {
@@ -73,7 +72,7 @@ export default function SketchStudio({ user }) {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setPhotoUrl(file_url);
       setPhotoFile(file);
-    } catch (err) {
+    } catch {
       toast.error('Photo upload failed');
     } finally {
       setUploadingPhoto(false);
@@ -91,9 +90,6 @@ export default function SketchStudio({ user }) {
     setAspectRatio(theme.default_aspect_ratio || '9:16');
   };
 
-  // Crop an image File to a target aspect ratio (e.g. "9:16"), centered.
-  // Seedance ignores the aspect_ratio param when an image is provided, so we
-  // must pre-crop the photo to the chosen ratio for the output video to match.
   const cropToFile = (file, ratio) => new Promise((resolve, reject) => {
     const [w, h] = ratio.split(':').map(Number);
     const targetAspect = w / h;
@@ -117,8 +113,7 @@ export default function SketchStudio({ user }) {
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(cropW);
       canvas.height = Math.round(cropH);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, sx, sy, cropW, cropH, 0, 0, canvas.width, canvas.height);
+      canvas.getContext('2d').drawImage(img, sx, sy, cropW, cropH, 0, 0, canvas.width, canvas.height);
       canvas.toBlob((blob) => {
         if (!blob) return reject(new Error('Crop failed'));
         resolve(new File([blob], 'photo.jpg', { type: 'image/jpeg' }));
@@ -131,10 +126,6 @@ export default function SketchStudio({ user }) {
   const handleGenerate = async () => {
     if (!selected || !photoUrl) return;
     const useMorph = !!(selected.transformation_prompt || '').trim();
-    // Variant support: a theme can list multiple reveals separated by "||" in
-    // BOTH the transformation_prompt (the END-STATE look) and the video_prompt
-    // (the reveal action + spoken line). We pick ONE matched index so the look
-    // always corresponds to its line, and the reveal changes every generation.
     let morphPrompt = (selected.transformation_prompt || '').trim();
     let prompt = (selected.video_prompt || '').trim();
     if (useMorph) {
@@ -152,7 +143,6 @@ export default function SketchStudio({ user }) {
     }
     setIsGenerating(true);
     try {
-      // Pre-crop the photo to the chosen aspect so the model output matches.
       let genImage = photoUrl;
       if (photoFile) {
         try {
@@ -160,7 +150,6 @@ export default function SketchStudio({ user }) {
           const { file_url } = await base44.integrations.Core.UploadFile({ file: cropped });
           genImage = file_url;
         } catch (e) {
-          // If crop fails, fall back to the original photo.
           console.warn('Crop failed, using original photo', e);
         }
       }
@@ -203,259 +192,108 @@ export default function SketchStudio({ user }) {
     qc.invalidateQueries({ queryKey: ['vaultAssets', user?.email] });
   };
 
-  // ── Theme picker (with upload at top) ──
   if (!selected) {
     return (
-      <div className="mt-6 w-full max-w-6xl mx-auto px-4 pb-28 lg:pb-32">
-        <div className="flex flex-col items-center mb-5">
-          <p className="text-black text-sm font-black tracking-widest uppercase">Sketch Generator</p>
-          <p className="text-black text-xs font-semibold">Pick a funny theme, then upload your photo</p>
-        </div>
-
-        {/* Upload your photo — at the top */}
-        {photoUrl ? (
-          <div className="flex items-center gap-3 mb-5 max-w-3xl mx-auto">
-            <img src={photoUrl} alt="you" className="w-12 h-12 rounded-xl object-cover" />
-            <div className="flex-1 min-w-0">
-              <p className="text-black text-sm font-bold">Your photo is ready</p>
-              <p className="text-black/50 text-xs truncate">Now pick a theme below</p>
+      <div className="w-full bg-[#202328] px-4 py-5 pb-28 text-white lg:pb-32">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-5 flex items-end justify-between gap-4 border-b border-white/10 pb-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Stages</p>
+              <h2 className="text-2xl font-black text-white">Sketch Generator</h2>
+              <p className="mt-1 text-sm text-white/45">Upload a photo, then choose a theme.</p>
             </div>
-            <button onClick={() => { setPhotoUrl(null); setPhotoFile(null); }} className="text-black/60 text-xs font-bold underline underline-offset-2">
-              Change
-            </button>
-          </div>
-        ) : (
-          <label className="block w-full aspect-[4/5] max-w-[260px] mx-auto bg-black rounded-3xl flex items-center justify-center cursor-pointer relative overflow-hidden mb-5">
-            {uploadingPhoto ? (
-              <div className="flex flex-col items-center text-yellow-400">
-                <Loader2 size={32} className="animate-spin" />
-                <p className="text-xs mt-2 font-bold">Uploading…</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center text-yellow-400">
-                <div className="w-20 h-20 bg-yellow-400/20 rounded-2xl flex items-center justify-center mb-3">
-                  <Upload size={32} />
-                </div>
-                <p className="font-bold text-base">Upload a photo</p>
-                <p className="text-yellow-400/70 text-xs mt-1">Your face, full body, or any selfie</p>
+            {photoUrl && (
+              <div className="flex items-center gap-3 rounded-[4px] border border-white/10 bg-[#17191d] px-3 py-2">
+                <img src={photoUrl} alt="you" className="h-10 w-10 rounded-[3px] object-cover" />
+                <div><p className="text-xs font-bold text-white">Photo ready</p><button onClick={() => { setPhotoUrl(null); setPhotoFile(null); }} className="text-[10px] font-bold text-[#8ee9e4]">Change</button></div>
               </div>
             )}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => handlePhotoUpload(e.target.files?.[0])}
-            />
-          </label>
-        )}
-
-        <div className="flex flex-wrap justify-center gap-2 mb-5">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setCategory(c.id)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                category === c.id ? 'bg-black text-yellow-400' : 'bg-black/10 text-black hover:bg-black/20'
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-
-        {isLoading ? (
-          <div className="flex justify-center py-12"><Loader2 size={28} className="animate-spin text-black" /></div>
-        ) : filtered.length === 0 ? (
-          <div className="bg-black/10 rounded-3xl p-10 text-center border-2 border-dashed border-black/20">
-            <div className="w-20 h-20 bg-black/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
-              <Film size={40} className="text-black" />
-            </div>
-            <p className="text-black text-lg font-bold mb-2">No themes yet</p>
-            <p className="text-black text-sm">Ask an admin to add funny themes in the Admin panel</p>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((t) => (
-              <motion.button
-                key={t.id}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => openTheme(t)}
-                className="bg-black rounded-2xl overflow-hidden text-left active:opacity-90 border border-black/10"
-              >
-                <div className="aspect-[16/10] bg-yellow-400/20 relative">
-                  {t.cover_image ? (
-                    <img src={t.cover_image} alt={t.name} className="w-full h-full object-cover" />
+
+          <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <aside className="space-y-4">
+              {!photoUrl && (
+                <label className="flex min-h-[330px] cursor-pointer flex-col items-center justify-center rounded-[4px] border border-dashed border-white/20 bg-[#17191d] p-6 text-center transition hover:border-[#23c7be]/60 hover:bg-[#1d2126]">
+                  {uploadingPhoto ? (
+                    <><Loader2 size={30} className="animate-spin text-[#23c7be]" /><p className="mt-3 text-sm font-bold">Uploading…</p></>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Sparkles size={32} className="text-yellow-400" />
-                    </div>
+                    <><div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10"><Upload size={28} className="text-[#23c7be]" /></div><p className="text-base font-black">Upload a photo</p><p className="mt-1 text-xs text-white/40">Face, full body or selfie</p></>
                   )}
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(e.target.files?.[0])} />
+                </label>
+              )}
+
+              <div className="rounded-[4px] border border-white/10 bg-[#17191d] p-3">
+                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-white/45">Categories</p>
+                <div className="flex flex-wrap gap-2 lg:flex-col">
+                  {CATEGORIES.map((c) => (
+                    <button key={c.id} onClick={() => setCategory(c.id)} className={`rounded-[3px] border px-3 py-2 text-left text-xs font-black transition ${category === c.id ? 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.07]'}`}>{c.label}</button>
+                  ))}
                 </div>
-                <div className="p-3.5">
-                  <p className="text-white text-sm font-bold truncate">{t.name}</p>
-                  {t.description && (
-                    <p className="text-yellow-400 text-xs mt-1 line-clamp-2">{t.description}</p>
-                  )}
-                  <span className="inline-block mt-2 text-[10px] font-bold uppercase tracking-wide text-yellow-400/70">
-                    {t.category === 'comedy' ? 'Comedy' : 'Character Intro'}
-                  </span>
+              </div>
+            </aside>
+
+            <section>
+              {isLoading ? (
+                <div className="flex min-h-72 items-center justify-center rounded-[4px] border border-white/10 bg-[#17191d]"><Loader2 size={28} className="animate-spin text-[#23c7be]" /></div>
+              ) : filtered.length === 0 ? (
+                <div className="flex min-h-72 flex-col items-center justify-center rounded-[4px] border border-dashed border-white/15 bg-[#17191d] p-10 text-center"><Film size={36} className="text-[#23c7be]" /><p className="mt-4 text-lg font-black">No themes yet</p><p className="mt-1 text-sm text-white/40">Ask an admin to add themes in the Admin panel.</p></div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {filtered.map((t) => (
+                    <motion.button key={t.id} whileTap={{ scale: 0.98 }} onClick={() => openTheme(t)} className="overflow-hidden rounded-[4px] border border-white/10 bg-[#17191d] text-left transition hover:border-[#23c7be]/45 hover:shadow-[inset_2px_0_0_#23c7be]">
+                      <div className="relative aspect-[16/10] bg-[#1d2126]">{t.cover_image ? <img src={t.cover_image} alt={t.name} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><Sparkles size={32} className="text-[#23c7be]" /></div>}</div>
+                      <div className="p-3.5"><p className="truncate text-sm font-black text-white">{t.name}</p>{t.description && <p className="mt-1 line-clamp-2 text-xs text-white/45">{t.description}</p>}<span className="mt-2 inline-block text-[10px] font-black uppercase tracking-wide text-[#8ee9e4]">{t.category === 'comedy' ? 'Comedy' : 'Character Intro'}</span></div>
+                    </motion.button>
+                  ))}
                 </div>
-              </motion.button>
-            ))}
+              )}
+            </section>
           </div>
-        )}
+        </div>
       </div>
     );
   }
 
-  // ── Generate / result ──
   return (
-    <div className="mt-6 w-full max-w-5xl mx-auto px-4 pb-28 lg:pb-32">
-      <button
-        onClick={() => { setSelected(null); setResult(null); }}
-        className="flex items-center gap-2 text-black text-sm font-bold mb-4"
-      >
-        <ChevronLeft size={20} /> Back to themes
-      </button>
+    <div className="w-full bg-[#202328] px-4 py-5 pb-28 text-white lg:pb-32">
+      <div className="mx-auto max-w-5xl">
+        <button onClick={() => { setSelected(null); setResult(null); }} className="mb-4 flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white"><ChevronLeft size={20} /> Back to themes</button>
 
-      <div className="bg-black rounded-3xl p-5 md:p-6">
-        <p className="text-yellow-400 font-black text-lg">{selected.name}</p>
-        {selected.description && (
-          <p className="text-white/70 text-sm mt-1 mb-4">{selected.description}</p>
-        )}
-
-        {/* Photo + scenario preview */}
-        <div className="flex gap-3 mb-5">
-          <img src={photoUrl} alt="you" className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-yellow-400 text-[10px] font-bold uppercase tracking-wide flex items-center gap-1">
-              <User size={12} /> Your photo in this scene
-            </p>
-            <p className="text-white/80 text-xs mt-1 line-clamp-3">{selected.scenario}</p>
+        <div className="rounded-[4px] border border-white/10 bg-[#17191d] p-5 md:p-6">
+          <div className="mb-5 flex gap-3 border-b border-white/10 pb-4">
+            <img src={photoUrl} alt="you" className="h-16 w-16 flex-shrink-0 rounded-[3px] object-cover" />
+            <div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-wide text-[#23c7be]"><User size={12} className="mr-1 inline" />Your photo in this scene</p><h3 className="mt-1 text-lg font-black text-white">{selected.name}</h3>{selected.description && <p className="mt-1 text-sm text-white/45">{selected.description}</p>}<p className="mt-2 line-clamp-3 text-xs text-white/65">{selected.scenario}</p></div>
           </div>
+
+          <div className="mb-5 space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/50">AI Model</p>
+            <select value={effectiveModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={modelsLoading || modelOptions.length === 0} className="w-full rounded-[3px] border border-white/15 bg-black/25 px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#23c7be] disabled:opacity-50">
+              {modelsLoading && <option value="">Loading models…</option>}
+              {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
+              {modelOptions.map(m => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}
+            </select>
+          </div>
+
+          <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Duration</p><div className="flex gap-2">{[5,10].map(d => <button key={d} onClick={() => setDuration(d)} className={`flex-1 rounded-[3px] border py-2.5 text-sm font-black ${duration === d ? 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.04] text-white/65'}`}>{d}s</button>)}</div></div>
+            <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Aspect</p><div className="flex gap-2">{['16:9','9:16','1:1'].map(r => <button key={r} onClick={() => setAspectRatio(r)} className={`flex-1 rounded-[3px] border py-2.5 text-xs font-black ${aspectRatio === r ? 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.04] text-white/65'}`}>{r}</button>)}</div></div>
+          </div>
+
+          <div className="mb-4 flex flex-col gap-1.5 rounded-[3px] border border-white/10 bg-black/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs font-bold text-white/70">Cost: <span className="text-[#8ee9e4]">{priceLoading ? 'Calculating…' : cost !== null ? `${cost} credits` : '…'}</span></p><p className="text-xs font-bold text-white/70">Balance: <span className={insufficient ? 'text-red-400' : 'text-[#8ee9e4]'}>{balance !== null ? `${balance} credits` : '…'}</span></p></div>
+
+          {insufficient && <button onClick={() => setShowBuyTokens(true)} className="mb-3 flex w-full items-center justify-center gap-2 rounded-[3px] border border-red-400/30 bg-red-400/10 py-3 font-bold text-red-200"><Coins size={18} /> Not enough credits — Buy more</button>}
+
+          {!result ? (
+            <button onClick={handleGenerate} disabled={isGenerating || insufficient} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-4 font-black text-[#071211] disabled:bg-white/[0.05] disabled:text-white/30">{isGenerating ? <><Loader2 size={20} className="animate-spin" /> Generating… (~2-3 min)</> : <><Sparkles size={20} /> Generate Sketch</>}</button>
+          ) : (
+            <div className="space-y-4"><div className="rounded-[4px] border border-white/10 bg-black p-3"><video src={result} controls className="w-full rounded-[3px]" /></div><div className="flex gap-3"><button onClick={() => setResult(null)} className="flex-1 rounded-[3px] border border-white/10 bg-white/[0.04] py-3 font-bold text-white">Regenerate</button><button onClick={() => setShowSaveVault(true)} className="flex flex-1 items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3 font-black text-[#071211]"><CheckCircle2 size={20} /> Save to Vault</button></div></div>
+          )}
         </div>
 
-        {/* AI Model */}
-        <div className="mb-5 space-y-2">
-          <p className="text-yellow-400 text-xs font-bold uppercase tracking-wide">AI Model</p>
-          <select
-            value={effectiveModel || ''}
-            onChange={e => setSelectedModel(e.target.value || null)}
-            disabled={modelsLoading || modelOptions.length === 0}
-            className="w-full bg-white/10 border border-white/15 rounded-xl px-4 py-3 text-yellow-400 text-sm font-bold outline-none disabled:opacity-50"
-          >
-            {modelsLoading && <option value="" className="bg-white text-black">Loading models…</option>}
-            {!modelsLoading && modelOptions.length === 0 && <option value="" className="bg-white text-black">No model available</option>}
-            {modelOptions.map(m => (
-              <option key={m.model_key} value={m.model_key} className="bg-white text-black">
-                {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Options */}
-        <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,0.8fr)_minmax(360px,1.2fr)] gap-4 mb-5">
-          <div>
-            <p className="text-yellow-400 text-xs font-bold uppercase tracking-wide mb-1">Duration</p>
-            <div className="flex gap-2">
-              {[5, 10].map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setDuration(d)}
-                  className={`flex-1 min-h-12 py-2 rounded-xl text-sm font-bold transition-all ${
-                    duration === d ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white'
-                  }`}
-                >
-                  {d}s
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-yellow-400 text-xs font-bold uppercase tracking-wide mb-1">Aspect</p>
-            <div className="flex gap-2">
-              {['16:9', '9:16', '1:1'].map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setAspectRatio(r)}
-                  className={`flex-1 min-h-12 py-2 rounded-xl text-xs font-bold transition-all ${
-                    aspectRatio === r ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white'
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Cost & balance */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 bg-white/5 rounded-xl px-4 py-3 mb-4">
-          <p className="text-white text-xs font-bold">Cost: <span className="text-yellow-400">{priceLoading ? 'Calculating…' : cost !== null ? `${cost} credits` : '…'}</span></p>
-          <p className="text-white text-xs font-bold">Balance: <span className={insufficient ? 'text-red-400' : 'text-yellow-400'}>{balance !== null ? `${balance} credits` : '…'}</span></p>
-        </div>
-        {insufficient && (
-          <button
-            onClick={() => setShowBuyTokens(true)}
-            className="w-full bg-red-500 text-white font-bold py-3 rounded-2xl mb-3 flex items-center justify-center gap-2"
-          >
-            <Coins size={18} /> Not enough credits — Buy more
-          </button>
-        )}
-
-        {/* Generate */}
-        {!result && (
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating || insufficient}
-            className="w-full min-h-14 bg-yellow-400 text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {isGenerating ? (
-              <><Loader2 size={20} className="animate-spin" /> Generating… (~2-3 min)</>
-            ) : (
-              <><Sparkles size={20} /> Generate Sketch</>
-            )}
-          </button>
-        )}
-
-        {/* Result */}
-        {result && (
-          <div className="space-y-4">
-            <div className="bg-white/5 rounded-2xl p-3">
-              <video src={result} controls className="w-full rounded-lg" />
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setResult(null); }}
-                className="flex-1 bg-white/10 text-white font-bold py-3 rounded-2xl"
-              >
-                Regenerate
-              </button>
-              <button
-                onClick={() => setShowSaveVault(true)}
-                className="flex-1 bg-green-600 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 size={20} /> Save to Vault
-              </button>
-            </div>
-          </div>
-        )}
+        {showSaveVault && result && <SaveToVaultModal userEmail={user?.email} imageUrl={result} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={handleSavedToVault} />}
+        {showBuyTokens && <TokenPurchaseModal onClose={() => setShowBuyTokens(false)} onPurchased={refreshBalance} />}
       </div>
-
-      {showSaveVault && result && (
-        <SaveToVaultModal
-          userEmail={user?.email}
-          imageUrl={result}
-          mediaType="video"
-          onClose={() => setShowSaveVault(false)}
-          onSaved={handleSavedToVault}
-        />
-      )}
-
-      {showBuyTokens && (
-        <TokenPurchaseModal onClose={() => setShowBuyTokens(false)} onPurchased={refreshBalance} />
-      )}
     </div>
   );
 }
