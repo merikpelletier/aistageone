@@ -78,8 +78,6 @@
 :root {
   --bottom-nav-height: calc(56px + env(safe-area-inset-bottom));
   --studio-mobile-nav-height: calc(64px + env(safe-area-inset-bottom));
-
-  /* AI Stage One Studio design tokens */
   --studio-bg: #202328;
   --studio-surface: #17191d;
   --studio-surface-2: #1d2126;
@@ -98,437 +96,118 @@
   --studio-control-height: 42px;
 }
 
-.magazine-cover {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: calc(56px + env(safe-area-inset-bottom));
-}
-
-.studio-tabs-scroll::-webkit-scrollbar {
-  display: none;
-}
-.studio-tabs-scroll {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.bottom-nav-safe {
-  height: calc(56px + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom);
-}
+.magazine-cover { position: fixed; top: 0; left: 0; right: 0; bottom: calc(56px + env(safe-area-inset-bottom)); }
+.studio-tabs-scroll::-webkit-scrollbar { display: none; }
+.studio-tabs-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+.bottom-nav-safe { height: calc(56px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-    font-weight: 700;
-  }
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; font-weight: 700; }
 }
 
-/* Legacy yellow rule outside Studio. */
-button[class*="bg-yellow-"],
-[role="button"][class*="bg-yellow-"] {
-  color: #000 !important;
-}
+button[class*="bg-yellow-"], [role="button"][class*="bg-yellow-"] { color: #000 !important; }
+button[class*="bg-yellow-"] svg, [role="button"][class*="bg-yellow-"] svg, button[class*="bg-yellow-"] [class*="text-white"], [role="button"][class*="bg-yellow-"] [class*="text-white"] { color: #000 !important; stroke: currentColor; }
 
-button[class*="bg-yellow-"] svg,
-[role="button"][class*="bg-yellow-"] svg,
-button[class*="bg-yellow-"] [class*="text-white"],
-[role="button"][class*="bg-yellow-"] [class*="text-white"] {
-  color: #000 !important;
-  stroke: currentColor;
-}
+.studio-shell, .studio-tool-root { background: var(--studio-bg); color: var(--studio-text); }
+.studio-tool-panel, .studio-panel { background: var(--studio-surface); border: 1px solid var(--studio-border); border-radius: var(--studio-radius); }
+.studio-tool-panel-secondary, .studio-panel-secondary { background: var(--studio-surface-2); border: 1px solid var(--studio-border); border-radius: var(--studio-radius); }
+.studio-tool-header { min-height: 64px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--studio-surface); border-bottom: 1px solid var(--studio-border); }
+.studio-tool-eyebrow { color: var(--studio-accent); font-size: 10px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+.studio-tool-title { color: var(--studio-text); font-size: 18px; font-weight: 750; line-height: 1.2; }
+.studio-tool-subtitle, .studio-muted { color: var(--studio-text-muted); }
+.studio-control, .studio-input, .studio-select, .studio-textarea { background: rgba(0,0,0,.24); border: 1px solid var(--studio-border-strong); color: var(--studio-text); border-radius: var(--studio-radius); outline: none; transition: border-color 150ms ease, background-color 150ms ease; }
+.studio-control:focus, .studio-input:focus, .studio-select:focus, .studio-textarea:focus { border-color: var(--studio-accent); background: rgba(0,0,0,.32); }
+.studio-button { min-height: var(--studio-control-height); padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--studio-border-strong); border-radius: var(--studio-radius); font-size: 12px; font-weight: 800; transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, opacity 150ms ease; }
+.studio-button:disabled { opacity: .42; cursor: not-allowed; }
+.studio-button-primary { background: var(--studio-accent); border-color: var(--studio-accent); color: #071211; }
+.studio-button-primary:hover:not(:disabled) { background: var(--studio-accent-hover); border-color: var(--studio-accent-hover); }
+.studio-button-secondary { background: rgba(255,255,255,.04); color: var(--studio-text); }
+.studio-button-secondary:hover:not(:disabled) { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.22); }
+.studio-button-danger { background: rgba(229,72,77,.08); border-color: rgba(229,72,77,.35); color: #ffb1b4; }
+.studio-button-danger:hover:not(:disabled) { background: rgba(229,72,77,.16); }
+.studio-icon-button { width: var(--studio-control-height); height: var(--studio-control-height); display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,.04); border: 1px solid var(--studio-border); color: var(--studio-text-muted); border-radius: var(--studio-radius); }
+.studio-icon-button:hover { background: rgba(255,255,255,.09); color: var(--studio-text); }
+.studio-badge { display: inline-flex; align-items: center; gap: 5px; min-height: 22px; padding: 0 8px; background: rgba(255,255,255,.05); border: 1px solid var(--studio-border); color: var(--studio-text-muted); border-radius: var(--studio-radius); font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.studio-badge-connected { color: #8ce9c1; border-color: rgba(53,201,138,.28); }
+.studio-badge-warning { color: #e5c78f; border-color: rgba(200,169,107,.28); }
+.studio-badge-danger { color: #ffb1b4; border-color: rgba(229,72,77,.28); }
+.studio-badge-accent { color: #85eee8; border-color: rgba(35,199,190,.28); }
+.studio-divider { border-color: var(--studio-border); }
 
-/* =========================================================
-   AI STAGE ONE — STUDIO VISUAL SYSTEM
-   Shared language for every Studio tool.
-   ========================================================= */
+aside button.bg-yellow-400 { background: var(--studio-surface-2) !important; color: var(--studio-text) !important; box-shadow: inset 2px 0 0 var(--studio-accent) !important; }
+aside button.bg-yellow-400 svg, aside button.bg-yellow-400 [class*="text-white"] { color: var(--studio-accent) !important; stroke: currentColor !important; }
+button[aria-label="My AI Connections"], button[aria-label="Open Studio Recorder"], button[aria-label="Open AI Assistant"] { position: relative; background: var(--studio-surface) !important; color: rgba(255,255,255,.82) !important; border-top: 1px solid var(--studio-border) !important; border-bottom: 0 !important; box-shadow: inset 2px 0 0 transparent; transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease; }
+button[aria-label="My AI Connections"]:hover, button[aria-label="Open Studio Recorder"]:hover, button[aria-label="Open AI Assistant"]:hover { background: var(--studio-surface-2) !important; color: #fff !important; }
+button[aria-label="My AI Connections"], button[aria-label="Open AI Assistant"] { box-shadow: inset 2px 0 0 rgba(35,199,190,.72); }
+button[aria-label="My AI Connections"] svg, button[aria-label="Open AI Assistant"] svg { color: var(--studio-accent) !important; stroke: currentColor !important; }
+button[aria-label="Open Studio Recorder"] { box-shadow: inset 2px 0 0 rgba(229,72,77,.6); }
+button[aria-label="Open Studio Recorder"] svg { color: var(--studio-danger) !important; stroke: currentColor !important; fill: currentColor !important; }
+aside button[class~="bg-yellow-400"], nav button[class~="bg-yellow-400"] { background: var(--studio-surface-2) !important; color: var(--studio-text) !important; box-shadow: inset 2px 0 0 var(--studio-accent) !important; }
+aside button[class~="bg-yellow-400"] svg, nav button[class~="bg-yellow-400"] svg { color: var(--studio-accent) !important; stroke: currentColor !important; }
+aside + main[class~="bg-yellow-400"] { background: var(--studio-bg) !important; color: var(--studio-text) !important; }
 
-.studio-shell,
-.studio-tool-root {
-  background: var(--studio-bg);
-  color: var(--studio-text);
-}
+/* FotoPlay gateway */
+.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] { background-color: rgba(23,25,29,.96) !important; border: 1px solid var(--studio-border-strong) !important; border-radius: 4px !important; box-shadow: 0 20px 50px rgba(0,0,0,.24) !important; color: var(--studio-text) !important; }
+.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] > div > div:first-child { background: var(--studio-surface-3) !important; border: 1px solid var(--studio-border) !important; border-radius: 3px !important; color: var(--studio-accent) !important; }
+.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] > div > div:first-child span { color: var(--studio-accent) !important; }
+.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] p, .studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] h3, .studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] div { color: var(--studio-text) !important; }
+.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] p[class*="text-black/60"], .studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] p[class*="text-black/65"] { color: var(--studio-text-muted) !important; }
+.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] div[class*="font-black"][class*="text-black"] { color: var(--studio-accent) !important; }
+.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"]:hover { border-color: rgba(35,199,190,.5) !important; box-shadow: inset 3px 0 0 var(--studio-accent), 0 22px 56px rgba(0,0,0,.28) !important; }
+@media (min-width:1024px) { .studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] { min-height: 420px !important; } }
 
-.studio-tool-panel,
-.studio-panel {
-  background: var(--studio-surface);
-  border: 1px solid var(--studio-border);
-  border-radius: var(--studio-radius);
-}
+/* FotoPlay Author dashboard */
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) { padding-top: 18px; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.flex.items-center.gap-3 { margin-bottom: 18px !important; align-items: center; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.flex.items-center.gap-3 > button:first-child, .studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.flex.items-center.gap-3 > button:last-child { border-radius: 3px !important; background: var(--studio-surface) !important; border: 1px solid var(--studio-border-strong) !important; color: var(--studio-accent) !important; box-shadow: none !important; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.flex.items-center.gap-3 > button svg { color: var(--studio-accent) !important; stroke: currentColor !important; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.rounded-3xl.bg-black { margin-bottom: 20px !important; padding: 16px 20px !important; border-radius: 4px !important; border: 1px solid var(--studio-border) !important; background: rgba(23,25,29,.96) !important; box-shadow: none !important; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.rounded-3xl.bg-black [class*="text-yellow-400"] { color: var(--studio-accent) !important; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.rounded-3xl.bg-black [class*="bg-yellow-400"] { background: var(--studio-surface-3) !important; border: 1px solid rgba(35,199,190,.35) !important; color: var(--studio-accent) !important; border-radius: 3px !important; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 { display: grid !important; grid-template-columns: repeat(auto-fill,minmax(280px,360px)) !important; gap: 16px !important; justify-content: start !important; align-items: start !important; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article { border-radius: 4px !important; background: var(--studio-surface) !important; border: 1px solid var(--studio-border) !important; box-shadow: none !important; overflow: hidden; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article:hover { border-color: rgba(35,199,190,.45) !important; box-shadow: inset 2px 0 0 var(--studio-accent) !important; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article .aspect-video { background: var(--studio-surface-2) !important; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article .p-5 { padding: 14px 16px !important; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article [class*="text-yellow-400"] { color: var(--studio-accent) !important; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article > div:last-child { padding: 10px 14px !important; background: rgba(255,255,255,.025) !important; }
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article button[class*="bg-red-500"] { border-radius: 3px !important; }
+@media (max-width:720px) { .studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 { grid-template-columns: 1fr !important; } }
 
-.studio-tool-panel-secondary,
-.studio-panel-secondary {
-  background: var(--studio-surface-2);
-  border: 1px solid var(--studio-border);
-  border-radius: var(--studio-radius);
-}
+/* FotoPlay production workspace */
+.studio-shell main .max-w-\[1800px\] { padding-top: 18px; }
+.studio-shell main .max-w-\[1800px\] > header { margin-bottom: 14px !important; padding: 10px 12px; background: rgba(23,25,29,.96); border: 1px solid var(--studio-border); border-radius: 4px; }
+.studio-shell main .max-w-\[1800px\] > header > div:first-of-type p { color: var(--studio-text-muted) !important; }
+.studio-shell main .max-w-\[1800px\] > header > div:first-of-type h2 { color: var(--studio-text) !important; font-size: clamp(1.35rem,2vw,2rem) !important; }
+.studio-shell main .max-w-\[1800px\] > header button, .studio-shell main .max-w-\[1800px\] > header a { border-radius: 3px !important; min-height: 40px; border: 1px solid var(--studio-border-strong) !important; background: var(--studio-surface-2) !important; color: var(--studio-text) !important; box-shadow: none !important; }
+.studio-shell main .max-w-\[1800px\] > header button svg, .studio-shell main .max-w-\[1800px\] > header a svg { color: var(--studio-accent) !important; stroke: currentColor !important; }
+.studio-shell main .max-w-\[1800px\] > header button[class*="bg-yellow-400"] { background: var(--studio-accent) !important; border-color: var(--studio-accent) !important; color: #071211 !important; }
+.studio-shell main .max-w-\[1800px\] > header button[class*="bg-yellow-400"] svg { color: #071211 !important; }
+.studio-shell main .max-w-\[1800px\] > header button[class*="bg-black"]:last-child { background: var(--studio-surface-3) !important; color: var(--studio-accent) !important; }
+.studio-shell main .max-w-\[1800px\] > header a[class*="bg-green-600"] { background: rgba(53,201,138,.10) !important; border-color: rgba(53,201,138,.35) !important; color: #8ce9c1 !important; }
 
-.studio-tool-header {
-  min-height: 64px;
-  padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: var(--studio-surface);
-  border-bottom: 1px solid var(--studio-border);
-}
+.studio-shell main .max-w-\[1800px\] > header + div { padding: 8px !important; border-radius: 4px !important; background: var(--studio-surface) !important; border: 1px solid var(--studio-border) !important; }
+.studio-shell main .max-w-\[1800px\] > header + div button { border-radius: 3px !important; background: rgba(255,255,255,.04) !important; color: var(--studio-text-muted) !important; border: 1px solid transparent !important; }
+.studio-shell main .max-w-\[1800px\] > header + div button[class*="bg-black"] { background: var(--studio-surface-3) !important; color: var(--studio-accent) !important; border-color: rgba(35,199,190,.30) !important; box-shadow: inset 2px 0 0 var(--studio-accent); }
+.studio-shell main .max-w-\[1800px\] > header + div button[class*="bg-yellow-400"] { background: transparent !important; color: var(--studio-accent) !important; border-color: rgba(35,199,190,.24) !important; }
 
-.studio-tool-eyebrow {
-  color: var(--studio-accent);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
+.studio-shell main .max-w-\[1800px\] section[class*="bg-black"] { background: var(--studio-surface) !important; border: 1px solid var(--studio-border) !important; border-radius: 4px !important; box-shadow: none !important; }
+.studio-shell main .max-w-\[1800px\] section[class*="bg-black"] > div:first-child { padding: 16px !important; border-bottom: 1px solid var(--studio-border) !important; }
+.studio-shell main .max-w-\[1800px\] section[class*="bg-black"] span[class*="bg-yellow-400"] { background: var(--studio-accent) !important; color: #071211 !important; border-radius: 3px !important; }
+.studio-shell main .max-w-\[1800px\] section[class*="bg-black"] input[class*="bg-white/10"], .studio-shell main .max-w-\[1800px\] section[class*="bg-black"] textarea, .studio-shell main .max-w-\[1800px\] section[class*="bg-black"] select { background: rgba(0,0,0,.22) !important; border: 1px solid var(--studio-border-strong) !important; color: var(--studio-text) !important; border-radius: 3px !important; }
+.studio-shell main .max-w-\[1800px\] section[class*="bg-black"] input:focus, .studio-shell main .max-w-\[1800px\] section[class*="bg-black"] textarea:focus, .studio-shell main .max-w-\[1800px\] section[class*="bg-black"] select:focus { border-color: var(--studio-accent) !important; }
+.studio-shell main .max-w-\[1800px\] section[class*="bg-black"] [class*="text-yellow-400"] { color: var(--studio-accent) !important; }
+.studio-shell main .max-w-\[1800px\] section[class*="bg-black"] button[class*="bg-yellow-400"] { background: var(--studio-accent) !important; color: #071211 !important; border-radius: 3px !important; }
 
-.studio-tool-title {
-  color: var(--studio-text);
-  font-size: 18px;
-  font-weight: 750;
-  line-height: 1.2;
-}
+.studio-shell main .max-w-\[1800px\] section[class*="bg-black"] .grid.grid-cols-9 { gap: 6px !important; }
+.studio-shell main .max-w-\[1800px\] section[class*="bg-black"] .grid.grid-cols-9 button { min-height: 32px; padding: 0 !important; border-radius: 3px !important; background: rgba(255,255,255,.035) !important; border-color: var(--studio-border) !important; color: var(--studio-text-muted) !important; }
+.studio-shell main .max-w-\[1800px\] section[class*="bg-black"] .grid.grid-cols-9 button[class*="bg-green-400"] { background: rgba(35,199,190,.18) !important; border-color: rgba(35,199,190,.55) !important; color: var(--studio-accent) !important; }
+.studio-shell main .max-w-\[1800px\] section[class*="bg-black"] .grid.grid-cols-9 button[class*="bg-yellow-400"] { background: var(--studio-accent) !important; border-color: var(--studio-accent) !important; color: #071211 !important; }
+.studio-shell main .max-w-\[1800px\] section[class*="bg-black"] .grid.grid-cols-9 button:disabled { background: rgba(255,255,255,.02) !important; color: var(--studio-text-faint) !important; border-color: rgba(255,255,255,.04) !important; }
 
-.studio-tool-subtitle,
-.studio-muted {
-  color: var(--studio-text-muted);
-}
-
-.studio-control,
-.studio-input,
-.studio-select,
-.studio-textarea {
-  background: rgba(0, 0, 0, 0.24);
-  border: 1px solid var(--studio-border-strong);
-  color: var(--studio-text);
-  border-radius: var(--studio-radius);
-  outline: none;
-  transition: border-color 150ms ease, background-color 150ms ease;
-}
-
-.studio-control:focus,
-.studio-input:focus,
-.studio-select:focus,
-.studio-textarea:focus {
-  border-color: var(--studio-accent);
-  background: rgba(0, 0, 0, 0.32);
-}
-
-.studio-button {
-  min-height: var(--studio-control-height);
-  padding: 0 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 1px solid var(--studio-border-strong);
-  border-radius: var(--studio-radius);
-  font-size: 12px;
-  font-weight: 800;
-  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, opacity 150ms ease;
-}
-
-.studio-button:disabled {
-  opacity: 0.42;
-  cursor: not-allowed;
-}
-
-.studio-button-primary {
-  background: var(--studio-accent);
-  border-color: var(--studio-accent);
-  color: #071211;
-}
-
-.studio-button-primary:hover:not(:disabled) {
-  background: var(--studio-accent-hover);
-  border-color: var(--studio-accent-hover);
-}
-
-.studio-button-secondary {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--studio-text);
-}
-
-.studio-button-secondary:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.22);
-}
-
-.studio-button-danger {
-  background: rgba(229, 72, 77, 0.08);
-  border-color: rgba(229, 72, 77, 0.35);
-  color: #ffb1b4;
-}
-
-.studio-button-danger:hover:not(:disabled) {
-  background: rgba(229, 72, 77, 0.16);
-}
-
-.studio-icon-button {
-  width: var(--studio-control-height);
-  height: var(--studio-control-height);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--studio-border);
-  color: var(--studio-text-muted);
-  border-radius: var(--studio-radius);
-}
-
-.studio-icon-button:hover {
-  background: rgba(255, 255, 255, 0.09);
-  color: var(--studio-text);
-}
-
-.studio-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 22px;
-  padding: 0 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--studio-border);
-  color: var(--studio-text-muted);
-  border-radius: var(--studio-radius);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.studio-badge-connected { color: #8ce9c1; border-color: rgba(53, 201, 138, 0.28); }
-.studio-badge-warning { color: #e5c78f; border-color: rgba(200, 169, 107, 0.28); }
-.studio-badge-danger { color: #ffb1b4; border-color: rgba(229, 72, 77, 0.28); }
-.studio-badge-accent { color: #85eee8; border-color: rgba(35, 199, 190, 0.28); }
-
-.studio-divider {
-  border-color: var(--studio-border);
-}
-
-/* Unified Studio sidebar selected state: no yellow blocks. */
-aside button.bg-yellow-400 {
-  background: var(--studio-surface-2) !important;
-  color: var(--studio-text) !important;
-  box-shadow: inset 2px 0 0 var(--studio-accent) !important;
-}
-
-aside button.bg-yellow-400 svg,
-aside button.bg-yellow-400 [class*="text-white"] {
-  color: var(--studio-accent) !important;
-  stroke: currentColor !important;
-}
-
-/* Studio utility tools: color only as a restrained accent. */
-button[aria-label="My AI Connections"],
-button[aria-label="Open Studio Recorder"],
-button[aria-label="Open AI Assistant"] {
-  position: relative;
-  background: var(--studio-surface) !important;
-  color: rgba(255, 255, 255, 0.82) !important;
-  border-top: 1px solid var(--studio-border) !important;
-  border-bottom: 0 !important;
-  box-shadow: inset 2px 0 0 transparent;
-  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
-}
-
-button[aria-label="My AI Connections"]:hover,
-button[aria-label="Open Studio Recorder"]:hover,
-button[aria-label="Open AI Assistant"]:hover {
-  background: var(--studio-surface-2) !important;
-  color: #ffffff !important;
-}
-
-button[aria-label="My AI Connections"],
-button[aria-label="Open AI Assistant"] {
-  box-shadow: inset 2px 0 0 rgba(35, 199, 190, 0.72);
-}
-
-button[aria-label="My AI Connections"] svg,
-button[aria-label="Open AI Assistant"] svg {
-  color: var(--studio-accent) !important;
-  stroke: currentColor !important;
-}
-
-button[aria-label="Open Studio Recorder"] {
-  box-shadow: inset 2px 0 0 rgba(229, 72, 77, 0.6);
-}
-
-button[aria-label="Open Studio Recorder"] svg {
-  color: var(--studio-danger) !important;
-  stroke: currentColor !important;
-  fill: currentColor !important;
-}
-
-/* Hard stop for legacy yellow inside the Studio shell. This catches desktop,
-   collapsed desktop and mobile active states that are still emitted by Studio.jsx. */
-aside button[class~="bg-yellow-400"],
-nav button[class~="bg-yellow-400"] {
-  background: var(--studio-surface-2) !important;
-  color: var(--studio-text) !important;
-  box-shadow: inset 2px 0 0 var(--studio-accent) !important;
-}
-
-aside button[class~="bg-yellow-400"] svg,
-nav button[class~="bg-yellow-400"] svg {
-  color: var(--studio-accent) !important;
-  stroke: currentColor !important;
-}
-
-/* The Studio workspace itself must never inherit the legacy yellow canvas. */
-aside + main[class~="bg-yellow-400"] {
-  background: var(--studio-bg) !important;
-  color: var(--studio-text) !important;
-}
-
-/* =========================================================
-   FOTOPLAY — GATEWAY POLISH
-   Keep FotoPlay editorial, but make it belong to the Studio.
-   ========================================================= */
-
-.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] {
-  background-color: rgba(23, 25, 29, 0.96) !important;
-  border: 1px solid var(--studio-border-strong) !important;
-  border-radius: 4px !important;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.24) !important;
-  color: var(--studio-text) !important;
-}
-
-.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] > div > div:first-child {
-  background: var(--studio-surface-3) !important;
-  border: 1px solid var(--studio-border) !important;
-  border-radius: 3px !important;
-  color: var(--studio-accent) !important;
-}
-
-.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] > div > div:first-child span {
-  color: var(--studio-accent) !important;
-}
-
-.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] p,
-.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] h3,
-.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] div {
-  color: var(--studio-text) !important;
-}
-
-.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] p[class*="text-black/60"],
-.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] p[class*="text-black/65"] {
-  color: var(--studio-text-muted) !important;
-}
-
-.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] div[class*="font-black"][class*="text-black"] {
-  color: var(--studio-accent) !important;
-}
-
-.studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"]:hover {
-  border-color: rgba(35, 199, 190, 0.5) !important;
-  box-shadow: inset 3px 0 0 var(--studio-accent), 0 22px 56px rgba(0, 0, 0, 0.28) !important;
-}
-
-@media (min-width: 1024px) {
-  .studio-shell main button[class*="min-h-[360px]"][class*="bg-yellow-400"] {
-    min-height: 420px !important;
-  }
-}
-
-/* =========================================================
-   FOTOPLAY AUTHOR — DASHBOARD LAYOUT + VISUAL POLISH
-   Compact production dashboard, preserving FotoPlay imagery.
-   ========================================================= */
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) {
-  padding-top: 18px;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.flex.items-center.gap-3 {
-  margin-bottom: 18px !important;
-  align-items: center;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.flex.items-center.gap-3 > button:first-child,
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.flex.items-center.gap-3 > button:last-child {
-  border-radius: 3px !important;
-  background: var(--studio-surface) !important;
-  border: 1px solid var(--studio-border-strong) !important;
-  color: var(--studio-accent) !important;
-  box-shadow: none !important;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.flex.items-center.gap-3 > button svg {
-  color: var(--studio-accent) !important;
-  stroke: currentColor !important;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.rounded-3xl.bg-black {
-  margin-bottom: 20px !important;
-  padding: 16px 20px !important;
-  border-radius: 4px !important;
-  border: 1px solid var(--studio-border) !important;
-  background: rgba(23, 25, 29, 0.96) !important;
-  box-shadow: none !important;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.rounded-3xl.bg-black [class*="text-yellow-400"] {
-  color: var(--studio-accent) !important;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.rounded-3xl.bg-black [class*="bg-yellow-400"] {
-  background: var(--studio-surface-3) !important;
-  border: 1px solid rgba(35, 199, 190, 0.35) !important;
-  color: var(--studio-accent) !important;
-  border-radius: 3px !important;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 360px)) !important;
-  gap: 16px !important;
-  justify-content: start !important;
-  align-items: start !important;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article {
-  border-radius: 4px !important;
-  background: var(--studio-surface) !important;
-  border: 1px solid var(--studio-border) !important;
-  box-shadow: none !important;
-  overflow: hidden;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article:hover {
-  border-color: rgba(35, 199, 190, 0.45) !important;
-  box-shadow: inset 2px 0 0 var(--studio-accent) !important;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article .aspect-video {
-  background: var(--studio-surface-2) !important;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article .p-5 {
-  padding: 14px 16px !important;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article [class*="text-yellow-400"] {
-  color: var(--studio-accent) !important;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article > div:last-child {
-  padding: 10px 14px !important;
-  background: rgba(255,255,255,0.025) !important;
-}
-
-.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article button[class*="bg-red-500"] {
-  border-radius: 3px !important;
-}
-
-@media (max-width: 720px) {
-  .studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 {
-    grid-template-columns: 1fr !important;
-  }
+@media (max-width: 900px) {
+  .studio-shell main .max-w-\[1800px\] > header { align-items: stretch; }
+  .studio-shell main .max-w-\[1800px\] > header > div:first-of-type { flex-basis: calc(100% - 60px); }
+  .studio-shell main .max-w-\[1800px\] section[class*="bg-black"] .grid.grid-cols-9 { grid-template-columns: repeat(5,minmax(0,1fr)) !important; }
 }
