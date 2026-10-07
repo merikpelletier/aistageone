@@ -1,0 +1,84 @@
+/* FotoPlay production workspace polish — visual only */
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] {
+  background: var(--studio-surface-2) !important;
+  border-color: var(--studio-border-strong) !important;
+  border-radius: 4px !important;
+  padding: 18px !important;
+}
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] h4[class*="text-yellow-400"],
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] p[class*="text-yellow-400"] {
+  color: var(--studio-accent) !important;
+}
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] button[class*="bg-yellow-400"] {
+  background: var(--studio-accent) !important;
+  border-color: var(--studio-accent) !important;
+  color: #071211 !important;
+  border-radius: 3px !important;
+}
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] > div[class*="bg-black/50"] {
+  background: var(--studio-surface) !important;
+  border-color: var(--studio-border) !important;
+  border-radius: 4px !important;
+  padding: 14px !important;
+}
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] img[class*="border-yellow-400"] {
+  border-color: var(--studio-accent) !important;
+  border-radius: 3px !important;
+}
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] div[class*="border-yellow-400"] {
+  border-color: var(--studio-accent) !important;
+}
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] span[class*="bg-yellow-400"] {
+  background: var(--studio-accent) !important;
+  color: #071211 !important;
+  border-radius: 2px !important;
+}
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] div[class*="rounded-2xl"][class*="bg-black"] {
+  border-radius: 4px !important;
+  background: var(--studio-surface) !important;
+}
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] button[class*="bg-white"] {
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid var(--studio-border-strong) !important;
+  color: var(--studio-text) !important;
+  border-radius: 3px !important;
+}
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] button[class*="bg-cyan-300"] {
+  background: rgba(35,199,190,0.12) !important;
+  border: 1px solid rgba(35,199,190,0.35) !important;
+  color: var(--studio-accent) !important;
+  border-radius: 3px !important;
+}
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] button[class*="bg-red-500"] {
+  background: rgba(229,72,77,0.10) !important;
+  border: 1px solid rgba(229,72,77,0.32) !important;
+  color: #ffb1b4 !important;
+  border-radius: 3px !important;
+}
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] button[class*="bg-yellow-400/20"] {
+  background: rgba(35,199,190,0.10) !important;
+  color: #8ee9e4 !important;
+  border: 1px solid rgba(35,199,190,0.28) !important;
+  border-radius: 3px !important;
+}
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] [class*="rounded-xl"],
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] [class*="rounded-lg"] {
+  border-radius: 3px !important;
+}
+
+.studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] [class*="focus:border-yellow-400"]:focus {
+  border-color: var(--studio-accent) !important;
+}
