@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
-import { Camera, Check, Circle, Loader2, Mic, MicOff, Pause, Play, Save, Square, X } from 'lucide-react';
+import { Camera, Check, Circle, Download, Loader2, Mic, MicOff, Pause, Play, Save, Square, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
@@ -198,6 +198,19 @@ export default function StudioRecorderLauncher() {
     }
   };
 
+  const downloadRecording = () => {
+    if (!recordedBlob) return;
+    const extension = recordedBlob.type.includes('webm') ? 'webm' : 'mp4';
+    const url = URL.createObjectURL(recordedBlob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `aistage-making-of-${Date.now()}.${extension}`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const uploadRecording = async () => {
     if (!recordedBlob) return;
     setIsUploading(true);
@@ -280,12 +293,17 @@ export default function StudioRecorderLauncher() {
               <>
                 <div className="text-xs uppercase tracking-[0.2em] text-white/45">Making Of preview</div>
                 <video src={previewUrl} controls playsInline className="w-full bg-black max-h-[52vh] object-contain" />
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={resetRecording} disabled={isUploading} className="h-11 bg-white/10 font-bold text-sm">Record again</button>
-                  <button onClick={uploadRecording} disabled={isUploading} className="h-11 bg-white text-black font-bold text-sm flex items-center justify-center gap-2">
-                    {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                    {isUploading ? 'Uploading…' : 'Save to Vault'}
+                <div className="grid grid-cols-1 gap-2">
+                  <button onClick={downloadRecording} className="h-11 bg-white/10 hover:bg-white/15 font-bold text-sm flex items-center justify-center gap-2">
+                    <Download size={16} /> Download
                   </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={resetRecording} disabled={isUploading} className="h-11 bg-white/10 font-bold text-sm">Record again</button>
+                    <button onClick={uploadRecording} disabled={isUploading} className="h-11 bg-white text-black font-bold text-sm flex items-center justify-center gap-2">
+                      {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                      {isUploading ? 'Uploading…' : 'Save to Vault'}
+                    </button>
+                  </div>
                 </div>
               </>
             )}
