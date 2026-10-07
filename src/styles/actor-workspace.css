@@ -1,91 +1,97 @@
-/* Actor workspace — visual unification only */
-/* CharacterSheetEditor renders through a portal, so it is not a descendant of .studio-shell main. */
+/* Actor workspace — visual unification only.
+   CharacterSheetEditor renders directly under document.body via createPortal. */
 
-.actor-workspace-root {
+body > div.fixed.z-\[1000\] {
   background: var(--studio-bg) !important;
 }
 
-.actor-workspace-root > header {
+body > div.fixed.z-\[1000\] > header {
   background: var(--studio-surface) !important;
   border-bottom-color: var(--studio-border) !important;
   padding-top: 12px !important;
   padding-bottom: 12px !important;
 }
 
-.actor-workspace-root > header > div:first-child {
+body > div.fixed.z-\[1000\] > header > div:first-child {
   display: none !important;
 }
 
-.actor-workspace-root > header .bg-amber-300 {
+body > div.fixed.z-\[1000\] > header .bg-amber-300 {
   background: rgba(35,199,190,0.12) !important;
   border: 1px solid rgba(35,199,190,0.35) !important;
   color: var(--studio-accent) !important;
   border-radius: 3px !important;
 }
 
-.actor-workspace-root > header .text-amber-300 {
+body > div.fixed.z-\[1000\] > header .text-amber-300 {
   color: var(--studio-accent) !important;
 }
 
-.actor-workspace-root .max-w-7xl.grid {
+body > div.fixed.z-\[1000\] .max-w-7xl.grid {
   grid-template-columns: 280px minmax(0, 1fr) !important;
   gap: 16px !important;
   padding-top: 16px !important;
   padding-bottom: 88px !important;
 }
 
-.actor-workspace-root aside > div,
-.actor-workspace-root main > section {
+body > div.fixed.z-\[1000\] aside > div,
+body > div.fixed.z-\[1000\] main > section {
   border-radius: 4px !important;
   border-color: var(--studio-border) !important;
   background: var(--studio-surface) !important;
   box-shadow: none !important;
 }
 
-.actor-workspace-root aside > div > div:first-child {
+body > div.fixed.z-\[1000\] aside > div > div:first-child {
   background: var(--studio-surface-2) !important;
 }
 
-.actor-workspace-root aside .rounded-full {
+body > div.fixed.z-\[1000\] aside .rounded-full {
   border-radius: 3px !important;
 }
 
-.actor-workspace-root main > section {
+body > div.fixed.z-\[1000\] main > section {
   padding: 18px !important;
 }
 
-.actor-workspace-root main > section + section {
+body > div.fixed.z-\[1000\] main > section + section {
   margin-top: 14px !important;
 }
 
-.actor-workspace-root main span.bg-amber-300 {
+body > div.fixed.z-\[1000\] main span.bg-amber-300,
+body > div.fixed.z-\[1000\] .bg-amber-300 {
   background: rgba(35,199,190,0.12) !important;
   border: 1px solid rgba(35,199,190,0.35) !important;
   color: var(--studio-accent) !important;
   border-radius: 3px !important;
 }
 
-.actor-workspace-root main input,
-.actor-workspace-root main textarea,
-.actor-workspace-root main select {
+body > div.fixed.z-\[1000\] .text-amber-300,
+body > div.fixed.z-\[1000\] .text-yellow-400 {
+  color: var(--studio-accent) !important;
+}
+
+body > div.fixed.z-\[1000\] main input,
+body > div.fixed.z-\[1000\] main textarea,
+body > div.fixed.z-\[1000\] main select {
   border-radius: 3px !important;
 }
 
-.actor-workspace-root main input:focus,
-.actor-workspace-root main textarea:focus,
-.actor-workspace-root main select:focus {
+body > div.fixed.z-\[1000\] main input:focus,
+body > div.fixed.z-\[1000\] main textarea:focus,
+body > div.fixed.z-\[1000\] main select:focus {
   border-color: var(--studio-accent) !important;
 }
 
-.actor-workspace-root .rounded-\[28px\],
-.actor-workspace-root .rounded-2xl,
-.actor-workspace-root .rounded-xl {
+body > div.fixed.z-\[1000\] .rounded-\[28px\],
+body > div.fixed.z-\[1000\] .rounded-2xl,
+body > div.fixed.z-\[1000\] .rounded-xl {
   border-radius: 4px !important;
 }
 
-.actor-workspace-root button.bg-amber-300,
-.actor-workspace-root button.bg-yellow-400,
-.actor-workspace-root button[class*="from-amber-300"] {
+body > div.fixed.z-\[1000\] button.bg-amber-300,
+body > div.fixed.z-\[1000\] button.bg-yellow-400,
+body > div.fixed.z-\[1000\] button[class*="from-amber-300"] {
   background: var(--studio-accent) !important;
   border: 1px solid var(--studio-accent) !important;
   color: #071211 !important;
@@ -93,34 +99,34 @@
   box-shadow: none !important;
 }
 
-.actor-workspace-root button.bg-cyan-300 {
+body > div.fixed.z-\[1000\] button.bg-cyan-300 {
   background: rgba(35,199,190,0.12) !important;
   border: 1px solid rgba(35,199,190,0.35) !important;
   color: var(--studio-accent) !important;
   border-radius: 3px !important;
 }
 
-.actor-workspace-root > footer {
+body > div.fixed.z-\[1000\] > footer {
   background: rgba(23,25,29,0.96) !important;
   border-top-color: var(--studio-border) !important;
   padding-top: 10px !important;
   padding-bottom: 10px !important;
 }
 
-.actor-workspace-root > footer button {
+body > div.fixed.z-\[1000\] > footer button {
   min-height: 42px !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
 }
 
 @media (max-width: 1100px) {
-  .actor-workspace-root .max-w-7xl.grid {
+  body > div.fixed.z-\[1000\] .max-w-7xl.grid {
     grid-template-columns: 250px minmax(0, 1fr) !important;
   }
 }
 
 @media (max-width: 1023px) {
-  .actor-workspace-root .max-w-7xl.grid {
+  body > div.fixed.z-\[1000\] .max-w-7xl.grid {
     grid-template-columns: 1fr !important;
   }
 }
