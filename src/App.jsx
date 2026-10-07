@@ -21,6 +21,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { AppContextProvider } from '@/lib/AppContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PrelaunchLanding from './pages/PrelaunchLanding';
+import { Analytics } from '@vercel/analytics/react';
 
 const { Pages, Layout } = pagesConfig;
 
@@ -104,6 +105,7 @@ function App() {
         </Router>
         <Toaster />
         <SonnerToaster position="top-center" richColors />
+        <Analytics />
       </QueryClientProvider>
     </AuthProvider>
     </AppContextProvider>
