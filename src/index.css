@@ -436,3 +436,99 @@ aside + main[class~="bg-yellow-400"] {
     min-height: 420px !important;
   }
 }
+
+/* =========================================================
+   FOTOPLAY AUTHOR — DASHBOARD LAYOUT + VISUAL POLISH
+   Compact production dashboard, preserving FotoPlay imagery.
+   ========================================================= */
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) {
+  padding-top: 18px;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.flex.items-center.gap-3 {
+  margin-bottom: 18px !important;
+  align-items: center;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.flex.items-center.gap-3 > button:first-child,
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.flex.items-center.gap-3 > button:last-child {
+  border-radius: 3px !important;
+  background: var(--studio-surface) !important;
+  border: 1px solid var(--studio-border-strong) !important;
+  color: var(--studio-accent) !important;
+  box-shadow: none !important;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.flex.items-center.gap-3 > button svg {
+  color: var(--studio-accent) !important;
+  stroke: currentColor !important;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.rounded-3xl.bg-black {
+  margin-bottom: 20px !important;
+  padding: 16px 20px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--studio-border) !important;
+  background: rgba(23, 25, 29, 0.96) !important;
+  box-shadow: none !important;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.rounded-3xl.bg-black [class*="text-yellow-400"] {
+  color: var(--studio-accent) !important;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .mb-8.rounded-3xl.bg-black [class*="bg-yellow-400"] {
+  background: var(--studio-surface-3) !important;
+  border: 1px solid rgba(35, 199, 190, 0.35) !important;
+  color: var(--studio-accent) !important;
+  border-radius: 3px !important;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 360px)) !important;
+  gap: 16px !important;
+  justify-content: start !important;
+  align-items: start !important;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article {
+  border-radius: 4px !important;
+  background: var(--studio-surface) !important;
+  border: 1px solid var(--studio-border) !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article:hover {
+  border-color: rgba(35, 199, 190, 0.45) !important;
+  box-shadow: inset 2px 0 0 var(--studio-accent) !important;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article .aspect-video {
+  background: var(--studio-surface-2) !important;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article .p-5 {
+  padding: 14px 16px !important;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article [class*="text-yellow-400"] {
+  color: var(--studio-accent) !important;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article > div:last-child {
+  padding: 10px 14px !important;
+  background: rgba(255,255,255,0.025) !important;
+}
+
+.studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 article button[class*="bg-red-500"] {
+  border-radius: 3px !important;
+}
+
+@media (max-width: 720px) {
+  .studio-shell main .max-w-\[1500px\]:has(> .mb-8.flex.items-center.gap-3) > .grid.gap-5 {
+    grid-template-columns: 1fr !important;
+  }
+}
