@@ -365,3 +365,24 @@ button[aria-label="Open Studio Recorder"] svg {
   stroke: currentColor !important;
   fill: currentColor !important;
 }
+
+/* Hard stop for legacy yellow inside the Studio shell. This catches desktop,
+   collapsed desktop and mobile active states that are still emitted by Studio.jsx. */
+aside button[class~="bg-yellow-400"],
+nav button[class~="bg-yellow-400"] {
+  background: var(--studio-surface-2) !important;
+  color: var(--studio-text) !important;
+  box-shadow: inset 2px 0 0 var(--studio-accent) !important;
+}
+
+aside button[class~="bg-yellow-400"] svg,
+nav button[class~="bg-yellow-400"] svg {
+  color: var(--studio-accent) !important;
+  stroke: currentColor !important;
+}
+
+/* The Studio workspace itself must never inherit the legacy yellow canvas. */
+aside + main[class~="bg-yellow-400"] {
+  background: var(--studio-bg) !important;
+  color: var(--studio-text) !important;
+}
