@@ -128,3 +128,45 @@ button[class*="bg-yellow-"] [class*="text-white"],
   color: #000 !important;
   stroke: currentColor;
 }
+
+/* Studio utility tools: keep the toolbar visually unified.
+   Color is used as a restrained accent, never as a full button fill. */
+button[aria-label="My AI Connections"],
+button[aria-label="Open Studio Recorder"],
+button[aria-label="Open AI Assistant"] {
+  position: relative;
+  background: #17191d !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: 0 !important;
+  box-shadow: inset 2px 0 0 transparent;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+button[aria-label="My AI Connections"]:hover,
+button[aria-label="Open Studio Recorder"]:hover,
+button[aria-label="Open AI Assistant"]:hover {
+  background: #202328 !important;
+  color: #ffffff !important;
+}
+
+button[aria-label="My AI Connections"],
+button[aria-label="Open AI Assistant"] {
+  box-shadow: inset 2px 0 0 rgba(35, 199, 190, 0.72);
+}
+
+button[aria-label="My AI Connections"] svg,
+button[aria-label="Open AI Assistant"] svg {
+  color: #23c7be !important;
+  stroke: currentColor !important;
+}
+
+button[aria-label="Open Studio Recorder"] {
+  box-shadow: inset 2px 0 0 rgba(229, 72, 77, 0.6);
+}
+
+button[aria-label="Open Studio Recorder"] svg {
+  color: #e5484d !important;
+  stroke: currentColor !important;
+  fill: currentColor !important;
+}
