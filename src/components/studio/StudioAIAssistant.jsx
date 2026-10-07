@@ -10,6 +10,24 @@ const starter = {
   content: 'I’m connected to your AI Stage One Studio context. Tell me what you are working on and I’ll help you prepare the next step.',
 };
 
+async function readInvokeError(invokeError) {
+  if (!invokeError) return '';
+
+  try {
+    const response = invokeError?.context;
+    if (response && typeof response.clone === 'function') {
+      const cloned = response.clone();
+      const payload = await cloned.json().catch(() => null);
+      if (payload?.error) return String(payload.error);
+      if (payload?.message) return String(payload.message);
+    }
+  } catch (error) {
+    console.warn('Could not parse Studio AI Assistant error response.', error);
+  }
+
+  return invokeError?.message || 'Assistant request failed.';
+}
+
 export default function StudioAIAssistant() {
   const location = useLocation();
   const { appContext } = useAppContext();
@@ -68,8 +86,16 @@ export default function StudioAIAssistant() {
         },
       });
 
-      if (invokeError || data?.error) {
-        throw new Error(data?.error || invokeError?.message || 'Assistant request failed.');
+      if (invokeError) {
+        throw new Error(await readInvokeError(invokeError));
+      }
+
+      if (data?.error || data?.ok === false) {
+        throw new Error(data?.error || 'Assistant request failed.');
+      }
+
+      if (!data?.text) {
+        throw new Error('Assistant returned no response.');
       }
 
       setModel(data?.model || '');
