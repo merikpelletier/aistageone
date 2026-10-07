@@ -4,6 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
 import StudioRecorderLauncher from '@/components/studio/StudioRecorderLauncher'
+import StudioAIAssistant from '@/components/studio/StudioAIAssistant'
 import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
@@ -41,7 +42,6 @@ const PrivateRoute = ({ children }) => {
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings && isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
@@ -50,16 +50,12 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Handle authentication errors
   if (authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     }
-    // For auth_required, we still render the app — individual pages handle auth as needed
-    // Do NOT redirect here globally, as public pages (Magazine, Index) must be accessible
   }
 
-  // Render the main app
   return (
     <Routes>
       <Route path="/" element={<PrelaunchLanding />} />
@@ -92,22 +88,21 @@ const AuthenticatedApp = () => {
   );
 };
 
-
 function App() {
-
   return (
     <AppContextProvider>
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <NavigationTracker />
-          <StudioRecorderLauncher />
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-        <SonnerToaster position="top-center" richColors />
-      </QueryClientProvider>
-    </AuthProvider>
+      <AuthProvider>
+        <QueryClientProvider client={queryClientInstance}>
+          <Router>
+            <NavigationTracker />
+            <StudioRecorderLauncher />
+            <StudioAIAssistant />
+            <AuthenticatedApp />
+          </Router>
+          <Toaster />
+          <SonnerToaster position="top-center" richColors />
+        </QueryClientProvider>
+      </AuthProvider>
     </AppContextProvider>
   )
 }
