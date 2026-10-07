@@ -125,10 +125,12 @@ function StudioShellButton({ tool, active, onClick, compact = false }) {
       title={tool.label}
       aria-label={tool.label}
       className={`group flex items-center transition-colors ${compact ? 'min-h-[54px] px-3 gap-2 w-full' : 'w-full min-h-[42px] px-3 gap-2'} ${
-        active ? 'bg-yellow-400 text-black' : 'text-white/75 hover:bg-white/10 hover:text-white'
+        active
+          ? 'bg-[#1d2126] text-white shadow-[inset_2px_0_0_#23c7be]'
+          : 'text-white/75 hover:bg-white/10 hover:text-white'
       }`}
     >
-      <Icon size={compact ? 19 : 17} strokeWidth={2} className="flex-shrink-0" />
+      <Icon size={compact ? 19 : 17} strokeWidth={2} className={`flex-shrink-0 ${active ? 'text-[#23c7be]' : ''}`} />
       <span className={`${compact ? 'text-xs' : 'text-[11px]'} font-semibold leading-tight text-left`}>{tool.label}</span>
     </button>
   );
@@ -188,12 +190,12 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
   const primaryMobile = mobilePrimaryKeys.map((key) => STUDIO_SHELL_TOOLS.find((tool) => tool.key === key)).filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-[#202328] text-white">
+    <div className="studio-shell min-h-screen bg-[#202328] text-white">
       <div className="sticky top-0 z-[5000] h-14 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-3 md:px-4 gap-3">
         <button
           type="button"
           onClick={() => window.location.assign('/')}
-          className="hidden lg:flex h-8 px-2.5 bg-yellow-400 text-black items-center justify-center gap-1.5 flex-shrink-0 font-bold text-[11px]"
+          className="hidden lg:flex h-8 px-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white items-center justify-center gap-1.5 flex-shrink-0 font-bold text-[11px]"
           aria-label="Exit Studio"
           title="Exit Studio"
         >
@@ -222,6 +224,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
             <div className="py-2">
               {STUDIO_SHELL_TOOLS.map((tool) => {
                 const Icon = tool.icon;
+                const active = activeKey === tool.key;
                 return (
                   <button
                     key={tool.key}
@@ -229,7 +232,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
                     onClick={() => onTool(tool)}
                     title={tool.label}
                     aria-label={tool.label}
-                    className={`w-16 h-12 flex items-center justify-center transition-colors ${activeKey === tool.key ? 'bg-yellow-400 text-black' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+                    className={`w-16 h-12 flex items-center justify-center transition-colors ${active ? 'bg-[#1d2126] text-[#23c7be] shadow-[inset_2px_0_0_#23c7be]' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
                   >
                     <Icon size={19} />
                   </button>
@@ -249,28 +252,31 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
           )}
         </aside>
 
-        <main className="min-w-0 flex-1 bg-yellow-400 text-black pb-[64px] lg:pb-0">
+        <main className="min-w-0 flex-1 bg-[#202328] text-white pb-[64px] lg:pb-0">
           {children}
         </main>
       </div>
 
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[5000] h-[var(--studio-mobile-nav-height)] pb-[env(safe-area-inset-bottom)] bg-[#17191d] border-t border-white/10">
         <div className="h-full grid grid-cols-5">
-          {primaryMobile.map((tool) => (
-            <button
-              key={tool.key}
-              type="button"
-              onClick={() => { setShowMobileTools(false); onTool(tool); }}
-              className={`flex flex-col items-center justify-center gap-1 px-1 ${activeKey === tool.key ? 'bg-yellow-400 text-black' : 'text-white/75'}`}
-            >
-              <tool.icon size={19} />
-              <span className="text-[9px] font-semibold">{tool.label}</span>
-            </button>
-          ))}
+          {primaryMobile.map((tool) => {
+            const active = activeKey === tool.key;
+            return (
+              <button
+                key={tool.key}
+                type="button"
+                onClick={() => { setShowMobileTools(false); onTool(tool); }}
+                className={`flex flex-col items-center justify-center gap-1 px-1 ${active ? 'bg-[#1d2126] text-[#23c7be] border-t-2 border-[#23c7be]' : 'text-white/75'}`}
+              >
+                <tool.icon size={19} />
+                <span className="text-[9px] font-semibold">{tool.label}</span>
+              </button>
+            );
+          })}
           <button
             type="button"
             onClick={() => setShowMobileTools((value) => !value)}
-            className={`flex flex-col items-center justify-center gap-1 px-1 ${showMobileTools ? 'bg-yellow-400 text-black' : 'text-white/75'}`}
+            className={`flex flex-col items-center justify-center gap-1 px-1 ${showMobileTools ? 'bg-[#1d2126] text-[#23c7be] border-t-2 border-[#23c7be]' : 'text-white/75'}`}
           >
             <MoreHorizontal size={20} />
             <span className="text-[9px] font-semibold">Tools</span>
@@ -299,7 +305,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
               <button
                 type="button"
                 onClick={() => window.location.assign('/')}
-                className="w-full min-h-[48px] flex items-center gap-3 px-3 bg-yellow-400 text-black font-bold text-sm"
+                className="w-full min-h-[48px] flex items-center gap-3 px-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-sm"
               >
                 <ChevronLeft size={18} />
                 Exit Studio
@@ -314,8 +320,8 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
 
 function StudioWorkspaceTool({ title, children }) {
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-yellow-400 text-black">
-      <div className="sticky top-14 z-30 h-12 flex items-center px-4 md:px-6 border-b border-black/15 bg-yellow-400/95 backdrop-blur">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-[#202328] text-white">
+      <div className="sticky top-14 z-30 h-12 flex items-center px-4 md:px-6 border-b border-white/10 bg-[#17191d]/95 backdrop-blur">
         <div className="font-bold text-sm uppercase tracking-wide">{title}</div>
       </div>
       <div className="min-h-[calc(100vh-6.5rem)] overflow-y-auto">
@@ -432,17 +438,15 @@ export default function Studio() {
   const [pitchView, setPitchView] = useState('list');
   const [pitchProjectId, setPitchProjectId] = useState(null);
   const [libraryTab, setLibraryTab] = useState('kits');
-  const [editingActor, setEditingActor] = useState(null);  // null=closed, false=new, obj=edit
-  const [editingSet, setEditingSet] = useState(null);      // null=closed, false=new, obj=edit
+  const [editingActor, setEditingActor] = useState(null);
+  const [editingSet, setEditingSet] = useState(null);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [showAudioUploader, setShowAudioUploader] = useState(false);
   const [showDubbingStudio, setShowDubbingStudio] = useState(false);
   const [showTextToSpeech, setShowTextToSpeech] = useState(false);
   const [showVideoTools, setShowVideoTools] = useState(false);
   const [videoInitialMode, setVideoInitialMode] = useState(null);
-  const [producedMedia, setProducedMedia] = useState(null); // { url, type }
-  
-  // Production mode from URL params
+  const [producedMedia, setProducedMedia] = useState(null);
   const [productionMode, setProductionMode] = useState(null);
   const [targetDossier, setTargetDossier] = useState(null);
   const [targetKitPage, setTargetKitPage] = useState(null);
@@ -463,7 +467,7 @@ export default function Studio() {
   const [showAnimateImage, setShowAnimateImage] = useState(false);
   const [showVault, setShowVault] = useState(false);
   const [showLayout, setShowLayout] = useState(false);
-  const [pendingPrompt, setPendingPrompt] = useState(null); // motion prompt preloaded from a script
+  const [pendingPrompt, setPendingPrompt] = useState(null);
 
   const { data: characterSheets = [] } = useQuery({
     queryKey: ['characterSheets', user?.email],
@@ -492,7 +496,6 @@ export default function Studio() {
   const setCount = setAssets.length;
   const totalCount = actorCount + setCount;
 
-  // Count projects in production (published dossiers)
   const { data: publishedDossiers = [] } = useQuery({
     queryKey: ['publishedDossiers'],
     queryFn: () => base44.entities.Dossier.filter({ status: 'published' }),
@@ -540,7 +543,6 @@ export default function Studio() {
     fotoplay: 'bg-yellow-300',
   };
 
-  // Handle production mode - show simple tool interface
   useEffect(() => {
     const mode = searchParams.get('mode');
     const dossierId = searchParams.get('dossier_id');
@@ -550,92 +552,63 @@ export default function Studio() {
     const productionMethod = searchParams.get('production_method');
     const refMediaParam = searchParams.get('reference_media');
     const toolsParam = searchParams.get('recommended_tools');
-    
+
     if (mode === 'production' && dossierId) {
       setIsInProductionContext(true);
       setProductionMode({ blockId, episodeId, dossierId });
-      
+
       const loadProductionData = async () => {
         try {
           const [page, dossier] = await Promise.all([
             kitPageId ? base44.entities.DossierPage.get(kitPageId).catch(() => null) : Promise.resolve(null),
             base44.entities.Dossier.get(dossierId).catch(() => null),
           ]);
-          
-          if (kitPageId && page) {
-            setKitPage(page);
-          }
+
+          if (kitPageId && page) setKitPage(page);
           setDossier(dossier);
-          
-          // Load reference media from kit AND from the specific block's reference_media field
+
           let refMedia = page ? [
             ...(page.kit_characters?.flatMap(c => c.media || []) || []),
             ...(page.kit_sets?.flatMap(s => s.media || []) || []),
             ...(page.kit_costumes?.flatMap(c => c.media || []) || []),
           ].slice(0, 6) : [];
-          
-          // Fetch EpisodeProduction to get block-specific reference_media
+
           if (blockId) {
-            console.log('🔍 Looking for block reference_media:', { blockId, dossierId, kitPageId });
-            // Try both dossier_id and episode_page_id
             let epProds = await base44.entities.EpisodeProduction.filter({ dossier_id: dossierId }).catch(() => []);
-            console.log('📦 EpisodeProduction by dossier_id:', epProds.length);
             if (epProds.length === 0 && kitPageId) {
               epProds = await base44.entities.EpisodeProduction.filter({ episode_page_id: kitPageId }).catch(() => []);
-              console.log('📦 EpisodeProduction by episode_page_id:', epProds.length);
             }
             if (epProds.length > 0) {
-              console.log('🎬 First EpisodeProduction timeline blocks:', epProds[0].timeline?.map(b => ({ id: b.id, title: b.title, ref_count: b.reference_media?.length || 0 })));
               const block = epProds[0].timeline?.find(b => b.id === blockId);
-              console.log('🎯 Found block:', block?.id, 'reference_media:', block?.reference_media);
               if (block?.reference_media?.length > 0) {
-                // Filter to only images (exclude videos) for reference thumbnails
-                const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'];
                 const imageMedia = block.reference_media.filter(url => {
                   const lower = url.toLowerCase();
                   return !lower.includes('video') && !lower.includes('mp4') && !lower.includes('webm') && !lower.includes('ogg') && !lower.includes('mov');
                 });
-                console.log('🖼️ Image reference media:', imageMedia.length, 'of', block.reference_media.length);
                 refMedia = [...imageMedia, ...refMedia];
                 refMedia = refMedia.filter((url, i, arr) => arr.indexOf(url) === i).slice(0, 10);
-                console.log('✅ Loaded reference media:', refMedia.length, 'items');
-              } else {
-                console.log('⚠️ Block has no reference_media - YOU NEED TO UPLOAD IN ADMIN AND CLICK SAVE');
               }
-            } else {
-              console.log('⚠️ No EpisodeProduction found - YOU NEED TO SAVE PRODUCTION IN ADMIN FIRST');
             }
           }
-          
+
           setReferenceMedia(refMedia);
-          
-          // Parse reference media param
           if (refMediaParam) {
             try { setReferenceMedia(JSON.parse(refMediaParam)); } catch {}
           }
-          // Parse recommended tools
-          if (toolsParam) {
-            setRecommendedTools(toolsParam.split(',').filter(Boolean));
-          }
-          
-          // Load production method and block details
+          if (toolsParam) setRecommendedTools(toolsParam.split(',').filter(Boolean));
           const prodMethod = searchParams.get('production_method');
           if (prodMethod) {
             setProductionMethod(prodMethod);
-            // Load block details from session storage
             const stored = sessionStorage.getItem('studio_block_details');
             if (stored) {
-              try {
-                const parsed = JSON.parse(stored);
-                setBlockDetails(parsed);
-              } catch {}
+              try { setBlockDetails(JSON.parse(stored)); } catch {}
             }
           }
         } catch (err) {
           console.error('Error loading production data:', err);
         }
       };
-      
+
       loadProductionData();
     }
   }, [searchParams, hasAutoOpenedTool]);
@@ -651,7 +624,6 @@ export default function Studio() {
     navigate('/Studio', { replace: true });
   };
 
-  // Broadcast Studio section context
   useEffect(() => {
     const sectionLabels = { home: 'Home overview', library: 'Production Kits library', lab: 'Stages (sketch generators)', stages: 'Stages (sketch generators)', tools: 'AI Tools workspace', stories: 'FotoPlay', vault: 'Vault' };
     const openTools = [];
@@ -689,11 +661,8 @@ export default function Studio() {
   const activeViewConfig = studioViewsSource.find((item) => item.key === activeTab);
   const activeViewBg = activeViewConfig?.background_image?.trim() ? activeViewConfig.background_image : null;
 
-  const handleJoinProject = (kit) => {
-    setActiveKit(kit);
-  };
+  const handleJoinProject = (kit) => setActiveKit(kit);
 
-  // Render production mode - open KitProductionRoom with timeline (from URL params OR handleJoinProject)
   if (productionMode && kitPage) {
     return (
       <KitProductionRoom
@@ -711,17 +680,9 @@ export default function Studio() {
     );
   }
 
-  // Overlay KitAssetViewer when user clicks a production kit
   if (activeKit) {
-    return (
-      <KitAssetViewer
-        kitPage={activeKit}
-        dossier={null}
-        onClose={() => setActiveKit(null)}
-      />
-    );
+    return <KitAssetViewer kitPage={activeKit} dossier={null} onClose={() => setActiveKit(null)} />;
   }
-
 
   const activeShellKey = editingActor !== null
     ? 'actor'
@@ -754,80 +715,23 @@ export default function Studio() {
 
   const handleShellTool = (tool) => {
     closeAllStudioTools();
-    if (tool.action === 'fotoplay') {
-      setActiveTab('stories');
-      return;
-    }
-    if (tool.action === 'workspace') {
-      setActiveToolPanel(tool.key);
-      return;
-    }
-    if (tool.action === 'actor') {
-      setEditingActor(false);
-      return;
-    }
-    if (tool.action === 'set') {
-      setEditingSet(false);
-      return;
-    }
-    if (tool.action === 'image') {
-      setShowAnimateImage(true);
-      return;
-    }
-    if (tool.action === 'video') {
-      setActiveToolPanel(null);
-      setVideoInitialMode(null);
-      setShowVideoTools(true);
-      return;
-    }
-    if (tool.action === 'voice') {
-      setShowVoiceRecorder(true);
-      return;
-    }
-    if (tool.action === 'dubbing') {
-      setShowDubbingStudio(true);
-      return;
-    }
-    if (tool.action === 'tts') {
-      setShowTextToSpeech(true);
-      return;
-    }
-    if (tool.action === 'lip_sync') {
-      setShowLipSync(true);
-      return;
-    }
-    if (tool.action === 'animate') {
-      setShowAnimateImage(true);
-      return;
-    }
-    if (tool.action === 'ai_video') {
-      setVideoInitialMode('text');
-      setShowVideoTools(true);
-      return;
-    }
-    if (tool.action === 'video_ref') {
-      setVideoInitialMode('video');
-      setShowVideoTools(true);
-      return;
-    }
-    if (tool.action === 'timeline') {
-      setActiveToolPanel('timeline');
-      return;
-    }
-    if (tool.action === 'lab') {
-      setActiveToolPanel(`lab:${tool.labTool}`);
-      return;
-    }
-    if (tool.action === 'route') {
-      navigate(tool.path);
-      return;
-    }
-    if (tool.action === 'layout') {
-      setEditingActor(null);
-      setEditingSet(null);
-      setActiveToolPanel('layout');
-      return;
-    }
+    if (tool.action === 'fotoplay') { setActiveTab('stories'); return; }
+    if (tool.action === 'workspace') { setActiveToolPanel(tool.key); return; }
+    if (tool.action === 'actor') { setEditingActor(false); return; }
+    if (tool.action === 'set') { setEditingSet(false); return; }
+    if (tool.action === 'image') { setShowAnimateImage(true); return; }
+    if (tool.action === 'video') { setActiveToolPanel(null); setVideoInitialMode(null); setShowVideoTools(true); return; }
+    if (tool.action === 'voice') { setShowVoiceRecorder(true); return; }
+    if (tool.action === 'dubbing') { setShowDubbingStudio(true); return; }
+    if (tool.action === 'tts') { setShowTextToSpeech(true); return; }
+    if (tool.action === 'lip_sync') { setShowLipSync(true); return; }
+    if (tool.action === 'animate') { setShowAnimateImage(true); return; }
+    if (tool.action === 'ai_video') { setVideoInitialMode('text'); setShowVideoTools(true); return; }
+    if (tool.action === 'video_ref') { setVideoInitialMode('video'); setShowVideoTools(true); return; }
+    if (tool.action === 'timeline') { setActiveToolPanel('timeline'); return; }
+    if (tool.action === 'lab') { setActiveToolPanel(`lab:${tool.labTool}`); return; }
+    if (tool.action === 'route') { navigate(tool.path); return; }
+    if (tool.action === 'layout') { setEditingActor(null); setEditingSet(null); setActiveToolPanel('layout'); return; }
     setActiveToolPanel(tool.key);
   };
 
@@ -841,135 +745,38 @@ export default function Studio() {
       <div className="min-h-[calc(100vh-4rem)] relative" style={activeViewBg ? { backgroundImage: `url(${activeViewBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : undefined}>
       {activeViewBg && <div className="absolute inset-0 bg-black/40 pointer-events-none z-0" />}
       <div className="relative z-10">
-      {/* Voice Recorder Modal */}
       {showVoiceRecorder && (
-        <VoiceRecorder
-          embedded
-          onRecordingComplete={(file_url) => {
-            setProducedMedia({ url: file_url, type: 'audio' });
-            setShowVoiceRecorder(false);
-          }}
-          onClose={() => setShowVoiceRecorder(false)}
-          productionMethod={isInProductionContext ? productionMethod : null}
-          block={isInProductionContext ? blockDetails?.block : null}
-          character={isInProductionContext ? blockDetails?.character : null}
-          episodePageId={kitPage?.id}
-          blockId={blockDetails?.block?.id}
-          user={user}
-        />
+        <VoiceRecorder embedded onRecordingComplete={(file_url) => { setProducedMedia({ url: file_url, type: 'audio' }); setShowVoiceRecorder(false); }} onClose={() => setShowVoiceRecorder(false)} productionMethod={isInProductionContext ? productionMethod : null} block={isInProductionContext ? blockDetails?.block : null} character={isInProductionContext ? blockDetails?.character : null} episodePageId={kitPage?.id} blockId={blockDetails?.block?.id} user={user} />
       )}
 
-      {/* Audio Uploader Modal */}
       {showAudioUploader && (
-        <AudioUploader
-          onUploadComplete={(file_url) => {
-            setProducedMedia({ url: file_url, type: 'audio' });
-            setShowAudioUploader(false);
-          }}
-          onClose={() => setShowAudioUploader(false)}
-          productionMethod={isInProductionContext ? productionMethod : null}
-          block={isInProductionContext ? blockDetails?.block : null}
-          character={isInProductionContext ? blockDetails?.character : null}
-        />
+        <AudioUploader onUploadComplete={(file_url) => { setProducedMedia({ url: file_url, type: 'audio' }); setShowAudioUploader(false); }} onClose={() => setShowAudioUploader(false)} productionMethod={isInProductionContext ? productionMethod : null} block={isInProductionContext ? blockDetails?.block : null} character={isInProductionContext ? blockDetails?.character : null} />
       )}
 
-      {/* Dubbing Studio Modal */}
       {showDubbingStudio && (
-        <DubbingStudio
-          embedded
-          onComplete={(file_url) => {
-            setProducedMedia({ url: file_url, type: 'video' });
-            setShowDubbingStudio(false);
-          }}
-          onClose={() => setShowDubbingStudio(false)}
-          block={isInProductionContext ? blockDetails?.block : null}
-          productionMethod={isInProductionContext ? productionMethod : null}
-          character={isInProductionContext ? blockDetails?.character : null}
-          episodePageId={kitPage?.id}
-          blockId={blockDetails?.block?.id}
-          user={user}
-        />
+        <DubbingStudio embedded onComplete={(file_url) => { setProducedMedia({ url: file_url, type: 'video' }); setShowDubbingStudio(false); }} onClose={() => setShowDubbingStudio(false)} block={isInProductionContext ? blockDetails?.block : null} productionMethod={isInProductionContext ? productionMethod : null} character={isInProductionContext ? blockDetails?.character : null} episodePageId={kitPage?.id} blockId={blockDetails?.block?.id} user={user} />
       )}
 
-      {/* Text to Speech Modal */}
       {showTextToSpeech && (
-        <TextToSpeech
-          embedded
-          onComplete={(file_url) => {
-            setProducedMedia({ url: file_url, type: 'audio' });
-            setShowTextToSpeech(false);
-          }}
-          onClose={() => setShowTextToSpeech(false)}
-          productionMethod={isInProductionContext ? productionMethod : null}
-          block={isInProductionContext ? blockDetails?.block : null}
-          character={isInProductionContext ? blockDetails?.character : null}
-          episodePageId={kitPage?.id}
-          blockId={blockDetails?.block?.id}
-          user={user}
-        />
+        <TextToSpeech embedded onComplete={(file_url) => { setProducedMedia({ url: file_url, type: 'audio' }); setShowTextToSpeech(false); }} onClose={() => setShowTextToSpeech(false)} productionMethod={isInProductionContext ? productionMethod : null} block={isInProductionContext ? blockDetails?.block : null} character={isInProductionContext ? blockDetails?.character : null} episodePageId={kitPage?.id} blockId={blockDetails?.block?.id} user={user} />
       )}
 
-      {/* Animate Image Modal */}
       {showAnimateImage && (
-        <AnimateImage
-          embedded
-          initialPrompt={pendingPrompt}
-          onComplete={(url, type) => {
-            setProducedMedia({ url, type });
-            setShowAnimateImage(false);
-            setPendingPrompt(null);
-          }}
-          onClose={() => { setShowAnimateImage(false); setPendingPrompt(null); }}
-          episodePageId={kitPage?.id}
-          blockId={blockDetails?.block?.id}
-          user={user}
-        />
+        <AnimateImage embedded initialPrompt={pendingPrompt} onComplete={(url, type) => { setProducedMedia({ url, type }); setShowAnimateImage(false); setPendingPrompt(null); }} onClose={() => { setShowAnimateImage(false); setPendingPrompt(null); }} episodePageId={kitPage?.id} blockId={blockDetails?.block?.id} user={user} />
       )}
 
-      {/* Lip Sync Modal */}
       {showLipSync && (
-        <LipSync
-          embedded
-          onComplete={(url, type) => {
-            setProducedMedia({ url, type });
-            setShowLipSync(false);
-          }}
-          onClose={() => setShowLipSync(false)}
-          episodePageId={kitPage?.id}
-          blockId={blockDetails?.block?.id}
-          user={user}
-        />
+        <LipSync embedded onComplete={(url, type) => { setProducedMedia({ url, type }); setShowLipSync(false); }} onClose={() => setShowLipSync(false)} episodePageId={kitPage?.id} blockId={blockDetails?.block?.id} user={user} />
       )}
 
-      {/* Video Tools Modal */}
       {showVideoTools && (
-        <VideoTools
-          embedded
-          onComplete={(file_url) => {
-            setProducedMedia({ url: file_url, type: 'video' });
-            setShowVideoTools(false);
-          }}
-          onClose={() => { setShowVideoTools(false); setVideoInitialMode(null); }}
-          recommendedTools={recommendedTools}
-          referenceMedia={referenceMedia}
-          productionMethod={isInProductionContext ? productionMethod : null}
-          block={isInProductionContext ? blockDetails?.block : null}
-          character={isInProductionContext ? blockDetails?.character : null}
-          initialMode={videoInitialMode}
-          episodePageId={kitPage?.id}
-          blockId={blockDetails?.block?.id}
-          user={user}
-        />
+        <VideoTools embedded onComplete={(file_url) => { setProducedMedia({ url: file_url, type: 'video' }); setShowVideoTools(false); }} onClose={() => { setShowVideoTools(false); setVideoInitialMode(null); }} recommendedTools={recommendedTools} referenceMedia={referenceMedia} productionMethod={isInProductionContext ? productionMethod : null} block={isInProductionContext ? blockDetails?.block : null} character={isInProductionContext ? blockDetails?.character : null} initialMode={videoInitialMode} episodePageId={kitPage?.id} blockId={blockDetails?.block?.id} user={user} />
       )}
-
-
 
       {!activeShellKey && (
         <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-6 bg-[#d8d8d3]">
           <div className="max-w-2xl text-center">
-            <div className="mx-auto mb-6 w-16 h-16 bg-black text-yellow-400 flex items-center justify-center">
-              <Sparkles size={28} />
-            </div>
+            <div className="mx-auto mb-6 w-16 h-16 bg-black text-yellow-400 flex items-center justify-center"><Sparkles size={28} /></div>
             <p className="text-black/45 text-xs font-bold uppercase tracking-[0.28em]">AISTAGE.ONE</p>
             <h1 className="mt-3 text-4xl md:text-6xl font-black tracking-tight text-black">Creative Studio</h1>
             <p className="mt-4 text-sm md:text-base text-black/55">Choose a tool from the toolbar to begin.</p>
@@ -977,319 +784,115 @@ export default function Studio() {
         </div>
       )}
 
-      {/* Workspace header */}
       {activeShellKey && <div className="px-5 md:px-7 pt-6 pb-5 relative">
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-black/60 text-[10px] tracking-[0.22em] uppercase font-bold mb-1">
-              {user?.full_name || 'CREATOR'}
-            </p>
-            <h1 className="text-black text-3xl md:text-4xl font-bold tracking-tight">{STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeShellKey)?.label || 'Studio'}</h1>
+            <p className="text-white/45 text-[10px] tracking-[0.22em] uppercase font-bold mb-1">{user?.full_name || 'CREATOR'}</p>
+            <h1 className="text-white text-3xl md:text-4xl font-bold tracking-tight">{STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeShellKey)?.label || 'Studio'}</h1>
           </div>
-          <div className="hidden md:flex items-center gap-2 text-black/60 text-xs font-semibold">
-            <FolderOpen size={15} />
-            Creative workspace
-          </div>
+          <div className="hidden md:flex items-center gap-2 text-white/45 text-xs font-semibold"><FolderOpen size={15} />Creative workspace</div>
         </motion.div>
       </div>}
 
-      {/* ── HOME TAB ── */}
       {activeTab === 'home' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 space-y-3">
-          {/* Stats */}
           <div className="bg-black rounded-3xl p-6 flex items-center justify-around shadow-xl">
-            <div className="text-center">
-              <p className="text-yellow-400 text-4xl font-bold">{actorCount}</p>
-              <p className="text-white text-sm font-bold mt-1">Actors</p>
-            </div>
+            <div className="text-center"><p className="text-yellow-400 text-4xl font-bold">{actorCount}</p><p className="text-white text-sm font-bold mt-1">Actors</p></div>
             <div className="w-px h-12 bg-white/15" />
-            <div className="text-center">
-              <p className="text-yellow-400 text-4xl font-bold">{setCount}</p>
-              <p className="text-white text-sm font-bold mt-1">Sets</p>
-            </div>
+            <div className="text-center"><p className="text-yellow-400 text-4xl font-bold">{setCount}</p><p className="text-white text-sm font-bold mt-1">Sets</p></div>
             <div className="w-px h-12 bg-white/15" />
-            <div className="text-center">
-              <p className="text-yellow-400 text-4xl font-bold">{vaultAssets.length}</p>
-              <p className="text-white text-sm font-bold mt-1">Assets</p>
-            </div>
+            <div className="text-center"><p className="text-yellow-400 text-4xl font-bold">{vaultAssets.length}</p><p className="text-white text-sm font-bold mt-1">Assets</p></div>
           </div>
-
-          <p className="text-black text-sm font-bold tracking-widest uppercase pt-6">Navigation</p>
-
+          <p className="text-white text-sm font-bold tracking-widest uppercase pt-6">Navigation</p>
           {homeItems.map((item) => (
-            <StudioCard
-              key={item.key}
-              icon={HOME_ICON_MAP[item.icon] || Home}
-              iconImage={item.icon_image?.trim() ? item.icon_image : null}
-              title={item.label}
-              subtitle={item.description}
-              color={homeItemColors[item.key] || 'bg-yellow-300'}
-              badge={homeItemBadges[item.key] || 0}
-              backgroundImage={item.background_image}
-              onClick={homeItemActions[item.key] || (() => {})}
-            />
+            <StudioCard key={item.key} icon={HOME_ICON_MAP[item.icon] || Home} iconImage={item.icon_image?.trim() ? item.icon_image : null} title={item.label} subtitle={item.description} color={homeItemColors[item.key] || 'bg-yellow-300'} badge={homeItemBadges[item.key] || 0} backgroundImage={item.background_image} onClick={homeItemActions[item.key] || (() => {})} />
           ))}
         </motion.div>
       )}
 
-      {/* ── LIBRARY TAB ── */}
       {activeTab === 'library' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5">
-          {/* Sub-tab */}
           <div className="flex items-center gap-3 mb-6">
-            <button
-              onClick={() => setLibraryTab('kits')}
-              className={`flex-1 py-4 rounded-2xl text-sm font-bold tracking-wide transition-all shadow-lg ${
-                libraryTab === 'kits' ? 'bg-black text-yellow-400' : 'bg-yellow-300/50 text-black hover:bg-yellow-300'
-              }`}
-            >
-              Kits ({communityKits.length})
-            </button>
+            <button onClick={() => setLibraryTab('kits')} className={`flex-1 py-4 rounded-2xl text-sm font-bold tracking-wide transition-all shadow-lg ${libraryTab === 'kits' ? 'bg-black text-yellow-400' : 'bg-yellow-300/50 text-black hover:bg-yellow-300'}`}>Kits ({communityKits.length})</button>
           </div>
-
-          {/* Community Production Kits */}
-          {libraryTab === 'kits' && (
-            communityKits.length === 0 ? (
-              <EmptyState
-                icon={Film}
-                label="No production kits yet"
-                sub="Community production kits will appear here"
-              />
-            ) : (
-              <div className="space-y-3">
-                {communityKits.map(kit => (
-                  <motion.div
-                    key={kit.id}
-                    whileTap={{ scale: 0.98 }}
-                    className="bg-black rounded-3xl p-5 cursor-pointer"
-                    onClick={() => handleJoinProject(kit)}
-                  >
-                    <div className="flex items-center gap-4">
-                      {kit.cover_image ? (
-                        <img src={kit.cover_image} alt={kit.title} className="w-16 h-16 rounded-2xl object-cover flex-shrink-0" />
-                      ) : (
-                        <div className="w-16 h-16 bg-yellow-400/20 rounded-2xl flex items-center justify-center flex-shrink-0">
-                          <Layers size={24} className="text-yellow-400" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-yellow-400 font-bold text-base truncate">{kit.title}</p>
-                        {kit.subtitle && <p className="text-yellow-400 text-sm truncate">{kit.subtitle}</p>}
-                        <p className="text-yellow-400 text-xs mt-1 font-bold">Tap to open kit →</p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )
-          )}
-
+          {libraryTab === 'kits' && (communityKits.length === 0 ? (
+            <EmptyState icon={Film} label="No production kits yet" sub="Community production kits will appear here" />
+          ) : (
+            <div className="space-y-3">
+              {communityKits.map(kit => (
+                <motion.div key={kit.id} whileTap={{ scale: 0.98 }} className="bg-black rounded-3xl p-5 cursor-pointer" onClick={() => handleJoinProject(kit)}>
+                  <div className="flex items-center gap-4">
+                    {kit.cover_image ? <img src={kit.cover_image} alt={kit.title} className="w-16 h-16 rounded-2xl object-cover flex-shrink-0" /> : <div className="w-16 h-16 bg-yellow-400/20 rounded-2xl flex items-center justify-center flex-shrink-0"><Layers size={24} className="text-yellow-400" /></div>}
+                    <div className="flex-1 min-w-0"><p className="text-yellow-400 font-bold text-base truncate">{kit.title}</p>{kit.subtitle && <p className="text-yellow-400 text-sm truncate">{kit.subtitle}</p>}<p className="text-yellow-400 text-xs mt-1 font-bold">Tap to open kit →</p></div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ))}
         </motion.div>
       )}
 
-      {/* ── STAGES TAB ── */}
-      {false && activeTab === 'lab' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5">
-          <SketchStudio user={user} />
-        </motion.div>
-      )}
+      {false && activeTab === 'lab' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5"><SketchStudio user={user} /></motion.div>}
 
-      {/* ── TOOLS TAB ── */}
       {false && activeTab === 'tools' && (
-        <LabWorkspace
-          user={user}
-          onOpenActor={() => setEditingActor(false)}
-          onOpenSet={() => setEditingSet(false)}
-          onOpenVoiceRecorder={() => setShowVoiceRecorder(true)}
-          onOpenAudioUploader={() => setShowAudioUploader(true)}
-          onOpenDubbing={() => setShowDubbingStudio(true)}
-          onOpenTTS={() => setShowTextToSpeech(true)}
-          onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }}
-          onOpenLipSync={() => setShowLipSync(true)}
-          onOpenAnimateImage={() => setShowAnimateImage(true)}
-          onJoinProject={handleJoinProject}
-          onOpenFreeTimeline={() => setShowFreeTimeline(true)}
-          onOpenLayout={() => setShowLayout(true)}
-          hideProjects={true}
-        />
+        <LabWorkspace user={user} onOpenActor={() => setEditingActor(false)} onOpenSet={() => setEditingSet(false)} onOpenVoiceRecorder={() => setShowVoiceRecorder(true)} onOpenAudioUploader={() => setShowAudioUploader(true)} onOpenDubbing={() => setShowDubbingStudio(true)} onOpenTTS={() => setShowTextToSpeech(true)} onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }} onOpenLipSync={() => setShowLipSync(true)} onOpenAnimateImage={() => setShowAnimateImage(true)} onJoinProject={handleJoinProject} onOpenFreeTimeline={() => setShowFreeTimeline(true)} onOpenLayout={() => setShowLayout(true)} hideProjects={true} />
       )}
 
-      {/* ── STORIES TAB ── */}
-      {activeTab === 'stories' && (
-        <StoryBlocks user={user} onBack={() => setActiveTab('home')} />
-      )}
+      {activeTab === 'stories' && <StoryBlocks user={user} onBack={() => setActiveTab('home')} />}
 
-      {/* ── VAULT WORKSPACE ── */}
       {false && activeTab === 'vault' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 md:px-7">
-          <VaultSection
-            userEmail={user?.email}
-            onUsePrompt={(text) => {
-              setPendingPrompt(text);
-              setShowAnimateImage(true);
-            }}
-          />
-        </motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 md:px-7"><VaultSection userEmail={user?.email} onUsePrompt={(text) => { setPendingPrompt(text); setShowAnimateImage(true); }} /></motion.div>
       )}
 
       {activeToolPanel === 'vault' && (
-        <div className="absolute inset-0 z-20 bg-yellow-400">
-          <StudioWorkspaceTool title="Vault" onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }}>
-            <div className="p-4 md:p-6">
-              <VaultSection
-                userEmail={user?.email}
-                onUsePrompt={(text) => {
-                  setPendingPrompt(text);
-                  setShowAnimateImage(true);
-                }}
-              />
-            </div>
-          </StudioWorkspaceTool>
+        <div className="absolute inset-0 z-20 bg-[#202328]">
+          <StudioWorkspaceTool title="Vault"><div className="p-4 md:p-6"><VaultSection userEmail={user?.email} onUsePrompt={(text) => { setPendingPrompt(text); setShowAnimateImage(true); }} /></div></StudioWorkspaceTool>
         </div>
       )}
 
       {activeToolPanel === 'stages' && (
-        <div className="absolute inset-0 z-20 bg-yellow-400">
-          <StudioWorkspaceTool title="Stages" onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }}>
-            <div className="p-4 md:p-6">
-              <SketchStudio user={user} />
-            </div>
-          </StudioWorkspaceTool>
+        <div className="absolute inset-0 z-20 bg-[#202328]">
+          <StudioWorkspaceTool title="Stages"><div className="p-4 md:p-6"><SketchStudio user={user} /></div></StudioWorkspaceTool>
         </div>
       )}
 
       {activeToolPanel?.startsWith?.('lab:') && (
-        <div className="absolute inset-0 z-20 bg-yellow-400">
-          <StudioWorkspaceTool
-            title={STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeToolPanel.slice(4))?.label || 'Tool'}
-            onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }}
-          >
+        <div className="absolute inset-0 z-20 bg-[#202328]">
+          <StudioWorkspaceTool title={STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeToolPanel.slice(4))?.label || 'Tool'}>
             <div className="p-4 md:p-6">
-              <LabWorkspace
-                user={user}
-                directTool={activeToolPanel.slice(4)}
-                directMode={true}
-                onOpenActor={() => { setActiveToolPanel(null); setEditingActor(false); }}
-                onOpenSet={() => { setActiveToolPanel(null); setEditingSet(false); }}
-                onOpenVoiceRecorder={() => setShowVoiceRecorder(true)}
-                onOpenAudioUploader={() => setShowAudioUploader(true)}
-                onOpenDubbing={() => setShowDubbingStudio(true)}
-                onOpenTTS={() => setShowTextToSpeech(true)}
-                onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }}
-                onOpenLipSync={() => setShowLipSync(true)}
-                onOpenAnimateImage={() => setShowAnimateImage(true)}
-                onJoinProject={handleJoinProject}
-                onOpenFreeTimeline={() => setShowFreeTimeline(true)}
-                onOpenLayout={() => setShowLayout(true)}
-                hideProjects={true}
-              />
+              <LabWorkspace user={user} directTool={activeToolPanel.slice(4)} directMode={true} onOpenActor={() => { setActiveToolPanel(null); setEditingActor(false); }} onOpenSet={() => { setActiveToolPanel(null); setEditingSet(false); }} onOpenVoiceRecorder={() => setShowVoiceRecorder(true)} onOpenAudioUploader={() => setShowAudioUploader(true)} onOpenDubbing={() => setShowDubbingStudio(true)} onOpenTTS={() => setShowTextToSpeech(true)} onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }} onOpenLipSync={() => setShowLipSync(true)} onOpenAnimateImage={() => setShowAnimateImage(true)} onJoinProject={handleJoinProject} onOpenFreeTimeline={() => setShowFreeTimeline(true)} onOpenLayout={() => setShowLayout(true)} hideProjects={true} />
             </div>
           </StudioWorkspaceTool>
         </div>
       )}
 
       {activeToolPanel === 'timeline' && (
-        <div className="absolute inset-0 z-20 bg-black">
-          <KitProductionRoom
-            embedded
-            kitPage={{ id: 'free_timeline', title: 'Free Timeline', kit_characters: [], kit_sets: [], kit_costumes: [] }}
-            dossier={null}
-            onClose={() => { setActiveToolPanel(null); setActiveTab(null); }}
-            producedMedia={producedMedia}
-            onMediaProduced={setProducedMedia}
-            referenceMedia={[]}
-          />
-        </div>
+        <div className="absolute inset-0 z-20 bg-black"><KitProductionRoom embedded kitPage={{ id: 'free_timeline', title: 'Free Timeline', kit_characters: [], kit_sets: [], kit_costumes: [] }} dossier={null} onClose={() => { setActiveToolPanel(null); setActiveTab(null); }} producedMedia={producedMedia} onMediaProduced={setProducedMedia} referenceMedia={[]} /></div>
       )}
 
-      {activeToolPanel === 'layout' && (
-        <div className="absolute inset-0 z-20 bg-zinc-900">
-          <LayoutTool user={user} onClose={() => { setActiveToolPanel(null); setActiveTab(null); }} />
-        </div>
-      )}
+      {activeToolPanel === 'layout' && <div className="absolute inset-0 z-20 bg-zinc-900"><LayoutTool user={user} onClose={() => { setActiveToolPanel(null); setActiveTab(null); }} /></div>}
 
       {activeToolPanel === 'shop' && (
         <div className="absolute inset-0 z-20 bg-zinc-950">
-          {activeAssetId ? (
-            <AssetDetail
-              embedded
-              assetId={activeAssetId}
-              onBack={() => setActiveAssetId(null)}
-            />
-          ) : (
-            <Catalog
-              embedded
-              onOpenAsset={(assetId) => setActiveAssetId(assetId)}
-            />
-          )}
+          {activeAssetId ? <AssetDetail embedded assetId={activeAssetId} onBack={() => setActiveAssetId(null)} /> : <Catalog embedded onOpenAsset={(assetId) => setActiveAssetId(assetId)} />}
         </div>
       )}
 
-      {['generate_3d', 'characters_3d', 'clothing_3d', 'props_3d', 'my_3d_assets'].includes(activeToolPanel) && (
-        <div className="absolute inset-0 z-20 bg-[#d8d8d3]">
-          <ThreeDStudio mode={activeToolPanel} />
-        </div>
-      )}
+      {['generate_3d', 'characters_3d', 'clothing_3d', 'props_3d', 'my_3d_assets'].includes(activeToolPanel) && <div className="absolute inset-0 z-20 bg-[#d8d8d3]"><ThreeDStudio mode={activeToolPanel} /></div>}
 
-      {activeToolPanel === 'ai_connections' && (
-        <div className="absolute inset-0 z-20 bg-zinc-950">
-          <AiConnections
-            embedded
-            onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }}
-          />
-        </div>
-      )}
+      {activeToolPanel === 'ai_connections' && <div className="absolute inset-0 z-20 bg-zinc-950"><AiConnections embedded onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }} /></div>}
 
       {activeToolPanel === 'pitch' && (
         <div className="absolute inset-0 z-20 bg-zinc-950">
-          {pitchView === 'list' && (
-            <PitchDecks
-              embedded
-              onNew={() => { setPitchProjectId(null); setPitchView('edit'); }}
-              onEdit={(projectId) => { setPitchProjectId(projectId); setPitchView('edit'); }}
-              onView={(projectId) => { setPitchProjectId(projectId); setPitchView('view'); }}
-            />
-          )}
-          {pitchView === 'edit' && (
-            <PitchDeckEditor
-              embedded
-              projectId={pitchProjectId}
-              onBack={() => setPitchView('list')}
-              onView={() => setPitchView('view')}
-              onProjectCreated={(projectId) => { setPitchProjectId(projectId); }}
-            />
-          )}
-          {pitchView === 'view' && pitchProjectId && (
-            <PitchDeckDetail
-              embedded
-              projectId={pitchProjectId}
-              onBack={() => setPitchView('list')}
-              onEdit={() => setPitchView('edit')}
-            />
-          )}
+          {pitchView === 'list' && <PitchDecks embedded onNew={() => { setPitchProjectId(null); setPitchView('edit'); }} onEdit={(projectId) => { setPitchProjectId(projectId); setPitchView('edit'); }} onView={(projectId) => { setPitchProjectId(projectId); setPitchView('view'); }} />}
+          {pitchView === 'edit' && <PitchDeckEditor embedded projectId={pitchProjectId} onBack={() => setPitchView('list')} onView={() => setPitchView('view')} onProjectCreated={(projectId) => { setPitchProjectId(projectId); }} />}
+          {pitchView === 'view' && pitchProjectId && <PitchDeckDetail embedded projectId={pitchProjectId} onBack={() => setPitchView('list')} onEdit={() => setPitchView('edit')} />}
         </div>
       )}
 
-      {/* ── Editors ── */}
       <AnimatePresence>
-        {editingActor !== null && (
-          <CharacterSheetEditor
-            embedded
-            key="actor-editor"
-            sheet={editingActor || null}
-            userEmail={user?.email}
-            onClose={() => setEditingActor(null)}
-          />
-        )}
-        {editingSet !== null && (
-          <SetAssetEditor
-            embedded
-            key="set-editor"
-            asset={editingSet || null}
-            userEmail={user?.email}
-            onClose={() => setEditingSet(null)}
-          />
-        )}
+        {editingActor !== null && <CharacterSheetEditor embedded key="actor-editor" sheet={editingActor || null} userEmail={user?.email} onClose={() => setEditingActor(null)} />}
+        {editingSet !== null && <SetAssetEditor embedded key="set-editor" asset={editingSet || null} userEmail={user?.email} onClose={() => setEditingSet(null)} />}
       </AnimatePresence>
       </div>
       </div>
