@@ -171,7 +171,7 @@ export default function SketchStudio({ user }) {
     return <div className="w-full bg-[#202328] px-4 py-5 pb-28 text-white lg:pb-32">
       <div className="mx-auto max-w-6xl">
         <div className="mb-5 flex items-end justify-between gap-4 border-b border-white/10 pb-4">
-          <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Stages</p><h2 className="text-2xl font-black text-white">Stages</h2><p className="mt-1 text-sm text-white/45">Upload a photo, then choose a Stage.</p></div>
+          <p className="text-sm text-white/45">Upload a photo, then choose a Stage.</p>
           {photoUrl && <div className="flex items-center gap-3 rounded-[4px] border border-white/10 bg-[#17191d] px-3 py-2"><img src={photoUrl} alt="you" className="h-10 w-10 rounded-[3px] object-cover"/><div><p className="text-xs font-bold text-white">Photo ready</p><button onClick={() => { setPhotoUrl(null); setPhotoFile(null); }} className="text-[10px] font-bold text-[#8ee9e4]">Change</button></div></div>}
         </div>
 
