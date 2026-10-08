@@ -12,7 +12,6 @@ export default function EpisodesTabBar({
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
-  // Close the dropdown when clicking outside
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
@@ -30,53 +29,34 @@ export default function EpisodesTabBar({
   const activeLabel = active?.episode_title?.trim() || (active ? `Timeline ${episodes.indexOf(active) + 1}` : 'Select a timeline…');
 
   return (
-    <div className="flex items-center gap-2 px-6 py-3 border-b border-white/10 flex-shrink-0 bg-black">
-      {/* Dropdown selector */}
-      <div ref={wrapRef} className="relative flex-1 min-w-0">
+    <div className="flex flex-shrink-0 items-center gap-2 border-b border-white/10 bg-[#202328] px-5 py-3 md:px-6">
+      <div ref={wrapRef} className="relative min-w-0 flex-1">
         <button
           onClick={() => setOpen(o => !o)}
-          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm font-semibold hover:bg-white/10 transition-colors"
+          className="flex w-full items-center gap-2 rounded-[3px] border border-white/10 bg-[#17191d] px-4 py-3 text-sm font-bold text-white transition hover:border-[#23c7be]/35 hover:bg-[#1d2126]"
         >
-          <Film size={14} className="text-white/60 flex-shrink-0" />
-          <span className="flex-1 min-w-0 truncate text-left">{activeLabel}</span>
-          {isEpisodeLocked && <span className="flex-shrink-0">🔒</span>}
-          <ChevronDown size={16} className={`text-white/60 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+          <Film size={14} className="flex-shrink-0 text-[#23c7be]" />
+          <span className="min-w-0 flex-1 truncate text-left">{activeLabel}</span>
+          {isEpisodeLocked && <span className="flex-shrink-0 text-white/45">🔒</span>}
+          <ChevronDown size={16} className={`flex-shrink-0 text-white/45 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
 
         {open && (
-          <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-[#141414] border border-white/15 rounded-xl shadow-2xl overflow-hidden">
+          <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-[4px] border border-white/10 bg-[#17191d] shadow-2xl">
             <div className="max-h-64 overflow-y-auto py-1" style={{ scrollbarWidth: 'thin' }}>
               {episodes.length === 0 ? (
-                <p className="px-4 py-3 text-white/50 text-xs">No timelines yet — tap “New”.</p>
+                <p className="px-4 py-3 text-xs text-white/45">No timelines yet — tap “New”.</p>
               ) : (
                 episodes.map((ep, idx) => {
                   const isActive = ep.id === activeEpisodeId;
                   const label = ep.episode_title?.trim() || `Timeline ${idx + 1}`;
                   return (
-                    <div
-                      key={ep.id}
-                      className={`flex items-center gap-2 px-3 py-2.5 mx-1 rounded-lg border transition-colors ${isActive ? 'bg-white/10 border-yellow-400/50' : 'border-transparent hover:bg-white/5'}`}
-                    >
-                      <button
-                        onClick={() => { selectEpisode(ep); setOpen(false); }}
-                        className="flex-1 min-w-0 text-left flex items-center gap-2"
-                      >
-                        {ep.poster_image ? (
-                          <img src={ep.poster_image} alt="" className="w-8 h-8 rounded-md object-cover flex-shrink-0" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center flex-shrink-0">
-                            <Film size={14} className="text-white/40" />
-                          </div>
-                        )}
-                        <span className={`truncate text-sm ${isActive ? 'text-yellow-400 font-bold' : 'text-white font-medium'}`}>{label}</span>
+                    <div key={ep.id} className={`mx-1 flex items-center gap-2 rounded-[3px] border px-3 py-2.5 transition-colors ${isActive ? 'border-[#23c7be]/35 bg-[#23c7be]/10' : 'border-transparent hover:bg-white/[0.04]'}`}>
+                      <button onClick={() => { selectEpisode(ep); setOpen(false); }} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                        {ep.poster_image ? <img src={ep.poster_image} alt="" className="h-8 w-8 flex-shrink-0 rounded-[3px] object-cover" /> : <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[3px] bg-white/[0.05]"><Film size={14} className="text-white/35" /></div>}
+                        <span className={`truncate text-sm ${isActive ? 'font-black text-[#8ee9e4]' : 'font-medium text-white'}`}>{label}</span>
                       </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); deleteEpisode(ep.id); }}
-                        className="w-7 h-7 flex items-center justify-center rounded-md text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
-                        title="Delete timeline"
-                      >
-                        <X size={14} />
-                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); deleteEpisode(ep.id); }} className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[3px] text-white/40 transition hover:bg-red-500/10 hover:text-red-300" title="Delete timeline"><X size={14} /></button>
                     </div>
                   );
                 })
@@ -86,12 +66,7 @@ export default function EpisodesTabBar({
         )}
       </div>
 
-      {/* New button */}
-      <button
-        onClick={createEpisode}
-        className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-yellow-400 text-black hover:bg-yellow-300 transition-all shadow-md"
-        title="Start a new timeline"
-      >
+      <button onClick={createEpisode} className="flex flex-shrink-0 items-center gap-1.5 rounded-[3px] border border-[#23c7be]/35 bg-[#23c7be]/10 px-4 py-3 text-xs font-black text-[#8ee9e4] transition hover:bg-[#23c7be]/15" title="Start a new timeline">
         <Plus size={14} /> New
       </button>
     </div>
