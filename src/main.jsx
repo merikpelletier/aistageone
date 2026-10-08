@@ -6,6 +6,7 @@ import '@/styles/fotoplay-workspace.css'
 import '@/styles/actor-workspace.css'
 import '@/styles/set-workspace.css'
 import '@/styles/compose-workspace.css'
+import '@/styles/voice-recorder.css'
 import { registerServiceWorker } from '@/lib/registerServiceWorker'
 
 registerServiceWorker()
