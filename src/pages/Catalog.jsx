@@ -63,7 +63,6 @@ export default function Catalog({ embedded = false, onOpenAsset = null }) {
   const showGrid = catalogSections.grid?.visible !== false;
   const showLoadMore = catalogSections.load_more?.visible !== false;
   const showQuickView = catalogSections.quick_view?.visible !== false;
-  const heroLabel = catalogSections.hero?.label || 'Marketplace Hero';
   const filtersLabel = catalogSections.filters?.label || 'Selection Tools';
 
   const { data: assets = [], isLoading, error } = useQuery({
@@ -128,47 +127,26 @@ export default function Catalog({ embedded = false, onOpenAsset = null }) {
   const visibleAssets = filteredAssets.slice(0, visibleCount);
 
   return (
-    <div className={`${embedded ? 'min-h-[calc(100vh-3.5rem)]' : 'min-h-screen'} bg-zinc-950 pb-28 text-white`} style={catalogBackground ? { backgroundImage: `url(${catalogBackground})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' } : undefined}>
+    <div className={`${embedded ? 'h-[calc(100vh-3.5rem)] min-h-0 overflow-y-auto overscroll-contain' : 'min-h-screen'} bg-zinc-950 pb-28 text-white`} style={catalogBackground ? { backgroundImage: `url(${catalogBackground})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: embedded ? 'scroll' : 'fixed' } : undefined}>
       {showHero && <section className="relative overflow-hidden border-b border-white/10 bg-black" style={heroBackground ? { backgroundImage: `url(${heroBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(6,182,212,0.22),transparent_38%),radial-gradient(circle_at_85%_10%,rgba(37,99,235,0.18),transparent_35%)]" />
-        <div className={`relative mx-auto max-w-7xl px-6 ${heroHeightClass}`}>
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-300"><Sparkles size={14} /> {heroBadgeLabel}</div>
+        <div className={`relative mx-auto max-w-[1600px] px-5 md:px-6 ${heroHeightClass}`}>
+          <div className="mb-5 inline-flex items-center gap-2 rounded-[3px] border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-300"><Sparkles size={14} /> {heroBadgeLabel}</div>
           <h1 className="text-5xl font-black tracking-tight md:text-7xl">{heroTitle}</h1>
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-zinc-300 md:text-lg">{heroSubtitle}</p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <a href="/ProductPlacement" className="inline-flex items-center gap-2 rounded-lg bg-cyan-400 px-4 py-2 text-sm font-black text-black hover:bg-cyan-300"><Megaphone size={16} /> PLACE YOUR PRODUCT</a>
-          </div>
-          {heroShowStats && <div className="mt-4 flex flex-wrap gap-3 text-sm font-bold text-zinc-300">
-            <span className="rounded-lg border border-white/10 bg-white/5 px-4 py-2">{assets.length} assets</span>
-            <span className="rounded-lg border border-white/10 bg-white/5 px-4 py-2">{categories.length} categories</span>
-            <span className="rounded-lg border border-white/10 bg-white/5 px-4 py-2">Supabase secured</span>
-          </div>}
+          <div className="mt-8 flex flex-wrap gap-3"><a href="/ProductPlacement" className="inline-flex items-center gap-2 rounded-[3px] bg-cyan-400 px-4 py-2 text-sm font-black text-black hover:bg-cyan-300"><Megaphone size={16} /> PLACE YOUR PRODUCT</a></div>
+          {heroShowStats && <div className="mt-4 flex flex-wrap gap-3 text-sm font-bold text-zinc-300"><span className="rounded-[3px] border border-white/10 bg-white/5 px-4 py-2">{assets.length} assets</span><span className="rounded-[3px] border border-white/10 bg-white/5 px-4 py-2">{categories.length} categories</span><span className="rounded-[3px] border border-white/10 bg-white/5 px-4 py-2">Supabase secured</span></div>}
         </div>
       </section>}
 
-      <main className="mx-auto max-w-7xl px-6 py-9">
-        {showFilters && <>
-          <div className="mb-5 flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-zinc-500"><SlidersHorizontal size={15} /> {filtersLabel}</div>
-          <CatalogFilters filters={filters} onChange={setFilters} categories={categories} subcategories={subcategories} creators={creators} resultCount={filteredAssets.length} />
-        </>}
+      <main className="mx-auto max-w-[1600px] px-5 py-7 md:px-6">
+        {showFilters && <><div className="mb-5 flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-zinc-500"><SlidersHorizontal size={15} /> {filtersLabel}</div><CatalogFilters filters={filters} onChange={setFilters} categories={categories} subcategories={subcategories} creators={creators} resultCount={filteredAssets.length} /></>}
 
-        {showGrid && <div className="mt-9">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-24"><Loader2 className="animate-spin text-cyan-400" size={36} /></div>
-          ) : error ? (
-            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-8 text-center text-rose-200">The shop could not load its assets.</div>
-          ) : visibleAssets.length === 0 ? (
-            <div className="flex flex-col items-center py-24 text-center"><div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-zinc-900"><Package className="text-zinc-600" size={40} /></div><h2 className="mt-5 text-xl font-black">NO MATCHING ASSETS</h2><p className="mt-2 text-zinc-500">Try clearing one or more selection tools.</p></div>
-          ) : (
-            <>
-              <motion.div layout className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                <AnimatePresence>
-                  {visibleAssets.map((asset) => <AssetCard key={asset.id} asset={asset} category={categories.find((item) => item.id === asset.category_id)} onQuickView={setQuickViewAsset} onOpenAsset={onOpenAsset} />)}
-                </AnimatePresence>
-              </motion.div>
-              {showLoadMore && visibleCount < filteredAssets.length && <div className="mt-10 flex justify-center"><button onClick={() => setVisibleCount((count) => count + PAGE_SIZE)} className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-8 py-3 font-black text-black transition hover:brightness-110">LOAD MORE ({visibleAssets.length} / {filteredAssets.length})</button></div>}
-            </>
-          )}
+        {showGrid && <div className="mt-7">
+          {isLoading ? <div className="flex items-center justify-center py-24"><Loader2 className="animate-spin text-cyan-400" size={36} /></div>
+          : error ? <div className="rounded-[4px] border border-rose-500/30 bg-rose-500/10 p-8 text-center text-rose-200">The shop could not load its assets.</div>
+          : visibleAssets.length === 0 ? <div className="flex flex-col items-center py-24 text-center"><div className="flex h-20 w-20 items-center justify-center rounded-[4px] bg-zinc-900"><Package className="text-zinc-600" size={40} /></div><h2 className="mt-5 text-xl font-black">NO MATCHING ASSETS</h2><p className="mt-2 text-zinc-500">Try clearing one or more selection tools.</p></div>
+          : <><motion.div layout className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"><AnimatePresence>{visibleAssets.map((asset) => <AssetCard key={asset.id} asset={asset} category={categories.find((item) => item.id === asset.category_id)} onQuickView={setQuickViewAsset} onOpenAsset={onOpenAsset} />)}</AnimatePresence></motion.div>{showLoadMore && visibleCount < filteredAssets.length && <div className="mt-8 flex justify-center"><button onClick={() => setVisibleCount((count) => count + PAGE_SIZE)} className="rounded-[3px] bg-cyan-500 px-8 py-3 font-black text-black transition hover:bg-cyan-400">LOAD MORE ({visibleAssets.length} / {filteredAssets.length})</button></div>}</>}
         </div>}
       </main>
 
