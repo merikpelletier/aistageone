@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { motion } from 'framer-motion';
-import { Sparkles, Film, Image as ImageIcon, Loader2, ChevronLeft, CheckCircle2, Upload, User, Coins } from 'lucide-react';
+import { Sparkles, Film, Image as ImageIcon, Loader2, ChevronLeft, CheckCircle2, Upload, Download, User, Coins } from 'lucide-react';
 import { toast } from 'sonner';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import TokenPurchaseModal from '@/components/studio/TokenPurchaseModal';
@@ -162,6 +162,33 @@ export default function SketchStudio({ user }) {
     } finally { setIsGenerating(false); }
   };
 
+  const handleDownload = async () => {
+    if (!result) return;
+    try {
+      const response = await fetch(result);
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const safeName = String(selected?.name || 'stage-result').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'stage-result';
+      let extension = isImageStage ? '.jpg' : '.mp4';
+      try {
+        const pathname = new URL(result).pathname;
+        const match = pathname.match(/(\.[a-z0-9]{2,5})$/i);
+        if (match?.[1]) extension = match[1];
+      } catch {}
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = safeName.toLowerCase().endsWith(extension.toLowerCase()) ? safeName : `${safeName}${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      window.open(result, '_blank', 'noopener,noreferrer');
+      toast.error('Direct download was blocked. The result was opened in a new tab instead.');
+    }
+  };
+
   const handleSavedToVault = () => {
     setShowSaveVault(false); setResult(null); setSelected(null); setSelectedStyleIndex(null);
     qc.invalidateQueries({ queryKey: ['vaultAssets', user?.email] });
@@ -207,7 +234,7 @@ export default function SketchStudio({ user }) {
         <div className="mb-4 flex flex-col gap-1.5 rounded-[3px] border border-white/10 bg-black/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs font-bold text-white/70">Cost: <span className="text-[#8ee9e4]">{styles.length > 0 && selectedStyleIndex === null ? 'Choose style' : priceLoading ? 'Calculating…' : cost !== null ? `${cost} credits` : '…'}</span></p><p className="text-xs font-bold text-white/70">Balance: <span className={insufficient ? 'text-red-400' : 'text-[#8ee9e4]'}>{balance !== null ? `${balance} credits` : '…'}</span></p></div>
         {insufficient && <button onClick={() => setShowBuyTokens(true)} className="mb-3 flex w-full items-center justify-center gap-2 rounded-[3px] border border-red-400/30 bg-red-400/10 py-3 font-bold text-red-200"><Coins size={18}/> Not enough credits — Buy more</button>}
 
-        {!result ? <button onClick={handleGenerate} disabled={isGenerating || insufficient || (isImageStage && styles.length > 0 && selectedStyleIndex === null)} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-4 font-black text-[#071211] disabled:bg-white/[0.05] disabled:text-white/30">{isGenerating ? <><Loader2 size={20} className="animate-spin"/> Generating…</> : <><Sparkles size={20}/> {isImageStage && styles.length > 0 && selectedStyleIndex === null ? 'Choose a style' : `Generate ${isImageStage ? 'Image' : 'Video'}`}</>}</button> : <div className="space-y-4"><div className="flex min-h-[320px] items-center justify-center rounded-[4px] border border-white/10 bg-black p-3">{isImageStage ? <img src={result} alt={selected.name} className="max-h-[700px] max-w-full object-contain"/> : <video src={result} controls className="w-full rounded-[3px]"/>}</div><div className="flex gap-3"><button onClick={() => setResult(null)} className="flex-1 rounded-[3px] border border-white/10 bg-white/[0.04] py-3 font-bold text-white">Regenerate</button><button onClick={() => setShowSaveVault(true)} className="flex flex-1 items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3 font-black text-[#071211]"><CheckCircle2 size={20}/> Save to Vault</button></div></div>}
+        {!result ? <button onClick={handleGenerate} disabled={isGenerating || insufficient || (isImageStage && styles.length > 0 && selectedStyleIndex === null)} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-4 font-black text-[#071211] disabled:bg-white/[0.05] disabled:text-white/30">{isGenerating ? <><Loader2 size={20} className="animate-spin"/> Generating…</> : <><Sparkles size={20}/> {isImageStage && styles.length > 0 && selectedStyleIndex === null ? 'Choose a style' : `Generate ${isImageStage ? 'Image' : 'Video'}`}</>}</button> : <div className="space-y-4"><div className="flex min-h-[320px] items-center justify-center rounded-[4px] border border-white/10 bg-black p-3">{isImageStage ? <img src={result} alt={selected.name} className="max-h-[700px] max-w-full object-contain"/> : <video src={result} controls className="w-full rounded-[3px]"/>}</div><div className="grid grid-cols-1 gap-3 sm:grid-cols-3"><button onClick={() => setResult(null)} className="rounded-[3px] border border-white/10 bg-white/[0.04] py-3 font-bold text-white">Regenerate</button><button onClick={handleDownload} className="flex items-center justify-center gap-2 rounded-[3px] border border-[#23c7be]/35 bg-[#23c7be]/10 py-3 font-black text-[#8ee9e4]"><Download size={19}/> Download</button><button onClick={() => setShowSaveVault(true)} className="flex items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3 font-black text-[#071211]"><CheckCircle2 size={20}/> Save to Vault</button></div></div>}
       </div>
 
       {showSaveVault && result && <SaveToVaultModal userEmail={user?.email} imageUrl={result} mediaType={isImageStage ? 'image' : 'video'} onClose={() => setShowSaveVault(false)} onSaved={handleSavedToVault}/>} 
