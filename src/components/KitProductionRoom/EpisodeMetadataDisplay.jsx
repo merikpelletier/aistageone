@@ -31,101 +31,109 @@ export default function EpisodeMetadataDisplay({
     staleTime: 5 * 60 * 1000,
   });
 
-  return (
-    <div className="space-y-4">
-      <p className="text-white text-xs uppercase tracking-widest font-semibold">EPISODE</p>
+  const fieldClass = `w-full rounded-[3px] border border-white/15 bg-black/25 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be] ${isLocked ? 'cursor-not-allowed opacity-50' : ''}`;
 
-      {/* Category */}
-      <div>
-        <p className="text-white text-[10px] uppercase tracking-widest mb-1">Category</p>
-        <select
-          value={category || ''}
-          onChange={e => onCategoryChange?.(e.target.value)}
-          onBlur={onSave}
-          disabled={isLocked}
-          className={`w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-white/20 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''} ${!category ? 'text-white/30' : ''}`}
-        >
-          <option value="">Select a category…</option>
-          {categories.map(cat => (
-            <option key={cat.id} value={cat.name} className="text-white">{cat.name}</option>
-          ))}
-        </select>
+  return (
+    <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4 md:p-5">
+      <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#23c7be]">Episode</p>
+          <p className="mt-1 text-sm text-white/40">Publication details and episode identity</p>
+        </div>
+        {isLocked && <span className="rounded-[3px] border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-black uppercase tracking-wider text-white/45">Locked</span>}
       </div>
-      
-      {/* Poster Image */}
-      <div>
-        <p className="text-white text-[10px] uppercase tracking-widest mb-2">Poster Image</p>
-        {posterImage ? (
-          <div className="relative w-32 h-48 rounded-xl overflow-hidden">
-            <img src={posterImage} alt="Poster" className="w-full h-full object-cover" />
-            <button
-              onClick={() => onPosterChange?.(null)}
-              className="absolute top-1 right-1 w-6 h-6 bg-black/70 rounded-full flex items-center justify-center"
+
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_160px]">
+        <div className="space-y-4">
+          <div>
+            <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">Category</p>
+            <select
+              value={category || ''}
+              onChange={e => onCategoryChange?.(e.target.value)}
+              onBlur={onSave}
+              disabled={isLocked}
+              className={`${fieldClass} ${!category ? 'text-white/35' : ''}`}
             >
-              <X size={12} className="text-white" />
-            </button>
+              <option value="">Select a category…</option>
+              {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+            </select>
           </div>
-        ) : (
-          <label className="w-32 h-48 border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-white/40 transition-colors">
-            <Film size={24} className="text-white" />
-            <span className="text-white text-xs">Upload</span>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={async e => {
-                const file = e.target.files[0];
-                if (file) {
-                  const { file_url } = await base44.integrations.Core.UploadFile({ file });
-                  onPosterChange?.(file_url);
-                }
-              }}
+
+          <div>
+            <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">Series Description</p>
+            <textarea
+              value={seriesDesc || ''}
+              onChange={e => onSeriesChange?.(e.target.value)}
+              onBlur={onSave}
+              placeholder="Describe the series…"
+              rows={3}
+              disabled={isLocked}
+              className={`${fieldClass} resize-none`}
             />
-          </label>
-        )}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">Poster Image</p>
+          {posterImage ? (
+            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-[3px] border border-white/10 bg-black">
+              <img src={posterImage} alt="Poster" className="h-full w-full object-cover" />
+              {!isLocked && (
+                <button onClick={() => onPosterChange?.(null)} className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-[3px] bg-black/75 text-white/70 hover:text-white">
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          ) : (
+            <label className={`flex aspect-[2/3] w-full flex-col items-center justify-center gap-2 rounded-[3px] border border-dashed border-white/15 bg-black/20 transition ${isLocked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#23c7be]/50 hover:bg-black/30'}`}>
+              <Film size={24} className="text-[#23c7be]" />
+              <span className="text-xs font-bold text-white/55">Upload poster</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={isLocked}
+                onChange={async e => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                    onPosterChange?.(file_url);
+                  }
+                }}
+              />
+            </label>
+          )}
+        </div>
       </div>
-      
-      {/* Series Description */}
-      <div>
-        <p className="text-white text-[10px] uppercase tracking-widest mb-1">Series Description</p>
-        <textarea
-          value={seriesDesc || ''}
-          onChange={e => onSeriesChange?.(e.target.value)}
-          onBlur={onSave}
-          placeholder="Describe the series…"
-          rows={2}
-          disabled={isLocked}
-          className={`w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 resize-none ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-        />
-      </div>
-      
-      <div className="flex items-center gap-2">
+
+      <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
         <input
           value={episodeTitle}
           onChange={e => onTitleChange(e.target.value)}
           placeholder="Episode title…"
           disabled={isLocked}
-          className={`flex-1 bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={fieldClass}
         />
         <button
           onClick={onSave}
           disabled={isLocked || !episodeTitle?.trim()}
-          className="px-6 py-3 bg-red-600 hover:bg-red-500 disabled:opacity-50 rounded-xl text-white text-sm font-semibold transition-colors"
+          className="min-w-[110px] rounded-[3px] border border-[#23c7be] bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:border-white/10 disabled:bg-white/[0.05] disabled:text-white/30"
         >
-          {saving ? '...' : 'Save'}
+          {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
+
       <textarea
         value={episodeDesc}
         onChange={e => onDescChange(e.target.value)}
         onBlur={onSave}
         placeholder="Episode description…"
-        rows={2}
+        rows={3}
         disabled={isLocked}
-        className={`w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`${fieldClass} mt-3 resize-none`}
       />
-      
-      <div className="pt-2 border-t border-white/10">
+
+      <div className="mt-4 border-t border-white/10 pt-4">
         <ProjectCreditsFields
           dark
           disabled={isLocked}
@@ -136,17 +144,17 @@ export default function EpisodeMetadataDisplay({
         />
       </div>
 
-      <div>
-        <p className="text-white text-[10px] uppercase tracking-widest mb-1">Publication Date</p>
+      <div className="mt-4 border-t border-white/10 pt-4">
+        <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">Publication Date</p>
         <input
           type="date"
           value={publicationDate || ''}
           onChange={e => onPubDateChange?.(e.target.value)}
           onBlur={onSave}
           disabled={isLocked}
-          className={`w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={fieldClass}
         />
       </div>
-    </div>
+    </section>
   );
 }
