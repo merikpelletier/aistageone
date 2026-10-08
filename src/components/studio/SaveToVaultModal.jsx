@@ -67,130 +67,167 @@ export default function SaveToVaultModal({ userEmail, imageUrl, mediaType = 'ima
     }
   };
 
+  const folderButtonClass = (selected) => (
+    `w-full min-h-[42px] flex items-center gap-3 px-3 py-2 border text-left transition-colors ${
+      selected
+        ? 'bg-[rgba(35,199,190,.08)] border-[var(--studio-accent)]'
+        : 'bg-[rgba(255,255,255,.03)] border-[var(--studio-border)] hover:bg-[rgba(255,255,255,.06)] hover:border-[var(--studio-border-strong)]'
+    }`
+  );
+
   const modal = (
-    <div className="fixed inset-0 z-[99999] bg-black/95 flex flex-col text-white">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-10 pb-4 border-b border-white/10 flex-shrink-0">
-        <h3 className="text-white text-sm font-bold tracking-widest uppercase">Save to Vault</h3>
-        <button onClick={onClose} className="p-2 text-white hover:text-white">
-          <X size={20} />
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
-        {/* Name */}
-        <div>
-          <p className="text-white text-xs font-bold uppercase tracking-wider mb-2">Name</p>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Name this file…"
-            className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white text-sm font-semibold placeholder-white/30 focus:outline-none focus:border-yellow-400"
-          />
+    <div className="fixed inset-0 z-[99999] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 text-[var(--studio-text)]">
+      <div className="studio-panel w-full max-w-4xl max-h-[calc(100dvh-24px)] sm:max-h-[calc(100dvh-48px)] overflow-hidden flex flex-col shadow-[0_24px_80px_rgba(0,0,0,.55)]">
+        {/* Header */}
+        <div className="studio-tool-header flex-shrink-0">
+          <div className="min-w-0">
+            <div className="studio-tool-eyebrow mb-1">Vault</div>
+            <h3 className="studio-tool-title uppercase tracking-[0.08em]">Save to Vault</h3>
+          </div>
+          <button onClick={onClose} className="studio-icon-button flex-shrink-0" aria-label="Close Save to Vault">
+            <X size={18} />
+          </button>
         </div>
 
-        {/* Preview */}
-        <div className="rounded-2xl overflow-hidden bg-white/5 relative">
-          {mediaType === 'video' ? (
-            <video src={imageUrl} controls className="w-full max-h-[40vh] object-contain bg-black" />
-          ) : mediaType === 'audio' ? (
-            <div className="w-full max-h-[40vh] bg-black flex flex-col items-center justify-center gap-3 py-10">
-              <Volume2 size={40} className="text-yellow-400" />
-              <audio src={imageUrl} controls className="w-full max-w-sm" />
-            </div>
-          ) : (
-            <img src={imageUrl} alt="Generated result" className="w-full max-h-[40vh] object-contain bg-black" />
-          )}
-          <a href={imageUrl} target="_blank" rel="noopener noreferrer"
-            className="absolute top-2 right-2 flex items-center gap-1 bg-black/70 text-white text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-black/90">
-            <ExternalLink size={12} /> Open full
-          </a>
-        </div>
-
-        {/* Folder picker */}
-        <div className="space-y-2">
-          <p className="text-white text-xs font-bold uppercase tracking-wider">Save to folder</p>
-
-          {loading ? (
-            <div className="flex justify-center py-4"><Loader2 size={18} className="animate-spin text-white" /></div>
-          ) : (
-            <>
-              {/* Unfiled */}
-              <button
-                onClick={() => setSelectedFolderId(null)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${selectedFolderId === null ? 'border-yellow-400 bg-yellow-400/10' : 'border-white/10 bg-white/5'}`}
-              >
-                <Folder size={16} className="text-white" />
-                <span className="text-white text-sm font-semibold flex-1 text-left">Unfiled</span>
-                {selectedFolderId === null && <Check size={16} className="text-yellow-400" />}
-              </button>
-
-              {/* Existing folders */}
-              {folders.map(f => {
-                const color = FOLDER_COLORS.find(c => c.key === f.color) || FOLDER_COLORS[0];
-                const sel = selectedFolderId === f.id;
-                return (
-                  <button key={f.id}
-                    onClick={() => setSelectedFolderId(f.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${sel ? 'border-yellow-400 bg-yellow-400/10' : 'border-white/10 bg-white/5'}`}
-                  >
-                    <span className={`w-3 h-3 rounded-full ${color.dot}`} />
-                    <span className="text-white text-sm font-semibold flex-1 text-left truncate">{f.name}</span>
-                    {sel && <Check size={16} className="text-yellow-400" />}
-                  </button>
-                );
-              })}
-
-              {/* Create new folder toggle */}
-              <button
-                onClick={() => setShowCreate(s => !s)}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed border-white/20 bg-transparent hover:border-white/40 transition-all"
-              >
-                <FolderPlus size={16} className="text-white" />
-                <span className="text-white text-sm font-semibold flex-1 text-left">Create new folder</span>
-              </button>
-
-              {showCreate && (
-                <div className="space-y-3 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
-                  <input
-                    value={newName}
-                    onChange={e => setNewName(e.target.value)}
-                    placeholder="Folder name…"
-                    className="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-white/30 focus:outline-none focus:border-yellow-400"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    {FOLDER_COLORS.map(c => (
-                      <button key={c.key}
-                        onClick={() => setNewColor(c.key)}
-                        className={`w-7 h-7 rounded-full ${c.dot} ${newColor === c.key ? `ring-2 ring-offset-2 ring-offset-black ${c.ring}` : ''}`}
-                      />
-                    ))}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5">
+          <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_320px] md:items-start">
+            {/* Preview */}
+            <section className="min-w-0 space-y-2">
+              <p className="studio-tool-eyebrow">Preview</p>
+              <div className="studio-panel-secondary relative overflow-hidden min-h-[220px] flex items-center justify-center bg-black/25">
+                {mediaType === 'video' ? (
+                  <video src={imageUrl} controls className="w-full max-h-[58vh] object-contain bg-black" />
+                ) : mediaType === 'audio' ? (
+                  <div className="w-full min-h-[260px] flex flex-col items-center justify-center gap-4 p-6 bg-black/20">
+                    <div className="w-14 h-14 border border-[var(--studio-border-strong)] bg-[var(--studio-surface-3)] flex items-center justify-center">
+                      <Volume2 size={26} className="text-[var(--studio-accent)]" />
+                    </div>
+                    <audio src={imageUrl} controls className="w-full max-w-sm" />
                   </div>
-                  <button
-                    onClick={handleCreateFolder}
-                    disabled={!newName.trim() || creating}
-                    className="w-full py-2 bg-yellow-400 text-black font-bold rounded-lg disabled:opacity-40 flex items-center justify-center gap-2"
-                  >
-                    {creating ? <Loader2 size={14} className="animate-spin" /> : <FolderPlus size={14} />}
-                    Create folder
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+                ) : (
+                  <img src={imageUrl} alt="Generated result" className="w-full max-h-[58vh] object-contain bg-black" />
+                )}
+                <a
+                  href={imageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute top-3 right-3 studio-button studio-button-secondary !min-h-0 h-8 !px-3 text-[11px]"
+                >
+                  <ExternalLink size={13} /> Open full
+                </a>
+              </div>
+            </section>
 
-      {/* Footer save button */}
-      <div className="px-4 pb-8 pt-3 border-t border-white/10 flex-shrink-0">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full py-4 bg-yellow-400 text-black font-bold rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2"
-        >
-          {saving ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-          {saving ? 'Saving…' : 'Save to Vault'}
-        </button>
+            {/* Details */}
+            <section className="min-w-0 space-y-5">
+              <div className="space-y-2">
+                <label htmlFor="vault-asset-name" className="studio-tool-eyebrow block">Name</label>
+                <input
+                  id="vault-asset-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Name this file…"
+                  className="studio-input w-full h-[var(--studio-control-height)] px-3 text-sm font-semibold placeholder:text-[var(--studio-text-faint)]"
+                />
+              </div>
+
+              {/* Folder picker */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="studio-tool-eyebrow">Save to folder</p>
+                  {!loading && (
+                    <button
+                      onClick={() => setShowCreate(s => !s)}
+                      className="text-[11px] font-bold text-[var(--studio-accent)] hover:text-[var(--studio-accent-hover)] transition-colors"
+                    >
+                      {showCreate ? 'Cancel' : '+ New folder'}
+                    </button>
+                  )}
+                </div>
+
+                {loading ? (
+                  <div className="studio-panel-secondary h-[84px] flex items-center justify-center">
+                    <Loader2 size={18} className="animate-spin text-[var(--studio-accent)]" />
+                  </div>
+                ) : (
+                  <div className="studio-panel-secondary overflow-hidden">
+                    <div className="max-h-[220px] overflow-y-auto p-2 space-y-1.5">
+                      <button
+                        onClick={() => setSelectedFolderId(null)}
+                        className={folderButtonClass(selectedFolderId === null)}
+                      >
+                        <Folder size={16} className={selectedFolderId === null ? 'text-[var(--studio-accent)]' : 'text-[var(--studio-text-muted)]'} />
+                        <span className="text-sm font-semibold flex-1 truncate">Unfiled</span>
+                        {selectedFolderId === null && <Check size={16} className="text-[var(--studio-accent)]" />}
+                      </button>
+
+                      {folders.map(f => {
+                        const color = FOLDER_COLORS.find(c => c.key === f.color) || FOLDER_COLORS[0];
+                        const selected = selectedFolderId === f.id;
+                        return (
+                          <button
+                            key={f.id}
+                            onClick={() => setSelectedFolderId(f.id)}
+                            className={folderButtonClass(selected)}
+                          >
+                            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${color.dot}`} />
+                            <span className="text-sm font-semibold flex-1 truncate">{f.name}</span>
+                            {selected && <Check size={16} className="text-[var(--studio-accent)]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {showCreate && (
+                  <div className="studio-panel-secondary p-3 space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[var(--studio-text-muted)]">
+                      <FolderPlus size={15} className="text-[var(--studio-accent)]" />
+                      Create new folder
+                    </div>
+                    <input
+                      value={newName}
+                      onChange={e => setNewName(e.target.value)}
+                      placeholder="Folder name…"
+                      className="studio-input w-full h-[var(--studio-control-height)] px-3 text-sm placeholder:text-[var(--studio-text-faint)]"
+                    />
+                    <div className="flex flex-wrap gap-2" aria-label="Folder color">
+                      {FOLDER_COLORS.map(c => (
+                        <button
+                          key={c.key}
+                          onClick={() => setNewColor(c.key)}
+                          className={`w-7 h-7 rounded-full ${c.dot} ${newColor === c.key ? `ring-2 ring-offset-2 ring-offset-[var(--studio-surface-2)] ${c.ring}` : 'opacity-70 hover:opacity-100'}`}
+                          aria-label={`${c.key} folder color`}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      onClick={handleCreateFolder}
+                      disabled={!newName.trim() || creating}
+                      className="studio-button studio-button-secondary w-full"
+                    >
+                      {creating ? <Loader2 size={14} className="animate-spin" /> : <FolderPlus size={14} />}
+                      {creating ? 'Creating…' : 'Create folder'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 border-t border-[var(--studio-border)] bg-[var(--studio-surface)] px-4 sm:px-5 py-3 flex items-center justify-end">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="studio-button studio-button-primary w-full sm:w-auto sm:min-w-[180px]"
+          >
+            {saving ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} />}
+            {saving ? 'Saving…' : 'Save to Vault'}
+          </button>
+        </div>
       </div>
     </div>
   );
