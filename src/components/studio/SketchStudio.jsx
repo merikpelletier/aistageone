@@ -25,6 +25,7 @@ export default function SketchStudio({ user }) {
   const [photoFile, setPhotoFile] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [selectedStyleIndex, setSelectedStyleIndex] = useState(null);
   const [duration, setDuration] = useState(5);
   const [aspectRatio, setAspectRatio] = useState('9:16');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -35,31 +36,19 @@ export default function SketchStudio({ user }) {
   const { balance, refresh: refreshBalance } = useTokenBalance(user?.email);
 
   const isImageStage = selected?.output_type === 'image';
+  const styles = Array.isArray(selected?.styles) ? selected.styles.filter(s => s?.name && s?.prompt) : [];
+  const selectedStyle = selectedStyleIndex !== null ? styles[selectedStyleIndex] : null;
+  const activeImagePrompt = (selectedStyle?.prompt || selected?.image_prompt || '').trim();
   const currentEngine = (selected?.transformation_prompt || '').trim() ? 'kling_morph' : 'kling';
   const pricingInput = isImageStage
-    ? {
-        prompt: (selected?.image_prompt || '').trim(),
-        reference_image_urls: photoUrl ? [photoUrl] : undefined,
-        aspect_ratio: aspectRatio,
-      }
-    : {
-        prompt: (selected?.video_prompt || '').trim(),
-        image_url: photoUrl || undefined,
-        duration,
-        resolution: '720p',
-        aspect_ratio: aspectRatio,
-        generate_audio: currentEngine === 'kling_morph',
-      };
+    ? { prompt: activeImagePrompt, reference_image_urls: photoUrl ? [photoUrl] : undefined, aspect_ratio: aspectRatio }
+    : { prompt: (selected?.video_prompt || '').trim(), image_url: photoUrl || undefined, duration, resolution: '720p', aspect_ratio: aspectRatio, generate_audio: currentEngine === 'kling_morph' };
 
   const service = isImageStage ? 'replicateGenerate:compose_scene' : `generateVideo:${currentEngine}`;
   const kind = isImageStage ? 'image' : 'video';
-  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
-    service, kind, input: pricingInput, enabled: Boolean(selected),
-  });
+  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({ service, kind, input: pricingInput, enabled: Boolean(selected) });
   const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
-  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
-    service, kind, input: pricingInput, modelKey: effectiveModel, enabled: Boolean(selected),
-  });
+  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({ service, kind, input: pricingInput, modelKey: effectiveModel, enabled: Boolean(selected) && (!isImageStage || styles.length === 0 || selectedStyleIndex !== null) });
   const cost = priceQuote?.credits ?? null;
   const insufficient = balance !== null && cost !== null && balance < cost;
 
@@ -90,6 +79,7 @@ export default function SketchStudio({ user }) {
   const openTheme = (theme) => {
     if (!photoUrl) { toast.error('Upload your photo first'); return; }
     setSelected({ ...theme, output_type: theme.output_type || 'video' });
+    setSelectedStyleIndex(null);
     setSelectedModel(null);
     setResult(null);
     setDuration(theme.default_duration || 5);
@@ -105,11 +95,8 @@ export default function SketchStudio({ user }) {
       URL.revokeObjectURL(url);
       const imgAspect = img.width / img.height;
       let cropW, cropH, sx, sy;
-      if (imgAspect > targetAspect) {
-        cropH = img.height; cropW = img.height * targetAspect; sx = (img.width - cropW) / 2; sy = 0;
-      } else {
-        cropW = img.width; cropH = img.width / targetAspect; sx = 0; sy = (img.height - cropH) / 2;
-      }
+      if (imgAspect > targetAspect) { cropH = img.height; cropW = img.height * targetAspect; sx = (img.width - cropW) / 2; sy = 0; }
+      else { cropW = img.width; cropH = img.width / targetAspect; sx = 0; sy = (img.height - cropH) / 2; }
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(cropW); canvas.height = Math.round(cropH);
       canvas.getContext('2d').drawImage(img, sx, sy, cropW, cropH, 0, 0, canvas.width, canvas.height);
@@ -124,23 +111,17 @@ export default function SketchStudio({ user }) {
 
   const handleGenerate = async () => {
     if (!selected || !photoUrl) return;
+    if (isImageStage && styles.length > 0 && selectedStyleIndex === null) { toast.error('Choose a style first'); return; }
     setIsGenerating(true);
     try {
       if (isImageStage) {
-        const prompt = (selected.image_prompt || '').trim();
-        if (!prompt) throw new Error('This Stage has no image prompt set.');
+        if (!activeImagePrompt) throw new Error('This Stage has no image prompt set.');
         const res = await base44.functions.invoke('replicateGenerate', {
-          method: 'compose_scene',
-          prompt,
-          reference_image_urls: [photoUrl],
-          aspect_ratio: aspectRatio,
-          model_key: effectiveModel || undefined,
+          method: 'compose_scene', prompt: activeImagePrompt, reference_image_urls: [photoUrl], aspect_ratio: aspectRatio, model_key: effectiveModel || undefined,
         });
         const url = res?.data?.file_url || res?.file_url;
         if (!url) throw new Error(res?.data?.error || 'Image generation returned no URL');
-        setResult(url);
-        refreshBalance();
-        return;
+        setResult(url); refreshBalance(); return;
       }
 
       const useMorph = !!(selected.transformation_prompt || '').trim();
@@ -167,15 +148,8 @@ export default function SketchStudio({ user }) {
       }
 
       const res = await base44.functions.invoke('generateVideo', {
-        prompt,
-        image_url: genImage,
-        duration,
-        aspect_ratio: aspectRatio,
-        resolution: '720p',
-        use_as_reference: true,
-        engine: useMorph ? 'kling_morph' : 'kling',
-        transformation_prompt: useMorph ? morphPrompt : undefined,
-        model_key: effectiveModel || undefined,
+        prompt, image_url: genImage, duration, aspect_ratio: aspectRatio, resolution: '720p', use_as_reference: true,
+        engine: useMorph ? 'kling_morph' : 'kling', transformation_prompt: useMorph ? morphPrompt : undefined, model_key: effectiveModel || undefined,
       });
       if (res.data?.file_url) { setResult(res.data.file_url); refreshBalance(); }
       else throw new Error(res.data?.error || 'Failed to generate Stage');
@@ -183,15 +157,13 @@ export default function SketchStudio({ user }) {
       const data = err?.response?.data || {};
       const msg = data.error || data.message || err?.message || 'Generation failed';
       if (data.error === 'Insufficient tokens' || /insufficient tokens/i.test(String(msg))) {
-        toast.error('Not enough credits — buy more to generate.');
-        setShowBuyTokens(true);
-        refreshBalance();
+        toast.error('Not enough credits — buy more to generate.'); setShowBuyTokens(true); refreshBalance();
       } else toast.error(msg);
     } finally { setIsGenerating(false); }
   };
 
   const handleSavedToVault = () => {
-    setShowSaveVault(false); setResult(null); setSelected(null);
+    setShowSaveVault(false); setResult(null); setSelected(null); setSelectedStyleIndex(null);
     qc.invalidateQueries({ queryKey: ['vaultAssets', user?.email] });
   };
 
@@ -219,9 +191,11 @@ export default function SketchStudio({ user }) {
 
   return <div className="w-full bg-[#202328] px-4 py-5 pb-28 text-white lg:pb-32">
     <div className="mx-auto max-w-5xl">
-      <button onClick={() => { setSelected(null); setResult(null); }} className="mb-4 flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white"><ChevronLeft size={20}/> Back to Stages</button>
+      <button onClick={() => { setSelected(null); setResult(null); setSelectedStyleIndex(null); }} className="mb-4 flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white"><ChevronLeft size={20}/> Back to Stages</button>
       <div className="rounded-[4px] border border-white/10 bg-[#17191d] p-5 md:p-6">
         <div className="mb-5 flex gap-3 border-b border-white/10 pb-4"><img src={photoUrl} alt="you" className="h-16 w-16 flex-shrink-0 rounded-[3px] object-cover"/><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-wide text-[#23c7be]"><User size={12} className="mr-1 inline"/>{isImageStage ? 'Image Stage' : 'Video Stage'}</p><h3 className="mt-1 text-lg font-black text-white">{selected.name}</h3>{selected.description && <p className="mt-1 text-sm text-white/45">{selected.description}</p>}<p className="mt-2 line-clamp-3 text-xs text-white/65">{selected.scenario}</p></div></div>
+
+        {isImageStage && styles.length > 0 && <div className="mb-5"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Choose a style</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{styles.map((style, index) => <button key={`${style.name}-${index}`} onClick={() => { setSelectedStyleIndex(index); setResult(null); }} className={`overflow-hidden rounded-[3px] border text-left transition ${selectedStyleIndex === index ? 'border-[#23c7be] bg-[#23c7be]/10 shadow-[inset_2px_0_0_#23c7be]' : 'border-white/10 bg-white/[0.03] hover:border-white/25'}`}>{style.preview_image ? <img src={style.preview_image} alt={style.name} className="aspect-[4/3] w-full object-cover"/> : <div className="flex aspect-[4/3] items-center justify-center bg-[#202328]"><ImageIcon size={24} className="text-[#23c7be]"/></div>}<div className="px-3 py-2 text-xs font-black text-white">{style.name}</div></button>)}</div></div>}
 
         <div className="mb-5 space-y-2"><p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/50">AI Model</p><select value={effectiveModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={modelsLoading || modelOptions.length === 0} className="w-full rounded-[3px] border border-white/15 bg-black/25 px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#23c7be] disabled:opacity-50">{modelsLoading && <option value="">Loading models…</option>}{!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}{modelOptions.map(m => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}</select></div>
 
@@ -230,10 +204,10 @@ export default function SketchStudio({ user }) {
           <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Aspect</p><div className="flex gap-2">{['16:9','9:16','1:1'].map(r => <button key={r} onClick={() => setAspectRatio(r)} className={`flex-1 rounded-[3px] border py-2.5 text-xs font-black ${aspectRatio === r ? 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.04] text-white/65'}`}>{r}</button>)}</div></div>
         </div>
 
-        <div className="mb-4 flex flex-col gap-1.5 rounded-[3px] border border-white/10 bg-black/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs font-bold text-white/70">Cost: <span className="text-[#8ee9e4]">{priceLoading ? 'Calculating…' : cost !== null ? `${cost} credits` : '…'}</span></p><p className="text-xs font-bold text-white/70">Balance: <span className={insufficient ? 'text-red-400' : 'text-[#8ee9e4]'}>{balance !== null ? `${balance} credits` : '…'}</span></p></div>
+        <div className="mb-4 flex flex-col gap-1.5 rounded-[3px] border border-white/10 bg-black/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs font-bold text-white/70">Cost: <span className="text-[#8ee9e4]">{styles.length > 0 && selectedStyleIndex === null ? 'Choose style' : priceLoading ? 'Calculating…' : cost !== null ? `${cost} credits` : '…'}</span></p><p className="text-xs font-bold text-white/70">Balance: <span className={insufficient ? 'text-red-400' : 'text-[#8ee9e4]'}>{balance !== null ? `${balance} credits` : '…'}</span></p></div>
         {insufficient && <button onClick={() => setShowBuyTokens(true)} className="mb-3 flex w-full items-center justify-center gap-2 rounded-[3px] border border-red-400/30 bg-red-400/10 py-3 font-bold text-red-200"><Coins size={18}/> Not enough credits — Buy more</button>}
 
-        {!result ? <button onClick={handleGenerate} disabled={isGenerating || insufficient} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-4 font-black text-[#071211] disabled:bg-white/[0.05] disabled:text-white/30">{isGenerating ? <><Loader2 size={20} className="animate-spin"/> Generating…</> : <><Sparkles size={20}/> Generate {isImageStage ? 'Image' : 'Video'}</>}</button> : <div className="space-y-4"><div className="flex min-h-[320px] items-center justify-center rounded-[4px] border border-white/10 bg-black p-3">{isImageStage ? <img src={result} alt={selected.name} className="max-h-[700px] max-w-full object-contain"/> : <video src={result} controls className="w-full rounded-[3px]"/>}</div><div className="flex gap-3"><button onClick={() => setResult(null)} className="flex-1 rounded-[3px] border border-white/10 bg-white/[0.04] py-3 font-bold text-white">Regenerate</button><button onClick={() => setShowSaveVault(true)} className="flex flex-1 items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3 font-black text-[#071211]"><CheckCircle2 size={20}/> Save to Vault</button></div></div>}
+        {!result ? <button onClick={handleGenerate} disabled={isGenerating || insufficient || (isImageStage && styles.length > 0 && selectedStyleIndex === null)} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-4 font-black text-[#071211] disabled:bg-white/[0.05] disabled:text-white/30">{isGenerating ? <><Loader2 size={20} className="animate-spin"/> Generating…</> : <><Sparkles size={20}/> {isImageStage && styles.length > 0 && selectedStyleIndex === null ? 'Choose a style' : `Generate ${isImageStage ? 'Image' : 'Video'}`}</>}</button> : <div className="space-y-4"><div className="flex min-h-[320px] items-center justify-center rounded-[4px] border border-white/10 bg-black p-3">{isImageStage ? <img src={result} alt={selected.name} className="max-h-[700px] max-w-full object-contain"/> : <video src={result} controls className="w-full rounded-[3px]"/>}</div><div className="flex gap-3"><button onClick={() => setResult(null)} className="flex-1 rounded-[3px] border border-white/10 bg-white/[0.04] py-3 font-bold text-white">Regenerate</button><button onClick={() => setShowSaveVault(true)} className="flex flex-1 items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3 font-black text-[#071211]"><CheckCircle2 size={20}/> Save to Vault</button></div></div>}
       </div>
 
       {showSaveVault && result && <SaveToVaultModal userEmail={user?.email} imageUrl={result} mediaType={isImageStage ? 'image' : 'video'} onClose={() => setShowSaveVault(false)} onSaved={handleSavedToVault}/>} 
