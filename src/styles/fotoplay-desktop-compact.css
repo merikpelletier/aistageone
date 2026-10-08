@@ -1,0 +1,195 @@
+/* FotoPlay desktop: dense production workspace, scoped to the 1800px Author workspace. */
+@media (min-width: 1024px) {
+  /* Remove the redundant Studio banner (creator / tool name / Creative workspace). */
+  .studio-shell main > div.min-h-\[calc\(100vh-4rem\)\] > div.relative.z-10 > div.px-5.md\:px-7.pt-6.pb-5.relative {
+    display: none !important;
+  }
+
+  /* Author production root. */
+  .studio-shell main div[class*="max-w-[1800px]"] {
+    max-width: none !important;
+    padding: 10px 12px 36px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] > header {
+    margin-bottom: 8px !important;
+    gap: 6px !important;
+    min-height: 0 !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] > header h2 {
+    font-size: 20px !important;
+    line-height: 1.05 !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] > header p {
+    display: none !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] > header button,
+  .studio-shell main div[class*="max-w-[1800px]"] > header a {
+    min-height: 30px !important;
+    padding: 5px 8px !important;
+    border-radius: 3px !important;
+    font-size: 10px !important;
+  }
+
+  /* Chapter rail. */
+  .studio-shell main div[class*="max-w-[1800px]"] > div[class*="flex w-full flex-wrap"] {
+    padding: 5px !important;
+    gap: 4px !important;
+    border-radius: 4px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] > div[class*="flex w-full flex-wrap"] button {
+    min-height: 28px !important;
+    padding: 5px 8px !important;
+    border-radius: 3px !important;
+    font-size: 10px !important;
+  }
+
+  /* Chapter container and segment navigation. */
+  .studio-shell main div[class*="max-w-[1800px]"] main > section {
+    border-radius: 5px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] main > section > div[class*="border-b"] {
+    padding: 9px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] main > section > div[class*="border-b"] textarea {
+    min-height: 52px !important;
+    height: 52px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] main > section > div[class*="border-b"] div[class*="grid-cols-9"] {
+    gap: 4px !important;
+    margin-top: 8px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] main > section > div[class*="border-b"] div[class*="grid-cols-9"] button {
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+    border-radius: 3px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] main > section > div[class*="p-4"],
+  .studio-shell main div[class*="max-w-[1800px]"] main > section > div[class*="lg:p-6"] {
+    padding: 9px !important;
+  }
+
+  /* Segment card. */
+  .studio-shell main div[class*="max-w-[1800px]"] article[class*="border-white/10"][class*="bg-white/5"] {
+    padding: 10px !important;
+    border-radius: 4px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] article[class*="border-white/10"][class*="bg-white/5"] > div[class*="mb-5"] {
+    margin-bottom: 8px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] article[class*="border-white/10"][class*="bg-white/5"] > div[class*="mb-5"] > span {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 3px !important;
+  }
+
+  /* First two production sections side-by-side on desktop; complex visual work remains full width. */
+  .studio-shell main div[class*="max-w-[1800px]"] article[class*="border-white/10"][class*="bg-white/5"] > div[class*="space-y-6"] {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] article[class*="border-white/10"][class*="bg-white/5"] > div[class*="space-y-6"] > section {
+    margin-top: 0 !important;
+    min-width: 0 !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] article[class*="border-white/10"][class*="bg-white/5"] > div[class*="space-y-6"] > section:nth-child(n+3) {
+    grid-column: 1 / -1 !important;
+  }
+
+  /* Compact controls everywhere in FotoPlay Author. */
+  .studio-shell main div[class*="max-w-[1800px]"] input,
+  .studio-shell main div[class*="max-w-[1800px]"] select,
+  .studio-shell main div[class*="max-w-[1800px]"] textarea {
+    border-radius: 3px !important;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] input,
+  .studio-shell main div[class*="max-w-[1800px]"] select {
+    min-height: 31px !important;
+    padding: 5px 8px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] textarea {
+    min-height: 54px !important;
+    padding: 7px 8px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] textarea[rows="6"] {
+    height: 76px !important;
+  }
+
+  /* Readable native menus, including Draft / Rewrite / Shorten / Expand. */
+  .studio-shell main div[class*="max-w-[1800px]"] select {
+    color-scheme: dark !important;
+    background: #17191d !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,.16) !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] select option,
+  .studio-shell main div[class*="max-w-[1800px]"] select optgroup {
+    background-color: #17191d !important;
+    color: #fff !important;
+  }
+
+  /* Buttons. */
+  .studio-shell main div[class*="max-w-[1800px]"] button[class*="py-2.5"],
+  .studio-shell main div[class*="max-w-[1800px]"] button[class*="py-3"] {
+    min-height: 30px !important;
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+    border-radius: 3px !important;
+    font-size: 10px !important;
+  }
+
+  /* Set / cast choice cards. */
+  .studio-shell main div[class*="max-w-[1800px]"] article div[class*="grid-cols-2"][class*="sm:grid-cols-3"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] article div[class*="grid-cols-2"][class*="sm:grid-cols-3"] button {
+    padding: 5px !important;
+    border-radius: 3px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] article div[class*="grid-cols-2"][class*="sm:grid-cols-3"] button > div[class*="h-9"][class*="w-9"] {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 3px !important;
+  }
+
+  /* Reference galleries and comic panels: stop giant desktop thumbnails. */
+  .studio-shell main div[class*="max-w-[1800px]"] div[class*="grid-cols-3"] button[class*="aspect-square"] {
+    aspect-ratio: 4 / 3 !important;
+    max-height: 92px !important;
+  }
+
+  .studio-shell main div[class*="max-w-[1800px]"] div[class*="md:grid-cols-2"] > div[class*="overflow-hidden"][class*="bg-black"] > div[class*="aspect-square"] {
+    height: 190px !important;
+    aspect-ratio: auto !important;
+  }
+
+  /* Section spacing. */
+  .studio-shell main div[class*="max-w-[1800px]"] h4[class*="mb-3"] { margin-bottom: 6px !important; }
+  .studio-shell main div[class*="max-w-[1800px]"] [class*="mt-4"] { margin-top: 8px !important; }
+  .studio-shell main div[class*="max-w-[1800px]"] [class*="mb-4"] { margin-bottom: 8px !important; }
+  .studio-shell main div[class*="max-w-[1800px]"] [class*="gap-4"] { gap: 8px !important; }
+  .studio-shell main div[class*="max-w-[1800px]"] [class*="gap-3"] { gap: 6px !important; }
+}
