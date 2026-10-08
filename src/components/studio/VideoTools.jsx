@@ -16,12 +16,6 @@ const RATIOS = [
   { id: '1:1', label: 'Square', icon: '🖼️' },
 ];
 
-const MODES = [
-  { id: 'text', label: 'Text to Video', icon: 'Type', desc: 'Describe your scene' },
-  { id: 'image', label: 'Image to Video', icon: 'ImageIcon', desc: 'Animate an image' },
-  { id: 'video', label: 'Video Reference', icon: 'Film', desc: 'Use video as reference' },
-];
-
 const DURATIONS = [
   { id: 5, label: '5s' },
   { id: 10, label: '10s' },
@@ -33,9 +27,8 @@ const RESOLUTIONS = [
 ];
 
 export default function VideoTools({ onComplete, onClose, recommendedTools = [], referenceMedia = [], productionMethod = null, block = null, character = null, initialMode = null, episodePageId, blockId, user, embedded = false }) {
-  // Only show production context if coming from a Dossier production
   const showContext = productionMethod && block;
-  const [mode, setMode] = useState(initialMode || 'text'); // 'text', 'image', or 'video'
+  const [mode, setMode] = useState(initialMode || 'text');
   const [prompt, setPrompt] = useState('');
   const [imagePreview, setImagePreview] = useState(null);
   const [videoPreview, setVideoPreview] = useState(null);
@@ -45,31 +38,22 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [showVaultPicker, setShowVaultPicker] = useState(false);
-  const [vaultPickerTarget, setVaultPickerTarget] = useState(null); // 'image' or 'video'
+  const [vaultPickerTarget, setVaultPickerTarget] = useState(null);
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [userEmail, setUserEmail] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
+
   const quoteService = 'generateVideo:seedance';
   const pricingInput = { duration, resolution, aspect_ratio: aspectRatio, prompt, image_url: imagePreview || undefined, video_url: videoPreview || undefined };
-  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
-    service: quoteService,
-    kind: 'video',
-    input: pricingInput,
-  });
+  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({ service: quoteService, kind: 'video', input: pricingInput });
   const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
-  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
-    service: quoteService,
-    kind: 'video',
-    input: pricingInput,
-    modelKey: effectiveModel,
-  });
+  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({ service: quoteService, kind: 'video', input: pricingInput, modelKey: effectiveModel });
 
   useEffect(() => {
     base44.auth.me().then(u => setUserEmail(u?.email)).catch(() => {});
   }, []);
-  
-  // Auto-select mode based on recommended tools
+
   useEffect(() => {
     if (recommendedTools.length > 0) {
       if (recommendedTools.includes('text_to_video')) setMode('text');
@@ -90,21 +74,11 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
     reader.readAsDataURL(file);
   };
 
-  const handleVaultImageSelect = async (assetUrl) => {
-    setImagePreview(assetUrl);
-    setVideoPreview(null);
-  };
-
-  const handleVaultVideoSelect = async (assetUrl) => {
-    setVideoPreview(assetUrl);
-    setImagePreview(null);
-  };
-
   const handleGenerate = async () => {
     if (mode === 'text' && !prompt.trim()) return;
     if (mode === 'image' && !imagePreview) return;
     if (mode === 'video' && !videoPreview) return;
-    
+
     setIsGenerating(true);
     try {
       const response = await base44.functions.invoke('generateVideo', {
@@ -116,10 +90,7 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
         resolution,
         model_key: effectiveModel || undefined,
       });
-      
-      if (response.data?.file_url) {
-        setResult(response.data.file_url);
-      }
+      if (response.data?.file_url) setResult(response.data.file_url);
     } catch (error) {
       const msg = error.response?.data?.message || error.response?.data?.error;
       toast.error(msg?.includes('Insufficient tokens') ? 'Not enough tokens. Please buy more.' : (msg || 'Failed to generate video'));
@@ -128,20 +99,13 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
     }
   };
 
-  const handleComplete = () => {
-    if (result) {
-      onComplete(result);
-    }
-  };
-
+  const handleComplete = () => result && onComplete(result);
   const handleUseVideo = () => {
     if (!result) return;
     if (!user?.email) { handleComplete(); return; }
     setShowSaveVault(true);
   };
 
-  // After the user picks a folder & the video is saved to the Vault,
-  // also attach it to the scene's episode block (if launched from one).
   const handleVaultSaved = async () => {
     setShowSaveVault(false);
     if (episodePageId && blockId && user?.email) {
@@ -150,16 +114,11 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
         const timelines = await base44.entities.UserTimeline.filter({ episode_page_id: episodePageId, user_email: user.email });
         let timeline = timelines[0];
         if (!timeline) {
-          await base44.entities.UserTimeline.create({
-            episode_page_id: episodePageId,
-            user_email: user.email,
-            block_overrides: [{ block_id: blockId, user_media_url: result, status: 'uploaded' }],
-          });
+          await base44.entities.UserTimeline.create({ episode_page_id: episodePageId, user_email: user.email, block_overrides: [{ block_id: blockId, user_media_url: result, status: 'uploaded' }] });
         } else {
           const existingOverrides = timeline.block_overrides || [];
           const otherBlocks = existingOverrides.filter(b => b.block_id !== blockId);
-          const updatedOverrides = [...otherBlocks, { block_id: blockId, user_media_url: result, status: 'uploaded' }];
-          await base44.entities.UserTimeline.update(timeline.id, { block_overrides: updatedOverrides });
+          await base44.entities.UserTimeline.update(timeline.id, { block_overrides: [...otherBlocks, { block_id: blockId, user_media_url: result, status: 'uploaded' }] });
         }
         toast.success('Video saved to your Vault & episode!');
       } catch (err) {
@@ -172,449 +131,104 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
     handleComplete();
   };
 
+  const activeButton = 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]';
+  const idleButton = 'border-white/10 bg-white/[0.04] text-white/65 hover:bg-white/[0.08]';
+
   return (
-    <div className={`fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] bg-yellow-400 overflow-y-auto' : 'inset-0 bg-black/80 flex items-center justify-center p-4'}`}>
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className={embedded ? 'bg-yellow-400 min-h-full w-full p-5 pb-28 md:p-8 md:pb-28 lg:pb-32 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-8 pb-24 max-w-2xl w-full max-h-[90vh] overflow-y-auto'}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-black text-xl font-bold flex items-center gap-2">
-              <Sparkles className="w-5 h-5" />
-              AI Video Generation
-            </h3>
-            <p className="text-black text-sm">Replicate • Kling/Seedance models</p>
-          </div>
-          {!embedded && (
-            <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
-              <X size={20} className="text-black" />
-            </button>
-          )}
-        </div>
-
-        {/* AI Model */}
-        <div className="mb-6">
-          <p className="text-black font-semibold mb-2">AI Model</p>
-          <select
-            value={effectiveModel || ''}
-            onChange={e => setSelectedModel(e.target.value || null)}
-            disabled={modelsLoading || modelOptions.length === 0}
-            className="w-full bg-black text-yellow-400 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
-          >
-            {modelsLoading && <option value="">Loading models…</option>}
-            {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
-            {modelOptions.map(m => (
-              <option key={m.model_key} value={m.model_key}>
-                {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Production Context Info - Only show when in Dossier production mode */}
-        {showContext && (
-          <ProductionContextInfo
-            productionMethod={productionMethod}
-            block={block}
-            character={character}
-            referenceMedia={referenceMedia}
-          />
-        )}
-
-        {/* Mode Selection — hidden when initialMode is locked */}
-        {!initialMode && recommendedTools.length === 0 ? (
-          <div className="mb-6">
-            <p className="text-black font-semibold mb-3">Generation Mode</p>
-            <div className="grid grid-cols-3 gap-3">
-              <button
-                onClick={() => setMode('text')}
-                className={`p-4 rounded-xl flex flex-col items-center gap-2 transition-all ${
-                  mode === 'text' ? 'bg-black text-yellow-400' : 'bg-black/10 text-black hover:bg-black/20'
-                }`}
-              >
-                <Type size={24} />
-                <span className="font-bold text-sm">Text to Video</span>
-              </button>
-              <button
-                onClick={() => setMode('image')}
-                className={`p-4 rounded-xl flex flex-col items-center gap-2 transition-all ${
-                  mode === 'image' ? 'bg-black text-yellow-400' : 'bg-black/10 text-black hover:bg-black/20'
-                }`}
-              >
-                <ImageIcon size={24} />
-                <span className="font-bold text-sm">Image to Video</span>
-              </button>
-              <button
-                onClick={() => setMode('video')}
-                className={`p-4 rounded-xl flex flex-col items-center gap-2 transition-all ${
-                  mode === 'video' ? 'bg-black text-yellow-400' : 'bg-black/10 text-black hover:bg-black/20'
-                }`}
-              >
-                <Video size={24} />
-                <span className="font-bold text-sm">Video Reference</span>
-              </button>
+    <div className={`fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] overflow-y-auto bg-[#202328]' : 'inset-0 flex items-center justify-center bg-black/80 p-4'}`}>
+      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className={embedded ? 'min-h-full w-full overflow-y-auto bg-[#202328] p-5 pb-28 text-white md:p-8 md:pb-28 lg:pb-32' : 'max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[4px] border border-white/10 bg-[#202328] p-6 text-white'}>
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-5 flex items-center justify-between border-b border-white/10 bg-[#17191d] px-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Sparkles size={19} /></div>
+              <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Image & Video</p><h3 className="text-xl font-black text-white">{mode === 'video' ? 'Video Reference' : 'AI Video Generation'}</h3><p className="text-xs text-white/45">Kling / Seedance models</p></div>
             </div>
+            {!embedded && <button onClick={onClose} className="rounded-[3px] border border-white/10 bg-white/[0.04] p-2 text-white hover:bg-white/10"><X size={20} /></button>}
           </div>
-        ) : (
-          <div className="mb-6">
-            <p className="text-black font-semibold mb-3">Recommended Tools for This Block</p>
-            <div className="space-y-2">
-              {recommendedTools.map(tool => (
-                <button
-                  key={tool}
-                  onClick={() => {
-                    if (tool === 'text_to_video') setMode('text');
-                    if (tool === 'image_to_video') setMode('image');
-                    if (tool === 'video_reference') setMode('video');
-                  }}
-                  className={`w-full p-3 rounded-xl flex items-center gap-3 transition-all ${
-                    (tool === 'text_to_video' && mode === 'text') ||
-                    (tool === 'image_to_video' && mode === 'image') ||
-                    (tool === 'video_reference' && mode === 'video')
-                      ? 'bg-black text-yellow-400'
-                      : 'bg-black/10 text-black hover:bg-black/20'
-                  }`}
-                >
-                  {tool === 'text_to_video' && <Type size={20} />}
-                  {tool === 'image_to_video' && <ImageIcon size={20} />}
-                  {tool === 'video_reference' && <Video size={20} />}
-                  <span className="font-bold text-sm">
-                    {tool === 'text_to_video' && 'Text to Video'}
-                    {tool === 'image_to_video' && 'Image to Video'}
-                    {tool === 'video_reference' && 'Video Reference'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* Text Prompt */}
-        {mode === 'text' && (
-          <div className="mb-6">
-            <p className="text-black font-semibold mb-3 flex items-center gap-2">
-              <Type size={16} />
-              Video Prompt
-            </p>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe your video scene in detail..."
-              className="w-full bg-black text-white rounded-xl p-4 min-h-[100px] resize-none focus:outline-none focus:ring-2 focus:ring-yellow-400"
-              maxLength={1000}
-            />
-            <p className="text-black text-xs mt-2 text-right">{prompt.length}/1000 characters</p>
-          </div>
-        )}
+          {showContext && <ProductionContextInfo productionMethod={productionMethod} block={block} character={character} referenceMedia={referenceMedia} />}
 
-        {/* Reference Media from Block */}
-        {referenceMedia.length > 0 && (
-          <div className="mb-6">
-            <p className="text-black font-semibold mb-3 flex items-center gap-2">
-              <Film size={16} />
-              Block Reference Media
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {referenceMedia.map((url, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    if (url.match(/\.(mp4|webm|ogg|mov)$/i)) {
-                      setVideoPreview(url);
-                      setImagePreview(null);
-                      setMode('video');
-                    } else {
-                      setImagePreview(url);
-                      setVideoPreview(null);
-                      setMode('image');
-                    }
-                  }}
-                  className="relative aspect-square rounded-xl overflow-hidden border-2 border-black/20 hover:border-black transition-colors"
-                >
-                  {url.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                    <video src={url} className="w-full h-full object-cover" />
-                  ) : (
-                    <img src={url} alt="" className="w-full h-full object-cover" />
-                  )}
-                  <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Image Upload */}
-        {mode === 'image' && (
-          <div className="mb-6">
-            <p className="text-black font-semibold mb-3 flex items-center gap-2">
-              <ImageIcon size={16} />
-              Reference Image
-            </p>
-            {imagePreview ? (
-              <div className="relative">
-                <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover rounded-xl" />
-                <button
-                  onClick={() => setImagePreview(null)}
-                  className="absolute top-2 right-2 p-2 bg-black/70 rounded-full hover:bg-black transition-colors"
-                >
-                  <X size={16} className="text-white" />
-                </button>
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-black/30 rounded-xl p-8 text-center">
-                <Upload size={32} className="mx-auto text-black mb-3" />
-                <p className="text-black text-sm mb-2">Upload an image</p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <label
-                  htmlFor="image-upload"
-                  className="inline-block px-4 py-2 bg-black text-yellow-400 rounded-lg text-sm font-bold cursor-pointer hover:bg-black/90 transition-colors"
-                >
-                  Choose File
-                </label>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Video Reference — needs both an image (subject) and a video (motion reference) */}
-        {mode === 'video' && (
-          <div className="mb-6 space-y-4">
-            {/* Subject Image */}
-            <div>
-              <p className="text-black font-semibold mb-1 flex items-center gap-2">
-                <ImageIcon size={16} />
-                Subject Image <span className="text-black font-normal text-sm">(your character / scene)</span>
-              </p>
-              {imagePreview ? (
-                <div className="relative">
-                  <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover rounded-xl" />
-                  <button onClick={() => setImagePreview(null)} className="absolute top-2 right-2 p-2 bg-black/70 rounded-full hover:bg-black transition-colors">
-                    <X size={16} className="text-white" />
-                  </button>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-black/30 rounded-xl p-6 text-center space-y-3">
-                  <ImageIcon size={28} className="mx-auto text-black mb-2" />
-                  <p className="text-black text-sm">Upload your image or pick from Vault</p>
-                  <div className="flex items-center justify-center gap-2">
-                    <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} className="hidden" id="image-upload-vref" />
-                    <label htmlFor="image-upload-vref" className="inline-flex items-center gap-2 px-4 py-2 bg-black text-yellow-400 rounded-lg text-sm font-bold cursor-pointer hover:bg-black/90 transition-colors">
-                      <Upload size={14} /> Upload
-                    </label>
-                    <button onClick={() => { setVaultPickerTarget('image'); setShowVaultPicker(true); }} className="inline-flex items-center gap-2 px-4 py-2 bg-black text-yellow-400 rounded-lg text-sm font-bold hover:bg-black/90 transition-colors">
-                      <Folder size={14} /> Vault
-                    </button>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="space-y-4">
+              {!initialMode && recommendedTools.length === 0 && (
+                <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+                  <p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Generation Mode</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[['text','Text to Video',Type],['image','Image to Video',ImageIcon],['video','Video Reference',Video]].map(([id,label,Icon]) => <button key={id} onClick={() => setMode(id)} className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-[3px] border p-3 text-xs font-black transition ${mode === id ? activeButton : idleButton}`}><Icon size={20} />{label}</button>)}
                   </div>
+                </section>
+              )}
+
+              {recommendedTools.length > 0 && (
+                <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+                  <p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Recommended Tools for This Block</p>
+                  <div className="grid gap-2 sm:grid-cols-3">{recommendedTools.map(tool => {
+                    const active = (tool === 'text_to_video' && mode === 'text') || (tool === 'image_to_video' && mode === 'image') || (tool === 'video_reference' && mode === 'video');
+                    const Icon = tool === 'text_to_video' ? Type : tool === 'image_to_video' ? ImageIcon : Video;
+                    const label = tool === 'text_to_video' ? 'Text to Video' : tool === 'image_to_video' ? 'Image to Video' : 'Video Reference';
+                    return <button key={tool} onClick={() => setMode(tool === 'text_to_video' ? 'text' : tool === 'image_to_video' ? 'image' : 'video')} className={`flex items-center gap-2 rounded-[3px] border px-3 py-2.5 text-xs font-black ${active ? activeButton : idleButton}`}><Icon size={16} />{label}</button>;
+                  })}</div>
+                </section>
+              )}
+
+              {mode === 'text' && (
+                <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+                  <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Type size={14} className="text-[#23c7be]" /> Video Prompt</p>
+                  <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe your video scene in detail..." className="min-h-[130px] w-full resize-none rounded-[3px] border border-white/15 bg-black/25 p-4 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" maxLength={1000} />
+                  <p className="mt-2 text-right text-[10px] text-white/35">{prompt.length}/1000 characters</p>
+                </section>
+              )}
+
+              {mode === 'image' && (
+                <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+                  <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><ImageIcon size={14} className="text-[#23c7be]" /> Reference Image</p>
+                  {imagePreview ? <div className="relative overflow-hidden rounded-[4px] border border-white/10 bg-black"><img src={imagePreview} alt="Preview" className="max-h-[430px] w-full object-contain" /><button onClick={() => setImagePreview(null)} className="absolute right-2 top-2 rounded-[3px] bg-black/75 p-2"><X size={15} /></button></div> : <div className="rounded-[4px] border border-dashed border-white/20 bg-black/20 p-8 text-center"><Upload size={30} className="mx-auto mb-3 text-[#23c7be]" /><p className="mb-3 text-sm text-white/70">Upload an image</p><input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} className="hidden" id="image-upload" /><label htmlFor="image-upload" className="inline-block cursor-pointer rounded-[3px] bg-[#23c7be] px-4 py-2 text-sm font-black text-black">Choose File</label></div>}
+                </section>
+              )}
+
+              {mode === 'video' && (
+                <div className="space-y-4">
+                  <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+                    <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><ImageIcon size={14} className="text-[#23c7be]" /> Subject Image <span className="normal-case font-normal">(character / scene)</span></p>
+                    {imagePreview ? <div className="relative overflow-hidden rounded-[4px] border border-white/10 bg-black"><img src={imagePreview} alt="Preview" className="max-h-[330px] w-full object-contain" /><button onClick={() => setImagePreview(null)} className="absolute right-2 top-2 rounded-[3px] bg-black/75 p-2"><X size={15} /></button></div> : <div className="rounded-[4px] border border-dashed border-white/20 bg-black/20 p-6 text-center"><ImageIcon size={28} className="mx-auto mb-3 text-[#23c7be]" /><p className="mb-3 text-sm text-white/55">Upload your image or pick from Vault</p><div className="flex justify-center gap-2"><input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} className="hidden" id="image-upload-vref" /><label htmlFor="image-upload-vref" className="inline-flex cursor-pointer items-center gap-2 rounded-[3px] bg-[#23c7be] px-4 py-2 text-sm font-black text-black"><Upload size={14} /> Upload</label><button onClick={() => { setVaultPickerTarget('image'); setShowVaultPicker(true); }} className="inline-flex items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-white"><Folder size={14} /> Vault</button></div></div>}
+                  </section>
+
+                  <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+                    <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Video size={14} className="text-[#23c7be]" /> Motion Reference Video <span className="normal-case font-normal">(movement)</span></p>
+                    {videoPreview ? <div className="relative overflow-hidden rounded-[4px] border border-white/10 bg-black"><video src={videoPreview} controls className="max-h-[330px] w-full object-contain" /><button onClick={() => setVideoPreview(null)} className="absolute right-2 top-2 rounded-[3px] bg-black/75 p-2"><X size={15} /></button></div> : <div className="space-y-3">
+                      {referenceMedia.filter(url => url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)).length > 0 && <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/40">From Series</p><div className="grid grid-cols-3 gap-2">{referenceMedia.filter(url => url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)).map((url,i) => <button key={i} onClick={() => setVideoPreview(url)} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/10"><video src={url} className="h-full w-full object-cover" muted /><div className="absolute inset-0 flex items-center justify-center bg-black/20"><Play size={16} className="fill-white text-white" /></div></button>)}</div></div>}
+                      <div className="rounded-[4px] border border-dashed border-white/20 bg-black/20 p-6 text-center"><Video size={28} className="mx-auto mb-3 text-[#23c7be]" /><p className="mb-3 text-sm text-white/55">Upload or pick from Vault</p><div className="flex justify-center gap-2"><input type="file" accept="video/*" onChange={(e) => e.target.files?.[0] && handleVideoUpload(e.target.files[0])} className="hidden" id="video-upload" /><label htmlFor="video-upload" className="inline-flex cursor-pointer items-center gap-2 rounded-[3px] bg-[#23c7be] px-4 py-2 text-sm font-black text-black"><Upload size={14} /> Upload</label><button onClick={() => { setVaultPickerTarget('video'); setShowVaultPicker(true); }} className="inline-flex items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-white"><Folder size={14} /> Vault</button></div></div>
+                    </div>}
+                  </section>
                 </div>
+              )}
+
+              {referenceMedia.length > 0 && mode !== 'video' && (
+                <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Block Reference Media</p><div className="grid grid-cols-3 gap-2">{referenceMedia.map((url,i) => <button key={i} onClick={() => { if (url.match(/\.(mp4|webm|ogg|mov)$/i)) { setVideoPreview(url); setImagePreview(null); setMode('video'); } else { setImagePreview(url); setVideoPreview(null); setMode('image'); } }} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/10 hover:border-[#23c7be]/50">{url.match(/\.(mp4|webm|ogg|mov)$/i) ? <video src={url} className="h-full w-full object-cover" /> : <img src={url} alt="" className="h-full w-full object-cover" />}</button>)}</div></section>
               )}
             </div>
 
-            {/* Motion Reference Video */}
-            <div>
-              <p className="text-black font-semibold mb-1 flex items-center gap-2">
-                <Video size={16} />
-                Motion Reference Video <span className="text-black font-normal text-sm">(defines the movement)</span>
-              </p>
-              {videoPreview ? (
-                <div className="relative">
-                  <video src={videoPreview} controls className="w-full h-40 object-cover rounded-xl" />
-                  <button onClick={() => setVideoPreview(null)} className="absolute top-2 right-2 p-2 bg-black/70 rounded-full hover:bg-black transition-colors">
-                    <X size={16} className="text-white" />
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {/* Series reference videos */}
-                  {referenceMedia.filter(url => url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)).length > 0 && (
-                    <div>
-                      <p className="text-black text-xs font-bold uppercase tracking-wider mb-2">From Series</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {referenceMedia.filter(url => url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)).map((url, i) => (
-                          <button
-                            key={i}
-                            onClick={() => setVideoPreview(url)}
-                            className="relative aspect-square rounded-xl overflow-hidden border-2 border-black/20 hover:border-black transition-colors"
-                          >
-                            <video src={url} className="w-full h-full object-cover" muted />
-                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                              <Play size={16} className="text-white fill-white" />
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* Upload your own or from Vault */}
-                  <div>
-                    <p className="text-black text-xs font-bold uppercase tracking-wider mb-2">Or From Your Vault / Upload</p>
-                    <div className="border-2 border-dashed border-black/30 rounded-xl p-6 text-center space-y-3">
-                      <Video size={28} className="mx-auto text-black mb-2" />
-                      <p className="text-black text-sm">Upload or pick from your Vault</p>
-                      <div className="flex items-center justify-center gap-2">
-                        <input type="file" accept="video/*" onChange={(e) => e.target.files?.[0] && handleVideoUpload(e.target.files[0])} className="hidden" id="video-upload" />
-                        <label htmlFor="video-upload" className="inline-flex items-center gap-2 px-4 py-2 bg-black text-yellow-400 rounded-lg text-sm font-bold cursor-pointer hover:bg-black/90 transition-colors">
-                          <Upload size={14} /> Upload
-                        </label>
-                        <button onClick={() => { setVaultPickerTarget('video'); setShowVaultPicker(true); }} className="inline-flex items-center gap-2 px-4 py-2 bg-black text-yellow-400 rounded-lg text-sm font-bold hover:bg-black/90 transition-colors">
-                          <Folder size={14} /> Vault
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+            <aside className="space-y-4">
+              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">AI Model</p>
+                <select value={effectiveModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={modelsLoading || modelOptions.length === 0} className="w-full rounded-[3px] border border-white/15 bg-black/25 px-3 py-3 text-sm font-bold text-white outline-none focus:border-[#23c7be] disabled:opacity-50">{modelsLoading && <option value="">Loading models…</option>}{!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}{modelOptions.map(m => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}</select>
+              </section>
 
-        {/* Advanced Settings */}
-        <div className="mb-6 space-y-4">
-          {/* Aspect Ratio */}
-          <div>
-            <p className="text-black text-sm font-medium mb-2">Aspect Ratio</p>
-            <div className="grid grid-cols-3 gap-2">
-              {RATIOS.map((ratio) => (
-                <button
-                  key={ratio.id}
-                  onClick={() => setAspectRatio(ratio.id)}
-                  className={`p-3 rounded-xl text-center transition-all ${
-                    aspectRatio === ratio.id 
-                      ? 'bg-black text-yellow-400' 
-                      : 'bg-black/10 text-black hover:bg-black/20'
-                  }`}
-                >
-                  <p className="text-2xl mb-1">{ratio.icon}</p>
-                  <p className="text-xs font-medium">{ratio.label}</p>
-                </button>
-              ))}
-            </div>
+              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Aspect Ratio</p><div className="grid grid-cols-3 gap-2">{RATIOS.map(ratio => <button key={ratio.id} onClick={() => setAspectRatio(ratio.id)} className={`rounded-[3px] border p-2 text-center ${aspectRatio === ratio.id ? activeButton : idleButton}`}><p className="text-lg">{ratio.icon}</p><p className="text-[10px] font-bold">{ratio.label}</p></button>)}</div></section>
+
+              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Duration</p><div className="grid grid-cols-2 gap-2">{DURATIONS.map(d => <button key={d.id} onClick={() => setDuration(d.id)} className={`rounded-[3px] border p-2.5 text-center ${duration === d.id ? activeButton : idleButton}`}><p className="font-black">{d.label}</p><p className="text-[9px] opacity-60">{duration === d.id ? (priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Automatic price') : 'Auto price'}</p></button>)}</div></section>
+
+              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Resolution</p><div className="grid grid-cols-2 gap-2">{RESOLUTIONS.map(r => <button key={r.id} onClick={() => setResolution(r.id)} className={`rounded-[3px] border p-2.5 text-center ${resolution === r.id ? activeButton : idleButton}`}><p className="font-black">{r.label}</p><p className="text-[9px] opacity-60">{r.quality}</p></button>)}</div></section>
+
+              {!result ? <Button onClick={handleGenerate} disabled={isGenerating || (mode === 'text' && !prompt.trim()) || (mode === 'image' && !imagePreview) || (mode === 'video' && (!imagePreview || !videoPreview))} className="w-full rounded-[3px] bg-[#23c7be] py-4 font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.05] disabled:text-white/30 disabled:opacity-100">{isGenerating ? <><Loader2 size={20} className="mr-2 animate-spin" /> Generating…</> : <><Film size={20} className="mr-2" /> Generate Video{priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}</>}</Button> : <Button onClick={handleUseVideo} disabled={isSaving} className="w-full rounded-[3px] bg-[#23c7be] py-4 font-black text-[#071211] hover:bg-[#35d8cf] disabled:opacity-50">{isSaving ? <><Loader2 size={20} className="mr-2 animate-spin" /> Saving…</> : <><CheckCircle2 size={20} className="mr-2" /> Use This Video</>}</Button>}
+            </aside>
           </div>
 
-          {/* Duration */}
-          <div>
-            <p className="text-black text-sm font-medium mb-2">Duration</p>
-            <div className="grid grid-cols-2 gap-2">
-              {DURATIONS.map((d) => (
-                <button
-                  key={d.id}
-                  onClick={() => setDuration(d.id)}
-                  className={`p-3 rounded-xl text-center transition-all ${
-                    duration === d.id 
-                      ? 'bg-black text-yellow-400' 
-                      : 'bg-black/10 text-black hover:bg-black/20'
-                  }`}
-                >
-                  <p className="font-bold">{d.label}</p>
-                  <p className="text-xs opacity-60">{duration === d.id ? (priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Automatic price') : 'Price updates automatically'}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Resolution */}
-          <div>
-            <p className="text-black text-sm font-medium mb-2">Resolution</p>
-            <div className="grid grid-cols-2 gap-2">
-              {RESOLUTIONS.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => setResolution(r.id)}
-                  className={`p-3 rounded-xl text-center transition-all ${
-                    resolution === r.id 
-                      ? 'bg-black text-yellow-400' 
-                      : 'bg-black/10 text-black hover:bg-black/20'
-                  }`}
-                >
-                  <p className="font-bold">{r.label}</p>
-                  <p className="text-xs opacity-60">{r.quality}</p>
-                </button>
-              ))}
-            </div>
-          </div>
+          {result && <section className="mt-4 rounded-[4px] border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-black text-white">Video Generated</p><p className="text-xs text-white/40">{duration}s · {resolution} · {aspectRatio}</p></div><CheckCircle2 className="text-[#23c7be]" size={20} /></div><video src={result} controls className="w-full rounded-[3px] bg-black" /></section>}
         </div>
 
-        {/* Generate Button */}
-        {!result && (
-          <Button
-            onClick={handleGenerate}
-            disabled={isGenerating || (mode === 'text' && !prompt.trim()) || (mode === 'image' && !imagePreview) || (mode === 'video' && (!imagePreview || !videoPreview))}
-            className="w-full bg-black hover:bg-black/90 text-yellow-400 font-bold py-4 rounded-2xl mb-4 disabled:bg-neutral-900 disabled:text-yellow-300 disabled:opacity-100 disabled:cursor-not-allowed"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 size={20} className="mr-2 animate-spin" />
-                Generating... (~30-60s)
-              </>
-            ) : (
-              <>
-                <Film size={20} className="mr-2" />
-                Generate Video{priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}
-              </>
-            )}
-          </Button>
-        )}
-
-        {/* Result */}
-        {result && (
-          <div className="bg-black rounded-2xl p-6 mb-4 text-center">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Film size={28} className="text-white" />
-            </div>
-            <p className="text-white font-semibold mb-2">Video Generated!</p>
-            <p className="text-white text-sm mb-4">
-              {duration}s • {resolution} • {aspectRatio}
-            </p>
-            <video src={result} controls className="w-full rounded-lg" />
-          </div>
-        )}
-
-        {/* Complete Button */}
-        {result && (
-          <Button
-            onClick={handleUseVideo}
-            disabled={isSaving}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl disabled:opacity-50"
-          >
-            {isSaving ? <><Loader2 size={20} className="mr-2 animate-spin" /> Saving…</> : <><CheckCircle2 size={20} className="mr-2" /> Use This Video</>}
-          </Button>
-        )}
-        {/* Save-to-Vault folder picker */}
-        {showSaveVault && (
-          <SaveToVaultModal
-            userEmail={user?.email}
-            imageUrl={result}
-            mediaType="video"
-            onClose={() => setShowSaveVault(false)}
-            onSaved={handleVaultSaved}
-          />
-        )}
-
-        {/* Vault Picker Modal */}
-        {showVaultPicker && userEmail && (
-          <VaultPickerModal
-            userEmail={userEmail}
-            onSelect={(url) => {
-              if (vaultPickerTarget === 'video') {
-                setVideoPreview(url);
-              } else {
-                setImagePreview(url);
-              }
-              setShowVaultPicker(false);
-              setVaultPickerTarget(null);
-            }}
-            onClose={() => { setShowVaultPicker(false); setVaultPickerTarget(null); }}
-          />
-        )}
+        {showSaveVault && <SaveToVaultModal userEmail={user?.email} imageUrl={result} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={handleVaultSaved} />}
+        {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} onSelect={(url) => { if (vaultPickerTarget === 'video') setVideoPreview(url); else setImagePreview(url); setShowVaultPicker(false); setVaultPickerTarget(null); }} onClose={() => { setShowVaultPicker(false); setVaultPickerTarget(null); }} />}
       </motion.div>
     </div>
   );
