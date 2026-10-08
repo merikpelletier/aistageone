@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Loader2, Megaphone, Package, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Loader2, Package } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import AssetCard from '@/components/catalog/AssetCard';
 import CatalogFilters from '@/components/catalog/CatalogFilters';
@@ -10,11 +10,10 @@ import QuickViewModal from '@/components/catalog/QuickViewModal';
 const PAGE_SIZE = 20;
 
 const DEFAULT_CATALOG_SECTIONS = [
-  { key: 'hero', label: 'Marketplace Hero', visible: true, order: 0 },
-  { key: 'filters', label: 'Selection Tools', visible: true, order: 1 },
-  { key: 'grid', label: 'Asset Grid', visible: true, order: 2 },
-  { key: 'load_more', label: 'Load More', visible: true, order: 3 },
-  { key: 'quick_view', label: 'Quick View', visible: true, order: 4 },
+  { key: 'filters', label: 'Selection Tools', visible: true, order: 0 },
+  { key: 'grid', label: 'Asset Grid', visible: true, order: 1 },
+  { key: 'load_more', label: 'Load More', visible: true, order: 2 },
+  { key: 'quick_view', label: 'Quick View', visible: true, order: 3 },
 ];
 
 const shuffle = (items) => {
@@ -43,27 +42,19 @@ export default function Catalog({ embedded = false, onOpenAsset = null }) {
     staleTime: 60_000,
     retry: false,
   });
+
   const catalogSetting = runtime?.settings?.find((item) => item.surface_type === 'page' && item.surface_key === 'Catalog');
   const catalogSections = useMemo(() => {
     const saved = Array.isArray(catalogSetting?.configuration?.catalog_sections) ? catalogSetting.configuration.catalog_sections : [];
     const merged = DEFAULT_CATALOG_SECTIONS.map((def) => ({ ...def, ...(saved.find((item) => item.key === def.key) || {}) }));
     return merged.reduce((map, item) => { map[item.key] = item; return map; }, {});
   }, [catalogSetting]);
+
   const catalogBackground = catalogSetting?.configuration?.background_image || '';
-  const heroConfig = catalogSetting?.configuration?.hero || {};
-  const heroVisible = heroConfig.visible !== false;
-  const heroTitle = heroConfig.title || 'Assets Shop';
-  const heroSubtitle = heroConfig.subtitle || 'Actors, characters, costumes, sets, props and production assets ready for your projects.';
-  const heroBadgeLabel = heroConfig.badge_label || 'AISTAGE.ONE Marketplace';
-  const heroBackground = heroConfig.background_image || '';
-  const heroShowStats = heroConfig.show_stats !== false;
-  const heroHeightClass = heroConfig.height === 'compact' ? 'py-8 md:py-10' : heroConfig.height === 'tall' ? 'py-20 md:py-28' : 'py-14 md:py-20';
-  const showHero = catalogSections.hero?.visible !== false && heroVisible;
   const showFilters = catalogSections.filters?.visible !== false;
   const showGrid = catalogSections.grid?.visible !== false;
   const showLoadMore = catalogSections.load_more?.visible !== false;
   const showQuickView = catalogSections.quick_view?.visible !== false;
-  const filtersLabel = catalogSections.filters?.label || 'Selection Tools';
 
   const { data: assets = [], isLoading, error } = useQuery({
     queryKey: ['olo-catalog-assets'],
@@ -127,26 +118,42 @@ export default function Catalog({ embedded = false, onOpenAsset = null }) {
   const visibleAssets = filteredAssets.slice(0, visibleCount);
 
   return (
-    <div className={`${embedded ? 'h-[calc(100vh-3.5rem)] min-h-0 overflow-y-auto overscroll-contain' : 'min-h-screen'} bg-zinc-950 pb-28 text-white`} style={catalogBackground ? { backgroundImage: `url(${catalogBackground})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: embedded ? 'scroll' : 'fixed' } : undefined}>
-      {showHero && <section className="relative overflow-hidden border-b border-white/10 bg-black" style={heroBackground ? { backgroundImage: `url(${heroBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(6,182,212,0.22),transparent_38%),radial-gradient(circle_at_85%_10%,rgba(37,99,235,0.18),transparent_35%)]" />
-        <div className={`relative mx-auto max-w-[1600px] px-5 md:px-6 ${heroHeightClass}`}>
-          <div className="mb-5 inline-flex items-center gap-2 rounded-[3px] border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-300"><Sparkles size={14} /> {heroBadgeLabel}</div>
-          <h1 className="text-5xl font-black tracking-tight md:text-7xl">{heroTitle}</h1>
-          <p className="mt-5 max-w-2xl text-base leading-relaxed text-zinc-300 md:text-lg">{heroSubtitle}</p>
-          <div className="mt-8 flex flex-wrap gap-3"><a href="/ProductPlacement" className="inline-flex items-center gap-2 rounded-[3px] bg-cyan-400 px-4 py-2 text-sm font-black text-black hover:bg-cyan-300"><Megaphone size={16} /> PLACE YOUR PRODUCT</a></div>
-          {heroShowStats && <div className="mt-4 flex flex-wrap gap-3 text-sm font-bold text-zinc-300"><span className="rounded-[3px] border border-white/10 bg-white/5 px-4 py-2">{assets.length} assets</span><span className="rounded-[3px] border border-white/10 bg-white/5 px-4 py-2">{categories.length} categories</span><span className="rounded-[3px] border border-white/10 bg-white/5 px-4 py-2">Supabase secured</span></div>}
-        </div>
-      </section>}
+    <div
+      className={`${embedded ? 'h-[calc(100vh-3.5rem)] min-h-0 overflow-y-auto overscroll-contain' : 'min-h-screen'} bg-[#202328] pb-28 text-white`}
+      style={catalogBackground ? { backgroundImage: `url(${catalogBackground})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: embedded ? 'scroll' : 'fixed' } : undefined}
+    >
+      <main className="mx-auto max-w-[1800px] px-4 py-4 md:px-5 lg:px-6">
+        {showFilters && (
+          <CatalogFilters
+            filters={filters}
+            onChange={setFilters}
+            categories={categories}
+            subcategories={subcategories}
+            creators={creators}
+            resultCount={filteredAssets.length}
+          />
+        )}
 
-      <main className="mx-auto max-w-[1600px] px-5 py-7 md:px-6">
-        {showFilters && <><div className="mb-5 flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-zinc-500"><SlidersHorizontal size={15} /> {filtersLabel}</div><CatalogFilters filters={filters} onChange={setFilters} categories={categories} subcategories={subcategories} creators={creators} resultCount={filteredAssets.length} /></>}
-
-        {showGrid && <div className="mt-7">
+        {showGrid && <div className="mt-5">
           {isLoading ? <div className="flex items-center justify-center py-24"><Loader2 className="animate-spin text-cyan-400" size={36} /></div>
           : error ? <div className="rounded-[4px] border border-rose-500/30 bg-rose-500/10 p-8 text-center text-rose-200">The shop could not load its assets.</div>
-          : visibleAssets.length === 0 ? <div className="flex flex-col items-center py-24 text-center"><div className="flex h-20 w-20 items-center justify-center rounded-[4px] bg-zinc-900"><Package className="text-zinc-600" size={40} /></div><h2 className="mt-5 text-xl font-black">NO MATCHING ASSETS</h2><p className="mt-2 text-zinc-500">Try clearing one or more selection tools.</p></div>
-          : <><motion.div layout className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"><AnimatePresence>{visibleAssets.map((asset) => <AssetCard key={asset.id} asset={asset} category={categories.find((item) => item.id === asset.category_id)} onQuickView={setQuickViewAsset} onOpenAsset={onOpenAsset} />)}</AnimatePresence></motion.div>{showLoadMore && visibleCount < filteredAssets.length && <div className="mt-8 flex justify-center"><button onClick={() => setVisibleCount((count) => count + PAGE_SIZE)} className="rounded-[3px] bg-cyan-500 px-8 py-3 font-black text-black transition hover:bg-cyan-400">LOAD MORE ({visibleAssets.length} / {filteredAssets.length})</button></div>}</>}
+          : visibleAssets.length === 0 ? <div className="flex flex-col items-center py-24 text-center"><div className="flex h-20 w-20 items-center justify-center rounded-[4px] bg-zinc-900"><Package className="text-zinc-600" size={40} /></div><h2 className="mt-5 text-xl font-black">NO MATCHING ASSETS</h2><p className="mt-2 text-zinc-500">Try clearing one or more filters.</p></div>
+          : <>
+              <motion.div layout className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                <AnimatePresence>
+                  {visibleAssets.map((asset) => (
+                    <AssetCard
+                      key={asset.id}
+                      asset={asset}
+                      category={categories.find((item) => item.id === asset.category_id)}
+                      onQuickView={setQuickViewAsset}
+                      onOpenAsset={onOpenAsset}
+                    />
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+              {showLoadMore && visibleCount < filteredAssets.length && <div className="mt-8 flex justify-center"><button onClick={() => setVisibleCount((count) => count + PAGE_SIZE)} className="rounded-[3px] bg-cyan-500 px-8 py-3 font-black text-black transition hover:bg-cyan-400">LOAD MORE ({visibleAssets.length} / {filteredAssets.length})</button></div>}
+            </>}
         </div>}
       </main>
 
