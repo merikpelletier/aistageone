@@ -131,98 +131,180 @@
      not like a tablet layout stretched to a large monitor. */
   .studio-shell main > div[class*="max-w-[1800px]"] {
     max-width: 1540px !important;
-    padding-left: 18px !important;
-    padding-right: 18px !important;
-    padding-bottom: 56px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    padding-bottom: 40px !important;
   }
 
   .studio-shell main > div[class*="max-w-[1800px]"] > header {
-    margin-bottom: 12px !important;
-    gap: 8px !important;
+    margin-bottom: 8px !important;
+    gap: 6px !important;
   }
 
   .studio-shell main > div[class*="max-w-[1800px]"] > header h2 {
-    font-size: 24px !important;
+    font-size: 22px !important;
     line-height: 1.05 !important;
   }
 
   .studio-shell main > div[class*="max-w-[1800px]"] > header button,
   .studio-shell main > div[class*="max-w-[1800px]"] > header a {
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
+    padding: 6px 9px !important;
     border-radius: 3px !important;
-    font-size: 12px !important;
+    font-size: 11px !important;
   }
 
   .studio-shell main > div[class*="max-w-[1800px]"] > div[class*="flex w-full flex-wrap"] {
-    padding: 8px !important;
-    gap: 6px !important;
+    padding: 6px !important;
+    gap: 5px !important;
     border-radius: 4px !important;
   }
 
   .studio-shell main > div[class*="max-w-[1800px]"] > div[class*="flex w-full flex-wrap"] button {
-    padding: 7px 10px !important;
+    padding: 6px 9px !important;
+    min-height: 32px !important;
     border-radius: 3px !important;
     font-size: 11px !important;
+  }
+
+  .studio-shell main > div[class*="max-w-[1800px]"] main,
+  .studio-shell main > div[class*="max-w-[1800px]"] main > div,
+  .studio-shell main > div[class*="max-w-[1800px]"] main > section {
+    gap: 10px !important;
   }
 
   .studio-shell main > div[class*="max-w-[1800px]"] main > section {
     border-radius: 4px !important;
   }
 
-  .studio-shell main > div[class*="max-w-[1800px]"] main > section > div[class*="border-b"] {
-    padding: 14px !important;
-  }
-
+  .studio-shell main > div[class*="max-w-[1800px]"] main > section > div[class*="border-b"],
   .studio-shell main > div[class*="max-w-[1800px]"] main > section > div[class*="p-4"] {
-    padding: 14px !important;
+    padding: 10px !important;
   }
 
   .studio-shell main > div[class*="max-w-[1800px]"] article[class*="border-white/10"][class*="bg-white/5"] {
-    padding: 14px !important;
+    padding: 10px !important;
     border-radius: 4px !important;
   }
 
   .studio-shell main > div[class*="max-w-[1800px]"] article[class*="border-white/10"][class*="bg-white/5"] > div[class*="mb-5"] {
-    margin-bottom: 12px !important;
+    margin-bottom: 9px !important;
   }
 
   .studio-shell main > div[class*="max-w-[1800px]"] article[class*="border-white/10"][class*="bg-white/5"] > div[class*="space-y-6"] > * + * {
-    margin-top: 14px !important;
+    margin-top: 10px !important;
+  }
+
+  /* Compact form controls across FotoPlay desktop. */
+  .studio-shell main > div[class*="max-w-[1800px]"] input,
+  .studio-shell main > div[class*="max-w-[1800px]"] select,
+  .studio-shell main > div[class*="max-w-[1800px]"] textarea {
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+    border-radius: 3px !important;
+  }
+
+  .studio-shell main > div[class*="max-w-[1800px]"] input,
+  .studio-shell main > div[class*="max-w-[1800px]"] select {
+    min-height: 34px !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
   }
 
   .studio-shell main > div[class*="max-w-[1800px]"] textarea {
-    line-height: 1.35 !important;
+    min-height: 64px !important;
+    padding: 8px 10px !important;
+  }
+
+  /* Native select menus were inheriting a pale OS popup. Force readable choices. */
+  .studio-shell main > div[class*="max-w-[1800px]"] select {
+    background-color: #17191d !important;
+    color: #f7f7f7 !important;
+    border-color: rgba(255,255,255,0.14) !important;
+  }
+
+  .studio-shell main > div[class*="max-w-[1800px]"] select option,
+  .studio-shell main > div[class*="max-w-[1800px]"] select optgroup {
+    background: #17191d !important;
+    color: #ffffff !important;
   }
 
   .studio-shell main > div[class*="max-w-[1800px]"] button[class*="px-3"][class*="py-2.5"] {
-    padding: 7px 10px !important;
+    padding: 6px 9px !important;
+    min-height: 32px !important;
     border-radius: 3px !important;
     font-size: 11px !important;
   }
 
-  /* Comic editing: panels need to stay visible together on a desktop monitor. */
-  .studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] {
+  .studio-shell main > div[class*="max-w-[1800px]"] [class*="p-4"] {
+    padding: 10px !important;
+  }
+
+  .studio-shell main > div[class*="max-w-[1800px]"] [class*="p-5"] {
     padding: 12px !important;
   }
 
-  .studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] > div[class*="mt-4"][class*="bg-black/50"] {
-    margin-top: 10px !important;
-    padding: 10px !important;
+  .studio-shell main > div[class*="max-w-[1800px]"] [class*="gap-4"] {
     gap: 10px !important;
+  }
+
+  .studio-shell main > div[class*="max-w-[1800px]"] [class*="gap-3"] {
+    gap: 8px !important;
+  }
+
+  .studio-shell main > div[class*="max-w-[1800px]"] [class*="mt-4"] {
+    margin-top: 10px !important;
+  }
+
+  .studio-shell main > div[class*="max-w-[1800px]"] [class*="mb-4"] {
+    margin-bottom: 10px !important;
+  }
+
+  .studio-shell main > div[class*="max-w-[1800px]"] [class*="mt-6"] {
+    margin-top: 14px !important;
+  }
+
+  .studio-shell main > div[class*="max-w-[1800px]"] [class*="mb-6"] {
+    margin-bottom: 14px !important;
+  }
+
+  /* Smaller library/reference choices so more of the production context stays visible. */
+  .studio-shell main > div[class*="max-w-[1800px]"] img[class*="h-20"][class*="w-20"] {
+    width: 52px !important;
+    height: 52px !important;
+  }
+
+  .studio-shell main > div[class*="max-w-[1800px]"] img[class*="h-16"][class*="w-16"] {
+    width: 46px !important;
+    height: 46px !important;
+  }
+
+  .studio-shell main > div[class*="max-w-[1800px]"] img[class*="h-12"][class*="w-12"] {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  /* Comic editing: panels need to stay visible together on a desktop monitor. */
+  .studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] {
+    padding: 10px !important;
+  }
+
+  .studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] > div[class*="mt-4"][class*="bg-black/50"] {
+    margin-top: 8px !important;
+    padding: 8px !important;
+    gap: 8px !important;
   }
 
   .studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] > div[class*="mt-4"][class*="bg-black/50"] img[class*="h-20"],
   .studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] > div[class*="mt-4"][class*="bg-black/50"] div[class*="h-20"] {
-    width: 56px !important;
-    height: 56px !important;
+    width: 50px !important;
+    height: 50px !important;
   }
 
   .studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] > div[class*="mt-4"][class*="grid"][class*="md:grid-cols-2"] {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 390px)) !important;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 330px)) !important;
     justify-content: start !important;
-    gap: 12px !important;
-    margin-top: 12px !important;
+    gap: 10px !important;
+    margin-top: 10px !important;
   }
 
   .studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] > div[class*="mt-4"][class*="grid"][class*="md:grid-cols-2"] > div[class*="overflow-hidden"][class*="bg-black"] {
@@ -231,20 +313,20 @@
 
   .studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] > div[class*="mt-4"][class*="grid"][class*="md:grid-cols-2"] > div[class*="overflow-hidden"][class*="bg-black"] > div[class*="aspect-square"] {
     aspect-ratio: auto !important;
-    height: 230px !important;
+    height: 190px !important;
   }
 
   .studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] > div[class*="mt-4"][class*="grid"][class*="md:grid-cols-2"] > div[class*="overflow-hidden"][class*="bg-black"] > div[class*="space-y-2"] {
-    padding: 10px !important;
+    padding: 8px !important;
   }
 
   .studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] div[class*="space-y-2"] div[class*="aspect-square"] {
     aspect-ratio: auto !important;
-    height: 150px !important;
+    height: 130px !important;
   }
 
   .studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] textarea[rows="4"] {
-    min-height: 76px !important;
-    height: 76px !important;
+    min-height: 64px !important;
+    height: 64px !important;
   }
 }
