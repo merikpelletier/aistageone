@@ -26,4 +26,11 @@
   .studio-shell main {
     background: #202328 !important;
   }
+
+  /* The selected tool is already obvious from the left toolbar and from the
+     workspace itself. Remove the duplicated Studio banner that repeated the
+     creator/tool name and "Creative workspace" above every embedded tool. */
+  .studio-shell main > div > div[class*="px-5"][class*="md:px-7"][class*="pt-6"][class*="pb-5"][class*="relative"] {
+    display: none !important;
+  }
 }
