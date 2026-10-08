@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bookmark, Trash2, X, Folder, Plus, ChevronDown, Pencil, FileText, Volume2, Upload, Loader2, Info, Star } from 'lucide-react';
+import { Bookmark, Trash2, X, Folder, Plus, ChevronDown, Pencil, FileText, Volume2, Upload, Download, Loader2, Info, Star } from 'lucide-react';
 import ScriptEditor from '@/components/studio/ScriptEditor';
 import AssetInspector from '@/components/studio/AssetInspector';
 import { toast } from 'sonner';
@@ -133,6 +133,37 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
     queryClient.invalidateQueries({ queryKey: ['vaultAssets', userEmail] });
   };
 
+  const downloadAsset = async (asset) => {
+    try {
+      const response = await fetch(asset.url);
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const urlExtension = (() => {
+        try {
+          const pathname = new URL(asset.url).pathname;
+          const match = pathname.match(/(\.[a-z0-9]{2,5})$/i);
+          return match?.[1] || '';
+        } catch {
+          return '';
+        }
+      })();
+      const typeExtension = asset.media_type === 'video' ? '.mp4' : asset.media_type === 'audio' ? '.mp3' : asset.media_type === 'image' ? '.jpg' : '';
+      const safeName = String(asset.name || 'asset').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'asset';
+      const extension = urlExtension || typeExtension;
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = safeName.toLowerCase().endsWith(extension.toLowerCase()) ? safeName : `${safeName}${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      window.open(asset.url, '_blank', 'noopener,noreferrer');
+      toast.error('Direct download was blocked. The file was opened in a new tab instead.');
+    }
+  };
+
   const moveAssetToFolder = async (assetId, folderId) => {
     await base44.entities.VaultAsset.update(assetId, { folder_id: folderId === 'unfiled' ? null : folderId });
     queryClient.invalidateQueries({ queryKey: ['vaultAssets', userEmail] });
@@ -181,6 +212,7 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
 
           <div className="absolute right-2 top-2 flex gap-1.5">
             <button onClick={() => setInspectorAsset(asset)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:border-[#23c7be]/40 hover:text-[#8ee9e4]" title="Asset details"><Info size={14} /></button>
+            <button onClick={() => downloadAsset(asset)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:border-[#23c7be]/40 hover:text-[#8ee9e4]" title="Download"><Download size={14} /></button>
             <button onClick={() => { setEditingName(asset.id); setNameDraft(asset.name || ''); }} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:text-white" title="Rename"><Pencil size={14} /></button>
             <button onClick={() => deleteAsset(asset.id)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-red-400/25 bg-black/75 text-red-300 hover:bg-red-400/10" title="Delete"><Trash2 size={14} /></button>
           </div>
@@ -204,9 +236,15 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
             </div>
           </div>
           {moveOptions.length > 0 && (
-            <select value="" onChange={(e) => { if (e.target.value) moveAssetToFolder(asset.id, e.target.value); }} className="h-9 w-full rounded-[3px] border border-white/10 bg-black/25 px-2.5 text-xs font-bold text-white/65 outline-none focus:border-[#23c7be]">
-              <option value="">Move to…</option>
-              {moveOptions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            <select
+              value=""
+              onChange={(e) => { if (e.target.value) moveAssetToFolder(asset.id, e.target.value); }}
+              className="h-10 w-full rounded-[3px] border border-white/15 bg-[#111317] px-3 text-xs font-bold text-white outline-none focus:border-[#23c7be]"
+              style={{ colorScheme: 'dark' }}
+              aria-label={`Move ${asset.name || 'asset'} to folder`}
+            >
+              <option value="" className="bg-[#111317] text-white">Move to…</option>
+              {moveOptions.map(f => <option key={f.id} value={f.id} className="bg-[#111317] text-white">{f.name}</option>)}
             </select>
           )}
         </div>
