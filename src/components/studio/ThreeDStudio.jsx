@@ -82,47 +82,31 @@ function LibraryCatalog({ title, description, icon: Icon, assetTypes }) {
   }, [assets, search, categoryId, subcategoryId, sort]);
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-[#d8d8d3] text-black p-4 md:p-6 lg:p-8">
-      <div className="max-w-[1500px] mx-auto">
-        <div className="mb-6">
-          <div className="w-11 h-11 bg-black text-[#d5a928] flex items-center justify-center mb-4"><Icon size={22} /></div>
-          <p className="text-[10px] uppercase tracking-[0.28em] font-bold text-black/45">AISTAGE.ONE · 3D Library</p>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight mt-2">{title}</h1>
-          <p className="text-black/55 mt-3 max-w-3xl">{description}</p>
+    <div className="min-h-[calc(100vh-3.5rem)] bg-[#202328] p-4 text-white md:p-6 lg:p-8">
+      <div className="mx-auto max-w-[1500px]">
+        <div className="mb-5 flex items-start gap-3 border-b border-white/10 pb-5">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Icon size={22} /></div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#23c7be]">AISTAGE.ONE · 3D Library</p>
+            <h1 className="mt-1 text-3xl font-black tracking-tight md:text-4xl">{title}</h1>
+            <p className="mt-2 max-w-3xl text-sm text-white/45">{description}</p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_210px_210px_170px] gap-3 mb-5">
+        <div className="mb-5 grid grid-cols-1 gap-3 rounded-[4px] border border-white/10 bg-[#17191d] p-3 lg:grid-cols-[minmax(0,1fr)_210px_210px_170px]">
           <label className="relative">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/45 pointer-events-none" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search 3D assets…"
-              className="w-full h-12 border border-black/20 bg-white/80 pl-10 pr-3 font-semibold outline-none focus:border-black"
-            />
+            <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/35" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search 3D assets…" className="h-11 w-full rounded-[3px] border border-white/15 bg-black/25 pl-10 pr-3 font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
           </label>
-          <select
-            value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
-            className="h-12 border border-black/20 bg-white/80 px-3 font-bold outline-none focus:border-black"
-          >
+          <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className="h-11 rounded-[3px] border border-white/15 bg-black/25 px-3 font-bold text-white outline-none focus:border-[#23c7be]">
             <option value="">All categories</option>
             {categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
-          <select
-            value={subcategoryId}
-            onChange={(event) => setSubcategoryId(event.target.value)}
-            disabled={!availableSubcategories.length}
-            className="h-12 border border-black/20 bg-white/80 px-3 font-bold outline-none focus:border-black disabled:opacity-45"
-          >
+          <select value={subcategoryId} onChange={(event) => setSubcategoryId(event.target.value)} disabled={!availableSubcategories.length} className="h-11 rounded-[3px] border border-white/15 bg-black/25 px-3 font-bold text-white outline-none focus:border-[#23c7be] disabled:opacity-35">
             <option value="">All subcategories</option>
             {availableSubcategories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
-          <select
-            value={sort}
-            onChange={(event) => setSort(event.target.value)}
-            className="h-12 border border-black/20 bg-white/80 px-3 font-bold outline-none focus:border-black"
-          >
+          <select value={sort} onChange={(event) => setSort(event.target.value)} className="h-11 rounded-[3px] border border-white/15 bg-black/25 px-3 font-bold text-white outline-none focus:border-[#23c7be]">
             <option value="featured">Featured</option>
             <option value="newest">Newest</option>
             <option value="name">Name</option>
@@ -132,43 +116,26 @@ function LibraryCatalog({ title, description, icon: Icon, assetTypes }) {
         </div>
 
         {loading ? (
-          <div className="border border-black/15 bg-white/55 min-h-[360px] flex items-center justify-center font-bold text-black/50">Loading 3D library…</div>
+          <div className="flex min-h-[360px] items-center justify-center rounded-[4px] border border-white/10 bg-[#17191d] font-bold text-white/40">Loading 3D library…</div>
         ) : errorText ? (
-          <div className="border border-red-300 bg-red-50 p-5 font-semibold text-red-800">{errorText}</div>
+          <div className="rounded-[4px] border border-red-400/25 bg-red-400/10 p-5 font-semibold text-red-200">{errorText}</div>
         ) : filteredAssets.length ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filteredAssets.map((asset) => {
               const owned = purchases.has(asset.id);
               return (
-                <article key={asset.id} className="border border-black/15 bg-white/75 overflow-hidden">
-                  <div className="aspect-[4/3] bg-[#cfd0cb] relative overflow-hidden">
-                    {asset.preview_url ? (
-                      <img src={asset.preview_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-black/20"><Box size={52} strokeWidth={1.3} /></div>
-                    )}
-                    {asset.featured && <span className="absolute left-2 top-2 bg-black text-[#d5a928] px-2 py-1 text-[10px] font-black uppercase tracking-wider">Featured</span>}
+                <article key={asset.id} className="overflow-hidden rounded-[4px] border border-white/10 bg-[#17191d] transition hover:border-[#23c7be]/45 hover:shadow-[inset_2px_0_0_#23c7be]">
+                  <div className="relative aspect-[4/3] overflow-hidden bg-[#1d2126]">
+                    {asset.preview_url ? <img src={asset.preview_url} alt="" className="h-full w-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center text-white/15"><Box size={52} strokeWidth={1.3} /></div>}
+                    {asset.featured && <span className="absolute left-2 top-2 rounded-[2px] border border-[#23c7be]/30 bg-[#17191d]/90 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[#8ee9e4]">Featured</span>}
                   </div>
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-black text-lg leading-tight">{asset.name}</h3>
-                        {asset.description && <p className="mt-1 text-sm text-black/55 line-clamp-2">{asset.description}</p>}
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <div className="text-[10px] uppercase tracking-wider text-black/45 font-bold">Price</div>
-                        <div className="font-black">{asset.price_credits} cr</div>
-                      </div>
+                      <div className="min-w-0"><h3 className="truncate text-lg font-black leading-tight text-white">{asset.name}</h3>{asset.description && <p className="mt-1 line-clamp-2 text-sm text-white/45">{asset.description}</p>}</div>
+                      <div className="shrink-0 text-right"><div className="text-[10px] font-bold uppercase tracking-wider text-white/35">Price</div><div className="font-black text-[#8ee9e4]">{asset.price_credits} cr</div></div>
                     </div>
-                    {(asset.badges || []).length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {(asset.badges || []).map((badge) => <span key={badge} className="border border-black/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wide"><Tag size={10} className="inline mr-1" />{badge}</span>)}
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      className="mt-4 w-full h-11 bg-black text-white font-black text-xs uppercase tracking-[0.12em] flex items-center justify-center gap-2"
-                    >
+                    {(asset.badges || []).length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{(asset.badges || []).map((badge) => <span key={badge} className="rounded-[2px] border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white/55"><Tag size={10} className="mr-1 inline" />{badge}</span>)}</div>}
+                    <button type="button" className={`mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-[3px] text-xs font-black uppercase tracking-[0.12em] ${owned ? 'border border-white/10 bg-white/[0.05] text-white' : 'bg-[#23c7be] text-[#071211] hover:bg-[#35d8cf]'}`}>
                       {owned ? <><Download size={15} /> Download</> : <><ShoppingCart size={15} /> Buy · {asset.price_credits} credits</>}
                     </button>
                   </div>
@@ -177,12 +144,8 @@ function LibraryCatalog({ title, description, icon: Icon, assetTypes }) {
             })}
           </div>
         ) : (
-          <div className="border border-black/15 bg-white/55 min-h-[360px] flex items-center justify-center">
-            <div className="text-center px-8 max-w-xl">
-              <Icon size={42} className="mx-auto text-black/25 mb-4" />
-              <p className="font-black text-lg">{assets.length ? 'No assets match these filters' : 'No 3D assets published yet'}</p>
-              <p className="text-sm text-black/50 mt-2">{assets.length ? 'Change the search, category or subcategory.' : 'Published AISTAGE-owned 3D products will appear here.'}</p>
-            </div>
+          <div className="flex min-h-[360px] items-center justify-center rounded-[4px] border border-dashed border-white/15 bg-[#17191d]">
+            <div className="max-w-xl px-8 text-center"><Icon size={42} className="mx-auto mb-4 text-[#23c7be]/45" /><p className="text-lg font-black text-white">{assets.length ? 'No assets match these filters' : 'No 3D assets published yet'}</p><p className="mt-2 text-sm text-white/40">{assets.length ? 'Change the search, category or subcategory.' : 'Published AISTAGE-owned 3D products will appear here.'}</p></div>
           </div>
         )}
       </div>
@@ -261,17 +224,9 @@ function Generate3D() {
                 const Icon = item.icon;
                 const active = item.key === generationType;
                 return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setGenerationType(item.key)}
-                    className={`w-full text-left min-h-[52px] px-3 border flex items-center gap-3 transition-colors ${active ? 'border-[#d5a928] bg-[#d5a928] text-black' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.07]'}`}
-                  >
+                  <button key={item.key} type="button" onClick={() => setGenerationType(item.key)} className={`w-full text-left min-h-[52px] px-3 border flex items-center gap-3 transition-colors ${active ? 'border-[#d5a928] bg-[#d5a928] text-black' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.07]'}`}>
                     <Icon size={18} />
-                    <div>
-                      <div className="font-bold text-sm">{item.label}</div>
-                      <div className={`text-[10px] mt-0.5 ${active ? 'text-black/60' : 'text-white/45'}`}>{item.hint}</div>
-                    </div>
+                    <div><div className="font-bold text-sm">{item.label}</div><div className={`text-[10px] mt-0.5 ${active ? 'text-black/60' : 'text-white/45'}`}>{item.hint}</div></div>
                   </button>
                 );
               })}
@@ -279,123 +234,35 @@ function Generate3D() {
 
             <div className="mt-4 pt-4 border-t border-white/10">
               <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-white/45 mb-2">AI model</label>
-              {loadingModels ? (
-                <div className="border border-white/15 bg-black/25 px-3 py-3 text-sm text-white/60">Loading enabled 3D models…</div>
-              ) : enabledForMode.length ? (
-                <div className="relative">
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    className="w-full appearance-none border border-white/15 bg-black/35 px-3 py-3 pr-9 text-sm font-semibold text-white outline-none focus:border-[#d5a928]"
-                  >
-                    {enabledForMode.map((item) => (
-                      <option key={item.model_key} value={item.model_key}>
-                        {item.recommended ? 'Recommended · ' : ''}{item.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/55" />
-                </div>
-              ) : (
-                <div className="border border-white/15 bg-black/25 px-3 py-3">
-                  <div className="font-semibold text-sm">No enabled model for this input</div>
-                  <div className="text-[11px] text-white/45 mt-1">Activate a compatible 3D model in Admin.</div>
-                </div>
-              )}
+              {loadingModels ? <div className="border border-white/15 bg-black/25 px-3 py-3 text-sm text-white/60">Loading enabled 3D models…</div> : enabledForMode.length ? (
+                <div className="relative"><select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} className="w-full appearance-none border border-white/15 bg-black/35 px-3 py-3 pr-9 text-sm font-semibold text-white outline-none focus:border-[#d5a928]">{enabledForMode.map((item) => <option key={item.model_key} value={item.model_key}>{item.recommended ? 'Recommended · ' : ''}{item.name}</option>)}</select><ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/55" /></div>
+              ) : <div className="border border-white/15 bg-black/25 px-3 py-3"><div className="font-semibold text-sm">No enabled model for this input</div><div className="text-[11px] text-white/45 mt-1">Activate a compatible 3D model in Admin.</div></div>}
               {selected && <div className="mt-2 text-[11px] text-white/45">{selected.description}</div>}
               {modelError && <div className="mt-2 text-[11px] text-red-300">{modelError}</div>}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowAdvanced((v) => !v)}
-              className="mt-4 w-full min-h-[42px] border border-white/15 px-3 flex items-center justify-between text-sm font-semibold hover:bg-white/[0.06]"
-            >
-              <span className="flex items-center gap-2"><SlidersHorizontal size={16} /> Advanced settings</span>
-              <span>{showAdvanced ? '−' : '+'}</span>
-            </button>
+            <button type="button" onClick={() => setShowAdvanced((v) => !v)} className="mt-4 w-full min-h-[42px] border border-white/15 px-3 flex items-center justify-between text-sm font-semibold hover:bg-white/[0.06]"><span className="flex items-center gap-2"><SlidersHorizontal size={16} /> Advanced settings</span><span>{showAdvanced ? '−' : '+'}</span></button>
 
-            {showAdvanced && (
-              <div className="mt-3 space-y-2 text-xs">
-                {(selected?.capabilities?.features || []).length ? (
-                  (selected.capabilities.features || []).map((feature) => (
-                    <div key={feature} className="border border-white/10 p-3">
-                      <div className="text-white/45 mb-1">Capability</div>
-                      <div className="font-semibold">{String(feature).replaceAll('_', ' ')}</div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="border border-white/10 p-3 text-white/55">Model-specific controls will appear here.</div>
-                )}
-              </div>
-            )}
+            {showAdvanced && <div className="mt-3 space-y-2 text-xs">{(selected?.capabilities?.features || []).length ? (selected.capabilities.features || []).map((feature) => <div key={feature} className="border border-white/10 p-3"><div className="text-white/45 mb-1">Capability</div><div className="font-semibold">{String(feature).replaceAll('_', ' ')}</div></div>) : <div className="border border-white/10 p-3 text-white/55">Model-specific controls will appear here.</div>}</div>}
           </aside>
 
           <section className="min-w-0 min-h-0 p-3 md:p-4 flex flex-col overflow-y-auto">
             <div className="flex-1 min-h-[320px] border border-black/15 bg-[#cfd0cb] relative flex items-center justify-center overflow-hidden">
               <div className="absolute inset-0 opacity-[0.18]" style={{ backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
-              <div className="relative text-center px-8">
-                <div className="w-20 h-20 border border-black/20 bg-black text-[#d5a928] flex items-center justify-center mx-auto mb-4">
-                  <Box size={40} strokeWidth={1.4} />
-                </div>
-                <p className="text-lg font-black">3D Preview Workspace</p>
-                <p className="text-sm text-black/50 mt-2 max-w-md">Generated GLB models will appear here with orbit, zoom and inspection controls.</p>
-              </div>
+              <div className="relative text-center px-8"><div className="w-20 h-20 border border-black/20 bg-black text-[#d5a928] flex items-center justify-center mx-auto mb-4"><Box size={40} strokeWidth={1.4} /></div><p className="text-lg font-black">3D Preview Workspace</p><p className="text-sm text-black/50 mt-2 max-w-md">Generated GLB models will appear here with orbit, zoom and inspection controls.</p></div>
             </div>
 
             <div className="mt-3 border border-black/15 bg-white/60 p-3 flex-shrink-0">
-              {generationType === 'text' && (
-                <>
-                  <label className="text-[10px] uppercase tracking-[0.18em] font-bold text-black/50">Prompt</label>
-                  <textarea className="mt-2 w-full min-h-[86px] border border-black/20 bg-white p-3 outline-none focus:border-black" placeholder="Describe the 3D character, accessory, prop or environment…" />
-                </>
-              )}
-              {generationType === 'image' && (
-                <div className="min-h-[96px] border border-dashed border-black/25 flex items-center justify-center text-center p-4">
-                  <div><Upload size={24} className="mx-auto mb-2" /><div className="font-bold">Add reference image</div><div className="text-xs text-black/45 mt-1">The active engine determines supported image formats.</div></div>
-                </div>
-              )}
-              {generationType === 'multi' && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {['Front', 'Back', 'Left', 'Right'].map((side) => (
-                    <div key={side} className="aspect-[4/3] border border-dashed border-black/25 flex items-center justify-center text-center">
-                      <div><Upload size={18} className="mx-auto mb-1" /><div className="text-xs font-bold">{side}</div></div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {generationType === 'text' && <><label className="text-[10px] uppercase tracking-[0.18em] font-bold text-black/50">Prompt</label><textarea className="mt-2 w-full min-h-[86px] border border-black/20 bg-white p-3 outline-none focus:border-black" placeholder="Describe the 3D character, accessory, prop or environment…" /></>}
+              {generationType === 'image' && <div className="min-h-[96px] border border-dashed border-black/25 flex items-center justify-center text-center p-4"><div><Upload size={24} className="mx-auto mb-2" /><div className="font-bold">Add reference image</div><div className="text-xs text-black/45 mt-1">The active engine determines supported image formats.</div></div></div>}
+              {generationType === 'multi' && <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{['Front', 'Back', 'Left', 'Right'].map((side) => <div key={side} className="aspect-[4/3] border border-dashed border-black/25 flex items-center justify-center text-center"><div><Upload size={18} className="mx-auto mb-1" /><div className="text-xs font-bold">{side}</div></div></div>)}</div>}
             </div>
           </section>
 
           <aside className="min-h-0 overflow-y-auto border-t xl:border-t-0 xl:border-l border-black/15 bg-white/65 p-3">
             <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-black/45 mb-3">Output</p>
-            <div className="space-y-2">
-              <div className="border border-black/15 p-3">
-                <div className="text-[11px] text-black/45">AI model</div>
-                <div className="font-bold text-sm mt-1">{selected?.name || 'None enabled'}</div>
-              </div>
-              <div className="border border-black/15 p-3">
-                <div className="text-[11px] text-black/45">Input mode</div>
-                <div className="font-bold text-sm mt-1">{mode?.label}</div>
-              </div>
-              <div className="border border-black/15 p-3">
-                <div className="text-[11px] text-black/45">Primary working format</div>
-                <div className="font-bold text-sm mt-1">GLB</div>
-              </div>
-              <div className="border border-black/15 p-3">
-                <div className="text-[11px] text-black/45">Storage destination</div>
-                <div className="font-bold text-sm mt-1">My 3D Assets</div>
-              </div>
-              <div className="border border-black/15 p-3">
-                <div className="text-[11px] text-black/45">Price</div>
-                <div className="font-bold text-sm mt-1">
-                  {selected?.credit_cost != null ? `${selected.credit_cost} credits` : 'Calculated from Admin model settings'}
-                </div>
-              </div>
-            </div>
-            <button disabled={!selected} className="mt-4 w-full min-h-[48px] bg-black text-white font-black uppercase tracking-[0.12em] text-xs disabled:opacity-45 disabled:cursor-not-allowed">
-              Generate 3D
-            </button>
+            <div className="space-y-2"><div className="border border-black/15 p-3"><div className="text-[11px] text-black/45">AI model</div><div className="font-bold text-sm mt-1">{selected?.name || 'None enabled'}</div></div><div className="border border-black/15 p-3"><div className="text-[11px] text-black/45">Input mode</div><div className="font-bold text-sm mt-1">{mode?.label}</div></div><div className="border border-black/15 p-3"><div className="text-[11px] text-black/45">Primary working format</div><div className="font-bold text-sm mt-1">GLB</div></div><div className="border border-black/15 p-3"><div className="text-[11px] text-black/45">Storage destination</div><div className="font-bold text-sm mt-1">My 3D Assets</div></div><div className="border border-black/15 p-3"><div className="text-[11px] text-black/45">Price</div><div className="font-bold text-sm mt-1">{selected?.credit_cost != null ? `${selected.credit_cost} credits` : 'Calculated from Admin model settings'}</div></div></div>
+            <button disabled={!selected} className="mt-4 w-full min-h-[48px] bg-black text-white font-black uppercase tracking-[0.12em] text-xs disabled:opacity-45 disabled:cursor-not-allowed">Generate 3D</button>
             {!selected && <p className="text-[11px] text-black/45 mt-2">Generation activates when you enable at least one compatible 3D model in Admin.</p>}
           </aside>
         </div>
