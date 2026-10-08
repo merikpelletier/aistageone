@@ -139,7 +139,7 @@ export default function LayoutTool({ user, onClose }) {
     } catch { window.open(selectedUrl, '_blank', 'noopener,noreferrer'); toast.info('Open the image to save it'); }
   };
 
-  return <div className="min-h-screen bg-[#202328] px-5 pb-24 pt-6 text-white lg:px-8">
+  return <div className="min-h-screen bg-[#202328] px-5 pb-24 pt-6 text-white lg:h-[calc(100vh-3.5rem)] lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-8">
     <header className="mx-auto mb-5 flex max-w-[1500px] items-center gap-3 border-b border-white/10 pb-5">
       <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/65 transition hover:bg-white/10 hover:text-white"><ArrowLeft size={19} /></button>
       <div>
