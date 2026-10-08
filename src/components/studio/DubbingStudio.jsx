@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mic, Video, Volume2, X, Loader2, Combine, CheckCircle2, Upload } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import VoiceRecorder from './VoiceRecorder';
@@ -18,15 +17,11 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleVoiceRecorded = (url) => {
-    setVoiceUrl(url);
-    setShowRecorder(false);
-  };
+  const handleVoiceRecorded = (url) => { setVoiceUrl(url); setShowRecorder(false); };
 
   const handleVideoUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-
     try {
       const result = await base44.integrations.Core.UploadFile({ file });
       setVideoUrl(result.file_url);
@@ -37,14 +32,9 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
 
   const handleMix = async () => {
     if (!voiceUrl || !videoUrl) return;
-
     setIsMixing(true);
     try {
-      const response = await base44.functions.invoke('mixAudioVideo', {
-        audio_url: voiceUrl,
-        video_url: videoUrl,
-      });
-
+      const response = await base44.functions.invoke('mixAudioVideo', { audio_url: voiceUrl, video_url: videoUrl });
       if (!response.data?.file_url) throw new Error('The dubbing service returned no video');
       setMixedResult(response.data.file_url);
     } catch (error) {
@@ -57,10 +47,7 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
 
   const handleUseVideo = () => {
     if (!mixedResult) return;
-    if (!user?.email) {
-      onComplete(mixedResult);
-      return;
-    }
+    if (!user?.email) return onComplete(mixedResult);
     setShowSaveVault(true);
   };
 
@@ -72,20 +59,15 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
         const timelines = await base44.entities.UserTimeline.filter({ episode_page_id: episodePageId, user_email: user.email });
         const timeline = timelines[0];
         const videoOverride = { block_id: blockId, user_media_url: mixedResult, status: 'uploaded' };
-
         if (!timeline) {
-          await base44.entities.UserTimeline.create({
-            episode_page_id: episodePageId,
-            user_email: user.email,
-            block_overrides: [videoOverride],
-          });
+          await base44.entities.UserTimeline.create({ episode_page_id: episodePageId, user_email: user.email, block_overrides: [videoOverride] });
         } else {
           const otherBlocks = (timeline.block_overrides || []).filter(item => item.block_id !== blockId);
           await base44.entities.UserTimeline.update(timeline.id, { block_overrides: [...otherBlocks, videoOverride] });
         }
         toast.success('Dubbed video saved to your Vault & episode!');
       } catch (error) {
-        console.error('Error attaching dubbed video to episode:', error);
+        console.error(error);
         toast.error('Saved to Vault, but failed to attach to episode');
       } finally {
         setIsSaving(false);
@@ -94,156 +76,75 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
     onComplete(mixedResult);
   };
 
+  const shell = inline
+    ? 'relative w-full'
+    : `fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] overflow-y-auto bg-[#202328]' : 'inset-0 flex items-center justify-center bg-black/80 p-4'}`;
+
+  const panel = inline
+    ? 'w-full bg-[#202328] p-4 text-white md:p-5'
+    : embedded
+      ? 'min-h-full w-full overflow-y-auto bg-[#202328] p-5 pb-28 text-white md:p-8 lg:pb-32'
+      : 'max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[4px] border border-white/10 bg-[#202328] p-6 text-white';
+
   return (
-    <div className={inline ? 'relative w-full' : `fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] bg-yellow-400 overflow-y-auto' : 'inset-0 bg-black/80 flex items-center justify-center p-4'}`}>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className={inline ? 'bg-yellow-400 rounded-3xl p-5 md:p-6 w-full' : (embedded ? 'bg-yellow-400 min-h-full w-full p-5 md:p-8 overflow-y-auto' : 'bg-yellow-400 rounded-3xl p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto')}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-black text-xl font-bold">Dubbing Studio</h3>
-            <p className="text-black text-sm">Add your voice to a video</p>
+    <div className={shell}>
+      <motion.div initial={{ opacity: 0, scale: .98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: .98 }} className={panel}>
+        <div className="mx-auto max-w-5xl">
+          <header className="mb-5 flex items-center justify-between border-b border-white/10 bg-[#17191d] px-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Volume2 size={19} /></div>
+              <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#23c7be]">Sound & Voice</p><h3 className="text-xl font-black">Dubbing Studio</h3><p className="text-xs text-white/45">Add your voice to a video.</p></div>
+            </div>
+            {!embedded && !inline && <button onClick={onClose} className="rounded-[3px] border border-white/10 bg-white/[.04] p-2 hover:bg-white/10"><X size={20} /></button>}
+          </header>
+
+          {showContext && <ProductionContextInfo productionMethod={productionMethod} block={block} character={character} referenceMedia={[]} />}
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+              <div className="mb-3 flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-xs font-black text-[#8ee9e4]">1</span><div><p className="text-sm font-black">Your Voice</p><p className="text-xs text-white/40">Record the dialogue you want to add.</p></div></div>
+              {!voiceUrl ? (
+                <button onClick={() => setShowRecorder(true)} className="flex min-h-[160px] w-full flex-col items-center justify-center gap-3 rounded-[4px] border border-dashed border-white/15 bg-black/20 text-white transition hover:border-[#23c7be]/50 hover:bg-black/30">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Mic size={24} /></div>
+                  <span className="text-sm font-black">Record Voice</span>
+                </button>
+              ) : (
+                <div className="rounded-[4px] border border-white/10 bg-black/20 p-3"><div className="mb-3 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Volume2 size={18} /></div><div className="min-w-0 flex-1"><p className="text-sm font-black">Voice recorded</p><p className="text-xs text-white/40">Ready for dubbing</p></div><button onClick={() => setVoiceUrl(null)} className="rounded-[3px] border border-white/10 bg-white/[.04] p-2 text-white/60 hover:bg-white/10"><X size={15} /></button></div><audio src={voiceUrl} controls className="w-full" /></div>
+              )}
+            </section>
+
+            <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+              <div className="mb-3 flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-xs font-black text-[#8ee9e4]">2</span><div><p className="text-sm font-black">Video</p><p className="text-xs text-white/40">Choose the video that receives the voice.</p></div></div>
+              {!videoUrl ? (
+                <label className="flex min-h-[160px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[4px] border border-dashed border-white/15 bg-black/20 text-white transition hover:border-[#23c7be]/50 hover:bg-black/30">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Upload size={24} /></div>
+                  <span className="text-sm font-black">Upload Video</span><span className="text-xs text-white/35">MP4, WebM, MOV</span>
+                  <input type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" />
+                </label>
+              ) : (
+                <div className="rounded-[4px] border border-white/10 bg-black/20 p-3"><video src={videoUrl} controls className="mb-3 max-h-[300px] w-full rounded-[3px] bg-black" /><div className="flex items-center gap-3"><Video size={18} className="text-[#23c7be]" /><span className="flex-1 text-sm font-black">Video loaded</span><button onClick={() => setVideoUrl(null)} className="rounded-[3px] border border-white/10 bg-white/[.04] p-2 text-white/60 hover:bg-white/10"><X size={15} /></button></div></div>
+              )}
+            </section>
           </div>
-          {!embedded && !inline && (
-            <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
-              <X size={20} className="text-black" />
-            </button>
+
+          {voiceUrl && videoUrl && !mixedResult && (
+            <section className="mt-4 rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+              <div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-black">Ready to combine</p><p className="text-xs text-white/40">The recorded voice will be mixed with the selected video.</p></div><Combine size={18} className="text-[#23c7be]" /></div>
+              <button onClick={handleMix} disabled={isMixing} className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[.05] disabled:text-white/30">{isMixing ? <><Loader2 size={18} className="animate-spin" /> Creating dubbed video…</> : <><Combine size={18} /> Create Dubbed Video</>}</button>
+            </section>
+          )}
+
+          {mixedResult && (
+            <section className="mt-4 rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+              <div className="mb-3 flex items-center gap-2"><CheckCircle2 size={18} className="text-[#23c7be]" /><div><p className="text-sm font-black">Dubbing complete</p><p className="text-xs text-white/40">Your voice has been added to the video.</p></div></div>
+              <video src={mixedResult} controls className="w-full rounded-[3px] border border-white/10 bg-black" />
+              <button onClick={handleUseVideo} disabled={isSaving} className="mt-4 flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:opacity-50">{isSaving ? <><Loader2 size={18} className="animate-spin" /> Saving…</> : <><CheckCircle2 size={18} /> Use Dubbed Video</>}</button>
+            </section>
           )}
         </div>
 
-        {showContext && (
-          <ProductionContextInfo
-            productionMethod={productionMethod}
-            block={block}
-            character={character}
-            referenceMedia={[]}
-          />
-        )}
-
-        <div className="mb-6">
-          <p className="text-black font-semibold mb-3 flex items-center gap-2">
-            <Mic size={16} />
-            1. Your Voice
-          </p>
-          <div className="bg-black rounded-2xl p-4">
-            {!voiceUrl ? (
-              <div className="text-center">
-                <Button
-                  onClick={() => setShowRecorder(true)}
-                  className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 px-6 rounded-xl"
-                >
-                  <Mic size={18} className="mr-2" />
-                  Record Voice
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center">
-                  <Volume2 size={18} className="text-black" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-medium mb-2">Voice recorded</p>
-                  <audio src={voiceUrl} controls className="w-full" />
-                </div>
-                <button onClick={() => setVoiceUrl(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                  <X size={16} className="text-white" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <p className="text-black font-semibold mb-3 flex items-center gap-2">
-            <Video size={16} />
-            2. Video
-          </p>
-          <div className="bg-black rounded-2xl p-4">
-            {!videoUrl ? (
-              <div className="text-center">
-                <label className="cursor-pointer">
-                  <input type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" />
-                  <div className="bg-white/10 hover:bg-white/20 rounded-xl py-3 px-6 transition-colors">
-                    <Upload size={18} className="text-white inline mr-2" />
-                    <span className="text-white font-medium">Upload Video</span>
-                  </div>
-                </label>
-              </div>
-            ) : (
-              <div>
-                <video src={videoUrl} controls className="w-full rounded-xl mb-3 max-h-64" />
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center">
-                    <Video size={18} className="text-black" />
-                  </div>
-                  <p className="text-white text-sm font-medium flex-1">Video loaded</p>
-                  <button onClick={() => setVideoUrl(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                    <X size={16} className="text-white" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {voiceUrl && videoUrl && !mixedResult && (
-          <Button
-            onClick={handleMix}
-            disabled={isMixing}
-            className="w-full bg-black hover:bg-black/90 text-yellow-400 font-bold py-4 rounded-2xl mb-4"
-          >
-            {isMixing ? (
-              <><Loader2 size={20} className="mr-2 animate-spin" /> Creating dubbed video...</>
-            ) : (
-              <><Combine size={20} className="mr-2" /> Create Dubbed Video</>
-            )}
-          </Button>
-        )}
-
-        {mixedResult && (
-          <div className="bg-black rounded-2xl p-6 mb-4 text-center">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Video size={28} className="text-white" />
-            </div>
-            <p className="text-white font-semibold mb-2">Dubbing Complete!</p>
-            <p className="text-white text-sm mb-4">Your voice has been added to the video</p>
-            <video src={mixedResult} controls className="w-full rounded-xl" />
-          </div>
-        )}
-
-        {mixedResult && (
-          <Button
-            onClick={handleUseVideo}
-            disabled={isSaving}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl disabled:opacity-50"
-          >
-            {isSaving ? (
-              <><Loader2 size={20} className="mr-2 animate-spin" /> Saving...</>
-            ) : (
-              <><CheckCircle2 size={20} className="mr-2" /> Use Dubbed Video</>
-            )}
-          </Button>
-        )}
-
-        {showSaveVault && (
-          <SaveToVaultModal
-            userEmail={user?.email}
-            imageUrl={mixedResult}
-            mediaType="video"
-            onClose={() => setShowSaveVault(false)}
-            onSaved={handleVaultSaved}
-          />
-        )}
-
-        {showRecorder && (
-          <VoiceRecorder
-            onRecordingComplete={handleVoiceRecorded}
-            onClose={() => setShowRecorder(false)}
-          />
-        )}
+        {showSaveVault && <SaveToVaultModal userEmail={user?.email} imageUrl={mixedResult} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={handleVaultSaved} />}
+        {showRecorder && <VoiceRecorder onRecordingComplete={handleVoiceRecorded} onClose={() => setShowRecorder(false)} />}
       </motion.div>
     </div>
   );
