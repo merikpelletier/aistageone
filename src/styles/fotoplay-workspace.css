@@ -82,3 +82,48 @@
 .studio-shell main section[class*="border-yellow-400/30"][class*="bg-yellow-400/5"] [class*="focus:border-yellow-400"]:focus {
   border-color: var(--studio-accent) !important;
 }
+
+/* FotoPlay gateway: keep this as a Studio entry point, not a full-page hero. */
+.studio-shell main button[class*="min-h-[360px]"][class*="lg:min-h-[520px]"] {
+  min-height: 220px !important;
+  max-height: 280px !important;
+  border-radius: 4px !important;
+  padding: 24px !important;
+  box-shadow: none !important;
+}
+
+.studio-shell main button[class*="min-h-[360px]"][class*="lg:min-h-[520px]"] > div {
+  min-height: 0 !important;
+}
+
+.studio-shell main button[class*="min-h-[360px]"][class*="lg:min-h-[520px]"] div[class*="h-16"][class*="w-16"] {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 3px !important;
+}
+
+.studio-shell main button[class*="min-h-[360px]"][class*="lg:min-h-[520px]"] div[class*="mt-auto"][class*="pt-16"] {
+  padding-top: 24px !important;
+}
+
+.studio-shell main button[class*="min-h-[360px]"][class*="lg:min-h-[520px]"] h3[class*="lg:text-5xl"] {
+  font-size: 30px !important;
+  line-height: 1.05 !important;
+}
+
+.studio-shell main button[class*="min-h-[360px]"][class*="lg:min-h-[520px]"] p[class*="lg:text-base"] {
+  max-width: 780px !important;
+  margin-top: 10px !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+.studio-shell main button[class*="min-h-[360px]"][class*="lg:min-h-[520px]"] div[class*="mt-8"] {
+  margin-top: 14px !important;
+}
+
+@media (min-width: 1024px) {
+  .studio-shell main > div[class*="max-w-[1500px]"] > div[class*="mb-8"] {
+    margin-bottom: 18px !important;
+  }
+}
