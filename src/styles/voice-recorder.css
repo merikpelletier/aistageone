@@ -1,0 +1,121 @@
+/* Voice Recorder — visual unification only. The component logic remains untouched. */
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) {
+  background: var(--studio-bg) !important;
+  color: var(--studio-text) !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) > div {
+  background: var(--studio-bg) !important;
+  color: var(--studio-text) !important;
+  max-width: 1120px !important;
+  margin: 0 auto !important;
+  padding: 24px !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) > div > div:first-child {
+  background: var(--studio-surface) !important;
+  border: 1px solid var(--studio-border) !important;
+  border-radius: 4px !important;
+  padding: 14px 16px !important;
+  margin-bottom: 16px !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) h3 {
+  color: var(--studio-text) !important;
+  font-size: 20px !important;
+  font-weight: 800 !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) > div > div.bg-black.rounded-2xl.p-8.mb-6.text-center {
+  background: var(--studio-surface) !important;
+  border: 1px solid var(--studio-border) !important;
+  border-radius: 4px !important;
+  min-height: 360px !important;
+  padding: 36px 24px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) .bg-yellow-400 {
+  background: var(--studio-accent) !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) .text-yellow-400 {
+  color: var(--studio-accent) !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) p.text-yellow-400 {
+  color: var(--studio-text) !important;
+  font-size: 46px !important;
+  letter-spacing: -0.03em !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) .rounded-full {
+  border-radius: 3px !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) .rounded-2xl,
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) .rounded-3xl {
+  border-radius: 4px !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) button.bg-black {
+  background: var(--studio-accent) !important;
+  border: 1px solid var(--studio-accent) !important;
+  color: #071211 !important;
+  box-shadow: none !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) button.bg-black svg {
+  color: #071211 !important;
+  stroke: currentColor !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) button.bg-red-600 {
+  background: rgba(229,72,77,.12) !important;
+  border: 1px solid rgba(229,72,77,.38) !important;
+  color: #ffb1b4 !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) button.bg-green-600 {
+  background: rgba(35,199,190,.12) !important;
+  border: 1px solid rgba(35,199,190,.35) !important;
+  color: var(--studio-accent) !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) button.bg-green-600 svg,
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) button.bg-red-600 svg {
+  color: currentColor !important;
+  stroke: currentColor !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) button.bg-white\/20 {
+  background: rgba(255,255,255,.05) !important;
+  border: 1px solid var(--studio-border) !important;
+  color: var(--studio-text-muted) !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) button.w-full.bg-black {
+  min-height: 46px !important;
+  background: var(--studio-accent) !important;
+  color: #071211 !important;
+  border-radius: 3px !important;
+}
+
+.studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) button.w-full.bg-black:hover {
+  background: var(--studio-accent-hover) !important;
+}
+
+@media (max-width: 700px) {
+  .studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) > div {
+    padding: 14px !important;
+  }
+
+  .studio-shell main > div.fixed.z-\[100\]:has(> div > div.bg-black.rounded-2xl.p-8.mb-6.text-center) > div > div.bg-black.rounded-2xl.p-8.mb-6.text-center {
+    min-height: 300px !important;
+  }
+}
