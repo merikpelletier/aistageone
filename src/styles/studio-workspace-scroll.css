@@ -1,0 +1,29 @@
+/* Keep embedded Studio workspaces inside the desktop viewport.
+   This prevents document scrolling from dragging the left toolbar and
+   exposing legacy page backgrounds underneath it. */
+
+@media (min-width: 1024px) {
+  .studio-shell .min-h-\[calc\(100vh-3\.5rem\)\].bg-\[\#202328\].text-white:has(> .sticky.top-14) {
+    height: calc(100vh - 3.5rem) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    background: #202328 !important;
+  }
+
+  .studio-shell .min-h-\[calc\(100vh-3\.5rem\)\].bg-\[\#202328\].text-white:has(> .sticky.top-14) > .sticky.top-14 {
+    top: 0 !important;
+    flex: 0 0 3rem;
+  }
+
+  .studio-shell .min-h-\[calc\(100vh-3\.5rem\)\].bg-\[\#202328\].text-white:has(> .sticky.top-14) > .min-h-\[calc\(100vh-6\.5rem\)\].overflow-y-auto {
+    height: calc(100% - 3rem) !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    background: #202328 !important;
+  }
+
+  .studio-shell main {
+    background: #202328 !important;
+  }
+}
