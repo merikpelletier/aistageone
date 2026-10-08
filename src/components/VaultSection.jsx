@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bookmark, Trash2, X, Folder, Plus, ChevronDown, ChevronRight, Pencil, FileText, Download, Volume2, Upload, Loader2 } from 'lucide-react';
+import { Bookmark, Trash2, X, Folder, Plus, ChevronDown, Pencil, FileText, Volume2, Upload, Loader2, Info, Star } from 'lucide-react';
 import ScriptEditor from '@/components/studio/ScriptEditor';
 import AssetInspector from '@/components/studio/AssetInspector';
-import { Info, Star } from 'lucide-react';
 import { toast } from 'sonner';
-
 
 function VisibleTags({ tags = [] }) {
   if (!Array.isArray(tags) || tags.length === 0) return null;
   return (
-    <div className="absolute top-3 left-3 right-3 z-[2] flex flex-wrap gap-1 pointer-events-none">
-      {tags.slice(0, 4).map((tag) => (
-        <span key={tag} className="rounded-full border border-white/20 bg-black/80 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+    <div className="absolute left-2 top-2 z-[2] flex max-w-[75%] flex-wrap gap-1 pointer-events-none">
+      {tags.slice(0, 3).map((tag) => (
+        <span key={tag} className="rounded-[2px] border border-white/10 bg-black/75 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-white/75">
           {tag}
         </span>
       ))}
@@ -21,14 +19,14 @@ function VisibleTags({ tags = [] }) {
   );
 }
 
-const folderColors = {
-  red: 'bg-red-500/20 border-red-500/40 text-red-400',
-  orange: 'bg-orange-500/20 border-orange-500/40 text-orange-400',
-  yellow: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400',
-  green: 'bg-green-500/20 border-green-500/40 text-green-400',
-  blue: 'bg-blue-500/20 border-blue-500/40 text-blue-400',
-  purple: 'bg-purple-500/20 border-purple-500/40 text-purple-400',
-  pink: 'bg-pink-500/20 border-pink-500/40 text-pink-400',
+const folderAccent = {
+  red: 'bg-red-400',
+  orange: 'bg-orange-400',
+  yellow: 'bg-amber-300',
+  green: 'bg-emerald-400',
+  blue: 'bg-sky-400',
+  purple: 'bg-violet-400',
+  pink: 'bg-rose-400',
 };
 
 export default function VaultSection({ userEmail, onUsePrompt }) {
@@ -38,11 +36,11 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderColor, setNewFolderColor] = useState('blue');
   const [expandedFolders, setExpandedFolders] = useState({});
-  const [allCollapsed, setAllCollapsed] = useState(true);
-  const [editingName, setEditingName] = useState(null); // asset id being renamed
+  const [allCollapsed] = useState(true);
+  const [editingName, setEditingName] = useState(null);
   const [nameDraft, setNameDraft] = useState('');
-  const [scriptAsset, setScriptAsset] = useState(null); // script being edited
-  const [inspectorAsset, setInspectorAsset] = useState(null); // asset being curated
+  const [scriptAsset, setScriptAsset] = useState(null);
+  const [inspectorAsset, setInspectorAsset] = useState(null);
   const [uploading, setUploading] = useState(false);
 
   const uploadMedia = async (event) => {
@@ -117,9 +115,7 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
   const deleteFolder = async (folderId) => {
     const folderAssets = assets.filter(a => a.folder_id === folderId);
     try {
-      for (const asset of folderAssets) {
-        await base44.entities.VaultAsset.update(asset.id, { folder_id: null });
-      }
+      for (const asset of folderAssets) await base44.entities.VaultAsset.update(asset.id, { folder_id: null });
       await base44.entities.VaultFolder.delete(folderId);
     } catch (error) {
       toast.error(error.message || 'Unable to delete folder');
@@ -138,267 +134,166 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
   };
 
   const moveAssetToFolder = async (assetId, folderId) => {
-    const target = folderId === 'unfiled' ? null : folderId;
-    await base44.entities.VaultAsset.update(assetId, { folder_id: target });
+    await base44.entities.VaultAsset.update(assetId, { folder_id: folderId === 'unfiled' ? null : folderId });
     queryClient.invalidateQueries({ queryKey: ['vaultAssets', userEmail] });
   };
 
-  const toggleFolder = (folderId) => {
-    setExpandedFolders(prev => ({ ...prev, [folderId]: !prev[folderId] }));
-  };
+  const toggleFolder = (folderId) => setExpandedFolders(prev => ({ ...prev, [folderId]: !prev[folderId] }));
 
-  if (foldersLoading || assetsLoading) return null;
+  if (foldersLoading || assetsLoading) {
+    return <div className="flex min-h-[280px] items-center justify-center rounded-[4px] border border-white/10 bg-[#17191d]"><Loader2 className="animate-spin text-[#23c7be]" size={24} /></div>;
+  }
 
   const unfiledAssets = assets.filter(a => !a.folder_id);
 
-  return (
-    <div className="bg-black border border-white/10 rounded-3xl p-6 space-y-6 shadow-2xl">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center">
-            <Bookmark size={20} className="text-black" fill="currentColor" />
+  const AssetCard = ({ asset, currentFolderId = null }) => {
+    const moveOptions = currentFolderId
+      ? [{ id: 'unfiled', name: 'Unfiled' }, ...folders.filter(f => f.id !== currentFolderId)]
+      : folders;
+
+    return (
+      <article className="min-w-0 overflow-hidden rounded-[4px] border border-white/10 bg-[#17191d] transition hover:border-[#23c7be]/35">
+        <div className="relative aspect-[4/3] overflow-hidden bg-black/35">
+          <VisibleTags tags={asset.tags} />
+
+          {asset.media_type === 'script' ? (
+            <button onClick={() => setScriptAsset(asset)} className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#111317] p-4 text-center">
+              <FileText size={34} className="text-[#23c7be]" />
+              <span className="line-clamp-2 text-[10px] font-black uppercase tracking-wider text-[#8ee9e4]">{asset.name || 'Script'}</span>
+            </button>
+          ) : asset.media_type === 'video' ? (
+            <button onClick={() => setLightboxUrl(asset.url)} className="relative h-full w-full bg-black">
+              <video src={asset.url} className="h-full w-full object-contain" muted preload="metadata" />
+              <span className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[3px] border border-white/15 bg-black/70">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z" /></svg>
+              </span>
+            </button>
+          ) : asset.media_type === 'audio' ? (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-[#111317] p-4">
+              <Volume2 size={34} className="text-[#23c7be]" />
+              <audio src={asset.url} controls className="w-full max-w-[230px]" />
+            </div>
+          ) : (
+            <button onClick={() => setLightboxUrl(asset.url)} className="h-full w-full bg-black/20">
+              <img src={asset.url} alt={asset.name || ''} className="h-full w-full object-contain" />
+            </button>
+          )}
+
+          <div className="absolute right-2 top-2 flex gap-1.5">
+            <button onClick={() => setInspectorAsset(asset)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:border-[#23c7be]/40 hover:text-[#8ee9e4]" title="Asset details"><Info size={14} /></button>
+            <button onClick={() => { setEditingName(asset.id); setNameDraft(asset.name || ''); }} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:text-white" title="Rename"><Pencil size={14} /></button>
+            <button onClick={() => deleteAsset(asset.id)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-red-400/25 bg-black/75 text-red-300 hover:bg-red-400/10" title="Delete"><Trash2 size={14} /></button>
           </div>
-          <div>
-            <p className="text-white text-xl font-bold uppercase tracking-wider">My Vault</p>
-            {assets.length > 0 && <span className="text-white text-sm font-medium">{assets.length} assets</span>}
-          </div>
+
+          {asset.is_magazine_ready && <span className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-[3px] border border-[#23c7be]/35 bg-[#17191d]/90 text-[#23c7be]" title="Magazine ready"><Star size={13} fill="currentColor" /></span>}
+
+          {editingName === asset.id && (
+            <div className="absolute inset-0 z-10 flex flex-col justify-center gap-3 bg-black/90 p-4" onClick={(e) => e.stopPropagation()}>
+              <input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') saveName(asset); if (e.key === 'Escape') setEditingName(null); }} placeholder="Name this file…" className="w-full rounded-[3px] border border-[#23c7be]/50 bg-[#17191d] px-3 py-2.5 text-sm font-semibold text-white outline-none focus:border-[#23c7be]" autoFocus />
+              <div className="flex justify-end gap-2"><button onClick={() => setEditingName(null)} className="rounded-[3px] border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-bold text-white">Cancel</button><button onClick={() => saveName(asset)} className="rounded-[3px] bg-[#23c7be] px-3 py-2 text-xs font-black text-[#071211]">Save</button></div>
+            </div>
+          )}
         </div>
-        <div className="flex flex-wrap justify-end gap-2">
-          <label className={`flex items-center gap-2 px-5 py-3 bg-white/10 hover:bg-white/15 border border-white/15 rounded-2xl text-white text-sm font-bold transition-colors shadow-lg ${uploading ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
-            {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-            {uploading ? 'Uploading...' : 'Upload media'}
+
+        <div className="space-y-3 p-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-black text-white" title={asset.name || 'Untitled'}>{asset.name || 'Untitled'}</p>
+            <div className="mt-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-white/35">
+              <span>{asset.media_type || 'asset'}</span>
+              {asset.asset_category && <><span>·</span><span className="text-[#8ee9e4]/75">{asset.asset_category}</span></>}
+            </div>
+          </div>
+          {moveOptions.length > 0 && (
+            <select value="" onChange={(e) => { if (e.target.value) moveAssetToFolder(asset.id, e.target.value); }} className="h-9 w-full rounded-[3px] border border-white/10 bg-black/25 px-2.5 text-xs font-bold text-white/65 outline-none focus:border-[#23c7be]">
+              <option value="">Move to…</option>
+              {moveOptions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          )}
+        </div>
+      </article>
+    );
+  };
+
+  const AssetGrid = ({ items, currentFolderId = null }) => (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+      {items.map(asset => <AssetCard key={asset.id} asset={asset} currentFolderId={currentFolderId} />)}
+    </div>
+  );
+
+  return (
+    <div className="space-y-5 rounded-[4px] border border-white/10 bg-[#17191d] p-4 shadow-none md:p-5">
+      <header className="flex flex-col gap-4 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Bookmark size={19} fill="currentColor" /></div>
+          <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Library & Assets</p><div className="flex items-baseline gap-2"><h2 className="text-xl font-black text-white">My Vault</h2><span className="text-xs font-bold text-white/35">{assets.length} assets</span></div></div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <label className={`flex cursor-pointer items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs font-black text-white transition hover:bg-white/[0.08] ${uploading ? 'pointer-events-none opacity-60' : ''}`}>
+            {uploading ? <Loader2 size={15} className="animate-spin text-[#23c7be]" /> : <Upload size={15} className="text-[#23c7be]" />}
+            {uploading ? 'Uploading…' : 'Upload media'}
             <input type="file" accept="image/*,video/*,audio/*" multiple className="hidden" onChange={uploadMedia} disabled={uploading} />
           </label>
-          <button onClick={() => setShowNewFolder(true)} className="flex items-center gap-2 px-5 py-3 bg-yellow-400 hover:bg-yellow-300 rounded-2xl text-black text-sm font-bold transition-colors shadow-lg">
-            <Plus size={16} className="font-bold" />
-            New Folder
-          </button>
+          <button onClick={() => setShowNewFolder(true)} className="flex items-center gap-2 rounded-[3px] bg-[#23c7be] px-4 py-2.5 text-xs font-black text-[#071211] transition hover:bg-[#35d8cf]"><Plus size={15} /> New Folder</button>
         </div>
-      </div>
+      </header>
 
       {showNewFolder && (
-        <div className="flex gap-3 items-center bg-white/5 p-5 rounded-2xl border border-white/10">
-          <input value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="Folder name..." className="flex-1 bg-black/80 border border-white/20 rounded-xl px-4 py-3 text-white text-sm font-semibold focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20" autoFocus />
-          <select value={newFolderColor} onChange={(e) => setNewFolderColor(e.target.value)} className="bg-black/80 border border-white/20 rounded-xl px-4 py-3 text-white text-sm font-semibold focus:outline-none focus:border-yellow-400">
-            <option value="red">Red</option>
-            <option value="orange">Orange</option>
-            <option value="yellow">Yellow</option>
-            <option value="green">Green</option>
-            <option value="blue">Blue</option>
-            <option value="purple">Purple</option>
-            <option value="pink">Pink</option>
-          </select>
-          <button onClick={createFolder} className="px-5 py-3 bg-green-600 hover:bg-green-500 rounded-xl text-white text-sm font-bold transition-colors shadow-lg">Create</button>
-          <button onClick={() => setShowNewFolder(false)} className="p-2 text-white hover:text-white transition-colors"><X size={18} /></button>
+        <div className="grid gap-2 rounded-[4px] border border-white/10 bg-[#202328] p-3 sm:grid-cols-[minmax(0,1fr)_150px_auto_auto]">
+          <input value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="Folder name…" className="h-10 rounded-[3px] border border-white/10 bg-black/25 px-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" autoFocus />
+          <select value={newFolderColor} onChange={(e) => setNewFolderColor(e.target.value)} className="h-10 rounded-[3px] border border-white/10 bg-black/25 px-3 text-xs font-bold text-white outline-none focus:border-[#23c7be]"><option value="red">Red</option><option value="orange">Orange</option><option value="yellow">Yellow</option><option value="green">Green</option><option value="blue">Blue</option><option value="purple">Purple</option><option value="pink">Pink</option></select>
+          <button onClick={createFolder} className="h-10 rounded-[3px] bg-[#23c7be] px-4 text-xs font-black text-[#071211]">Create</button>
+          <button onClick={() => setShowNewFolder(false)} className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/60"><X size={16} /></button>
         </div>
       )}
 
-      {/* Unfiled Assets */}
       {unfiledAssets.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 text-white text-base font-bold uppercase tracking-wider">
-            <div className="w-8 h-8 bg-yellow-400 rounded-xl flex items-center justify-center">
-              <Folder size={16} className="text-black" />
-            </div>
-            Unfiled <span className="text-white">({unfiledAssets.length})</span>
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 border-b border-white/10 pb-2.5">
+            <Folder size={16} className="text-[#23c7be]" />
+            <h3 className="text-xs font-black uppercase tracking-[0.14em] text-white">Unfiled</h3>
+            <span className="text-xs font-bold text-white/35">{unfiledAssets.length}</span>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            {unfiledAssets.map((asset) => (
-              <div key={asset.id} className="relative rounded-2xl overflow-hidden bg-white/5 border border-white/10" style={{ aspectRatio: '3/4' }}>
-                <VisibleTags tags={asset.tags} />
-                <div className="absolute top-12 left-3 flex gap-2">
-                  <select value="" onChange={(e) => { if (e.target.value) moveAssetToFolder(asset.id, e.target.value); }} className="bg-black/90 text-white text-xs font-bold rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 border border-white/30">
-                    <option value="" className="text-white">Move to...</option>
-                    {folders.map(f => <option key={f.id} value={f.id} className="text-white bg-black">{f.name}</option>)}
-                  </select>
-                </div>
-                {asset.media_type === 'script' ? (
-                  <button onClick={() => setScriptAsset(asset)} className="w-full h-full flex flex-col items-center justify-center gap-2 bg-neutral-900 cursor-pointer">
-                    <FileText size={32} className="text-yellow-400" />
-                    <span className="text-yellow-400 text-[10px] font-bold uppercase tracking-wider px-2 text-center leading-tight">{asset.name || 'Script'}</span>
-                  </button>
-                ) : asset.media_type === 'video' ? (
-                  <video src={asset.url} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxUrl(asset.url)} />
-                ) : asset.media_type === 'audio' ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-neutral-900 px-3">
-                    <Volume2 size={32} className="text-yellow-400" />
-                    <audio src={asset.url} controls className="w-full" />
-                  </div>
-                ) : (
-                  <img src={asset.url} alt="" className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxUrl(asset.url)} />
-                )}
-                {asset.media_type === 'video' && (
-                  <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-black/70 rounded-full flex items-center justify-center pointer-events-none">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z" /></svg>
-                  </span>
-                )}
-                {asset.asset_category && (
-                  <span className="absolute bottom-3 left-3 text-xs px-3 py-2 bg-black/90 text-yellow-400 font-bold rounded-lg capitalize border border-yellow-400/30 shadow-lg">
-                    {asset.asset_category}
-                  </span>
-                )}
-                <span className="absolute bottom-3 right-3 left-1/2 -translate-x-1/2 ml-8 max-w-[55%] truncate text-xs px-3 py-2 bg-black/80 text-white font-semibold rounded-lg shadow-lg pointer-events-none">
-                  {asset.name || 'Untitled'}
-                </span>
-                <button onClick={() => { setEditingName(asset.id); setNameDraft(asset.name || ''); }} className="absolute top-3 right-12 w-8 h-8 bg-black/70 hover:bg-black rounded-full flex items-center justify-center transition-colors shadow-lg">
-                  <Pencil size={14} className="text-white" />
-                </button>
-                <button onClick={() => deleteAsset(asset.id)} className="absolute top-3 right-3 w-8 h-8 bg-red-600 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors shadow-lg">
-                  <Trash2 size={14} className="text-white" />
-                </button>
-                {editingName === asset.id && (
-                  <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-4 z-10" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      value={nameDraft}
-                      onChange={(e) => setNameDraft(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') saveName(asset); if (e.key === 'Escape') setEditingName(null); }}
-                      placeholder="Name this file…"
-                      className="w-full bg-white/10 border border-yellow-400 rounded-xl px-4 py-3 text-white text-sm font-semibold placeholder-white/30 focus:outline-none"
-                      autoFocus
-                    />
-                    <button onClick={() => saveName(asset)} className="absolute bottom-4 right-4 bg-yellow-400 text-black text-xs font-bold px-4 py-2 rounded-lg">Save</button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+          <AssetGrid items={unfiledAssets} />
+        </section>
       )}
 
-      {/* Folders */}
       {folders.map((folder) => {
         const folderAssets = assets.filter(a => a.folder_id === folder.id);
         const isExpanded = expandedFolders[folder.id] ?? !allCollapsed;
-
         return (
-          <div key={folder.id} className="space-y-2">
-            <div className={`flex items-center justify-between px-5 py-4 rounded-2xl border ${folderColors[folder.color]} cursor-pointer shadow-lg`} onClick={() => toggleFolder(folder.id)}>
-            <div className="flex items-center gap-3">
-              <ChevronDown size={18} className={`text-white transition-transform ${!isExpanded ? '-rotate-90' : ''}`} />
-              <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center">
-                <Folder size={18} className="text-white" />
+          <section key={folder.id} className="overflow-hidden rounded-[4px] border border-white/10 bg-[#202328]">
+            <div className="flex cursor-pointer items-center justify-between px-3 py-3 hover:bg-white/[0.025]" onClick={() => toggleFolder(folder.id)}>
+              <div className="flex min-w-0 items-center gap-2.5">
+                <ChevronDown size={15} className={`flex-shrink-0 text-white/45 transition-transform ${!isExpanded ? '-rotate-90' : ''}`} />
+                <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-[1px] ${folderAccent[folder.color] || 'bg-[#23c7be]'}`} />
+                <Folder size={16} className="flex-shrink-0 text-white/55" />
+                <span className="truncate text-sm font-black text-white">{folder.name}</span>
+                <span className="text-xs font-bold text-white/30">{folderAssets.length}</span>
               </div>
-              <span className="text-white text-base font-bold">{folder.name}</span>
-              <span className="text-white text-sm font-semibold">({folderAssets.length})</span>
+              <button onClick={(e) => { e.stopPropagation(); deleteFolder(folder.id); }} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-transparent text-white/35 transition hover:border-red-400/20 hover:bg-red-400/10 hover:text-red-300" title="Delete folder"><Trash2 size={14} /></button>
             </div>
-            <button onClick={(e) => { e.stopPropagation(); deleteFolder(folder.id); }} className="p-2 hover:bg-black/20 rounded-xl transition-colors">
-              <Trash2 size={16} className="text-white" />
-            </button>
-          </div>
-
-          {isExpanded && (
-            <div className="grid grid-cols-3 gap-3 pl-2">
-              {folderAssets.map((asset) => (
-                <div key={asset.id} className="relative rounded-2xl overflow-hidden bg-white/5 border border-white/10" style={{ aspectRatio: '3/4' }}>
-                  <VisibleTags tags={asset.tags} />
-                  <div className="absolute top-12 left-3 flex gap-2">
-                    <select value="" onChange={(e) => { if (e.target.value) moveAssetToFolder(asset.id, e.target.value); }} className="bg-black/90 text-white text-xs font-bold rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 border border-white/30">
-                      <option value="" className="text-white">Move to...</option>
-                      <option value="unfiled" className="text-white bg-black">Unfiled</option>
-                      {folders.filter(f => f.id !== folder.id).map(f => <option key={f.id} value={f.id} className="text-white bg-black">{f.name}</option>)}
-                    </select>
-                  </div>
-                  {asset.media_type === 'script' ? (
-                    <button onClick={() => setScriptAsset(asset)} className="w-full h-full flex flex-col items-center justify-center gap-2 bg-neutral-900 cursor-pointer">
-                      <FileText size={32} className="text-yellow-400" />
-                      <span className="text-yellow-400 text-[10px] font-bold uppercase tracking-wider px-2 text-center leading-tight">{asset.name || 'Script'}</span>
-                    </button>
-                  ) : asset.media_type === 'video' ? (
-                    <video src={asset.url} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxUrl(asset.url)} />
-                  ) : asset.media_type === 'audio' ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-neutral-900 px-3">
-                      <Volume2 size={32} className="text-yellow-400" />
-                      <audio src={asset.url} controls className="w-full" />
-                    </div>
-                  ) : (
-                    <img src={asset.url} alt="" className="w-full h-full object-cover cursor-pointer" onClick={() => setLightboxUrl(asset.url)} />
-                  )}
-                  {asset.media_type === 'video' && (
-                    <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-black/70 rounded-full flex items-center justify-center pointer-events-none">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z" /></svg>
-                    </span>
-                  )}
-                  {asset.asset_category && (
-                    <span className="absolute bottom-3 left-3 text-xs px-3 py-2 bg-black/90 text-yellow-400 font-bold rounded-lg capitalize border border-yellow-400/30 shadow-lg">
-                      {asset.asset_category}
-                    </span>
-                  )}
-                  <span className="absolute bottom-3 right-3 left-1/2 -translate-x-1/2 ml-8 max-w-[55%] truncate text-xs px-3 py-2 bg-black/80 text-white font-semibold rounded-lg shadow-lg pointer-events-none">
-                    {asset.name || 'Untitled'}
-                  </span>
-                  <button onClick={() => setInspectorAsset(asset)} className="absolute top-3 right-24 w-8 h-8 bg-black/70 hover:bg-yellow-400 hover:text-black rounded-full flex items-center justify-center transition-colors shadow-lg text-white">
-                    <Info size={14} />
-                  </button>
-                  <button onClick={() => { setEditingName(asset.id); setNameDraft(asset.name || ''); }} className="absolute top-3 right-12 w-8 h-8 bg-black/70 hover:bg-black rounded-full flex items-center justify-center transition-colors shadow-lg">
-                    <Pencil size={14} className="text-white" />
-                  </button>
-                  <button onClick={() => deleteAsset(asset.id)} className="absolute top-3 right-3 w-8 h-8 bg-red-600 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors shadow-lg">
-                    <Trash2 size={14} className="text-white" />
-                  </button>
-                  {asset.is_magazine_ready && (
-                    <span className="absolute bottom-3 right-3 w-7 h-7 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg" title="Magazine ready">
-                      <Star size={13} className="text-black" fill="currentColor" />
-                    </span>
-                  )}
-                  {editingName === asset.id && (
-                    <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-4 z-10" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        value={nameDraft}
-                        onChange={(e) => setNameDraft(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') saveName(asset); if (e.key === 'Escape') setEditingName(null); }}
-                        placeholder="Name this file…"
-                        className="w-full bg-white/10 border border-yellow-400 rounded-xl px-4 py-3 text-white text-sm font-semibold placeholder-white/30 focus:outline-none"
-                        autoFocus
-                      />
-                      <button onClick={() => saveName(asset)} className="absolute bottom-4 right-4 bg-yellow-400 text-black text-xs font-bold px-4 py-2 rounded-lg">Save</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          </div>
+            {isExpanded && <div className="border-t border-white/10 p-3">{folderAssets.length ? <AssetGrid items={folderAssets} currentFolderId={folder.id} /> : <div className="py-8 text-center text-xs font-semibold text-white/30">This folder is empty.</div>}</div>}
+          </section>
         );
       })}
 
       {assets.length === 0 && folders.length === 0 && (
-        <div className="py-12 text-center">
-          <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Bookmark size={28} className="text-white" />
-          </div>
-          <p className="text-white text-base font-medium">No saved assets yet</p>
-          <p className="text-white text-sm mt-2 leading-relaxed max-w-xs mx-auto">Browse production kits and tap the bookmark icon on any asset to save it here</p>
+        <div className="rounded-[4px] border border-dashed border-white/15 bg-[#202328] py-14 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[3px] border border-[#23c7be]/25 bg-[#23c7be]/10"><Bookmark size={22} className="text-[#23c7be]" /></div>
+          <p className="text-sm font-black text-white">No saved assets yet</p>
+          <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-white/35">Upload media or save production assets to organize them here.</p>
         </div>
       )}
 
       {lightboxUrl && (
-        <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4" onClick={() => setLightboxUrl(null)}>
-          <button className="absolute top-8 right-4 text-white hover:text-white z-10"><X size={24} /></button>
-          {lightboxUrl.match(/\.(mp4|webm|mov|m4v)(\?|$)/i) ? (
-            <video src={lightboxUrl} controls autoPlay className="max-w-full max-h-full rounded-xl" onClick={(e) => e.stopPropagation()} />
-          ) : (
-            <img src={lightboxUrl} alt="" className="max-w-full max-h-full rounded-xl object-contain" />
-          )}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4" onClick={() => setLightboxUrl(null)}>
+          <button className="absolute right-4 top-8 z-10 flex h-9 w-9 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.05] text-white"><X size={20} /></button>
+          {lightboxUrl.match(/\.(mp4|webm|mov|m4v)(\?|$)/i) ? <video src={lightboxUrl} controls autoPlay className="max-h-full max-w-full rounded-[4px]" onClick={(e) => e.stopPropagation()} /> : <img src={lightboxUrl} alt="" className="max-h-full max-w-full rounded-[4px] object-contain" onClick={(e) => e.stopPropagation()} />}
         </div>
       )}
 
-      {scriptAsset && (
-        <ScriptEditor
-          asset={scriptAsset}
-          userEmail={userEmail}
-          onClose={() => setScriptAsset(null)}
-          onUsePrompt={onUsePrompt}
-        />
-      )}
-
-      {inspectorAsset && (
-        <AssetInspector
-          asset={inspectorAsset}
-          userEmail={userEmail}
-          folders={folders}
-          onClose={() => setInspectorAsset(null)}
-        />
-      )}
+      {scriptAsset && <ScriptEditor asset={scriptAsset} userEmail={userEmail} onClose={() => setScriptAsset(null)} onUsePrompt={onUsePrompt} />}
+      {inspectorAsset && <AssetInspector asset={inspectorAsset} userEmail={userEmail} folders={folders} onClose={() => setInspectorAsset(null)} />}
     </div>
   );
 }
