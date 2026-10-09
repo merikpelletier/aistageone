@@ -20,8 +20,8 @@ const buildHeroPrompt = (name, description) => `Create a production-ready cinema
 export default function SetGeneratorPanel({ name, description, images, setImages }) {
   const [mode, setMode] = useState(images?.length ? 'reference' : 'scratch');
   const [generating, setGenerating] = useState('');
+  const [progress, setProgress] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
-  const heroImage = images?.[0] || null;
   const referenceCount = mode === 'reference' ? Math.min(images?.length || 0, 3) : 0;
   const canGenerateHero = useMemo(() => Boolean(name?.trim() || description?.trim()), [name, description]);
   const pricingInput = useMemo(() => ({
@@ -56,7 +56,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     return res.data.file_url;
   };
 
-  const generateHero = async () => {
+  const generateSet = async () => {
     if (!canGenerateHero) {
       toast.error('Add a set name or creative brief first.');
       return;
@@ -69,38 +69,44 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       toast.error('Add at least one reference image, or choose From Scratch.');
       return;
     }
-    setGenerating('hero');
+
+    setGenerating('Hero');
+    setProgress({ current: 1, total: 8, label: 'Hero' });
+
     try {
       const refs = mode === 'reference' ? images.slice(0, 3) : [];
-      const url = await runGeneration(buildHeroPrompt(name, description), refs);
-      setImages(current => [url, ...current.filter(item => item !== url)].slice(0, 8));
-      toast.success('Hero set generated');
-    } catch (error) {
-      console.error('Set generation failed', error);
-      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? 'Not enough credits for this generation.' : (error.message || 'Set generation failed. Try again.'));
-    } finally {
-      setGenerating('');
-    }
-  };
+      const heroUrl = await runGeneration(buildHeroPrompt(name, description), refs);
 
-  const generateView = async (index, label, instruction) => {
-    if (!heroImage || !effectiveModel) return;
-    setGenerating(label);
-    try {
-      const prompt = `${buildHeroPrompt(name, description)}\nUse the provided hero image as the strict visual and spatial reference. Generate a ${instruction}. It must clearly be the SAME location, not a redesign. Keep architecture, surfaces, fixtures, furniture, proportions and palette consistent. No people, no text, no logos.`;
-      const url = await runGeneration(prompt, [heroImage]);
       setImages(current => {
         const next = [...current];
-        while (next.length <= index) next.push(null);
-        next[index] = url;
+        next[0] = heroUrl;
         return next.slice(0, 8);
       });
-      toast.success(`${label} view generated`);
+
+      for (let offset = 0; offset < VIEW_SPECS.length; offset += 1) {
+        const [label, instruction] = VIEW_SPECS[offset];
+        const index = offset + 1;
+        setGenerating(label);
+        setProgress({ current: index + 1, total: 8, label });
+
+        const prompt = `${buildHeroPrompt(name, description)}\nUse the provided hero image as the strict visual and spatial reference. Generate a ${instruction}. It must clearly be the SAME location, not a redesign. Keep architecture, surfaces, fixtures, furniture, proportions and palette consistent. No people, no text, no logos.`;
+        const url = await runGeneration(prompt, [heroUrl]);
+
+        setImages(current => {
+          const next = [...current];
+          while (next.length <= index) next.push(null);
+          next[index] = url;
+          return next.slice(0, 8);
+        });
+      }
+
+      toast.success('Set and continuity views generated');
     } catch (error) {
-      console.error(`Set ${label} generation failed`, error);
-      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? 'Not enough credits for this generation.' : (error.message || `${label} generation failed.`));
+      console.error('Set generation failed', error);
+      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? 'Not enough credits to finish the set generation.' : (error.message || 'Set generation failed. Try again.'));
     } finally {
       setGenerating('');
+      setProgress(null);
     }
   };
 
@@ -110,11 +116,11 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         <div>
           <div className="flex items-center gap-2 text-[#23c7be]"><Sparkles size={16} /><span className="text-[10px] font-black uppercase tracking-[0.18em]">Generate the set</span></div>
           <h3 className="mt-1 text-xl font-black text-white">Create from scratch or build from references</h3>
-          <p className="mt-1 max-w-2xl text-xs leading-5 text-white/45">A reference image is optional. From Scratch uses the brief and creative-direction choices. From Reference also uses up to three imported images.</p>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-white/45">The Hero is generated first. Wide, Reverse, Left, Right, Detail, Day and Night are then generated automatically from that Hero and placed in the Visual Continuity Board.</p>
         </div>
         <div className="grid min-w-[280px] grid-cols-2 border border-white/10 bg-black/25 p-1">
-          <button type="button" onClick={() => setMode('scratch')} className={`px-4 py-2.5 text-xs font-black ${mode === 'scratch' ? 'bg-[#23c7be] text-black' : 'text-white/65 hover:text-white'}`}>FROM SCRATCH</button>
-          <button type="button" onClick={() => setMode('reference')} className={`px-4 py-2.5 text-xs font-black ${mode === 'reference' ? 'bg-[#23c7be] text-black' : 'text-white/65 hover:text-white'}`}>FROM REFERENCE</button>
+          <button type="button" onClick={() => setMode('scratch')} disabled={Boolean(generating)} className={`px-4 py-2.5 text-xs font-black ${mode === 'scratch' ? 'bg-[#23c7be] text-black' : 'text-white/65 hover:text-white'} disabled:opacity-40`}>FROM SCRATCH</button>
+          <button type="button" onClick={() => setMode('reference')} disabled={Boolean(generating)} className={`px-4 py-2.5 text-xs font-black ${mode === 'reference' ? 'bg-[#23c7be] text-black' : 'text-white/65 hover:text-white'} disabled:opacity-40`}>FROM REFERENCE</button>
         </div>
       </div>
 
@@ -124,7 +130,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
           <select
             value={effectiveModel || ''}
             onChange={event => setSelectedModel(event.target.value || null)}
-            disabled={modelsLoading || modelOptions.length === 0}
+            disabled={modelsLoading || modelOptions.length === 0 || Boolean(generating)}
             className="w-full border border-white/15 bg-black/25 px-3 py-3 text-sm font-bold text-white outline-none focus:border-[#23c7be] disabled:opacity-50"
           >
             {modelsLoading && <option value="">Loading models…</option>}
@@ -136,30 +142,15 @@ export default function SetGeneratorPanel({ name, description, images, setImages
             ))}
           </select>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/45">
-            <span>{mode === 'scratch' ? 'No reference required.' : `${referenceCount} reference${referenceCount === 1 ? '' : 's'} will guide the generation.`}</span>
-            <span>AI cost: {priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : effectiveModel ? 'Unable to calculate' : 'Select a model'}</span>
+            <span>{mode === 'scratch' ? 'No reference required.' : `${referenceCount} reference${referenceCount === 1 ? '' : 's'} will guide the Hero generation.`}</span>
+            <span>AI cost per image: {priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : effectiveModel ? 'Unable to calculate' : 'Select a model'}</span>
           </div>
+          {progress && <div className="mt-3 text-xs font-black text-[#8ee9e4]">GENERATING {progress.current}/8 · {progress.label.toUpperCase()}</div>}
         </div>
-        <button type="button" onClick={generateHero} disabled={Boolean(generating) || !canGenerateHero || !effectiveModel || modelsLoading} className="flex min-w-[220px] items-center justify-center gap-2 bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.06] disabled:text-white/30">
-          {generating === 'hero' ? <><Loader2 size={16} className="animate-spin" />GENERATING SET...</> : <><Camera size={16} />GENERATE HERO SET{!priceLoading && priceQuote?.credits ? ` · ${priceQuote.credits}` : ''}</>}
+        <button type="button" onClick={generateSet} disabled={Boolean(generating) || !canGenerateHero || !effectiveModel || modelsLoading} className="flex min-w-[220px] items-center justify-center gap-2 bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.06] disabled:text-white/30">
+          {generating ? <><Loader2 size={16} className="animate-spin" />GENERATING {progress?.current || 1}/8...</> : <><Camera size={16} />GENERATE SET</>}
         </button>
       </div>
-
-      {heroImage && (
-        <div className="mt-5 border-t border-white/10 pt-5">
-          <p className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-white/45">Generate matching production views</p>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {VIEW_SPECS.map(([label, instruction], offset) => {
-              const index = offset + 1;
-              const exists = Boolean(images?.[index]);
-              const busy = generating === label;
-              return <button key={label} type="button" onClick={() => generateView(index, label, instruction)} disabled={Boolean(generating) || !effectiveModel} className={`border px-3 py-3 text-left text-xs font-black transition ${exists ? 'border-[#23c7be]/35 bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-black/20 text-white hover:border-white/30'} disabled:opacity-40`}>
-                {busy ? 'GENERATING...' : exists ? `${label.toUpperCase()} · REGENERATE` : `GENERATE ${label.toUpperCase()}`}
-              </button>;
-            })}
-          </div>
-        </div>
-      )}
     </section>
   );
 }
