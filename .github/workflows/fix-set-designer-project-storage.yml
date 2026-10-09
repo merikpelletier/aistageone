@@ -1,0 +1,184 @@
+name: Apply Set Designer project persistence
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Wire Set Designer to reloadable projects
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          editor = Path('src/components/studio/SetAssetEditor.jsx')
+          text = editor.read_text()
+
+          text, n = re.subn(r"\nconst VISUAL_STYLES = \{.*?\n\};\n", "\n", text, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit(f'Expected VISUAL_STYLES block once, found {n}')
+
+          old_sig = "export default function SetAssetEditor({ asset, userEmail, onClose, embedded = false }) {\n  const qc = useQueryClient();"
+          new_sig = "export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, embedded = false }) {\n  const qc = useQueryClient();\n  const [projectId, setProjectId] = useState(asset?.id || null);"
+          if old_sig not in text:
+              raise SystemExit('SetAssetEditor signature anchor not found')
+          text = text.replace(old_sig, new_sig, 1)
+
+          old_save = '''  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const data = { user_email: userEmail, name: name.trim(), description: description.trim(), tags, images };
+      if (asset?.id) await base44.entities.SetAsset.update(asset.id, data);
+      else await base44.entities.SetAsset.create(data);
+      qc.invalidateQueries({ queryKey: ['setAssets', userEmail] });
+      toast.success(asset?.id ? 'Set updated' : 'Set created');
+      onClose();
+    } catch (error) {
+      console.error('Set save failed', error);
+      toast.error('Set could not be saved. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  };'''
+          new_save = '''  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        user_email: userEmail,
+        name: name.trim(),
+        description: description.trim(),
+        tags,
+        images,
+        updated_date: new Date().toISOString(),
+      };
+
+      let saved;
+      if (projectId) {
+        const { data, error } = await supabase
+          .from('set_designer_project')
+          .update(payload)
+          .eq('id', projectId)
+          .select('*')
+          .single();
+        if (error) throw error;
+        saved = data;
+      } else {
+        const { data, error } = await supabase
+          .from('set_designer_project')
+          .insert(payload)
+          .select('*')
+          .single();
+        if (error) throw error;
+        saved = data;
+        setProjectId(data.id);
+      }
+
+      qc.invalidateQueries({ queryKey: ['setDesignerProjects'] });
+      onSaved?.(saved);
+      toast.success(projectId ? 'Set updated' : 'Set saved');
+    } catch (error) {
+      console.error('Set Designer project save failed', error);
+      toast.error(error?.message || 'Set could not be saved. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  };'''
+          if old_save not in text:
+              raise SystemExit('Legacy SetAsset save block not found')
+          text = text.replace(old_save, new_save, 1)
+          text = text.replace("{asset?.id ? 'Edit your set' : 'Create a set'}", "{projectId ? 'Edit your set' : 'Create a set'}", 1)
+
+          old_close = "          {!embedded && <button onClick={onClose} className=\"border border-white/10 bg-white/[0.04] p-2 text-white hover:bg-white/10\"><X size={20} /></button>}"
+          new_close = "          <button onClick={onClose} className=\"border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black text-white hover:bg-white/10\">{embedded ? 'MY SETS' : <X size={20} />}</button>"
+          if old_close not in text:
+              raise SystemExit('Editor close button anchor not found')
+          text = text.replace(old_close, new_close, 1)
+          editor.write_text(text)
+
+          studio = Path('src/pages/Studio.jsx')
+          text = studio.read_text()
+          old_import = "import SetAssetEditor from '@/components/studio/SetAssetEditor';"
+          new_import = "import SetDesignerWorkspace from '@/components/studio/SetDesignerWorkspace';"
+          if old_import not in text:
+              raise SystemExit('Studio SetAssetEditor import not found')
+          text = text.replace(old_import, new_import, 1)
+
+          base_import = "import { base44 } from '@/api/base44Client';"
+          if "import { supabase } from '@/api/supabaseClient';" not in text:
+              text = text.replace(base_import, base_import + "\nimport { supabase } from '@/api/supabaseClient';", 1)
+
+          old_query = '''  const { data: setAssets = [] } = useQuery({
+    queryKey: ['setAssets', user?.email],
+    queryFn: () => base44.entities.SetAsset.filter({ user_email: user.email }),
+    enabled: !!user?.email,
+  });'''
+          new_query = '''  const { data: setDesignerProjects = [] } = useQuery({
+    queryKey: ['setDesignerProjects'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('set_designer_project')
+        .select('id')
+        .order('updated_date', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.email,
+  });'''
+          if old_query not in text:
+              raise SystemExit('Legacy Studio SetAsset query not found')
+          text = text.replace(old_query, new_query, 1)
+          text = text.replace('  const setCount = setAssets.length;', '  const setCount = setDesignerProjects.length;', 1)
+
+          text = text.replace("if (tool.action === 'set') { setEditingSet(false); return; }", "if (tool.action === 'set') { setActiveToolPanel('set'); return; }", 1)
+          text = text.replace("onOpenSet={() => setEditingSet(false)}", "onOpenSet={() => setActiveToolPanel('set')}")
+          text = text.replace("onOpenSet={() => { setActiveToolPanel(null); setEditingSet(false); }}", "onOpenSet={() => setActiveToolPanel('set')}")
+
+          vault_anchor = "      {activeToolPanel === 'vault' && (\n"
+          set_panel = '''      {activeToolPanel === 'set' && (
+        <div className="absolute inset-0 z-20 bg-[#202328]">
+          <StudioWorkspaceTool title="Set Designer"><SetDesignerWorkspace userEmail={user?.email} /></StudioWorkspaceTool>
+        </div>
+      )}
+
+'''
+          if vault_anchor not in text:
+              raise SystemExit('Vault panel anchor not found')
+          text = text.replace(vault_anchor, set_panel + vault_anchor, 1)
+
+          old_render = "        {editingSet !== null && <SetAssetEditor embedded key=\"set-editor\" asset={editingSet || null} userEmail={user?.email} onClose={() => setEditingSet(null)} />}\n"
+          if old_render not in text:
+              raise SystemExit('Legacy SetAssetEditor render not found')
+          text = text.replace(old_render, '', 1)
+          studio.write_text(text)
+
+          # Ensure no runtime SetAsset access remains in the two Set Designer paths.
+          combined = editor.read_text() + '\n' + studio.read_text()
+          if 'entities.SetAsset' in combined:
+              raise SystemExit('Legacy entities.SetAsset reference still present')
+
+          # Remove this one-shot workflow from the resulting source tree.
+          Path('.github/workflows/fix-set-designer-project-storage.yml').unlink()
+          PY
+      - run: npm ci
+      - run: npm run build
+      - name: Commit verified Set Designer project persistence
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Persist and reload Set Designer projects"
+          git push origin main
