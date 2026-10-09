@@ -105,7 +105,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   };
 
   return (
-    <section className="border border-white/10 bg-[#17191d] p-5 sm:p-6">
+    <section className="set-generator-panel border border-white/10 bg-[#17191d] p-5 sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex items-center gap-2 text-[#23c7be]"><Sparkles size={16} /><span className="text-[10px] font-black uppercase tracking-[0.18em]">Generate the set</span></div>
