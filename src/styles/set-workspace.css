@@ -125,3 +125,57 @@
     width: 100% !important;
   }
 }
+
+/* Set Designer — real visual reference imagery for Creative Direction cards */
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div > div:nth-child(2) > button {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* Direction */
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(1) { background-image: url('https://loremflickr.com/640/360/cinematic,filmset?lock=101') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(2) { background-image: url('https://loremflickr.com/640/360/fashion,editorial?lock=102') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(3) { background-image: url('https://loremflickr.com/640/360/urban,gritty?lock=103') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(4) { background-image: url('https://loremflickr.com/640/360/theatre,stage?lock=104') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(5) { background-image: url('https://loremflickr.com/640/360/retro,vintage?lock=105') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(6) { background-image: url('https://loremflickr.com/640/360/minimalist,interior?lock=106') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(7) { background-image: url('https://loremflickr.com/640/360/luxury,interior?lock=107') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(8) { background-image: url('https://loremflickr.com/640/360/futuristic,architecture?lock=108') !important; }
+
+/* Era */
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(2) > div:nth-child(2) > button:nth-child(1) { background-image: url('https://loremflickr.com/640/360/contemporary,architecture?lock=201') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(2) > div:nth-child(2) > button:nth-child(2) { background-image: url('https://loremflickr.com/640/360/1940s,vintage,car?lock=202') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(2) > div:nth-child(2) > button:nth-child(3) { background-image: url('https://loremflickr.com/640/360/1960s,retro,palmtrees?lock=203') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(2) > div:nth-child(2) > button:nth-child(4) { background-image: url('https://loremflickr.com/640/360/1980s,neon,city?lock=204') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(2) > div:nth-child(2) > button:nth-child(5) { background-image: url('https://loremflickr.com/640/360/future,architecture?lock=205') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(2) > div:nth-child(2) > button:nth-child(6) { background-image: url('https://loremflickr.com/640/360/classical,architecture,columns?lock=206') !important; }
+
+/* Lighting */
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(3) > div:nth-child(2) > button:nth-child(1) { background-image: url('https://loremflickr.com/640/360/natural,light,interior?lock=301') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(3) > div:nth-child(2) > button:nth-child(2) { background-image: url('https://loremflickr.com/640/360/studio,softbox,lighting?lock=302') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(3) > div:nth-child(2) > button:nth-child(3) { background-image: url('https://loremflickr.com/640/360/shadow,light,contrast?lock=303') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(3) > div:nth-child(2) > button:nth-child(4) { background-image: url('https://loremflickr.com/640/360/neon,light?lock=304') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(3) > div:nth-child(2) > button:nth-child(5) { background-image: url('https://loremflickr.com/640/360/moonlight,night?lock=305') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(3) > div:nth-child(2) > button:nth-child(6) { background-image: url('https://loremflickr.com/640/360/overcast,clouds?lock=306') !important; }
+
+/* Time of day */
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(4) > div:nth-child(2) > button:nth-child(1) { background-image: url('https://loremflickr.com/640/360/dawn,sunrise?lock=401') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(4) > div:nth-child(2) > button:nth-child(2) { background-image: url('https://loremflickr.com/640/360/day,city,skyline?lock=402') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(4) > div:nth-child(2) > button:nth-child(3) { background-image: url('https://loremflickr.com/640/360/goldenhour,sunset?lock=403') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(4) > div:nth-child(2) > button:nth-child(4) { background-image: url('https://loremflickr.com/640/360/dusk,city?lock=404') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(4) > div:nth-child(2) > button:nth-child(5) { background-image: url('https://loremflickr.com/640/360/night,moon,city?lock=405') !important; }
+
+/* Weather / atmosphere */
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(5) > div:nth-child(2) > button:nth-child(1) { background-image: url('https://loremflickr.com/640/360/clear,sky?lock=501') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(5) > div:nth-child(2) > button:nth-child(2) { background-image: url('https://loremflickr.com/640/360/cloudy,sky?lock=502') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(5) > div:nth-child(2) > button:nth-child(3) { background-image: url('https://loremflickr.com/640/360/rain,street?lock=503') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(5) > div:nth-child(2) > button:nth-child(4) { background-image: url('https://loremflickr.com/640/360/snow,mountains?lock=504') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(5) > div:nth-child(2) > button:nth-child(5) { background-image: url('https://loremflickr.com/640/360/fog,forest?lock=505') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(5) > div:nth-child(2) > button:nth-child(6) { background-image: url('https://loremflickr.com/640/360/storm,lightning?lock=506') !important; }
+
+/* Image treatment */
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(6) > div:nth-child(2) > button:nth-child(1) { background-image: url('https://loremflickr.com/640/360/photoreal,interior?lock=601') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(6) > div:nth-child(2) > button:nth-child(2) { background-image: url('https://loremflickr.com/640/360/cinematic,interior?lock=602') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(6) > div:nth-child(2) > button:nth-child(3) { background-image: url('https://loremflickr.com/640/360/stylized,abstract,light?lock=603') !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(6) > div:nth-child(2) > button:nth-child(4) { background-image: url('https://loremflickr.com/640/360/theatre,spotlight,stage?lock=604') !important; }
