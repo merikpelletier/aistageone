@@ -273,6 +273,8 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
         </div>
 
         <div className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 pb-28 sm:px-5">
+          <SetGeneratorPanel name={name} description={description} images={images} setImages={setImages} />
+
           <section className="overflow-hidden border border-white/10 bg-[#17191d]">
             <div className="grid lg:grid-cols-[1.35fr_0.65fr]">
               <div className="relative min-h-[360px] border-b border-white/10 bg-[#0d0f12] lg:min-h-[520px] lg:border-b-0 lg:border-r">
@@ -344,8 +346,6 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
               <div><label className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-white/45">Materials / palette</label><input value={readBriefField(description, 'Materials')} onChange={e => setCreativeField('Materials', e.target.value)} placeholder="smoked glass, wet concrete, teal accents..." className="w-full border border-white/10 bg-[#0c0f11] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" /></div>
             </div>
           </section>
-
-          <SetGeneratorPanel name={name} description={description} images={images} setImages={setImages} />
 
           <section className="border border-white/10 bg-[#17191d] p-5 sm:p-6">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
