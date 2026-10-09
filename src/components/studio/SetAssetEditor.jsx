@@ -24,41 +24,6 @@ const WEATHER_OPTIONS = ['Clear', 'Cloudy', 'Rain', 'Snow', 'Fog', 'Storm'];
 const REALISM_OPTIONS = ['Photoreal', 'Cinematic', 'Stylized', 'Theatrical'];
 const IMAGE_ROLES = ['Hero / Establishing', 'Wide', 'Reverse', 'Left', 'Right', 'Detail', 'Day', 'Night'];
 
-const VISUAL_STYLES = {
-  Cinematic: 'radial-gradient(circle at 76% 28%, rgba(35,199,190,.36), transparent 28%), linear-gradient(135deg,#061113 0%,#143238 42%,#050708 100%)',
-  'Fashion Editorial': 'linear-gradient(125deg,#0d0d0f 0%,#44464a 46%,#111214 47%,#26282b 100%)',
-  'Gritty Realism': 'linear-gradient(150deg,#0d1215 0%,#25333a 30%,#0a0d0f 31%,#17191b 66%,#384047 100%)',
-  Theatrical: 'radial-gradient(circle at 58% 24%, rgba(255,255,255,.28), transparent 18%), linear-gradient(90deg,#1a0608,#60131a 48%,#120406)',
-  Retro: 'linear-gradient(145deg,#1c1913 0%,#746347 42%,#302919 43%,#0d0d0c 100%)',
-  Minimalist: 'linear-gradient(135deg,#0e1012 0%,#24272b 46%,#7d858a 47%,#17191c 62%,#0a0b0c 100%)',
-  Luxury: 'radial-gradient(circle at 70% 35%, rgba(196,166,105,.34), transparent 24%), linear-gradient(135deg,#080909 0%,#2f2b24 52%,#080909 100%)',
-  Futuristic: 'radial-gradient(circle at 60% 40%, rgba(35,199,190,.4), transparent 20%), linear-gradient(120deg,#05070a,#10252b 50%,#0d1115)',
-  Contemporary: 'linear-gradient(150deg,#0d1418,#26505a 45%,#101719 46%,#06090a)',
-  '1940s': 'linear-gradient(135deg,#151515,#45413b 42%,#0d0d0d 43%,#292622)',
-  '1960s': 'linear-gradient(145deg,#1a1c1d,#596264 42%,#9c927d 43%,#161719)',
-  '1980s': 'linear-gradient(150deg,#070a12,#173656 45%,#57162b 70%,#08080d)',
-  'Near Future': 'linear-gradient(145deg,#0c1115,#33464e 42%,#0b1114 43%,#53646d)',
-  Timeless: 'linear-gradient(140deg,#111315,#44484b 44%,#151719 45%,#2b2e31)',
-  Natural: 'linear-gradient(145deg,#101613,#526553 45%,#c7b98f 46%,#252a24)',
-  'Soft Studio': 'radial-gradient(circle at 68% 35%, rgba(255,255,255,.5), transparent 20%), linear-gradient(135deg,#0b0c0e,#27292c 60%,#0a0b0c)',
-  'High Contrast': 'linear-gradient(135deg,#070707 0%,#0a0a0a 44%,#c8c8c8 45%,#292929 58%,#080808 59%)',
-  Neon: 'linear-gradient(90deg,#05080c 0%,#0e1015 44%,#18d7cb 45%,#18d7cb 48%,#0a0c10 49%,#4f193f 100%)',
-  Moonlight: 'radial-gradient(circle at 72% 27%,#d6e5ea 0%,#9fb7c1 4%,transparent 5%), linear-gradient(160deg,#050811,#142234 48%,#070a10)',
-  Overcast: 'linear-gradient(160deg,#171c20,#596168 42%,#2d3439 62%,#0c1013)',
-  Dawn: 'linear-gradient(155deg,#1d2230 0%,#b7704a 48%,#e0b27d 70%,#182027)',
-  Day: 'linear-gradient(145deg,#89bccc 0%,#dce6e5 45%,#3f5a62 46%,#101719)',
-  'Golden Hour': 'linear-gradient(155deg,#1c2024 0%,#aa5e32 46%,#df9c54 70%,#16191c)',
-  Dusk: 'linear-gradient(155deg,#101523,#5a4256 48%,#2e2a3a 70%,#0a0d12)',
-  Night: 'radial-gradient(circle at 72% 26%,#d8e5e8 0%,#aabfc8 4%,transparent 5%), linear-gradient(160deg,#03060b,#0d1f31 58%,#05070a)',
-  Clear: 'linear-gradient(160deg,#1d4f62,#4f91a5 48%,#b6d0d4 49%,#172126)',
-  Cloudy: 'linear-gradient(160deg,#1a2024,#5b666c 48%,#31393e 70%,#101417)',
-  Rain: 'repeating-linear-gradient(105deg,rgba(255,255,255,.08) 0 1px,transparent 1px 8px),linear-gradient(160deg,#081017,#1d3945 48%,#0a1116)',
-  Snow: 'linear-gradient(160deg,#172027,#95a9af 48%,#dde5e6 49%,#4f5c61 75%,#11181d)',
-  Fog: 'linear-gradient(160deg,#131719,#596064 40%,#888f90 55%,#303638 75%,#111416)',
-  Storm: 'radial-gradient(circle at 70% 30%,rgba(255,255,255,.5),transparent 4%),linear-gradient(160deg,#080a0d,#252c34 45%,#071019 70%,#020406)',
-  Photoreal: 'linear-gradient(145deg,#101214,#495056 42%,#8b9193 43%,#23272b 68%,#0b0d0f)',
-  Stylized: 'linear-gradient(135deg,#06141a,#125267 42%,#b14b57 61%,#0d1115)'
-};
 
 const fieldPattern = label => new RegExp(`^${label.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}:.*$`, 'mi');
 const readBriefField = (text, label) => {
@@ -175,8 +140,9 @@ function ChoiceGroup({ label, options, value, onChange }) {
   );
 }
 
-export default function SetAssetEditor({ asset, userEmail, onClose, embedded = false }) {
+export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, embedded = false }) {
   const qc = useQueryClient();
+  const [projectId, setProjectId] = useState(asset?.id || null);
   const [name, setName] = useState(asset?.name || '');
   const [description, setDescription] = useState(asset?.description || '');
   const [tags, setTags] = useState(asset?.tags || []);
@@ -241,15 +207,42 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
   const handleSave = async () => {
     setSaving(true);
     try {
-      const data = { user_email: userEmail, name: name.trim(), description: description.trim(), tags, images };
-      if (asset?.id) await base44.entities.SetAsset.update(asset.id, data);
-      else await base44.entities.SetAsset.create(data);
-      qc.invalidateQueries({ queryKey: ['setAssets', userEmail] });
-      toast.success(asset?.id ? 'Set updated' : 'Set created');
-      onClose();
+      const payload = {
+        user_email: userEmail,
+        name: name.trim(),
+        description: description.trim(),
+        tags,
+        images,
+        updated_date: new Date().toISOString(),
+      };
+
+      let saved;
+      if (projectId) {
+        const { data, error } = await supabase
+          .from('set_designer_project')
+          .update(payload)
+          .eq('id', projectId)
+          .select('*')
+          .single();
+        if (error) throw error;
+        saved = data;
+      } else {
+        const { data, error } = await supabase
+          .from('set_designer_project')
+          .insert(payload)
+          .select('*')
+          .single();
+        if (error) throw error;
+        saved = data;
+        setProjectId(data.id);
+      }
+
+      qc.invalidateQueries({ queryKey: ['setDesignerProjects'] });
+      onSaved?.(saved);
+      toast.success(projectId ? 'Set updated' : 'Set saved');
     } catch (error) {
-      console.error('Set save failed', error);
-      toast.error('Set could not be saved. Try again.');
+      console.error('Set Designer project save failed', error);
+      toast.error(error?.message || 'Set could not be saved. Try again.');
     } finally {
       setSaving(false);
     }
@@ -267,9 +260,9 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
         <div className="sticky top-0 z-10 flex min-h-16 items-center justify-between border-b border-white/10 bg-[#17191d]/95 px-5 py-3 backdrop-blur">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#23c7be]">Set Designer</p>
-            <h2 className="text-xl font-black text-white">{asset?.id ? 'Edit your set' : 'Create a set'}</h2>
+            <h2 className="text-xl font-black text-white">{projectId ? 'Edit your set' : 'Create a set'}</h2>
           </div>
-          {!embedded && <button onClick={onClose} className="border border-white/10 bg-white/[0.04] p-2 text-white hover:bg-white/10"><X size={20} /></button>}
+          <button onClick={onClose} className="border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black text-white hover:bg-white/10">{embedded ? 'MY SETS' : <X size={20} />}</button>
         </div>
 
         <div className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 pb-28 sm:px-5">

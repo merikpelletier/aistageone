@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useAppContext } from '@/lib/AppContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -17,7 +18,7 @@ const DEFAULT_HOME_ITEMS = [
   { key: 'fotoplay', label: 'FotoPlay', description: 'Interactive AI storytelling', icon: 'BookOpen', background_image: '', visible: true, order: 5 },
 ];
 import CharacterSheetEditor from '@/components/CharacterSheetEditor';
-import SetAssetEditor from '@/components/studio/SetAssetEditor';
+import SetDesignerWorkspace from '@/components/studio/SetDesignerWorkspace';
 import KitProductionRoom from '@/components/KitProductionRoom';
 import VoiceRecorder from '@/components/studio/VoiceRecorder';
 import AudioUploader from '@/components/studio/AudioUploader';
@@ -475,9 +476,16 @@ export default function Studio() {
     enabled: !!user?.email,
   });
 
-  const { data: setAssets = [] } = useQuery({
-    queryKey: ['setAssets', user?.email],
-    queryFn: () => base44.entities.SetAsset.filter({ user_email: user.email }),
+  const { data: setDesignerProjects = [] } = useQuery({
+    queryKey: ['setDesignerProjects'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('set_designer_project')
+        .select('id')
+        .order('updated_date', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
     enabled: !!user?.email,
   });
 
@@ -493,7 +501,7 @@ export default function Studio() {
   });
 
   const actorCount = characterSheets.length;
-  const setCount = setAssets.length;
+  const setCount = setDesignerProjects.length;
   const totalCount = actorCount + setCount;
 
   const { data: publishedDossiers = [] } = useQuery({
@@ -718,7 +726,7 @@ export default function Studio() {
     if (tool.action === 'fotoplay') { setActiveTab('stories'); return; }
     if (tool.action === 'workspace') { setActiveToolPanel(tool.key); return; }
     if (tool.action === 'actor') { setEditingActor(false); return; }
-    if (tool.action === 'set') { setEditingSet(false); return; }
+    if (tool.action === 'set') { setActiveToolPanel('set'); return; }
     if (tool.action === 'image') { setShowAnimateImage(true); return; }
     if (tool.action === 'video') { setActiveToolPanel(null); setVideoInitialMode(null); setShowVideoTools(true); return; }
     if (tool.action === 'voice') { setShowVoiceRecorder(true); return; }
@@ -835,13 +843,19 @@ export default function Studio() {
       {false && activeTab === 'lab' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5"><SketchStudio user={user} /></motion.div>}
 
       {false && activeTab === 'tools' && (
-        <LabWorkspace user={user} onOpenActor={() => setEditingActor(false)} onOpenSet={() => setEditingSet(false)} onOpenVoiceRecorder={() => setShowVoiceRecorder(true)} onOpenAudioUploader={() => setShowAudioUploader(true)} onOpenDubbing={() => setShowDubbingStudio(true)} onOpenTTS={() => setShowTextToSpeech(true)} onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }} onOpenLipSync={() => setShowLipSync(true)} onOpenAnimateImage={() => setShowAnimateImage(true)} onJoinProject={handleJoinProject} onOpenFreeTimeline={() => setShowFreeTimeline(true)} onOpenLayout={() => setShowLayout(true)} hideProjects={true} />
+        <LabWorkspace user={user} onOpenActor={() => setEditingActor(false)} onOpenSet={() => setActiveToolPanel('set')} onOpenVoiceRecorder={() => setShowVoiceRecorder(true)} onOpenAudioUploader={() => setShowAudioUploader(true)} onOpenDubbing={() => setShowDubbingStudio(true)} onOpenTTS={() => setShowTextToSpeech(true)} onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }} onOpenLipSync={() => setShowLipSync(true)} onOpenAnimateImage={() => setShowAnimateImage(true)} onJoinProject={handleJoinProject} onOpenFreeTimeline={() => setShowFreeTimeline(true)} onOpenLayout={() => setShowLayout(true)} hideProjects={true} />
       )}
 
       {activeTab === 'stories' && <StoryBlocks user={user} onBack={() => setActiveTab('home')} />}
 
       {false && activeTab === 'vault' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 md:px-7"><VaultSection userEmail={user?.email} onUsePrompt={(text) => { setPendingPrompt(text); setShowAnimateImage(true); }} /></motion.div>
+      )}
+
+      {activeToolPanel === 'set' && (
+        <div className="absolute inset-0 z-20 bg-[#202328]">
+          <StudioWorkspaceTool title="Set Designer"><SetDesignerWorkspace userEmail={user?.email} /></StudioWorkspaceTool>
+        </div>
       )}
 
       {activeToolPanel === 'vault' && (
@@ -860,7 +874,7 @@ export default function Studio() {
         <div className="absolute inset-0 z-20 bg-[#202328]">
           <StudioWorkspaceTool title={STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeToolPanel.slice(4))?.label || 'Tool'}>
             <div className="p-4 md:p-6">
-              <LabWorkspace user={user} directTool={activeToolPanel.slice(4)} directMode={true} onOpenActor={() => { setActiveToolPanel(null); setEditingActor(false); }} onOpenSet={() => { setActiveToolPanel(null); setEditingSet(false); }} onOpenVoiceRecorder={() => setShowVoiceRecorder(true)} onOpenAudioUploader={() => setShowAudioUploader(true)} onOpenDubbing={() => setShowDubbingStudio(true)} onOpenTTS={() => setShowTextToSpeech(true)} onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }} onOpenLipSync={() => setShowLipSync(true)} onOpenAnimateImage={() => setShowAnimateImage(true)} onJoinProject={handleJoinProject} onOpenFreeTimeline={() => setShowFreeTimeline(true)} onOpenLayout={() => setShowLayout(true)} hideProjects={true} />
+              <LabWorkspace user={user} directTool={activeToolPanel.slice(4)} directMode={true} onOpenActor={() => { setActiveToolPanel(null); setEditingActor(false); }} onOpenSet={() => setActiveToolPanel('set')} onOpenVoiceRecorder={() => setShowVoiceRecorder(true)} onOpenAudioUploader={() => setShowAudioUploader(true)} onOpenDubbing={() => setShowDubbingStudio(true)} onOpenTTS={() => setShowTextToSpeech(true)} onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }} onOpenLipSync={() => setShowLipSync(true)} onOpenAnimateImage={() => setShowAnimateImage(true)} onJoinProject={handleJoinProject} onOpenFreeTimeline={() => setShowFreeTimeline(true)} onOpenLayout={() => setShowLayout(true)} hideProjects={true} />
             </div>
           </StudioWorkspaceTool>
         </div>
@@ -892,7 +906,6 @@ export default function Studio() {
 
       <AnimatePresence>
         {editingActor !== null && <CharacterSheetEditor embedded key="actor-editor" sheet={editingActor || null} userEmail={user?.email} onClose={() => setEditingActor(null)} />}
-        {editingSet !== null && <SetAssetEditor embedded key="set-editor" asset={editingSet || null} userEmail={user?.email} onClose={() => setEditingSet(null)} />}
       </AnimatePresence>
       </div>
       </div>
