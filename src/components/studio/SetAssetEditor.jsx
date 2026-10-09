@@ -22,6 +22,42 @@ const WEATHER_OPTIONS = ['Clear', 'Cloudy', 'Rain', 'Snow', 'Fog', 'Storm'];
 const REALISM_OPTIONS = ['Photoreal', 'Cinematic', 'Stylized', 'Theatrical'];
 const IMAGE_ROLES = ['Hero / Establishing', 'Wide', 'Reverse', 'Left', 'Right', 'Detail', 'Day', 'Night'];
 
+const VISUAL_STYLES = {
+  Cinematic: 'radial-gradient(circle at 76% 28%, rgba(35,199,190,.36), transparent 28%), linear-gradient(135deg,#061113 0%,#143238 42%,#050708 100%)',
+  'Fashion Editorial': 'linear-gradient(125deg,#0d0d0f 0%,#44464a 46%,#111214 47%,#26282b 100%)',
+  'Gritty Realism': 'linear-gradient(150deg,#0d1215 0%,#25333a 30%,#0a0d0f 31%,#17191b 66%,#384047 100%)',
+  Theatrical: 'radial-gradient(circle at 58% 24%, rgba(255,255,255,.28), transparent 18%), linear-gradient(90deg,#1a0608,#60131a 48%,#120406)',
+  Retro: 'linear-gradient(145deg,#1c1913 0%,#746347 42%,#302919 43%,#0d0d0c 100%)',
+  Minimalist: 'linear-gradient(135deg,#0e1012 0%,#24272b 46%,#7d858a 47%,#17191c 62%,#0a0b0c 100%)',
+  Luxury: 'radial-gradient(circle at 70% 35%, rgba(196,166,105,.34), transparent 24%), linear-gradient(135deg,#080909 0%,#2f2b24 52%,#080909 100%)',
+  Futuristic: 'radial-gradient(circle at 60% 40%, rgba(35,199,190,.4), transparent 20%), linear-gradient(120deg,#05070a,#10252b 50%,#0d1115)',
+  Contemporary: 'linear-gradient(150deg,#0d1418,#26505a 45%,#101719 46%,#06090a)',
+  '1940s': 'linear-gradient(135deg,#151515,#45413b 42%,#0d0d0d 43%,#292622)',
+  '1960s': 'linear-gradient(145deg,#1a1c1d,#596264 42%,#9c927d 43%,#161719)',
+  '1980s': 'linear-gradient(150deg,#070a12,#173656 45%,#57162b 70%,#08080d)',
+  'Near Future': 'linear-gradient(145deg,#0c1115,#33464e 42%,#0b1114 43%,#53646d)',
+  Timeless: 'linear-gradient(140deg,#111315,#44484b 44%,#151719 45%,#2b2e31)',
+  Natural: 'linear-gradient(145deg,#101613,#526553 45%,#c7b98f 46%,#252a24)',
+  'Soft Studio': 'radial-gradient(circle at 68% 35%, rgba(255,255,255,.5), transparent 20%), linear-gradient(135deg,#0b0c0e,#27292c 60%,#0a0b0c)',
+  'High Contrast': 'linear-gradient(135deg,#070707 0%,#0a0a0a 44%,#c8c8c8 45%,#292929 58%,#080808 59%)',
+  Neon: 'linear-gradient(90deg,#05080c 0%,#0e1015 44%,#18d7cb 45%,#18d7cb 48%,#0a0c10 49%,#4f193f 100%)',
+  Moonlight: 'radial-gradient(circle at 72% 27%,#d6e5ea 0%,#9fb7c1 4%,transparent 5%), linear-gradient(160deg,#050811,#142234 48%,#070a10)',
+  Overcast: 'linear-gradient(160deg,#171c20,#596168 42%,#2d3439 62%,#0c1013)',
+  Dawn: 'linear-gradient(155deg,#1d2230 0%,#b7704a 48%,#e0b27d 70%,#182027)',
+  Day: 'linear-gradient(145deg,#89bccc 0%,#dce6e5 45%,#3f5a62 46%,#101719)',
+  'Golden Hour': 'linear-gradient(155deg,#1c2024 0%,#aa5e32 46%,#df9c54 70%,#16191c)',
+  Dusk: 'linear-gradient(155deg,#101523,#5a4256 48%,#2e2a3a 70%,#0a0d12)',
+  Night: 'radial-gradient(circle at 72% 26%,#d8e5e8 0%,#aabfc8 4%,transparent 5%), linear-gradient(160deg,#03060b,#0d1f31 58%,#05070a)',
+  Clear: 'linear-gradient(160deg,#1d4f62,#4f91a5 48%,#b6d0d4 49%,#172126)',
+  Cloudy: 'linear-gradient(160deg,#1a2024,#5b666c 48%,#31393e 70%,#101417)',
+  Rain: 'repeating-linear-gradient(105deg,rgba(255,255,255,.08) 0 1px,transparent 1px 8px),linear-gradient(160deg,#081017,#1d3945 48%,#0a1116)',
+  Snow: 'linear-gradient(160deg,#172027,#95a9af 48%,#dde5e6 49%,#4f5c61 75%,#11181d)',
+  Fog: 'linear-gradient(160deg,#131719,#596064 40%,#888f90 55%,#303638 75%,#111416)',
+  Storm: 'radial-gradient(circle at 70% 30%,rgba(255,255,255,.5),transparent 4%),linear-gradient(160deg,#080a0d,#252c34 45%,#071019 70%,#020406)',
+  Photoreal: 'linear-gradient(145deg,#101214,#495056 42%,#8b9193 43%,#23272b 68%,#0b0d0f)',
+  Stylized: 'linear-gradient(135deg,#06141a,#125267 42%,#b14b57 61%,#0d1115)'
+};
+
 const fieldPattern = label => new RegExp(`^${label.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}:.*$`, 'mi');
 const readBriefField = (text, label) => {
   const match = String(text || '').match(new RegExp(`^${label.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}:\\s*(.*)$`, 'mi'));
@@ -104,12 +140,33 @@ function OloShopSetPicker({ selectedImages, onToggle, onClose }) {
 
 function ChoiceGroup({ label, options, value, onChange }) {
   return (
-    <div>
-      <p className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-white/45">{label}</p>
-      <div className="flex flex-wrap gap-2">
-        {options.map(option => (
-          <button key={option} type="button" onClick={() => onChange(option)} className={`border px-3 py-2 text-[11px] font-bold transition ${value === option ? 'border-[#23c7be] bg-[#23c7be] text-[#071211]' : 'border-white/10 bg-white/[0.04] text-white/70 hover:border-white/25 hover:text-white'}`}>{option}</button>
-        ))}
+    <div className="min-w-0">
+      <div className="mb-3 flex items-center gap-3">
+        <span className="h-5 w-[3px] bg-[#23c7be] shadow-[0_0_12px_rgba(35,199,190,.7)]" />
+        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-white/85">{label}</p>
+        <span className="h-px flex-1 bg-gradient-to-r from-white/18 to-transparent" />
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+        {options.map(option => {
+          const selected = value === option;
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onChange(option)}
+              className={`group relative min-h-[92px] overflow-hidden border text-left transition-all duration-200 ${selected ? 'border-[#23c7be] shadow-[0_0_0_1px_rgba(35,199,190,.28),0_0_24px_rgba(35,199,190,.12)]' : 'border-white/10 hover:border-white/30'}`}
+              style={{ background: VISUAL_STYLES[option] || 'linear-gradient(135deg,#111417,#272b2f)' }}
+            >
+              <span className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
+              <span className="absolute inset-x-0 top-0 h-px bg-white/10" />
+              <span className={`absolute left-0 top-0 h-full w-[2px] transition ${selected ? 'bg-[#23c7be]' : 'bg-transparent group-hover:bg-white/25'}`} />
+              <span className="absolute bottom-0 left-0 right-0 flex items-end justify-between gap-2 p-3">
+                <span className={`text-[11px] font-black leading-tight ${selected ? 'text-white' : 'text-white/82'}`}>{option}</span>
+                {selected && <span className="h-1.5 w-1.5 bg-[#23c7be] shadow-[0_0_8px_rgba(35,199,190,.9)]" />}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -254,12 +311,24 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
             </div>
           </section>
 
-          <section className="border border-white/10 bg-[#17191d] p-5 sm:p-6">
-            <div className="mb-6 flex items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 items-center justify-center border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Eye size={17} /></div>
-              <div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#23c7be]">Creative Direction</p><h3 className="mt-1 text-lg font-black">Give the set a visual language</h3><p className="mt-1 text-xs text-white/40">Every choice is written into the production brief above, so it stays attached to the set.</p></div>
+          <section className="overflow-hidden border border-white/10 bg-[#111417] shadow-[0_28px_70px_rgba(0,0,0,.24)]">
+            <div className="relative border-b border-white/10 px-5 py-6 sm:px-7 sm:py-7">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_35%,rgba(35,199,190,.12),transparent_28%),linear-gradient(120deg,rgba(255,255,255,.025),transparent_50%)]" />
+              <div className="relative flex items-start gap-4">
+                <div className="flex h-11 w-11 items-center justify-center border border-[#23c7be]/45 bg-[#071618] text-[#23c7be] shadow-[inset_0_0_24px_rgba(35,199,190,.08)]"><Eye size={19} /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#23c7be]">Creative Direction</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-[28px]">Give the set a visual language</h3>
+                  <p className="mt-1.5 max-w-2xl text-xs leading-5 text-white/42">Every choice is written into the production brief above, so it stays attached to the set.</p>
+                </div>
+                <div className="hidden border-l border-white/10 pl-5 text-right lg:block">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.34em] text-white/25">AI Stage One</p>
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.24em] text-white/55">Set Designer</p>
+                  <span className="mt-3 ml-auto block h-px w-10 bg-[#b9a06a]/70" />
+                </div>
+              </div>
             </div>
-            <div className="grid gap-6 xl:grid-cols-2">
+            <div className="grid gap-x-8 gap-y-8 p-5 sm:p-7 xl:grid-cols-2">
               <ChoiceGroup label="Direction" options={CREATIVE_PRESETS} value={readBriefField(description, 'Direction')} onChange={value => setCreativeField('Direction', value)} />
               <ChoiceGroup label="Era" options={ERA_OPTIONS} value={readBriefField(description, 'Era')} onChange={value => setCreativeField('Era', value)} />
               <ChoiceGroup label="Lighting" options={LIGHTING_OPTIONS} value={readBriefField(description, 'Lighting')} onChange={value => setCreativeField('Lighting', value)} />
@@ -267,9 +336,9 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
               <ChoiceGroup label="Weather / Atmosphere" options={WEATHER_OPTIONS} value={readBriefField(description, 'Weather')} onChange={value => setCreativeField('Weather', value)} />
               <ChoiceGroup label="Image treatment" options={REALISM_OPTIONS} value={readBriefField(description, 'Image treatment')} onChange={value => setCreativeField('Image treatment', value)} />
             </div>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <div><label className="mb-2 block text-[10px] font-black uppercase tracking-[0.14em] text-white/45">Architecture / spatial idea</label><input value={readBriefField(description, 'Architecture')} onChange={e => setCreativeField('Architecture', e.target.value)} placeholder="Brutalist atrium, narrow Paris apartment..." className="w-full border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" /></div>
-              <div><label className="mb-2 block text-[10px] font-black uppercase tracking-[0.14em] text-white/45">Materials / palette</label><input value={readBriefField(description, 'Materials')} onChange={e => setCreativeField('Materials', e.target.value)} placeholder="smoked glass, wet concrete, teal accents..." className="w-full border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" /></div>
+            <div className="grid gap-4 border-t border-white/10 bg-black/10 p-5 sm:grid-cols-2 sm:p-7">
+              <div><label className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-white/45">Architecture / spatial idea</label><input value={readBriefField(description, 'Architecture')} onChange={e => setCreativeField('Architecture', e.target.value)} placeholder="Brutalist atrium, narrow Paris apartment..." className="w-full border border-white/10 bg-[#0c0f11] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" /></div>
+              <div><label className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-white/45">Materials / palette</label><input value={readBriefField(description, 'Materials')} onChange={e => setCreativeField('Materials', e.target.value)} placeholder="smoked glass, wet concrete, teal accents..." className="w-full border border-white/10 bg-[#0c0f11] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" /></div>
             </div>
           </section>
 
