@@ -8,6 +8,7 @@ import VaultPickerModal from '@/components/studio/VaultPickerModal';
 import ImageCropModal from '@/components/studio/ImageCropModal';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { toast } from 'sonner';
+import SET_DESIGNER_IMAGES from '@/setDesignerImages/all';
 
 const catalogImages = asset => [...new Set([
   asset?.featured_image,
@@ -149,15 +150,16 @@ function ChoiceGroup({ label, options, value, onChange }) {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
         {options.map(option => {
           const selected = value === option;
+          const imageSrc = SET_DESIGNER_IMAGES[label]?.[option];
           return (
             <button
               key={option}
               type="button"
               onClick={() => onChange(option)}
-              className={`group relative min-h-[92px] overflow-hidden border text-left transition-all duration-200 ${selected ? 'border-[#23c7be] shadow-[0_0_0_1px_rgba(35,199,190,.28),0_0_24px_rgba(35,199,190,.12)]' : 'border-white/10 hover:border-white/30'}`}
-              style={{ background: VISUAL_STYLES[option] || 'linear-gradient(135deg,#111417,#272b2f)' }}
+              className={`group relative min-h-[92px] overflow-hidden border bg-black text-left transition-all duration-200 ${selected ? 'border-[#23c7be] shadow-[0_0_0_1px_rgba(35,199,190,.28),0_0_24px_rgba(35,199,190,.12)]' : 'border-white/10 hover:border-white/30'}`}
             >
-              <span className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
+              {imageSrc && <img src={imageSrc} alt={`${label}: ${option}`} className="absolute inset-0 h-full w-full object-cover" />}
+              <span className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
               <span className="absolute inset-x-0 top-0 h-px bg-white/10" />
               <span className={`absolute left-0 top-0 h-full w-[2px] transition ${selected ? 'bg-[#23c7be]' : 'bg-transparent group-hover:bg-white/25'}`} />
               <span className="absolute bottom-0 left-0 right-0 flex items-end justify-between gap-2 p-3">
