@@ -1,0 +1,56 @@
+/* Original AI Stage One Set Designer artwork.
+   One local sprite contains all Creative Direction reference thumbnails.
+   No third-party image service is used. */
+
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div > div:nth-child(2) > button {
+  background-image: url('../assets/set-designer-creative-sprite.webp') !important;
+  background-size: 700% 500% !important;
+  background-repeat: no-repeat !important;
+}
+
+/* Direction — sprite cells 1–8 */
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(1) { background-position: 0% 0% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(2) { background-position: 16.6667% 0% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(3) { background-position: 33.3333% 0% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(4) { background-position: 50% 0% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(5) { background-position: 66.6667% 0% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(6) { background-position: 83.3333% 0% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(7) { background-position: 100% 0% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(1) > div:nth-child(2) > button:nth-child(8) { background-position: 0% 25% !important; }
+
+/* Era — cells 9–14 */
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(2) > div:nth-child(2) > button:nth-child(1) { background-position: 16.6667% 25% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(2) > div:nth-child(2) > button:nth-child(2) { background-position: 33.3333% 25% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(2) > div:nth-child(2) > button:nth-child(3) { background-position: 50% 25% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(2) > div:nth-child(2) > button:nth-child(4) { background-position: 66.6667% 25% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(2) > div:nth-child(2) > button:nth-child(5) { background-position: 83.3333% 25% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(2) > div:nth-child(2) > button:nth-child(6) { background-position: 100% 25% !important; }
+
+/* Lighting — cells 15–20 */
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(3) > div:nth-child(2) > button:nth-child(1) { background-position: 0% 50% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(3) > div:nth-child(2) > button:nth-child(2) { background-position: 16.6667% 50% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(3) > div:nth-child(2) > button:nth-child(3) { background-position: 33.3333% 50% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(3) > div:nth-child(2) > button:nth-child(4) { background-position: 50% 50% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(3) > div:nth-child(2) > button:nth-child(5) { background-position: 66.6667% 50% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(3) > div:nth-child(2) > button:nth-child(6) { background-position: 83.3333% 50% !important; }
+
+/* Time of day — cells 21–25 */
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(4) > div:nth-child(2) > button:nth-child(1) { background-position: 100% 50% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(4) > div:nth-child(2) > button:nth-child(2) { background-position: 0% 75% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(4) > div:nth-child(2) > button:nth-child(3) { background-position: 16.6667% 75% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(4) > div:nth-child(2) > button:nth-child(4) { background-position: 33.3333% 75% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(4) > div:nth-child(2) > button:nth-child(5) { background-position: 50% 75% !important; }
+
+/* Weather / atmosphere — cells 26–31 */
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(5) > div:nth-child(2) > button:nth-child(1) { background-position: 66.6667% 75% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(5) > div:nth-child(2) > button:nth-child(2) { background-position: 83.3333% 75% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(5) > div:nth-child(2) > button:nth-child(3) { background-position: 100% 75% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(5) > div:nth-child(2) > button:nth-child(4) { background-position: 0% 100% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(5) > div:nth-child(2) > button:nth-child(5) { background-position: 16.6667% 100% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(5) > div:nth-child(2) > button:nth-child(6) { background-position: 33.3333% 100% !important; }
+
+/* Image treatment — cells 32–35 */
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(6) > div:nth-child(2) > button:nth-child(1) { background-position: 50% 100% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(6) > div:nth-child(2) > button:nth-child(2) { background-position: 66.6667% 100% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(6) > div:nth-child(2) > button:nth-child(3) { background-position: 83.3333% 100% !important; }
+section[class*="bg-[#111417]"] > div:nth-of-type(2) > div:nth-child(6) > div:nth-child(2) > button:nth-child(4) { background-position: 100% 100% !important; }
