@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Bookmark, Check, Loader2, ShoppingBag, Upload } from 'lucide-react';
+import { X, Bookmark, Check, Loader2, ShoppingBag, Upload, Sparkles, ImagePlus, Camera, Sun, Moon, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import VaultPickerModal from '@/components/studio/VaultPickerModal';
 import ImageCropModal from '@/components/studio/ImageCropModal';
@@ -13,6 +13,26 @@ const catalogImages = asset => [...new Set([
   asset?.featured_image,
   ...(Array.isArray(asset?.preview_images) ? asset.preview_images : []),
 ].filter(Boolean))];
+
+const CREATIVE_PRESETS = ['Cinematic', 'Fashion Editorial', 'Gritty Realism', 'Theatrical', 'Retro', 'Minimalist', 'Luxury', 'Futuristic'];
+const ERA_OPTIONS = ['Contemporary', '1940s', '1960s', '1980s', 'Near Future', 'Timeless'];
+const LIGHTING_OPTIONS = ['Natural', 'Soft Studio', 'High Contrast', 'Neon', 'Moonlight', 'Overcast'];
+const TIME_OPTIONS = ['Dawn', 'Day', 'Golden Hour', 'Dusk', 'Night'];
+const WEATHER_OPTIONS = ['Clear', 'Cloudy', 'Rain', 'Snow', 'Fog', 'Storm'];
+const REALISM_OPTIONS = ['Photoreal', 'Cinematic', 'Stylized', 'Theatrical'];
+const IMAGE_ROLES = ['Hero / Establishing', 'Wide', 'Reverse', 'Left', 'Right', 'Detail', 'Day', 'Night'];
+
+const fieldPattern = label => new RegExp(`^${label.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}:.*$`, 'mi');
+const readBriefField = (text, label) => {
+  const match = String(text || '').match(new RegExp(`^${label.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}:\\s*(.*)$`, 'mi'));
+  return match?.[1]?.trim() || '';
+};
+const writeBriefField = (text, label, value) => {
+  const clean = String(text || '').trim();
+  const line = `${label}: ${value}`;
+  if (fieldPattern(label).test(clean)) return clean.replace(fieldPattern(label), line);
+  return clean ? `${clean}\n${line}` : line;
+};
 
 function OloShopSetPicker({ selectedImages, onToggle, onClose }) {
   const [search, setSearch] = useState('');
@@ -82,6 +102,19 @@ function OloShopSetPicker({ selectedImages, onToggle, onClose }) {
   );
 }
 
+function ChoiceGroup({ label, options, value, onChange }) {
+  return (
+    <div>
+      <p className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-white/45">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map(option => (
+          <button key={option} type="button" onClick={() => onChange(option)} className={`border px-3 py-2 text-[11px] font-bold transition ${value === option ? 'border-[#23c7be] bg-[#23c7be] text-[#071211]' : 'border-white/10 bg-white/[0.04] text-white/70 hover:border-white/25 hover:text-white'}`}>{option}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SetAssetEditor({ asset, userEmail, onClose, embedded = false }) {
   const qc = useQueryClient();
   const [name, setName] = useState(asset?.name || '');
@@ -100,10 +133,14 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
     const file = e.target.files[0];
     if (!file || images.length >= 8) return;
     setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setImages(prev => [...prev, file_url]);
-    setUploading(false);
-    setVaultSaveUrl(file_url);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setImages(prev => [...prev, file_url]);
+      setVaultSaveUrl(file_url);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   const handleVaultSelect = (url) => {
@@ -122,36 +159,43 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
   const handleCropConfirm = async (blob) => {
     setUploading(true);
     setCropSource(null);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: blob });
-    setImages(prev => [...prev, file_url]);
-    setUploading(false);
-    toast.success('Image added to set', { icon: <Check size={16} /> });
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: blob });
+      setImages(prev => [...prev, file_url]);
+      toast.success('Image added to set', { icon: <Check size={16} /> });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const removeImage = (idx) => setImages(prev => prev.filter((_, i) => i !== idx));
-
   const addTag = (e) => {
     e.preventDefault();
     const t = tagInput.trim();
     if (t && !tags.includes(t)) setTags(prev => [...prev, t]);
     setTagInput('');
   };
-
   const removeTag = (tag) => setTags(prev => prev.filter(t => t !== tag));
+  const setCreativeField = (label, value) => setDescription(prev => writeBriefField(prev, label, value));
 
   const handleSave = async () => {
     setSaving(true);
-    const data = { user_email: userEmail, name, description, tags, images };
-    if (asset?.id) {
-      await base44.entities.SetAsset.update(asset.id, data);
-    } else {
-      await base44.entities.SetAsset.create(data);
+    try {
+      const data = { user_email: userEmail, name: name.trim(), description: description.trim(), tags, images };
+      if (asset?.id) await base44.entities.SetAsset.update(asset.id, data);
+      else await base44.entities.SetAsset.create(data);
+      qc.invalidateQueries({ queryKey: ['setAssets', userEmail] });
+      toast.success(asset?.id ? 'Set updated' : 'Set created');
+      onClose();
+    } catch (error) {
+      console.error('Set save failed', error);
+      toast.error('Set could not be saved. Try again.');
+    } finally {
+      setSaving(false);
     }
-    qc.invalidateQueries({ queryKey: ['setAssets', userEmail] });
-    setSaving(false);
-    toast.success(asset?.id ? 'Set updated' : 'Set created');
-    onClose();
   };
+
+  const heroImage = images[0];
 
   return (
     <motion.div
@@ -160,54 +204,107 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
       transition={{ type: 'spring', damping: 30, stiffness: 300 }}
     >
       <div className="flex min-h-screen flex-col bg-[#202328] text-white">
-        <div className="sticky top-0 z-10 flex min-h-16 items-center justify-between border-b border-white/10 bg-[#17191d] px-5 py-3">
+        <div className="sticky top-0 z-10 flex min-h-16 items-center justify-between border-b border-white/10 bg-[#17191d]/95 px-5 py-3 backdrop-blur">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Set Studio</p>
-            <h2 className="text-xl font-black text-white">{asset?.id ? 'Edit Set' : 'New Set'}</h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#23c7be]">Set Designer</p>
+            <h2 className="text-xl font-black text-white">{asset?.id ? 'Edit your set' : 'Create a set'}</h2>
           </div>
-          {!embedded && <button onClick={onClose} className="rounded-[3px] border border-white/10 bg-white/[0.04] p-2 text-white hover:bg-white/10"><X size={20} /></button>}
+          {!embedded && <button onClick={onClose} className="border border-white/10 bg-white/[0.04] p-2 text-white hover:bg-white/10"><X size={20} /></button>}
         </div>
 
-        <div className="mx-auto flex-1 w-full max-w-6xl space-y-4 px-5 py-5 pb-28">
-          <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-            <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.12em] text-white/55">Set Name</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Gothic Manor, Tropical Beach..." className="w-full rounded-[3px] border border-white/15 bg-black/25 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
-          </section>
+        <div className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 pb-28 sm:px-5">
+          <section className="overflow-hidden border border-white/10 bg-[#17191d]">
+            <div className="grid lg:grid-cols-[1.35fr_0.65fr]">
+              <div className="relative min-h-[360px] border-b border-white/10 bg-[#0d0f12] lg:min-h-[520px] lg:border-b-0 lg:border-r">
+                {heroImage ? (
+                  <img src={heroImage} alt="Set hero reference" className="absolute inset-0 h-full w-full object-cover" />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
+                    <div className="mb-5 flex h-16 w-16 items-center justify-center border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Camera size={28} /></div>
+                    <h3 className="text-2xl font-black">Build the world before the shot.</h3>
+                    <p className="mt-2 max-w-md text-sm leading-6 text-white/45">Start with a reference image, then define the visual language of the location so every shot belongs to the same world.</p>
+                  </div>
+                )}
+                <div className="absolute left-4 top-4 border border-white/15 bg-black/70 px-3 py-2 backdrop-blur">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#23c7be]">Hero Reference</p>
+                  <p className="text-[11px] text-white/65">{heroImage ? 'Image 1 anchors the set' : 'No image selected yet'}</p>
+                </div>
+                <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
+                  {images.length < 8 && <label className="flex cursor-pointer items-center gap-2 bg-[#23c7be] px-4 py-2.5 text-xs font-black text-[#071211] transition hover:bg-[#35d8cf]"><Upload size={14} />Import reference<input type="file" accept="image/*" className="hidden" onChange={handleUpload} /></label>}
+                  {images.length < 8 && <button type="button" onClick={() => setVaultPickerOpen(true)} className="flex items-center gap-2 border border-white/15 bg-black/65 px-4 py-2.5 text-xs font-bold text-white backdrop-blur hover:bg-black/80"><Bookmark size={14} />Vault</button>}
+                  <button type="button" onClick={() => setOloPickerOpen(true)} className="flex items-center gap-2 border border-[#23c7be]/35 bg-black/65 px-4 py-2.5 text-xs font-bold text-[#8ee9e4] backdrop-blur hover:bg-black/80"><ShoppingBag size={14} />Assets Shop</button>
+                </div>
+              </div>
 
-          <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-            <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.12em] text-white/55">Description</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Atmosphere, style, lighting, era..." rows={3} className="w-full resize-none rounded-[3px] border border-white/15 bg-black/25 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
-          </section>
-
-          <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-            <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.12em] text-white/55">Tags</label>
-            <form onSubmit={addTag} className="mb-2 flex gap-2">
-              <input value={tagInput} onChange={e => setTagInput(e.target.value)} placeholder="Add a tag..." className="flex-1 rounded-[3px] border border-white/15 bg-black/25 px-4 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
-              <button type="submit" disabled={!tagInput.trim()} className="rounded-[3px] border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-white/10 disabled:text-white/30">Add</button>
-            </form>
-            {tags.length > 0 && <div className="flex flex-wrap gap-2">{tags.map(tag => <span key={tag} className="flex items-center gap-1.5 rounded-[3px] border border-[#23c7be]/25 bg-[#23c7be]/10 px-3 py-1.5 text-xs font-medium text-[#8ee9e4]">{tag}<button onClick={() => removeTag(tag)} className="hover:text-white"><X size={11} /></button></span>)}</div>}
-          </section>
-
-          <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div><label className="block text-[11px] font-black uppercase tracking-[0.12em] text-white/55">Set Images ({images.length}/8)</label><p className="mt-1 text-xs text-white/40">Add up to 8 reference images for this set or location.</p></div>
-              <div className="flex flex-wrap gap-2">
-                {images.length < 8 && <label className="flex cursor-pointer items-center gap-2 rounded-[3px] bg-[#23c7be] px-4 py-2 text-xs font-black text-black transition hover:bg-[#35d8cf]"><Upload size={14} />Import Image<input type="file" accept="image/*" className="hidden" onChange={handleUpload} /></label>}
-                {images.length < 8 && <button onClick={() => setVaultPickerOpen(true)} className="flex items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.05] px-4 py-2 text-xs font-bold text-white hover:bg-white/10"><Bookmark size={14} />From Vault</button>}
-                <button onClick={() => setOloPickerOpen(true)} className="flex items-center gap-2 rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 px-4 py-2 text-xs font-bold text-[#8ee9e4] hover:bg-[#23c7be]/15"><ShoppingBag size={14} />Assets Shop</button>
+              <div className="space-y-5 p-5 sm:p-6">
+                <div>
+                  <div className="mb-2 flex items-center gap-2 text-[#23c7be]"><Sparkles size={16} /><span className="text-[10px] font-black uppercase tracking-[0.18em]">Creative brief</span></div>
+                  <input value={name} onChange={e => setName(e.target.value)} placeholder="Name this world — e.g. Glass House at Midnight" className="w-full border-0 border-b border-white/15 bg-transparent px-0 py-3 text-2xl font-black text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
+                  <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the place as a director would: architecture, atmosphere, story, textures, what the camera should feel..." rows={9} className="mt-4 w-full resize-none border border-white/10 bg-black/25 px-4 py-4 text-sm leading-6 text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
+                </div>
+                <div className="border-t border-white/10 pt-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/45">Production tags</p>
+                  <form onSubmit={addTag} className="mt-2 flex gap-2">
+                    <input value={tagInput} onChange={e => setTagInput(e.target.value)} placeholder="interior, palace, runway..." className="min-w-0 flex-1 border border-white/10 bg-black/25 px-3 py-2.5 text-xs text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
+                    <button type="submit" disabled={!tagInput.trim()} className="border border-white/10 bg-white/[0.05] px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10 disabled:text-white/25">Add</button>
+                  </form>
+                  {tags.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{tags.map(tag => <span key={tag} className="flex items-center gap-1.5 border border-[#23c7be]/25 bg-[#23c7be]/10 px-2.5 py-1.5 text-[11px] font-medium text-[#8ee9e4]">{tag}<button type="button" onClick={() => removeTag(tag)} className="hover:text-white"><X size={11} /></button></span>)}</div>}
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {images.map((url, idx) => <div key={idx} className="relative overflow-hidden rounded-[4px] border border-white/10 bg-white/[0.03]"><img src={url} alt="" className="h-auto w-full object-cover" /><button onClick={() => removeImage(idx)} className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-[3px] bg-black/75 hover:bg-black"><X size={10} /></button><button onClick={() => setVaultSaveUrl(url)} title="Save this image to Vault" className="absolute bottom-1 left-1 flex h-6 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-black/75 px-2 text-[#8ee9e4]"><Bookmark size={11} /></button></div>)}
-              {uploading && <div className="flex aspect-square items-center justify-center rounded-[4px] border border-dashed border-white/20"><Loader2 size={20} className="animate-spin text-[#23c7be]" /></div>}
+          </section>
+
+          <section className="border border-white/10 bg-[#17191d] p-5 sm:p-6">
+            <div className="mb-6 flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 items-center justify-center border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Eye size={17} /></div>
+              <div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#23c7be]">Creative Direction</p><h3 className="mt-1 text-lg font-black">Give the set a visual language</h3><p className="mt-1 text-xs text-white/40">Every choice is written into the production brief above, so it stays attached to the set.</p></div>
             </div>
+            <div className="grid gap-6 xl:grid-cols-2">
+              <ChoiceGroup label="Direction" options={CREATIVE_PRESETS} value={readBriefField(description, 'Direction')} onChange={value => setCreativeField('Direction', value)} />
+              <ChoiceGroup label="Era" options={ERA_OPTIONS} value={readBriefField(description, 'Era')} onChange={value => setCreativeField('Era', value)} />
+              <ChoiceGroup label="Lighting" options={LIGHTING_OPTIONS} value={readBriefField(description, 'Lighting')} onChange={value => setCreativeField('Lighting', value)} />
+              <ChoiceGroup label="Time of day" options={TIME_OPTIONS} value={readBriefField(description, 'Time of day')} onChange={value => setCreativeField('Time of day', value)} />
+              <ChoiceGroup label="Weather / Atmosphere" options={WEATHER_OPTIONS} value={readBriefField(description, 'Weather')} onChange={value => setCreativeField('Weather', value)} />
+              <ChoiceGroup label="Image treatment" options={REALISM_OPTIONS} value={readBriefField(description, 'Image treatment')} onChange={value => setCreativeField('Image treatment', value)} />
+            </div>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div><label className="mb-2 block text-[10px] font-black uppercase tracking-[0.14em] text-white/45">Architecture / spatial idea</label><input value={readBriefField(description, 'Architecture')} onChange={e => setCreativeField('Architecture', e.target.value)} placeholder="Brutalist atrium, narrow Paris apartment..." className="w-full border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" /></div>
+              <div><label className="mb-2 block text-[10px] font-black uppercase tracking-[0.14em] text-white/45">Materials / palette</label><input value={readBriefField(description, 'Materials')} onChange={e => setCreativeField('Materials', e.target.value)} placeholder="smoked glass, wet concrete, teal accents..." className="w-full border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" /></div>
+            </div>
+          </section>
+
+          <section className="border border-white/10 bg-[#17191d] p-5 sm:p-6">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div><div className="flex items-center gap-2 text-[#23c7be]"><ImagePlus size={16} /><p className="text-[10px] font-black uppercase tracking-[0.18em]">Visual Continuity Board</p></div><h3 className="mt-1 text-lg font-black">Eight references, eight production purposes</h3><p className="mt-1 text-xs text-white/40">The order gives each image a role. The first image is the visual anchor for the whole set.</p></div>
+              <span className="text-xs font-black text-white/45">{images.length}/8 REFERENCES</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {IMAGE_ROLES.map((role, idx) => {
+                const url = images[idx];
+                return (
+                  <div key={role} className={`relative aspect-[4/3] overflow-hidden border ${url ? 'border-white/10 bg-black' : 'border-dashed border-white/15 bg-black/15'}`}>
+                    {url ? <img src={url} alt={`${role} set reference`} className="h-full w-full object-cover" /> : <div className="flex h-full flex-col items-center justify-center px-3 text-center text-white/25"><Camera size={18} /><span className="mt-2 text-[10px] font-bold">Add reference</span></div>}
+                    <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between gap-2 bg-black/80 px-2.5 py-2 backdrop-blur"><span className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-white/75">{idx + 1}. {role}</span>{url && <button type="button" onClick={() => removeImage(idx)} className="flex h-5 w-5 flex-shrink-0 items-center justify-center bg-white/10 text-white hover:bg-white/20"><X size={10} /></button>}</div>
+                    {url && <button type="button" onClick={() => setVaultSaveUrl(url)} title="Save this image to Vault" className="absolute left-2 top-2 flex h-7 items-center justify-center border border-[#23c7be]/30 bg-black/75 px-2 text-[#8ee9e4]"><Bookmark size={11} /></button>}
+                  </div>
+                );
+              })}
+            </div>
+            {uploading && <div className="mt-3 flex items-center gap-2 text-xs font-bold text-[#8ee9e4]"><Loader2 size={14} className="animate-spin" />Adding reference...</div>}
+          </section>
+
+          <section className="grid gap-3 sm:grid-cols-3">
+            <div className="border border-white/10 bg-[#17191d] p-4"><Sun size={17} className="text-[#23c7be]" /><p className="mt-3 text-sm font-black">Day / Night continuity</p><p className="mt-1 text-xs leading-5 text-white/40">Use slots 7 and 8 to keep the same environment readable across lighting changes.</p></div>
+            <div className="border border-white/10 bg-[#17191d] p-4"><Camera size={17} className="text-[#23c7be]" /><p className="mt-3 text-sm font-black">Camera-ready angles</p><p className="mt-1 text-xs leading-5 text-white/40">Wide, reverse and side references make the location useful beyond a single hero image.</p></div>
+            <div className="border border-white/10 bg-[#17191d] p-4"><Moon size={17} className="text-[#23c7be]" /><p className="mt-3 text-sm font-black">One world, many shots</p><p className="mt-1 text-xs leading-5 text-white/40">The brief and reference board stay together as one reusable production set.</p></div>
           </section>
         </div>
 
         <div className="sticky bottom-0 z-10 border-t border-white/10 bg-[#17191d]/95 px-5 py-3 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-6xl justify-end">
-            <button onClick={handleSave} disabled={saving || !name} className="min-w-[180px] rounded-[3px] border border-[#23c7be] bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:border-white/10 disabled:bg-white/[0.05] disabled:text-white/30">
-              {saving ? 'Saving...' : 'Save Set'}
+          <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
+            <p className="hidden text-xs text-white/35 sm:block">{name.trim() ? `${name.trim()} · ${images.length} reference${images.length === 1 ? '' : 's'}` : 'Name your set to create it.'}</p>
+            <button onClick={handleSave} disabled={saving || !name.trim()} className="ml-auto min-w-[210px] border border-[#23c7be] bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:border-white/10 disabled:bg-white/[0.05] disabled:text-white/30">
+              {saving ? 'SAVING...' : asset?.id ? 'SAVE SET' : 'CREATE MY SET'}
             </button>
           </div>
         </div>
