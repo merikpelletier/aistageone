@@ -1,9 +1,9 @@
 /* Original AI Stage One Set Designer artwork.
-   One local sprite contains all Creative Direction reference thumbnails.
-   No third-party image service is used. */
+   Scoped only to Set Designer Creative Direction cards.
+   The sprite is served from /public so the production build resolves it reliably. */
 
 section[class*="bg-[#111417]"] > div:nth-of-type(2) > div > div:nth-child(2) > button {
-  background-image: url('../assets/set-designer-creative-sprite.webp') !important;
+  background-image: url('/set-designer-creative-sprite.webp') !important;
   background-size: 700% 500% !important;
   background-repeat: no-repeat !important;
 }
