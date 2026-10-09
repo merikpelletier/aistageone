@@ -1,0 +1,69 @@
+name: Move Set Generator panel structurally
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  move-panel:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Move panel in JSX and remove CSS workaround
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          editor = Path('src/components/studio/SetAssetEditor.jsx')
+          text = editor.read_text()
+          panel = '          <SetGeneratorPanel name={name} description={description} images={images} setImages={setImages} />\n\n'
+          anchor = '        <div className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 pb-28 sm:px-5">\n'
+
+          if text.count(panel) != 1:
+              raise SystemExit(f'Expected exactly one SetGeneratorPanel, found {text.count(panel)}')
+          if anchor not in text:
+              raise SystemExit('Main Set Designer content anchor not found')
+
+          text = text.replace(panel, '', 1)
+          text = text.replace(anchor, anchor + panel, 1)
+          editor.write_text(text)
+
+          main = Path('src/main.jsx')
+          main_text = main.read_text().replace("import '@/styles/set-designer-generation-first.css'\n", '')
+          main.write_text(main_text)
+
+          css = Path('src/styles/set-designer-generation-first.css')
+          if css.exists():
+              css.unlink()
+          PY
+      - name: Verify source position
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('src/components/studio/SetAssetEditor.jsx').read_text()
+          anchor = text.index('max-w-7xl flex-1 space-y-5')
+          panel = text.index('<SetGeneratorPanel name={name}')
+          hero = text.index('<section className="overflow-hidden border border-white/10 bg-[#17191d]">')
+          if not (anchor < panel < hero):
+              raise SystemExit(f'Panel is not first: anchor={anchor}, panel={panel}, hero={hero}')
+          print('SetGeneratorPanel is structurally first in the content flow.')
+          PY
+      - run: npm ci
+      - run: npm run build
+      - name: Commit structural move
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/studio/SetAssetEditor.jsx src/main.jsx src/styles/set-designer-generation-first.css
+          git commit -m "Move Set Designer generation controls to top structurally"
+          git push origin main
