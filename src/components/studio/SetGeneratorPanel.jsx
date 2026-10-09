@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Loader2, Sparkles, Camera } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { toast } from 'sonner';
 
 const VIEW_SPECS = [
@@ -18,16 +20,36 @@ const buildHeroPrompt = (name, description) => `Create a production-ready cinema
 export default function SetGeneratorPanel({ name, description, images, setImages }) {
   const [mode, setMode] = useState(images?.length ? 'reference' : 'scratch');
   const [generating, setGenerating] = useState('');
+  const [selectedModel, setSelectedModel] = useState(null);
   const heroImage = images?.[0] || null;
   const referenceCount = mode === 'reference' ? Math.min(images?.length || 0, 3) : 0;
   const canGenerateHero = useMemo(() => Boolean(name?.trim() || description?.trim()), [name, description]);
+  const pricingInput = useMemo(() => ({
+    prompt: buildHeroPrompt(name, description),
+    aspect_ratio: '16:9',
+    reference_image_urls: mode === 'reference' ? (images || []).slice(0, 3) : [],
+  }), [name, description, mode, images]);
+  const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: pricingInput,
+  });
+  const effectiveModel = selectedModel || modelOptions.find(model => model.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:compose_scene',
+    kind: 'image',
+    input: pricingInput,
+    modelKey: effectiveModel,
+  });
 
   const runGeneration = async (prompt, refs = []) => {
+    if (!effectiveModel) throw new Error('No AI model available for Set Designer');
     const res = await base44.functions.invoke('replicateGenerate', {
       method: 'compose_scene',
       prompt,
       reference_image_urls: refs,
       aspect_ratio: '16:9',
+      model_key: effectiveModel,
     });
     if (res.data?.error) throw new Error(res.data.error);
     if (!res.data?.file_url) throw new Error('Generation returned no image');
@@ -37,6 +59,10 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   const generateHero = async () => {
     if (!canGenerateHero) {
       toast.error('Add a set name or creative brief first.');
+      return;
+    }
+    if (!effectiveModel) {
+      toast.error('No AI image model is enabled for Set Designer.');
       return;
     }
     if (mode === 'reference' && !images?.length) {
@@ -51,14 +77,14 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       toast.success('Hero set generated');
     } catch (error) {
       console.error('Set generation failed', error);
-      toast.error(error.message?.includes('Insufficient tokens') ? 'Not enough credits for this generation.' : 'Set generation failed. Try again.');
+      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? 'Not enough credits for this generation.' : (error.message || 'Set generation failed. Try again.'));
     } finally {
       setGenerating('');
     }
   };
 
   const generateView = async (index, label, instruction) => {
-    if (!heroImage) return;
+    if (!heroImage || !effectiveModel) return;
     setGenerating(label);
     try {
       const prompt = `${buildHeroPrompt(name, description)}\nUse the provided hero image as the strict visual and spatial reference. Generate a ${instruction}. It must clearly be the SAME location, not a redesign. Keep architecture, surfaces, fixtures, furniture, proportions and palette consistent. No people, no text, no logos.`;
@@ -72,7 +98,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       toast.success(`${label} view generated`);
     } catch (error) {
       console.error(`Set ${label} generation failed`, error);
-      toast.error(error.message?.includes('Insufficient tokens') ? 'Not enough credits for this generation.' : `${label} generation failed.`);
+      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? 'Not enough credits for this generation.' : (error.message || `${label} generation failed.`));
     } finally {
       setGenerating('');
     }
@@ -92,12 +118,30 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         </div>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-xs text-white/45">
-          {mode === 'scratch' ? 'No reference required.' : `${referenceCount} reference${referenceCount === 1 ? '' : 's'} will guide the generation.`}
+      <div className="mt-5 grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div>
+          <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-white/45">AI Model</label>
+          <select
+            value={effectiveModel || ''}
+            onChange={event => setSelectedModel(event.target.value || null)}
+            disabled={modelsLoading || modelOptions.length === 0}
+            className="w-full border border-white/15 bg-black/25 px-3 py-3 text-sm font-bold text-white outline-none focus:border-[#23c7be] disabled:opacity-50"
+          >
+            {modelsLoading && <option value="">Loading models…</option>}
+            {!modelsLoading && modelOptions.length === 0 && <option value="">No model enabled for Set Designer</option>}
+            {modelOptions.map(model => (
+              <option key={model.model_key} value={model.model_key}>
+                {model.name || model.model_key}{model.recommended ? ' — Recommended' : ''}{model.credits ? ` — ${model.credits} credits` : ''}
+              </option>
+            ))}
+          </select>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/45">
+            <span>{mode === 'scratch' ? 'No reference required.' : `${referenceCount} reference${referenceCount === 1 ? '' : 's'} will guide the generation.`}</span>
+            <span>AI cost: {priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : effectiveModel ? 'Unable to calculate' : 'Select a model'}</span>
+          </div>
         </div>
-        <button type="button" onClick={generateHero} disabled={Boolean(generating) || !canGenerateHero} className="flex min-w-[220px] items-center justify-center gap-2 bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.06] disabled:text-white/30">
-          {generating === 'hero' ? <><Loader2 size={16} className="animate-spin" />GENERATING SET...</> : <><Camera size={16} />GENERATE HERO SET</>}
+        <button type="button" onClick={generateHero} disabled={Boolean(generating) || !canGenerateHero || !effectiveModel || modelsLoading} className="flex min-w-[220px] items-center justify-center gap-2 bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.06] disabled:text-white/30">
+          {generating === 'hero' ? <><Loader2 size={16} className="animate-spin" />GENERATING SET...</> : <><Camera size={16} />GENERATE HERO SET{!priceLoading && priceQuote?.credits ? ` · ${priceQuote.credits}` : ''}</>}
         </button>
       </div>
 
@@ -109,7 +153,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
               const index = offset + 1;
               const exists = Boolean(images?.[index]);
               const busy = generating === label;
-              return <button key={label} type="button" onClick={() => generateView(index, label, instruction)} disabled={Boolean(generating)} className={`border px-3 py-3 text-left text-xs font-black transition ${exists ? 'border-[#23c7be]/35 bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-black/20 text-white hover:border-white/30'} disabled:opacity-40`}>
+              return <button key={label} type="button" onClick={() => generateView(index, label, instruction)} disabled={Boolean(generating) || !effectiveModel} className={`border px-3 py-3 text-left text-xs font-black transition ${exists ? 'border-[#23c7be]/35 bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-black/20 text-white hover:border-white/30'} disabled:opacity-40`}>
                 {busy ? 'GENERATING...' : exists ? `${label.toUpperCase()} · REGENERATE` : `GENERATE ${label.toUpperCase()}`}
               </button>;
             })}
