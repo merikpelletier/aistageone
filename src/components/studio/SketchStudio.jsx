@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { motion } from 'framer-motion';
@@ -19,8 +19,11 @@ const CATEGORIES = [
   { id: 'character_intro', label: 'Intros' },
 ];
 
+const ACTIVE_JOB_STATUSES = new Set(['starting', 'processing', 'finalizing']);
+
 export default function SketchStudio({ user }) {
   const qc = useQueryClient();
+  const restoredPendingRef = useRef(false);
   const [category, setCategory] = useState('all');
   const [photoUrl, setPhotoUrl] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
@@ -31,6 +34,7 @@ export default function SketchStudio({ user }) {
   const [duration, setDuration] = useState(5);
   const [aspectRatio, setAspectRatio] = useState('9:16');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationJob, setGenerationJob] = useState(null);
   const [result, setResult] = useState(null);
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [showBuyTokens, setShowBuyTokens] = useState(false);
@@ -86,6 +90,92 @@ export default function SketchStudio({ user }) {
     return t.category === category;
   });
 
+  const restoreStageFromJob = (job) => {
+    if (!job) return;
+    const theme = themes.find((item) => String(item.id) === String(job.stage_id));
+    if (!theme) return;
+    const themeStyles = Array.isArray(theme.styles)
+      ? theme.styles.filter((s) => s?.name && (s?.image_prompt || s?.video_prompt || s?.prompt))
+      : [];
+    const styleIndex = job.style_name
+      ? themeStyles.findIndex((style) => style.name === job.style_name)
+      : null;
+    setSelected({ ...theme, output_type: theme.output_type || 'video' });
+    setSelectedOutput('video');
+    setSelectedStyleIndex(styleIndex >= 0 ? styleIndex : null);
+    setSelectedModel(job.model_key || null);
+    setPhotoUrl(job.input?.image_url || photoUrl);
+    setPhotoFile(null);
+    setDuration(Number(job.input?.duration) || theme.default_duration || 5);
+    setAspectRatio(job.input?.aspect_ratio || theme.default_aspect_ratio || '9:16');
+  };
+
+  useEffect(() => {
+    if (!user?.email || isLoading || themes.length === 0 || restoredPendingRef.current) return;
+    restoredPendingRef.current = true;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await base44.functions.invoke('stageVideoJob', { action: 'list_pending' });
+        const job = res?.data?.job || res?.job || null;
+        if (cancelled || !job || !ACTIVE_JOB_STATUSES.has(job.status)) return;
+        setGenerationJob(job);
+        setIsGenerating(true);
+        restoreStageFromJob(job);
+      } catch (error) {
+        console.warn('Unable to restore pending Stage video job', error);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [user?.email, isLoading, themes]);
+
+  useEffect(() => {
+    const jobId = generationJob?.id;
+    if (!jobId || !ACTIVE_JOB_STATUSES.has(generationJob.status)) return;
+
+    let cancelled = false;
+    let timer = null;
+
+    const poll = async () => {
+      try {
+        const res = await base44.functions.invoke('stageVideoJob', { action: 'status', job_id: jobId });
+        const job = res?.data?.job || res?.job || null;
+        if (cancelled || !job) return;
+        setGenerationJob(job);
+
+        if (job.status === 'succeeded' && job.output_url) {
+          setResult(job.output_url);
+          setIsGenerating(false);
+          restoreStageFromJob(job);
+          refreshBalance();
+          toast.success('Stage video ready');
+          return;
+        }
+
+        if (job.status === 'failed' || job.status === 'canceled') {
+          setIsGenerating(false);
+          refreshBalance();
+          toast.error(job.error || 'Stage video generation failed');
+          return;
+        }
+
+        timer = window.setTimeout(poll, 4000);
+      } catch (error) {
+        if (cancelled) return;
+        console.warn('Stage video status check failed; retrying', error);
+        timer = window.setTimeout(poll, 6000);
+      }
+    };
+
+    timer = window.setTimeout(poll, 1500);
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [generationJob?.id, generationJob?.status, themes]);
+
   const handlePhotoUpload = async (file) => {
     if (!file) return;
     setUploadingPhoto(true);
@@ -101,6 +191,12 @@ export default function SketchStudio({ user }) {
   };
 
   const openTheme = (theme) => {
+    const activeForTheme = generationJob && ACTIVE_JOB_STATUSES.has(generationJob.status)
+      && String(generationJob.stage_id) === String(theme.id);
+    if (activeForTheme) {
+      restoreStageFromJob(generationJob);
+      return;
+    }
     if (!photoUrl) { toast.error('Upload your photo first'); return; }
     const type = theme.output_type || 'video';
     setSelected({ ...theme, output_type: type });
@@ -166,6 +262,7 @@ export default function SketchStudio({ user }) {
         const url = res?.data?.file_url || res?.file_url;
         if (!url) throw new Error(res?.data?.error || 'Image generation returned no URL');
         setResult(url);
+        setIsGenerating(false);
         refreshBalance();
         return;
       }
@@ -195,35 +292,36 @@ export default function SketchStudio({ user }) {
         }
       }
 
-      const res = await base44.functions.invoke('generateVideo', {
+      const res = await base44.functions.invoke('stageVideoJob', {
+        action: 'start',
+        stage_id: selected.id,
+        style_name: selectedStyle?.name || null,
         prompt,
         image_url: genImage,
         duration,
         aspect_ratio: aspectRatio,
         resolution: '720p',
-        use_as_reference: true,
         engine: useMorph ? 'kling_morph' : 'kling',
         transformation_prompt: useMorph ? morphPrompt : undefined,
         model_key: effectiveModel || undefined,
       });
-      if (res.data?.file_url) {
-        setResult(res.data.file_url);
-        refreshBalance();
-      } else {
-        throw new Error(res.data?.error || 'Failed to generate Stage');
-      }
+      const job = res?.data?.job || res?.job || null;
+      if (!job?.id) throw new Error(res?.data?.error || 'Failed to start Stage video generation');
+      setGenerationJob(job);
+      setResult(null);
+      refreshBalance();
+      toast.success('Video generation started');
     } catch (err) {
+      setIsGenerating(false);
       const data = err?.response?.data || {};
       const msg = data.error || data.message || err?.message || 'Generation failed';
-      if (data.error === 'Insufficient tokens' || /insufficient tokens/i.test(String(msg))) {
+      if (data.error === 'Insufficient tokens' || /insufficient (tokens|credits)/i.test(String(msg))) {
         toast.error('Not enough credits — buy more to generate.');
         setShowBuyTokens(true);
         refreshBalance();
       } else {
         toast.error(msg);
       }
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -260,6 +358,7 @@ export default function SketchStudio({ user }) {
     setSelected(null);
     setSelectedStyleIndex(null);
     setSelectedOutput(null);
+    setGenerationJob(null);
     qc.invalidateQueries({ queryKey: ['vaultAssets', user?.email] });
   };
 
@@ -270,6 +369,8 @@ export default function SketchStudio({ user }) {
           <p className="text-sm text-white/45">Upload a photo, then choose a Stage.</p>
           {photoUrl && <div className="flex items-center gap-3 rounded-[4px] border border-white/10 bg-[#17191d] px-3 py-2"><img src={photoUrl} alt="you" className="h-10 w-10 rounded-[3px] object-cover"/><div><p className="text-xs font-bold text-white">Photo ready</p><button onClick={() => { setPhotoUrl(null); setPhotoFile(null); }} className="text-[10px] font-bold text-[#8ee9e4]">Change</button></div></div>}
         </div>
+
+        {generationJob && ACTIVE_JOB_STATUSES.has(generationJob.status) && <div className="mb-4 flex items-center gap-3 rounded-[4px] border border-[#23c7be]/35 bg-[#23c7be]/10 px-4 py-3"><Loader2 size={18} className="animate-spin text-[#23c7be]"/><div className="min-w-0 flex-1"><p className="text-sm font-black text-white">Stage video is still generating</p><p className="text-xs text-white/50">It will keep running until the AI provider finishes.</p></div>{generationJob.stage_id && <button onClick={() => { const theme = themes.find((item) => String(item.id) === String(generationJob.stage_id)); if (theme) openTheme(theme); }} className="studio-button studio-button-secondary">Open</button>}</div>}
 
         <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
           <aside className="space-y-4">
@@ -295,23 +396,25 @@ export default function SketchStudio({ user }) {
       <div className="rounded-[4px] border border-white/10 bg-[#17191d] p-5 md:p-6">
         <div className="mb-5 flex gap-3 border-b border-white/10 pb-4"><img src={photoUrl} alt="you" className="h-16 w-16 flex-shrink-0 rounded-[3px] object-cover"/><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-wide text-[#23c7be]"><User size={12} className="mr-1 inline"/>{configuredOutput === 'both' ? 'Image + Video Stage' : configuredOutput === 'image' ? 'Image Stage' : 'Video Stage'}</p><h3 className="mt-1 text-lg font-black text-white">{selected.name}</h3>{selected.description && <p className="mt-1 text-sm text-white/45">{selected.description}</p>}<p className="mt-2 line-clamp-3 text-xs text-white/65">{selected.scenario}</p></div></div>
 
-        {styles.length > 0 && <div className="mb-5"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">1 · Choose a style</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{styles.map((style, index) => <button key={`${style.name}-${index}`} onClick={() => chooseStyle(index)} className={`overflow-hidden rounded-[3px] border text-left transition ${selectedStyleIndex === index ? 'border-[#23c7be] bg-[#23c7be]/10 shadow-[inset_2px_0_0_#23c7be]' : 'border-white/10 bg-white/[0.03] hover:border-white/25'}`}>{style.preview_image ? <img src={style.preview_image} alt={style.name} className="aspect-[4/3] w-full object-cover"/> : <div className="flex aspect-[4/3] items-center justify-center bg-[#202328]"><ImageIcon size={24} className="text-[#23c7be]"/></div>}<div className="px-3 py-2 text-xs font-black text-white">{style.name}</div></button>)}</div></div>}
+        {styles.length > 0 && <div className="mb-5"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">1 · Choose a style</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{styles.map((style, index) => <button key={`${style.name}-${index}`} onClick={() => chooseStyle(index)} disabled={isGenerating && isVideoStage} className={`overflow-hidden rounded-[3px] border text-left transition disabled:opacity-50 ${selectedStyleIndex === index ? 'border-[#23c7be] bg-[#23c7be]/10 shadow-[inset_2px_0_0_#23c7be]' : 'border-white/10 bg-white/[0.03] hover:border-white/25'}`}>{style.preview_image ? <img src={style.preview_image} alt={style.name} className="aspect-[4/3] w-full object-cover"/> : <div className="flex aspect-[4/3] items-center justify-center bg-[#202328]"><ImageIcon size={24} className="text-[#23c7be]"/></div>}<div className="px-3 py-2 text-xs font-black text-white">{style.name}</div></button>)}</div></div>}
 
-        {configuredOutput === 'both' && styleChosen && <div className="mb-5"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">{styles.length > 0 ? '2' : '1'} · Choose output</p><div className="grid grid-cols-2 gap-2"><button onClick={() => chooseOutput('image')} className={`flex items-center justify-center gap-2 rounded-[3px] border py-3 text-sm font-black ${selectedOutput === 'image' ? 'border-[#23c7be]/45 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.03] text-white/65'}`}><ImageIcon size={18}/> Image</button><button onClick={() => chooseOutput('video')} className={`flex items-center justify-center gap-2 rounded-[3px] border py-3 text-sm font-black ${selectedOutput === 'video' ? 'border-[#23c7be]/45 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.03] text-white/65'}`}><Film size={18}/> Video</button></div></div>}
+        {configuredOutput === 'both' && styleChosen && <div className="mb-5"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">{styles.length > 0 ? '2' : '1'} · Choose output</p><div className="grid grid-cols-2 gap-2"><button onClick={() => chooseOutput('image')} disabled={isGenerating && isVideoStage} className={`flex items-center justify-center gap-2 rounded-[3px] border py-3 text-sm font-black disabled:opacity-50 ${selectedOutput === 'image' ? 'border-[#23c7be]/45 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.03] text-white/65'}`}><ImageIcon size={18}/> Image</button><button onClick={() => chooseOutput('video')} disabled={isGenerating && isVideoStage} className={`flex items-center justify-center gap-2 rounded-[3px] border py-3 text-sm font-black disabled:opacity-50 ${selectedOutput === 'video' ? 'border-[#23c7be]/45 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.03] text-white/65'}`}><Film size={18}/> Video</button></div></div>}
 
         {outputChosen && styleChosen && <>
-          <div className="mb-5 space-y-2"><p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/50">AI Model</p><select value={effectiveModel || ''} onChange={(e) => setSelectedModel(e.target.value || null)} disabled={modelsLoading || modelOptions.length === 0} className="w-full rounded-[3px] border border-white/15 bg-black/25 px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#23c7be] disabled:opacity-50">{modelsLoading && <option value="">Loading models…</option>}{!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}{modelOptions.map((m) => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}</select></div>
+          <div className="mb-5 space-y-2"><p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/50">AI Model</p><select value={effectiveModel || ''} onChange={(e) => setSelectedModel(e.target.value || null)} disabled={modelsLoading || modelOptions.length === 0 || (isGenerating && isVideoStage)} className="w-full rounded-[3px] border border-white/15 bg-black/25 px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#23c7be] disabled:opacity-50">{modelsLoading && <option value="">Loading models…</option>}{!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}{modelOptions.map((m) => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}</select></div>
 
           <div className={`mb-5 grid grid-cols-1 gap-4 ${isVideoStage ? 'md:grid-cols-2' : ''}`}>
-            {isVideoStage && <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Duration</p><div className="flex gap-2">{[5, 10].map((d) => <button key={d} onClick={() => setDuration(d)} className={`flex-1 rounded-[3px] border py-2.5 text-sm font-black ${duration === d ? 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.04] text-white/65'}`}>{d}s</button>)}</div></div>}
-            <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Aspect</p><div className="flex gap-2">{['16:9', '9:16', '1:1'].map((r) => <button key={r} onClick={() => setAspectRatio(r)} className={`flex-1 rounded-[3px] border py-2.5 text-xs font-black ${aspectRatio === r ? 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.04] text-white/65'}`}>{r}</button>)}</div></div>
+            {isVideoStage && <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Duration</p><div className="flex gap-2">{[5, 10].map((d) => <button key={d} onClick={() => setDuration(d)} disabled={isGenerating} className={`flex-1 rounded-[3px] border py-2.5 text-sm font-black disabled:opacity-50 ${duration === d ? 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.04] text-white/65'}`}>{d}s</button>)}</div></div>}
+            <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Aspect</p><div className="flex gap-2">{['16:9', '9:16', '1:1'].map((r) => <button key={r} onClick={() => setAspectRatio(r)} disabled={isGenerating && isVideoStage} className={`flex-1 rounded-[3px] border py-2.5 text-xs font-black disabled:opacity-50 ${aspectRatio === r ? 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.04] text-white/65'}`}>{r}</button>)}</div></div>
           </div>
         </>}
 
         <div className="mb-4 flex flex-col gap-1.5 rounded-[3px] border border-white/10 bg-black/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs font-bold text-white/70">Cost: <span className="text-[#8ee9e4]">{!styleChosen ? 'Choose style' : !outputChosen ? 'Choose output' : priceLoading ? 'Calculating…' : cost !== null ? `${cost} credits` : '…'}</span></p><p className="text-xs font-bold text-white/70">Balance: <span className={insufficient ? 'text-red-400' : 'text-[#8ee9e4]'}>{balance !== null ? `${balance} credits` : '…'}</span></p></div>
         {insufficient && <button onClick={() => setShowBuyTokens(true)} className="mb-3 flex w-full items-center justify-center gap-2 rounded-[3px] border border-red-400/30 bg-red-400/10 py-3 font-bold text-red-200"><Coins size={18}/> Not enough credits — Buy more</button>}
 
-        {!result ? <button onClick={handleGenerate} disabled={isGenerating || insufficient || !styleChosen || !outputChosen} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-4 font-black text-[#071211] disabled:bg-white/[0.05] disabled:text-white/30">{isGenerating ? <><Loader2 size={20} className="animate-spin"/> Generating…</> : <><Sparkles size={20}/> {!styleChosen ? 'Choose a style' : !outputChosen ? 'Choose Image or Video' : `Generate ${isImageStage ? 'Image' : 'Video'}`}</>}</button> : <div className="space-y-4"><div className="flex min-h-[320px] items-center justify-center rounded-[4px] border border-white/10 bg-black p-3">{isImageStage ? <img src={result} alt={selected.name} className="max-h-[700px] max-w-full object-contain"/> : <video src={result} controls className="w-full rounded-[3px]"/>}</div><div className="grid grid-cols-1 gap-3 sm:grid-cols-3"><button onClick={() => setResult(null)} className="rounded-[3px] border border-white/10 bg-white/[0.04] py-3 font-bold text-white">Regenerate</button><button onClick={handleDownload} className="flex items-center justify-center gap-2 rounded-[3px] border border-[#23c7be]/35 bg-[#23c7be]/10 py-3 font-black text-[#8ee9e4]"><Download size={19}/> Download</button><button onClick={() => setShowSaveVault(true)} className="flex items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3 font-black text-[#071211]"><CheckCircle2 size={20}/> Save to Vault</button></div></div>}
+        {generationJob && ACTIVE_JOB_STATUSES.has(generationJob.status) && isVideoStage && <div className="mb-3 flex items-center gap-3 rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 px-4 py-3"><Loader2 size={18} className="animate-spin text-[#23c7be]"/><div><p className="text-sm font-black text-white">Generating video…</p><p className="text-xs text-white/50">The job stays active until the AI provider finishes. You can leave Stage and come back.</p></div></div>}
+
+        {!result ? <button onClick={handleGenerate} disabled={isGenerating || insufficient || !styleChosen || !outputChosen} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-4 font-black text-[#071211] disabled:bg-white/[0.05] disabled:text-white/30">{isGenerating ? <><Loader2 size={20} className="animate-spin"/> Generating…</> : <><Sparkles size={20}/> {!styleChosen ? 'Choose a style' : !outputChosen ? 'Choose Image or Video' : `Generate ${isImageStage ? 'Image' : 'Video'}`}</>}</button> : <div className="space-y-4"><div className="flex min-h-[320px] items-center justify-center rounded-[4px] border border-white/10 bg-black p-3">{isImageStage ? <img src={result} alt={selected.name} className="max-h-[700px] max-w-full object-contain"/> : <video src={result} controls className="w-full rounded-[3px]"/>}</div><div className="grid grid-cols-1 gap-3 sm:grid-cols-3"><button onClick={() => { setResult(null); setGenerationJob(null); }} className="rounded-[3px] border border-white/10 bg-white/[0.04] py-3 font-bold text-white">Regenerate</button><button onClick={handleDownload} className="flex items-center justify-center gap-2 rounded-[3px] border border-[#23c7be]/35 bg-[#23c7be]/10 py-3 font-black text-[#8ee9e4]"><Download size={19}/> Download</button><button onClick={() => setShowSaveVault(true)} className="flex items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3 font-black text-[#071211]"><CheckCircle2 size={20}/> Save to Vault</button></div></div>}
       </div>
 
       {showSaveVault && result && <SaveToVaultModal userEmail={user?.email} imageUrl={result} mediaType={isImageStage ? 'image' : 'video'} onClose={() => setShowSaveVault(false)} onSaved={handleSavedToVault}/>} 
