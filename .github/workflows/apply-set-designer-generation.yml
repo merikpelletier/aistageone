@@ -1,0 +1,49 @@
+name: Apply Set Designer generation wiring
+
+on:
+  push:
+    branches:
+      - set-designer-generation-wire-3
+    paths:
+      - .github/workflows/apply-set-designer-generation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: set-designer-generation-wire-3
+      - name: Wire generation panel into Set Designer
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/studio/SetAssetEditor.jsx')
+          s = p.read_text()
+          old = "import SaveToVaultModal from '@/components/studio/SaveToVaultModal';\n"
+          new = old + "import SetGeneratorPanel from '@/components/studio/SetGeneratorPanel';\n"
+          assert old in s and 'SetGeneratorPanel' not in s
+          s = s.replace(old, new, 1)
+          old_text = 'Start with a reference image, then define the visual language of the location so every shot belongs to the same world.'
+          new_text = 'Start from scratch or use references, then define the visual language of the location so every shot belongs to the same world.'
+          assert old_text in s
+          s = s.replace(old_text, new_text, 1)
+          anchor = '''          <section className="border border-white/10 bg-[#17191d] p-5 sm:p-6">\n            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">'''
+          panel = '''          <SetGeneratorPanel name={name} description={description} images={images} setImages={setImages} />\n\n'''
+          assert anchor in s
+          s = s.replace(anchor, panel + anchor, 1)
+          old_button = "{saving ? 'SAVING...' : asset?.id ? 'SAVE SET' : 'CREATE MY SET'}"
+          assert old_button in s
+          s = s.replace(old_button, "{saving ? 'SAVING...' : 'SAVE SET'}", 1)
+          p.write_text(s)
+          PY
+          git diff --check
+          git rm .github/workflows/apply-set-designer-generation.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/studio/SetAssetEditor.jsx
+          git commit -m "Wire real Set Designer generation flow"
+          git push origin HEAD:set-designer-generation-wire-3
