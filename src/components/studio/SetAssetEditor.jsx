@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import VaultPickerModal from '@/components/studio/VaultPickerModal';
 import ImageCropModal from '@/components/studio/ImageCropModal';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
+import SetGeneratorPanel from '@/components/studio/SetGeneratorPanel';
 import { toast } from 'sonner';
 import SET_DESIGNER_IMAGES from '@/setDesignerImages/all';
 
@@ -281,7 +282,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
                   <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
                     <div className="mb-5 flex h-16 w-16 items-center justify-center border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Camera size={28} /></div>
                     <h3 className="text-2xl font-black">Build the world before the shot.</h3>
-                    <p className="mt-2 max-w-md text-sm leading-6 text-white/45">Start with a reference image, then define the visual language of the location so every shot belongs to the same world.</p>
+                    <p className="mt-2 max-w-md text-sm leading-6 text-white/45">Start from scratch or use references, then define the visual language of the location so every shot belongs to the same world.</p>
                   </div>
                 )}
                 <div className="absolute left-4 top-4 border border-white/15 bg-black/70 px-3 py-2 backdrop-blur">
@@ -344,6 +345,8 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
             </div>
           </section>
 
+          <SetGeneratorPanel name={name} description={description} images={images} setImages={setImages} />
+
           <section className="border border-white/10 bg-[#17191d] p-5 sm:p-6">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div><div className="flex items-center gap-2 text-[#23c7be]"><ImagePlus size={16} /><p className="text-[10px] font-black uppercase tracking-[0.18em]">Visual Continuity Board</p></div><h3 className="mt-1 text-lg font-black">Eight references, eight production purposes</h3><p className="mt-1 text-xs text-white/40">The order gives each image a role. The first image is the visual anchor for the whole set.</p></div>
@@ -375,7 +378,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, embedded = f
           <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
             <p className="hidden text-xs text-white/35 sm:block">{name.trim() ? `${name.trim()} · ${images.length} reference${images.length === 1 ? '' : 's'}` : 'Name your set to create it.'}</p>
             <button onClick={handleSave} disabled={saving || !name.trim()} className="ml-auto min-w-[210px] border border-[#23c7be] bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:border-white/10 disabled:bg-white/[0.05] disabled:text-white/30">
-              {saving ? 'SAVING...' : asset?.id ? 'SAVE SET' : 'CREATE MY SET'}
+              {saving ? 'SAVING...' : 'SAVE SET'}
             </button>
           </div>
         </div>
