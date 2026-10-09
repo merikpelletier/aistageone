@@ -20,8 +20,8 @@ const buildHeroPrompt = (name, description) => `Create a production-ready cinema
 export default function SetGeneratorPanel({ name, description, images, setImages }) {
   const [mode, setMode] = useState(images?.length ? 'reference' : 'scratch');
   const [generating, setGenerating] = useState('');
-  const [progress, setProgress] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
+  const heroImage = images?.[0] || null;
   const referenceCount = mode === 'reference' ? Math.min(images?.length || 0, 3) : 0;
   const canGenerateHero = useMemo(() => Boolean(name?.trim() || description?.trim()), [name, description]);
   const pricingInput = useMemo(() => ({
@@ -41,6 +41,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     input: pricingInput,
     modelKey: effectiveModel,
   });
+  const creditsPerImage = priceQuote?.credits || null;
 
   const runGeneration = async (prompt, refs = []) => {
     if (!effectiveModel) throw new Error('No AI model available for Set Designer');
@@ -56,7 +57,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     return res.data.file_url;
   };
 
-  const generateSet = async () => {
+  const generateHero = async () => {
     if (!canGenerateHero) {
       toast.error('Add a set name or creative brief first.');
       return;
@@ -71,27 +72,53 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     }
 
     setGenerating('Hero');
-    setProgress({ current: 1, total: 8, label: 'Hero' });
-
     try {
       const refs = mode === 'reference' ? images.slice(0, 3) : [];
-      const heroUrl = await runGeneration(buildHeroPrompt(name, description), refs);
-
+      const url = await runGeneration(buildHeroPrompt(name, description), refs);
       setImages(current => {
         const next = [...current];
-        next[0] = heroUrl;
+        next[0] = url;
         return next.slice(0, 8);
       });
+      toast.success('Hero set generated');
+    } catch (error) {
+      console.error('Set Hero generation failed', error);
+      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? 'Not enough credits for this generation.' : (error.message || 'Set generation failed. Try again.'));
+    } finally {
+      setGenerating('');
+    }
+  };
 
+  const generateView = async (index, label, instruction) => {
+    if (!heroImage || !effectiveModel) return;
+    setGenerating(label);
+    try {
+      const prompt = `${buildHeroPrompt(name, description)}\nUse the provided hero image as the strict visual and spatial reference. Generate a ${instruction}. It must clearly be the SAME location, not a redesign. Keep architecture, surfaces, fixtures, furniture, proportions and palette consistent. No people, no text, no logos.`;
+      const url = await runGeneration(prompt, [heroImage]);
+      setImages(current => {
+        const next = [...current];
+        while (next.length <= index) next.push(null);
+        next[index] = url;
+        return next.slice(0, 8);
+      });
+      toast.success(`${label} view generated`);
+    } catch (error) {
+      console.error(`Set ${label} generation failed`, error);
+      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? 'Not enough credits for this generation.' : (error.message || `${label} generation failed.`));
+    } finally {
+      setGenerating('');
+    }
+  };
+
+  const generateAllViews = async () => {
+    if (!heroImage || !effectiveModel) return;
+    try {
       for (let offset = 0; offset < VIEW_SPECS.length; offset += 1) {
         const [label, instruction] = VIEW_SPECS[offset];
         const index = offset + 1;
         setGenerating(label);
-        setProgress({ current: index + 1, total: 8, label });
-
         const prompt = `${buildHeroPrompt(name, description)}\nUse the provided hero image as the strict visual and spatial reference. Generate a ${instruction}. It must clearly be the SAME location, not a redesign. Keep architecture, surfaces, fixtures, furniture, proportions and palette consistent. No people, no text, no logos.`;
-        const url = await runGeneration(prompt, [heroUrl]);
-
+        const url = await runGeneration(prompt, [heroImage]);
         setImages(current => {
           const next = [...current];
           while (next.length <= index) next.push(null);
@@ -99,14 +126,12 @@ export default function SetGeneratorPanel({ name, description, images, setImages
           return next.slice(0, 8);
         });
       }
-
-      toast.success('Set and continuity views generated');
+      toast.success('All continuity views generated');
     } catch (error) {
-      console.error('Set generation failed', error);
-      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? 'Not enough credits to finish the set generation.' : (error.message || 'Set generation failed. Try again.'));
+      console.error('Set continuity generation failed', error);
+      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? 'Not enough credits to finish all views.' : (error.message || 'Continuity generation failed.'));
     } finally {
       setGenerating('');
-      setProgress(null);
     }
   };
 
@@ -116,7 +141,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         <div>
           <div className="flex items-center gap-2 text-[#23c7be]"><Sparkles size={16} /><span className="text-[10px] font-black uppercase tracking-[0.18em]">Generate the set</span></div>
           <h3 className="mt-1 text-xl font-black text-white">Create from scratch or build from references</h3>
-          <p className="mt-1 max-w-2xl text-xs leading-5 text-white/45">The Hero is generated first. Wide, Reverse, Left, Right, Detail, Day and Night are then generated automatically from that Hero and placed in the Visual Continuity Board.</p>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-white/45">Generate the Hero first, then choose only the additional production views you need. Each generated image is billed separately.</p>
         </div>
         <div className="grid min-w-[280px] grid-cols-2 border border-white/10 bg-black/25 p-1">
           <button type="button" onClick={() => setMode('scratch')} disabled={Boolean(generating)} className={`px-4 py-2.5 text-xs font-black ${mode === 'scratch' ? 'bg-[#23c7be] text-black' : 'text-white/65 hover:text-white'} disabled:opacity-40`}>FROM SCRATCH</button>
@@ -143,14 +168,37 @@ export default function SetGeneratorPanel({ name, description, images, setImages
           </select>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/45">
             <span>{mode === 'scratch' ? 'No reference required.' : `${referenceCount} reference${referenceCount === 1 ? '' : 's'} will guide the Hero generation.`}</span>
-            <span>AI cost per image: {priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : effectiveModel ? 'Unable to calculate' : 'Select a model'}</span>
+            <span>AI cost per image: {priceLoading ? 'Calculating…' : creditsPerImage ? `${creditsPerImage} credits` : effectiveModel ? 'Unable to calculate' : 'Select a model'}</span>
           </div>
-          {progress && <div className="mt-3 text-xs font-black text-[#8ee9e4]">GENERATING {progress.current}/8 · {progress.label.toUpperCase()}</div>}
         </div>
-        <button type="button" onClick={generateSet} disabled={Boolean(generating) || !canGenerateHero || !effectiveModel || modelsLoading} className="flex min-w-[220px] items-center justify-center gap-2 bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.06] disabled:text-white/30">
-          {generating ? <><Loader2 size={16} className="animate-spin" />GENERATING {progress?.current || 1}/8...</> : <><Camera size={16} />GENERATE SET</>}
+        <button type="button" onClick={generateHero} disabled={Boolean(generating) || !canGenerateHero || !effectiveModel || modelsLoading} className="flex min-w-[220px] items-center justify-center gap-2 bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.06] disabled:text-white/30">
+          {generating === 'Hero' ? <><Loader2 size={16} className="animate-spin" />GENERATING HERO...</> : <><Camera size={16} />GENERATE HERO SET{creditsPerImage ? ` · ${creditsPerImage}` : ''}</>}
         </button>
       </div>
+
+      {heroImage && (
+        <div className="mt-5 border-t border-white/10 pt-5">
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/45">Production views</p>
+              <p className="mt-1 text-xs text-white/40">Choose the angles you need. Each button generates one additional image.</p>
+            </div>
+            <button type="button" onClick={generateAllViews} disabled={Boolean(generating) || !effectiveModel} className="border border-[#23c7be]/35 bg-[#23c7be]/10 px-4 py-2.5 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/15 disabled:opacity-40">
+              GENERATE ALL VIEWS{creditsPerImage ? ` · ${creditsPerImage * 7} CREDITS` : ''}
+            </button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {VIEW_SPECS.map(([label, instruction], offset) => {
+              const index = offset + 1;
+              const exists = Boolean(images?.[index]);
+              const busy = generating === label;
+              return <button key={label} type="button" onClick={() => generateView(index, label, instruction)} disabled={Boolean(generating) || !effectiveModel} className={`border px-3 py-3 text-left text-xs font-black transition ${exists ? 'border-[#23c7be]/35 bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-black/20 text-white hover:border-white/30'} disabled:opacity-40`}>
+                {busy ? 'GENERATING...' : exists ? `${label.toUpperCase()} · REGENERATE${creditsPerImage ? ` · ${creditsPerImage}` : ''}` : `GENERATE ${label.toUpperCase()}${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
+              </button>;
+            })}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
