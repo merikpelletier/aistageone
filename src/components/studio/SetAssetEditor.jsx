@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Bookmark, Check, Loader2, ShoppingBag, Upload, Sparkles, ImagePlus, Camera, Sun, Moon, Eye } from 'lucide-react';
+import { X, Bookmark, Check, Loader2, ShoppingBag, Upload, Sparkles, ImagePlus, Camera, Sun, Moon, Eye, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import VaultPickerModal from '@/components/studio/VaultPickerModal';
 import ImageCropModal from '@/components/studio/ImageCropModal';
@@ -23,7 +23,6 @@ const TIME_OPTIONS = ['Dawn', 'Day', 'Golden Hour', 'Dusk', 'Night'];
 const WEATHER_OPTIONS = ['Clear', 'Cloudy', 'Rain', 'Snow', 'Fog', 'Storm'];
 const REALISM_OPTIONS = ['Photoreal', 'Cinematic', 'Stylized', 'Theatrical'];
 const IMAGE_ROLES = ['Hero / Establishing', 'Wide', 'Reverse', 'Left', 'Right', 'Detail', 'Day', 'Night'];
-
 
 const fieldPattern = label => new RegExp(`^${label.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}:.*$`, 'mi');
 const readBriefField = (text, label) => {
@@ -248,6 +247,28 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
     }
   };
 
+  const downloadImage = async (url, role) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Download failed (${response.status})`);
+      const blob = await response.blob();
+      const extension = blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg';
+      const safeSetName = (name.trim() || 'set').replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '') || 'set';
+      const safeRole = String(role || 'image').replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '') || 'image';
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `${safeSetName}-${safeRole}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.error('Set image download failed', error);
+      toast.error('Image could not be downloaded.');
+    }
+  };
+
   const heroImage = images[0];
 
   return (
@@ -352,7 +373,10 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                   <div key={role} className={`relative aspect-[4/3] overflow-hidden border ${url ? 'border-white/10 bg-black' : 'border-dashed border-white/15 bg-black/15'}`}>
                     {url ? <img src={url} alt={`${role} set reference`} className="h-full w-full object-cover" /> : <div className="flex h-full flex-col items-center justify-center px-3 text-center text-white/25"><Camera size={18} /><span className="mt-2 text-[10px] font-bold">Add reference</span></div>}
                     <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between gap-2 bg-black/80 px-2.5 py-2 backdrop-blur"><span className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-white/75">{idx + 1}. {role}</span>{url && <button type="button" onClick={() => removeImage(idx)} className="flex h-5 w-5 flex-shrink-0 items-center justify-center bg-white/10 text-white hover:bg-white/20"><X size={10} /></button>}</div>
-                    {url && <button type="button" onClick={() => setVaultSaveUrl(url)} title="Save this image to Vault" className="absolute left-2 top-2 flex h-7 items-center justify-center border border-[#23c7be]/30 bg-black/75 px-2 text-[#8ee9e4]"><Bookmark size={11} /></button>}
+                    {url && <div className="absolute left-2 top-2 flex gap-1.5">
+                      <button type="button" onClick={() => downloadImage(url, role)} className="flex h-7 items-center gap-1 border border-white/20 bg-black/80 px-2 text-[9px] font-black text-white backdrop-blur hover:bg-black"><Download size={11} />DOWNLOAD</button>
+                      <button type="button" onClick={() => setVaultSaveUrl(url)} className="flex h-7 items-center gap-1 border border-[#23c7be]/35 bg-black/80 px-2 text-[9px] font-black text-[#8ee9e4] backdrop-blur hover:bg-black"><Bookmark size={11} />VAULT</button>
+                    </div>}
                   </div>
                 );
               })}
