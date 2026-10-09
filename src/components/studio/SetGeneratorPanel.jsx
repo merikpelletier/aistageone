@@ -6,16 +6,18 @@ import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { toast } from 'sonner';
 
 const VIEW_SPECS = [
-  ['Wide', 'wide establishing view of the same set, preserving architecture, materials, palette and visual identity'],
-  ['Reverse', 'reverse camera angle of the same set, looking back from the opposite side while preserving all spatial details'],
-  ['Left', 'left-side camera angle of the same set with identical architecture, materials and design continuity'],
-  ['Right', 'right-side camera angle of the same set with identical architecture, materials and design continuity'],
-  ['Detail', 'cinematic detail shot from the same set, focused on a distinctive material or architectural feature'],
-  ['Day', 'the same set in daytime lighting, preserving every design and architectural element'],
-  ['Night', 'the same set at night, preserving every design and architectural element'],
+  ['Wide', `Move the camera significantly farther back from the Hero camera position and use a noticeably wider field of view. Reveal substantially more of the SAME room on the left, right, foreground and ceiling/floor. The result must NOT reuse the Hero framing or crop. Keep the same architectural geometry and object positions.`],
+  ['Reverse', `Relocate the camera to the OPPOSITE SIDE of the room, approximately 180 degrees around the set from the Hero camera position, and point it back toward the exact area where the Hero camera was standing. Show the opposite wall and reverse the spatial relationships. The result must be unmistakably different from the Hero composition. Do NOT reproduce, mirror, crop, zoom or lightly reframe the Hero image.`],
+  ['Left', `Relocate the camera clearly to the LEFT side of the Hero camera position, approximately 70 to 100 degrees around the room, and aim across the SAME set toward the center. Reveal surfaces and architectural elements that were hidden from the Hero viewpoint. Do NOT reproduce, mirror, crop or slightly reframe the Hero composition.`],
+  ['Right', `Relocate the camera clearly to the RIGHT side of the Hero camera position, approximately 70 to 100 degrees around the room, and aim across the SAME set toward the center. Reveal surfaces and architectural elements that were hidden from the Hero viewpoint. Do NOT reproduce, mirror, crop or slightly reframe the Hero composition.`],
+  ['Detail', `Move the camera physically close to one distinctive architectural, material or furniture detail that already exists in the Hero image. Create a true close detail shot from the SAME set, not a wide room view. Preserve the exact material, finish, lighting and design language.`],
+  ['Day', `Keep the SAME physical camera position and composition as the Hero image, but change ONLY the time and lighting to convincing daytime. Preserve architecture, furniture, object placement, lens perspective and framing. Do not redesign the set.`],
+  ['Night', `Keep the SAME physical camera position and composition as the Hero image, but change ONLY the time and lighting to convincing nighttime. Preserve architecture, furniture, object placement, lens perspective and framing. Do not redesign the set.`],
 ];
 
 const buildHeroPrompt = (name, description) => `Create a production-ready cinematic set design image for a fictional film or series.\nSet name: ${name || 'Untitled set'}\nCreative brief:\n${description || 'No additional brief provided.'}\nRender the actual physical environment, not a mood board, not a collage, not a floor plan. Show a believable camera-ready location with coherent architecture, materials, lighting and depth. No people, no text, no logos. High-end production design, realistic spatial continuity, 16:9 composition.`;
+
+const buildViewPrompt = (name, description, instruction) => `${buildHeroPrompt(name, description)}\n\nCAMERA CONTINUITY TASK:\nThe supplied Hero image defines a real three-dimensional set. Treat it as a spatial reference, not as a composition to copy. Infer the room geometry, architecture, furniture placement, windows, doors, stairs, fixtures, materials and proportions from it.\n\n${instruction}\n\nNON-NEGOTIABLE CONTINUITY RULES:\n- This must be the exact SAME location and production set, never a redesign.\n- Preserve architecture, dimensions, materials, furniture, fixtures, windows, doors, stairs and object placement.\n- Preserve the visual identity and palette.\n- For camera-angle views, physically relocate the virtual camera in the inferred 3D space. Do not fake a new angle by mirroring, cropping, zooming or making a small framing change.\n- The new viewpoint must show correct parallax and reveal/occlude elements according to the new camera position.\n- No people, no text, no logos.\n- 16:9 cinematic production reference image.`;
 
 export default function SetGeneratorPanel({ name, description, images, setImages }) {
   const [mode, setMode] = useState(images?.length ? 'reference' : 'scratch');
@@ -93,7 +95,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     if (!heroImage || !effectiveModel) return;
     setGenerating(label);
     try {
-      const prompt = `${buildHeroPrompt(name, description)}\nUse the provided hero image as the strict visual and spatial reference. Generate a ${instruction}. It must clearly be the SAME location, not a redesign. Keep architecture, surfaces, fixtures, furniture, proportions and palette consistent. No people, no text, no logos.`;
+      const prompt = buildViewPrompt(name, description, instruction);
       const url = await runGeneration(prompt, [heroImage]);
       setImages(current => {
         const next = [...current];
@@ -117,7 +119,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         const [label, instruction] = VIEW_SPECS[offset];
         const index = offset + 1;
         setGenerating(label);
-        const prompt = `${buildHeroPrompt(name, description)}\nUse the provided hero image as the strict visual and spatial reference. Generate a ${instruction}. It must clearly be the SAME location, not a redesign. Keep architecture, surfaces, fixtures, furniture, proportions and palette consistent. No people, no text, no logos.`;
+        const prompt = buildViewPrompt(name, description, instruction);
         const url = await runGeneration(prompt, [heroImage]);
         setImages(current => {
           const next = [...current];
