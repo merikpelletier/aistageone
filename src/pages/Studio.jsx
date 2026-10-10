@@ -137,19 +137,13 @@ function StudioShellButton({ tool, active, onClick, compact = false }) {
   );
 }
 
-function ToolAccordionSection({ section, activeKey, onTool, defaultOpen = false }) {
-  const containsActive = section.tools.some((tool) => tool.key === activeKey);
-  const [open, setOpen] = useState(defaultOpen || containsActive);
-
-  useEffect(() => {
-    if (containsActive) setOpen(true);
-  }, [containsActive]);
-
+function ToolAccordionSection({ section, activeKey, onTool, open, onToggle }) {
   return (
     <div className="border-b border-white/10">
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={onToggle}
+        aria-expanded={open}
         className="w-full h-10 px-3 flex items-center justify-between text-white/55 hover:text-white text-[10px] font-bold uppercase tracking-[0.16em]"
       >
         <span>{section.label}</span>
@@ -176,7 +170,13 @@ function ToolAccordionSection({ section, activeKey, onTool, defaultOpen = false 
 function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
   const [showMobileTools, setShowMobileTools] = useState(false);
   const [menuCollapsed, setMenuCollapsed] = useState(false);
+  const [openSectionKey, setOpenSectionKey] = useState('create');
   const mobilePrimaryKeys = ['fotoplay', 'actor', 'vault', 'ai_video'];
+
+  useEffect(() => {
+    const activeSection = STUDIO_TOOL_SECTIONS.find((section) => section.tools.some((tool) => tool.key === activeKey));
+    if (activeSection) setOpenSectionKey(activeSection.key);
+  }, [activeKey]);
 
   useEffect(() => {
     const updateToolbarMetrics = () => {
@@ -189,6 +189,10 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
     return () => window.removeEventListener('resize', updateToolbarMetrics);
   }, [menuCollapsed]);
   const primaryMobile = mobilePrimaryKeys.map((key) => STUDIO_SHELL_TOOLS.find((tool) => tool.key === key)).filter(Boolean);
+
+  const toggleSection = (sectionKey) => {
+    setOpenSectionKey((current) => current === sectionKey ? null : sectionKey);
+  };
 
   return (
     <div className="studio-shell min-h-screen bg-[#202328] text-white">
@@ -241,13 +245,14 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
               })}
             </div>
           ) : (
-            STUDIO_TOOL_SECTIONS.map((section, index) => (
+            STUDIO_TOOL_SECTIONS.map((section) => (
               <ToolAccordionSection
                 key={section.key}
                 section={section}
                 activeKey={activeKey}
                 onTool={onTool}
-                defaultOpen={index === 0}
+                open={openSectionKey === section.key}
+                onToggle={() => toggleSection(section.key)}
               />
             ))
           )}
@@ -293,13 +298,14 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
             exit={{ opacity: 0, y: 18 }}
             className="lg:hidden fixed z-[4990] left-0 right-0 bottom-[var(--studio-mobile-nav-height)] max-h-[72dvh] overflow-y-auto bg-[#202328] border-t border-white/10"
           >
-            {STUDIO_TOOL_SECTIONS.map((section, index) => (
+            {STUDIO_TOOL_SECTIONS.map((section) => (
               <ToolAccordionSection
                 key={section.key}
                 section={section}
                 activeKey={activeKey}
                 onTool={(tool) => { setShowMobileTools(false); onTool(tool); }}
-                defaultOpen={index === 0}
+                open={openSectionKey === section.key}
+                onToggle={() => toggleSection(section.key)}
               />
             ))}
             <div className="border-t border-white/10 p-3">
