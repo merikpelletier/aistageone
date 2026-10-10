@@ -8,6 +8,7 @@ import VaultPickerModal from '@/components/studio/VaultPickerModal';
 import ImageCropModal from '@/components/studio/ImageCropModal';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import SetGeneratorPanel from '@/components/studio/SetGeneratorPanel';
+import CompositionElementsPanel from '@/components/studio/CompositionElementsPanel';
 import { toast } from 'sonner';
 import SET_DESIGNER_IMAGES from '@/setDesignerImages/all';
 
@@ -87,7 +88,7 @@ function OloShopSetPicker({ selectedImages, onToggle, onClose }) {
               return <article key={asset.id} className={`overflow-hidden rounded-[4px] border bg-black transition ${selectedCount ? 'border-[#23c7be]' : 'border-white/10'}`}>
                 <div className={`grid gap-1 bg-zinc-900 p-1 ${gallery.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>{gallery.map((url, index) => {
                   const selected = selectedImages.includes(url);
-                  const full = !selected && selectedImages.length >= 8;
+                  const full = !selected && selectedImages.filter(Boolean).length >= 8;
                   return <button key={`${asset.id}-${url}`} onClick={() => onToggle(url)} disabled={full} className={`group relative aspect-[4/3] overflow-hidden rounded-[3px] border transition ${selected ? 'border-[#23c7be]' : 'border-transparent hover:border-[#23c7be]/60'} ${full ? 'cursor-not-allowed opacity-35' : ''}`} title={`Use image ${index + 1} of ${asset.title || 'this asset'}`}>
                     <img src={url} alt={`${asset.title || 'Assets Shop asset'} · image ${index + 1}`} className="h-full w-full object-contain transition duration-300 group-hover:scale-105" />
                     <span className={`absolute bottom-1.5 right-1.5 rounded-[3px] px-2 py-0.5 text-[9px] font-black ${selected ? 'bg-[#23c7be] text-black' : 'bg-black/80 text-white'}`}>{selected ? 'Selected' : `${index + 1}/${gallery.length}`}</span>
@@ -98,7 +99,7 @@ function OloShopSetPicker({ selectedImages, onToggle, onClose }) {
             })}</div>
             : <div className="flex min-h-64 items-center justify-center rounded-[4px] border border-dashed border-white/15 text-sm text-white/45">No published Assets Shop item matches this search.</div>}
         </div>
-        <footer className="flex items-center justify-between border-t border-white/10 p-4"><span className="text-xs font-bold text-white/50">{selectedImages.length}/8 set images selected</span><button onClick={onClose} className="rounded-[3px] bg-[#23c7be] px-6 py-3 text-sm font-black text-black">Done</button></footer>
+        <footer className="flex items-center justify-between border-t border-white/10 p-4"><span className="text-xs font-bold text-white/50">{selectedImages.filter(Boolean).length}/8 set images selected</span><button onClick={onClose} className="rounded-[3px] bg-[#23c7be] px-6 py-3 text-sm font-black text-black">Done</button></footer>
       </motion.div>
     </motion.div>
   );
@@ -147,6 +148,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   const [tags, setTags] = useState(asset?.tags || []);
   const [tagInput, setTagInput] = useState('');
   const [images, setImages] = useState(asset?.images || []);
+  const [compositionElements, setCompositionElements] = useState(Array.isArray(asset?.composition_elements) ? asset.composition_elements : []);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [vaultPickerOpen, setVaultPickerOpen] = useState(false);
@@ -156,11 +158,17 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
-    if (!file || images.length >= 8) return;
+    if (!file || images.filter(Boolean).length >= 8) return;
     setUploading(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setImages(prev => [...prev, file_url]);
+      setImages(prev => {
+        const next = [...prev];
+        const emptyIndex = next.findIndex(value => !value);
+        if (emptyIndex >= 0) next[emptyIndex] = file_url;
+        else next.push(file_url);
+        return next.slice(0, 8);
+      });
       setVaultSaveUrl(file_url);
     } finally {
       setUploading(false);
@@ -175,9 +183,13 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
 
   const handleOloToggle = (url) => {
     setImages(current => {
-      if (current.includes(url)) return current.filter(image => image !== url);
-      if (current.length >= 8) { toast.error('A set can contain up to 8 images'); return current; }
-      return [...current, url];
+      if (current.includes(url)) return current.map(image => image === url ? null : image);
+      if (current.filter(Boolean).length >= 8) { toast.error('A set can contain up to 8 images'); return current; }
+      const next = [...current];
+      const emptyIndex = next.findIndex(value => !value);
+      if (emptyIndex >= 0) next[emptyIndex] = url;
+      else next.push(url);
+      return next.slice(0, 8);
     });
   };
 
@@ -186,14 +198,24 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
     setCropSource(null);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file: blob });
-      setImages(prev => [...prev, file_url]);
+      setImages(prev => {
+        const next = [...prev];
+        const emptyIndex = next.findIndex(value => !value);
+        if (emptyIndex >= 0) next[emptyIndex] = file_url;
+        else next.push(file_url);
+        return next.slice(0, 8);
+      });
       toast.success('Image added to set', { icon: <Check size={16} /> });
     } finally {
       setUploading(false);
     }
   };
 
-  const removeImage = (idx) => setImages(prev => prev.filter((_, i) => i !== idx));
+  const removeImage = (idx) => setImages(prev => {
+    const next = [...prev];
+    next[idx] = null;
+    return next;
+  });
   const addTag = (e) => {
     e.preventDefault();
     const t = tagInput.trim();
@@ -212,6 +234,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         description: description.trim(),
         tags,
         images,
+        composition_elements: compositionElements,
         updated_date: new Date().toISOString(),
       };
 
@@ -270,6 +293,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   };
 
   const heroImage = images[0];
+  const referenceCount = images.filter(Boolean).length;
 
   return (
     <motion.div
@@ -287,7 +311,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         </div>
 
         <div className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 pb-28 sm:px-5">
-          <SetGeneratorPanel name={name} description={description} images={images} setImages={setImages} />
+          <SetGeneratorPanel name={name} description={description} images={images} setImages={setImages} compositionElements={compositionElements} />
 
           <section className="overflow-hidden border border-white/10 bg-[#17191d]">
             <div className="grid lg:grid-cols-[1.35fr_0.65fr]">
@@ -306,8 +330,8 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                   <p className="text-[11px] text-white/65">{heroImage ? 'Image 1 anchors the set' : 'No image selected yet'}</p>
                 </div>
                 <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
-                  {images.length < 8 && <label className="flex cursor-pointer items-center gap-2 bg-[#23c7be] px-4 py-2.5 text-xs font-black text-[#071211] transition hover:bg-[#35d8cf]"><Upload size={14} />Import reference<input type="file" accept="image/*" className="hidden" onChange={handleUpload} /></label>}
-                  {images.length < 8 && <button type="button" onClick={() => setVaultPickerOpen(true)} className="flex items-center gap-2 border border-white/15 bg-black/65 px-4 py-2.5 text-xs font-bold text-white backdrop-blur hover:bg-black/80"><Bookmark size={14} />Vault</button>}
+                  {referenceCount < 8 && <label className="flex cursor-pointer items-center gap-2 bg-[#23c7be] px-4 py-2.5 text-xs font-black text-[#071211] transition hover:bg-[#35d8cf]"><Upload size={14} />Import reference<input type="file" accept="image/*" className="hidden" onChange={handleUpload} /></label>}
+                  {referenceCount < 8 && <button type="button" onClick={() => setVaultPickerOpen(true)} className="flex items-center gap-2 border border-white/15 bg-black/65 px-4 py-2.5 text-xs font-bold text-white backdrop-blur hover:bg-black/80"><Bookmark size={14} />Vault</button>}
                   <button type="button" onClick={() => setOloPickerOpen(true)} className="flex items-center gap-2 border border-[#23c7be]/35 bg-black/65 px-4 py-2.5 text-xs font-bold text-[#8ee9e4] backdrop-blur hover:bg-black/80"><ShoppingBag size={14} />Assets Shop</button>
                 </div>
               </div>
@@ -361,10 +385,12 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
             </div>
           </section>
 
+          <CompositionElementsPanel userEmail={userEmail} elements={compositionElements} setElements={setCompositionElements} />
+
           <section className="border border-white/10 bg-[#17191d] p-5 sm:p-6">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div><div className="flex items-center gap-2 text-[#23c7be]"><ImagePlus size={16} /><p className="text-[10px] font-black uppercase tracking-[0.18em]">Visual Continuity Board</p></div><h3 className="mt-1 text-lg font-black">Eight references, eight production purposes</h3><p className="mt-1 text-xs text-white/40">The order gives each image a role. The first image is the visual anchor for the whole set.</p></div>
-              <span className="text-xs font-black text-white/45">{images.length}/8 REFERENCES</span>
+              <span className="text-xs font-black text-white/45">{referenceCount}/8 REFERENCES</span>
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               {IMAGE_ROLES.map((role, idx) => {
@@ -393,7 +419,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
 
         <div className="sticky bottom-0 z-10 border-t border-white/10 bg-[#17191d]/95 px-5 py-3 backdrop-blur">
           <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
-            <p className="hidden text-xs text-white/35 sm:block">{name.trim() ? `${name.trim()} · ${images.length} reference${images.length === 1 ? '' : 's'}` : 'Name your set to create it.'}</p>
+            <p className="hidden text-xs text-white/35 sm:block">{name.trim() ? `${name.trim()} · ${referenceCount} reference${referenceCount === 1 ? '' : 's'} · ${compositionElements.length} composition element${compositionElements.length === 1 ? '' : 's'}` : 'Name your set to create it.'}</p>
             <button onClick={handleSave} disabled={saving || !name.trim()} className="ml-auto min-w-[210px] border border-[#23c7be] bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:border-white/10 disabled:bg-white/[0.05] disabled:text-white/30">
               {saving ? 'SAVING...' : 'SAVE SET'}
             </button>
@@ -403,7 +429,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
 
       <AnimatePresence>
         {vaultPickerOpen && <VaultPickerModal userEmail={userEmail} onSelect={handleVaultSelect} onClose={() => setVaultPickerOpen(false)} />}
-        {oloPickerOpen && <OloShopSetPicker selectedImages={images} onToggle={handleOloToggle} onClose={() => setOloPickerOpen(false)} />}
+        {oloPickerOpen && <OloShopSetPicker selectedImages={images.filter(Boolean)} onToggle={handleOloToggle} onClose={() => setOloPickerOpen(false)} />}
         {cropSource && <ImageCropModal imageUrl={cropSource} onConfirm={handleCropConfirm} onClose={() => setCropSource(null)} />}
         {vaultSaveUrl && <SaveToVaultModal userEmail={userEmail} imageUrl={vaultSaveUrl} mediaType="image" onSaved={() => { setVaultSaveUrl(null); qc.invalidateQueries({ queryKey: ['vaultAssets', userEmail] }); }} onClose={() => setVaultSaveUrl(null)} />}
       </AnimatePresence>
