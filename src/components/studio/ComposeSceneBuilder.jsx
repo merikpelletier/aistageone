@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
@@ -17,20 +17,20 @@ const TEMPLATES = [
   { id: 'custom', label: 'Custom', characters: 1, action: 'custom cinematic blocking' },
 ];
 
-const DEPTHS = ['Foreground', 'Midground', 'Background'];
-const ORIENTATIONS = ['Toward camera', 'Face left', 'Face right', 'Face another character', 'Back to camera', 'Three-quarter'];
-const ACTIONS = ['Standing', 'Sitting', 'Walking', 'Running', 'Talking', 'Leaning', 'Holding object', 'Custom'];
+const SHOTS = ['Close-up', 'Medium close-up', 'Medium shot', 'Full shot', 'Wide shot', 'Background'];
+const IMPORTANCE = ['Primary', 'Secondary', 'Background'];
 
 const makeSlot = (index, templateId = 'custom') => ({
   id: `character-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
   label: `Character ${index + 1}`,
   asset: null,
-  x: templateId === 'dialogue' ? (index === 0 ? 30 : 70) : Math.min(85, 20 + index * 18),
-  y: 58,
-  depth: index > 2 ? 'Background' : 'Midground',
-  scale: 100,
-  orientation: templateId === 'dialogue' ? (index === 0 ? 'Face right' : 'Face left') : 'Three-quarter',
-  action: templateId === 'walk_run' ? 'Walking' : templateId === 'action' ? 'Running' : 'Standing',
+  position: templateId === 'dialogue'
+    ? (index === 0 ? 'Seated at the table on the left' : 'Seated on the right, facing Character 1')
+    : '',
+  action: '',
+  lookAt: templateId === 'dialogue' ? (index === 0 ? 'Character 2' : 'Character 1') : '',
+  shot: 'Medium shot',
+  importance: index === 0 ? 'Primary' : 'Secondary',
   note: '',
 });
 
@@ -39,10 +39,9 @@ const makeElement = (index, kind = 'prop', asset = null) => ({
   label: asset?.title || `${kind === 'product' ? 'Product' : 'Prop'} ${index + 1}`,
   kind,
   asset,
-  x: 72,
-  y: 70,
-  depth: 'Foreground',
-  scale: 75,
+  position: '',
+  usedBy: '',
+  visibility: 'Visible',
   note: '',
 });
 
@@ -65,43 +64,6 @@ const shopImages = asset => [...new Set([
   asset?.featured_image,
   ...(Array.isArray(asset?.preview_images) ? asset.preview_images : []),
 ].filter(Boolean))];
-
-function StageMarker({ slot, selected, onSelect, onMove }) {
-  const drag = useRef(null);
-  const image = getCharacterImage(slot.asset);
-  const pointerDown = event => {
-    event.preventDefault();
-    drag.current = { startX: event.clientX, startY: event.clientY, x: slot.x, y: slot.y };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    onSelect();
-  };
-  const pointerMove = event => {
-    if (!drag.current) return;
-    const rect = event.currentTarget.parentElement?.getBoundingClientRect();
-    if (!rect) return;
-    const x = Math.max(4, Math.min(96, drag.current.x + ((event.clientX - drag.current.startX) / rect.width) * 100));
-    const y = Math.max(8, Math.min(92, drag.current.y + ((event.clientY - drag.current.startY) / rect.height) * 100));
-    onMove(x, y);
-  };
-  const pointerUp = event => {
-    drag.current = null;
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
-  };
-  return (
-    <button
-      type="button"
-      onPointerDown={pointerDown}
-      onPointerMove={pointerMove}
-      onPointerUp={pointerUp}
-      onPointerCancel={pointerUp}
-      style={{ left: `${slot.x}%`, top: `${slot.y}%`, transform: `translate(-50%,-50%) scale(${Math.max(.55, Math.min(1.35, slot.scale / 100))})` }}
-      className={`absolute z-10 flex h-16 w-16 touch-none select-none items-center justify-center overflow-hidden border-2 bg-black/85 ${selected ? 'border-cyan-300' : 'border-white/60'}`}
-    >
-      {image ? <img src={image} alt="" className="h-full w-full object-cover" /> : <Users size={22} className="text-white/70" />}
-      <span className="absolute bottom-0 left-0 right-0 bg-black/85 px-1 py-0.5 text-[8px] font-bold text-white">{slot.label}</span>
-    </button>
-  );
-}
 
 function Thumb({ image, label, selected, onClick }) {
   return (
@@ -191,7 +153,7 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
   const addCharacter = () => setSlots(current => [...current, makeSlot(current.length, templateId)]);
   const removeCharacter = id => setSlots(current => current.filter(slot => slot.id !== id).map((slot, index) => ({ ...slot, label: `Character ${index + 1}` })));
   const assignCharacter = asset => {
-    if (!selectedSlotId) { setError('Select a character slot in the Master Scene first.'); return; }
+    if (!selectedSlotId) { setError('Select a character in Scene Blocking first.'); return; }
     updateSlot(selectedSlotId, { asset });
     setError('');
   };
@@ -199,8 +161,8 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
   const updateElement = (id, patch) => setElements(current => current.map(item => item.id === id ? { ...item, ...patch } : item));
   const removeElement = id => setElements(current => current.filter(item => item.id !== id));
 
-  const blockingText = () => slots.map(slot => `${slot.label}: ${slot.action}, ${slot.depth}, x ${Math.round(slot.x)}%, y ${Math.round(slot.y)}%, scale ${slot.scale}%, ${slot.orientation}${slot.note ? `, ${slot.note}` : ''}`).join(' | ');
-  const elementText = () => elements.map(item => `${item.label}: ${item.depth}, x ${Math.round(item.x)}%, y ${Math.round(item.y)}%, scale ${item.scale}%${item.note ? `, ${item.note}` : ''}`).join(' | ');
+  const blockingText = () => slots.map(slot => `${slot.label}: where: ${slot.position || 'not specified'}; action: ${slot.action || 'not specified'}; looks toward: ${slot.lookAt || 'not specified'}; framing: ${slot.shot}; importance: ${slot.importance}${slot.note ? `; note: ${slot.note}` : ''}`).join(' | ');
+  const elementText = () => elements.map(item => `${item.label}: where: ${item.position || 'not specified'}; used by: ${item.usedBy || 'nobody specified'}; visibility: ${item.visibility}${item.note ? `; note: ${item.note}` : ''}`).join(' | ');
 
   const generateMaster = async () => {
     setGeneratingMaster(true);
@@ -209,7 +171,7 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
       const refs = [];
       if (selectedSet?.images?.[0]) refs.push(selectedSet.images[0]);
       if (uploadedPhoto) refs.push(uploadedPhoto);
-      const masterPrompt = `MASTER SCENE BLOCKING FRAME. Template: ${template.label}. ${template.action}. ${slots.length ? `Use ${slots.length} neutral performer placeholders. ${blockingText()}.` : 'No required performer.'} ${elements.length ? `Reserve positions for: ${elementText()}.` : ''} ${selectedSet?.name ? `Set: ${selectedSet.name}.` : ''} ${prompt || ''} Keep camera, spatial layout and blocking clear so the placeholders can be replaced later.`;
+      const masterPrompt = `COMPOSE SCENE. Template: ${template.label}. Use the supplied set as the visual source of truth for location, lighting, palette, atmosphere and style; do not redesign it. ${slots.length ? `Character blocking: ${blockingText()}.` : 'No required performer.'} ${elements.length ? `Props and products: ${elementText()}.` : ''} ${prompt ? `Additional instruction only: ${prompt}.` : ''} Preserve the established look of the set while staging the described action clearly.`;
       const res = await base44.functions.invoke('replicateGenerate', {
         method: 'compose_scene',
         prompt: masterPrompt,
@@ -237,7 +199,7 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
       if (setImage) {
         const res = await base44.functions.invoke('replicateGenerate', {
           method: 'compose_scene',
-          prompt: `Keep the Master Scene camera, composition and blocking unchanged. Replace only the generic environment with the supplied set reference. ${prompt || ''}`,
+          prompt: `Keep the Master Scene camera, composition and blocking unchanged. Preserve the supplied set reference exactly as the visual source of truth for location, lighting, palette, atmosphere and style. ${prompt || ''}`,
           reference_image_urls: [currentUrl, setImage],
           aspect_ratio: aspectRatio,
           model_key: effectiveModel || undefined,
@@ -249,7 +211,7 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
         if (!image) continue;
         const res = await base44.functions.invoke('replicateGenerate', {
           method: 'compose_scene',
-          prompt: `Keep the scene, set, camera and all other elements unchanged. Replace only ${slot.label} at x ${Math.round(slot.x)}%, y ${Math.round(slot.y)}%, ${slot.depth}, scale ${slot.scale}%, ${slot.orientation}, ${slot.action} with the supplied character reference. Preserve identity. ${slot.note || ''}`,
+          prompt: `Keep the scene, set look, camera and all other elements unchanged. Replace only ${slot.label} with the supplied character reference. Stage this character as follows: where: ${slot.position || 'not specified'}; action: ${slot.action || 'not specified'}; looking toward: ${slot.lookAt || 'not specified'}; framing: ${slot.shot}; importance: ${slot.importance}. Preserve identity. ${slot.note || ''}`,
           reference_image_urls: [currentUrl, image],
           aspect_ratio: aspectRatio,
           model_key: effectiveModel || undefined,
@@ -261,7 +223,7 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
         if (!image) continue;
         const res = await base44.functions.invoke('replicateGenerate', {
           method: 'compose_scene',
-          prompt: `Keep the current scene, camera, set and characters unchanged. Add only ${item.label} at x ${Math.round(item.x)}%, y ${Math.round(item.y)}%, ${item.depth}, scale ${item.scale}%. Preserve the supplied object's recognizable design. ${item.note || ''}`,
+          prompt: `Keep the current scene, camera, set look and characters unchanged. Add only ${item.label}. Placement: ${item.position || 'not specified'}. Used by: ${item.usedBy || 'not specified'}. Visibility: ${item.visibility}. Preserve the supplied object's recognizable design. ${item.note || ''}`,
           reference_image_urls: [currentUrl, image],
           aspect_ratio: aspectRatio,
           model_key: effectiveModel || undefined,
@@ -291,8 +253,8 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
       </section>
 
       <section className="space-y-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-white">Prompt</p>
-        <textarea value={prompt} onChange={e => setPrompt(e.target.value)} rows={3} placeholder="Mood, action, lighting, camera, additional direction…" className="w-full resize-none bg-white/10 px-4 py-3 text-sm text-white" />
+        <p className="text-xs font-bold uppercase tracking-wider text-white">Additional Prompt</p>
+        <textarea value={prompt} onChange={e => setPrompt(e.target.value)} rows={3} placeholder="Optional extra instruction for this scene — do not redefine the Set look" className="w-full resize-none bg-white/10 px-4 py-3 text-sm text-white" />
         <div className="flex flex-wrap gap-2">{['16:9', '4:3', '9:16', '1:1'].map(ratio => <button type="button" key={ratio} onClick={() => setAspectRatio(ratio)} className={`px-3 py-2 text-xs font-bold ${aspectRatio === ratio ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white'}`}>{ratio}</button>)}</div>
       </section>
 
@@ -305,27 +267,29 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div><p className="text-xs font-bold uppercase tracking-wider text-white">Master Scene</p><p className="text-[11px] text-white/55">Drag the character slots to position them.</p></div>
-          <button type="button" onClick={generateMaster} disabled={generatingMaster} className="flex items-center gap-2 bg-cyan-300 px-4 py-2.5 text-xs font-bold text-black disabled:opacity-50">{generatingMaster ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Generate Master</button>
+          <div><p className="text-xs font-bold uppercase tracking-wider text-white">Scene Blocking</p><p className="text-[11px] text-white/55">Describe where each character is and what they are doing. The selected Set keeps its existing look.</p></div>
+          <button type="button" onClick={addCharacter} className="flex items-center gap-1 bg-white/10 px-3 py-2 text-[10px] font-bold text-white"><Plus size={11} /> Add Character</button>
         </div>
-        <div className="grid gap-3 lg:grid-cols-[1fr_320px]">
-          <div className="relative aspect-video overflow-hidden border border-white/15 bg-black">
-            {masterUrl && <img src={masterUrl} alt="Master Scene" className="absolute inset-0 h-full w-full object-cover opacity-55" />}
-            {slots.map(slot => <StageMarker key={slot.id} slot={slot} selected={selectedSlotId === slot.id} onSelect={() => setSelectedSlotId(slot.id)} onMove={(x, y) => updateSlot(slot.id, { x, y })} />)}
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between"><p className="text-xs font-bold text-white">Characters</p><button type="button" onClick={addCharacter} className="flex items-center gap-1 bg-white/10 px-2 py-1.5 text-[10px] font-bold text-white"><Plus size={11} /> Add</button></div>
-            {slots.map(slot => <div key={slot.id} className={`border p-2 ${selectedSlotId === slot.id ? 'border-cyan-300' : 'border-white/10'}`}>
-              <div className="flex items-center gap-2"><button type="button" onClick={() => setSelectedSlotId(slot.id)} className="flex-1 text-left text-xs font-bold text-white">{slot.asset?.character_name || slot.asset?.label || slot.label}</button><button type="button" onClick={() => removeCharacter(slot.id)} className="text-white/50"><Trash2 size={13} /></button></div>
-              {selectedSlotId === slot.id && <div className="mt-2 grid grid-cols-2 gap-2">
-                <select value={slot.depth} onChange={e => updateSlot(slot.id, { depth: e.target.value })} className="bg-black p-2 text-[10px] text-white">{DEPTHS.map(v => <option key={v}>{v}</option>)}</select>
-                <select value={slot.orientation} onChange={e => updateSlot(slot.id, { orientation: e.target.value })} className="bg-black p-2 text-[10px] text-white">{ORIENTATIONS.map(v => <option key={v}>{v}</option>)}</select>
-                <select value={slot.action} onChange={e => updateSlot(slot.id, { action: e.target.value })} className="bg-black p-2 text-[10px] text-white">{ACTIONS.map(v => <option key={v}>{v}</option>)}</select>
-                <label className="flex items-center gap-1 bg-black p-2 text-[10px] text-white">Scale<input type="range" min="55" max="145" value={slot.scale} onChange={e => updateSlot(slot.id, { scale: Number(e.target.value) })} className="min-w-0 flex-1" /></label>
-                <input value={slot.note} onChange={e => updateSlot(slot.id, { note: e.target.value })} placeholder="Pose / relation / instruction" className="col-span-2 bg-black p-2 text-[10px] text-white" />
-              </div>}
-            </div>)}
-          </div>
+        <div className="space-y-3">
+          {slots.map(slot => <div key={slot.id} className={`border p-3 ${selectedSlotId === slot.id ? 'border-cyan-300' : 'border-white/10'}`}>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => setSelectedSlotId(slot.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <div className="h-14 w-14 shrink-0 overflow-hidden border border-white/15 bg-black">{getCharacterImage(slot.asset) ? <img src={getCharacterImage(slot.asset)} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-white/30"><Users size={18} /></div>}</div>
+                <div className="min-w-0"><p className="truncate text-xs font-bold text-white">{slot.asset?.label || slot.asset?.name || slot.label}</p><p className="text-[10px] text-white/45">{slot.label}</p></div>
+              </button>
+              <button type="button" onClick={() => removeCharacter(slot.id)} className="text-white/50"><Trash2 size={13} /></button>
+            </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              <label className="space-y-1"><span className="text-[10px] font-bold text-white/70">Where is {slot.label}?</span><input value={slot.position} onChange={e => updateSlot(slot.id, { position: e.target.value })} placeholder="e.g. seated at the table on the left" className="w-full bg-black p-2.5 text-xs text-white" /></label>
+              <label className="space-y-1"><span className="text-[10px] font-bold text-white/70">What is {slot.label} doing?</span><input value={slot.action} onChange={e => updateSlot(slot.id, { action: e.target.value })} placeholder="e.g. talking calmly, one hand on the table" className="w-full bg-black p-2.5 text-xs text-white" /></label>
+              <label className="space-y-1"><span className="text-[10px] font-bold text-white/70">Who or what is {slot.label} looking at?</span><input value={slot.lookAt} onChange={e => updateSlot(slot.id, { lookAt: e.target.value })} placeholder="e.g. Character 2" className="w-full bg-black p-2.5 text-xs text-white" /></label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="space-y-1"><span className="text-[10px] font-bold text-white/70">Framing</span><select value={slot.shot} onChange={e => updateSlot(slot.id, { shot: e.target.value })} className="w-full bg-black p-2.5 text-xs text-white">{SHOTS.map(v => <option key={v}>{v}</option>)}</select></label>
+                <label className="space-y-1"><span className="text-[10px] font-bold text-white/70">Importance</span><select value={slot.importance} onChange={e => updateSlot(slot.id, { importance: e.target.value })} className="w-full bg-black p-2.5 text-xs text-white">{IMPORTANCE.map(v => <option key={v}>{v}</option>)}</select></label>
+              </div>
+              <label className="space-y-1 md:col-span-2"><span className="text-[10px] font-bold text-white/70">Additional blocking note</span><input value={slot.note} onChange={e => updateSlot(slot.id, { note: e.target.value })} placeholder="Optional relationship, gesture or staging detail" className="w-full bg-black p-2.5 text-xs text-white" /></label>
+            </div>
+          </div>)}
         </div>
       </section>
 
@@ -367,12 +331,14 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
 
       <section className="space-y-2">
         <div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-white">Props / Products</p><div className="flex gap-2"><button type="button" onClick={() => addElement('prop')} className="bg-white/10 px-2 py-1.5 text-[10px] font-bold text-white"><Plus size={11} className="inline" /> Prop</button><button type="button" onClick={() => addElement('product')} className="bg-white/10 px-2 py-1.5 text-[10px] font-bold text-white"><Plus size={11} className="inline" /> Product</button></div></div>
-        {elements.map(item => <div key={item.id} className="grid gap-2 border border-white/10 p-2 md:grid-cols-[140px_1fr_1fr_1fr_auto]">
-          <div><p className="text-xs font-bold text-white">{item.label}</p><p className="text-[9px] text-white/45">{item.kind}</p></div>
-          <select value={item.depth} onChange={e => updateElement(item.id, { depth: e.target.value })} className="bg-black p-2 text-xs text-white">{DEPTHS.map(v => <option key={v}>{v}</option>)}</select>
-          <label className="flex items-center gap-2 bg-black p-2 text-[10px] text-white">X<input type="range" min="5" max="95" value={item.x} onChange={e => updateElement(item.id, { x: Number(e.target.value) })} className="flex-1" /></label>
-          <input value={item.note} onChange={e => updateElement(item.id, { note: e.target.value })} placeholder="Placement instruction" className="bg-black p-2 text-xs text-white" />
-          <button type="button" onClick={() => removeElement(item.id)} className="text-white/50"><Trash2 size={14} /></button>
+        {elements.map(item => <div key={item.id} className="space-y-2 border border-white/10 p-3">
+          <div className="flex items-center justify-between"><div><p className="text-xs font-bold text-white">{item.label}</p><p className="text-[9px] text-white/45">{item.kind}</p></div><button type="button" onClick={() => removeElement(item.id)} className="text-white/50"><Trash2 size={14} /></button></div>
+          <div className="grid gap-2 md:grid-cols-3">
+            <label className="space-y-1"><span className="text-[10px] font-bold text-white/70">Where is it?</span><input value={item.position} onChange={e => updateElement(item.id, { position: e.target.value })} placeholder="e.g. in the center of the table" className="w-full bg-black p-2.5 text-xs text-white" /></label>
+            <label className="space-y-1"><span className="text-[10px] font-bold text-white/70">Who uses or holds it?</span><input value={item.usedBy} onChange={e => updateElement(item.id, { usedBy: e.target.value })} placeholder="e.g. Character 1" className="w-full bg-black p-2.5 text-xs text-white" /></label>
+            <label className="space-y-1"><span className="text-[10px] font-bold text-white/70">How visible?</span><select value={item.visibility} onChange={e => updateElement(item.id, { visibility: e.target.value })} className="w-full bg-black p-2.5 text-xs text-white"><option>Hero / prominent</option><option>Visible</option><option>Natural / subtle</option><option>Background</option></select></label>
+            <label className="space-y-1 md:col-span-3"><span className="text-[10px] font-bold text-white/70">Additional instruction</span><input value={item.note} onChange={e => updateElement(item.id, { note: e.target.value })} placeholder="Optional placement or interaction detail" className="w-full bg-black p-2.5 text-xs text-white" /></label>
+          </div>
         </div>)}
       </section>
 
