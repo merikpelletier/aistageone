@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Box, CheckCircle2, ImagePlus, RefreshCw, Upload, X } from 'lucide-react';
+import { AlertCircle, Box, CheckCircle2, ImagePlus, Pencil, RefreshCw, Upload, X } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
 
 const TYPES = [
@@ -30,20 +30,26 @@ function createImageItem(file) {
   };
 }
 
+const EMPTY_FORM = {
+  asset_type: 'character',
+  name: '',
+  description: '',
+  category: '',
+  subcategory: '',
+  price_credits: '',
+  featured: false,
+  active: true,
+};
+
 export default function Admin3DLibrary() {
-  const [form, setForm] = useState({
-    asset_type: 'character',
-    name: '',
-    description: '',
-    category: '',
-    subcategory: '',
-    price_credits: '',
-    featured: false,
-    active: true,
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
   const [file, setFile] = useState(null);
   const [cover, setCover] = useState(null);
   const [gallery, setGallery] = useState([]);
+  const [existingCover, setExistingCover] = useState('');
+  const [existingGallery, setExistingGallery] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [existingR2ObjectKey, setExistingR2ObjectKey] = useState(null);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
@@ -51,16 +57,20 @@ export default function Admin3DLibrary() {
   const [assets, setAssets] = useState([]);
   const [loadingAssets, setLoadingAssets] = useState(true);
 
+  const isEditing = Boolean(editingId);
+  const hasCover = Boolean(cover?.file || existingCover);
+  const hasZip = Boolean(file || existingR2ObjectKey);
+
   const canPublish = useMemo(
-    () => Boolean(file && cover?.file && form.name.trim() && Number(form.price_credits) >= 0),
-    [file, cover, form]
+    () => Boolean(hasZip && hasCover && form.name.trim() && Number(form.price_credits) >= 0),
+    [hasZip, hasCover, form]
   );
 
   async function loadAssets() {
     setLoadingAssets(true);
     const { data, error: loadError } = await supabase
       .from('studio_3d_asset')
-      .select('id,name,asset_type,price_credits,r2_object_key,preview_url,gallery,active,created_at')
+      .select('id,name,description,asset_type,category_id,subcategory_id,price_credits,r2_object_key,preview_url,gallery,active,featured,created_at')
       .order('created_at', { ascending: false })
       .limit(100);
     if (!loadError) setAssets(data || []);
@@ -94,13 +104,90 @@ export default function Admin3DLibrary() {
     });
   }
 
-  function resetImages() {
+  function resetImageFiles() {
     if (cover?.preview) URL.revokeObjectURL(cover.preview);
     gallery.forEach((item) => {
       if (item.preview) URL.revokeObjectURL(item.preview);
     });
     setCover(null);
     setGallery([]);
+  }
+
+  function resetForm() {
+    resetImageFiles();
+    setExistingCover('');
+    setExistingGallery([]);
+    setExistingR2ObjectKey(null);
+    setEditingId(null);
+    setFile(null);
+    setForm(EMPTY_FORM);
+    setError('');
+    setStatus('');
+    setProgress(0);
+  }
+
+  async function resolveCategoryNames(categoryId, subcategoryId) {
+    let category = '';
+    let subcategory = '';
+
+    if (categoryId) {
+      const { data } = await supabase
+        .from('studio_3d_category')
+        .select('name')
+        .eq('id', categoryId)
+        .maybeSingle();
+      category = data?.name || '';
+    }
+
+    if (subcategoryId) {
+      const { data } = await supabase
+        .from('studio_3d_subcategory')
+        .select('name')
+        .eq('id', subcategoryId)
+        .maybeSingle();
+      subcategory = data?.name || '';
+    }
+
+    return { category, subcategory };
+  }
+
+  async function startEdit(asset) {
+    setError('');
+    setStatus('Loading product…');
+    resetImageFiles();
+
+    const { data: fullAsset, error: assetError } = await supabase
+      .from('studio_3d_asset')
+      .select('id,name,description,asset_type,category_id,subcategory_id,price_credits,r2_object_key,preview_url,gallery,active,featured')
+      .eq('id', asset.id)
+      .single();
+
+    if (assetError) {
+      setError(assetError.message);
+      setStatus('');
+      return;
+    }
+
+    const names = await resolveCategoryNames(fullAsset.category_id, fullAsset.subcategory_id);
+
+    setEditingId(fullAsset.id);
+    setExistingR2ObjectKey(fullAsset.r2_object_key || null);
+    setExistingCover(fullAsset.preview_url || '');
+    setExistingGallery(Array.isArray(fullAsset.gallery) ? fullAsset.gallery : []);
+    setFile(null);
+    setForm({
+      asset_type: fullAsset.asset_type || 'character',
+      name: fullAsset.name || '',
+      description: fullAsset.description || '',
+      category: names.category,
+      subcategory: names.subcategory,
+      price_credits: String(fullAsset.price_credits ?? 0),
+      featured: Boolean(fullAsset.featured),
+      active: Boolean(fullAsset.active),
+    });
+    setStatus('Editing product.');
+    setProgress(0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function resolveCategoryIds() {
@@ -187,10 +274,20 @@ export default function Admin3DLibrary() {
     setProgress(0);
 
     try {
-      const zipUpload = await signAndUpload(file, 'product', 'Uploading 3D ZIP directly to R2…');
-      const coverUpload = await signAndUpload(cover.file, 'preview', 'Uploading main presentation image…');
+      let r2ObjectKey = existingR2ObjectKey;
+      if (file) {
+        const zipUpload = await signAndUpload(file, 'product', isEditing ? 'Replacing 3D ZIP…' : 'Uploading 3D ZIP directly to R2…');
+        r2ObjectKey = zipUpload.object_key;
+      }
 
-      const galleryUrls = [];
+      let previewUrl = existingCover;
+      if (cover?.file) {
+        const coverUpload = await signAndUpload(cover.file, 'preview', isEditing ? 'Replacing main presentation image…' : 'Uploading main presentation image…');
+        if (!coverUpload.public_url) throw new Error('The R2 upload function did not return a presentation image URL.');
+        previewUrl = coverUpload.public_url;
+      }
+
+      const galleryUrls = [...existingGallery];
       for (let index = 0; index < gallery.length; index += 1) {
         const item = gallery[index];
         const uploaded = await signAndUpload(
@@ -201,51 +298,45 @@ export default function Admin3DLibrary() {
         if (uploaded.public_url) galleryUrls.push(uploaded.public_url);
       }
 
-      if (!coverUpload.public_url) {
-        throw new Error('The R2 upload function did not return a presentation image URL.');
-      }
-
-      setStatus('Saving product in the 3D catalog…');
+      setStatus(isEditing ? 'Saving changes…' : 'Saving product in the 3D catalog…');
       setProgress(100);
       const { categoryId, subcategoryId } = await resolveCategoryIds();
 
-      const baseSlug = slugify(form.name) || 'asset';
-      const slug = `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
-      const { error: insertError } = await supabase
-        .from('studio_3d_asset')
-        .insert({
-          asset_type: form.asset_type,
-          category_id: categoryId,
-          subcategory_id: subcategoryId,
-          name: form.name.trim(),
-          slug,
-          description: form.description.trim() || null,
-          preview_url: coverUpload.public_url,
-          gallery: galleryUrls,
-          price_credits: Math.round(Number(form.price_credits)),
-          r2_object_key: zipUpload.object_key,
-          active: form.active,
-          featured: form.featured,
-        });
-      if (insertError) throw insertError;
+      const payload = {
+        asset_type: form.asset_type,
+        category_id: categoryId,
+        subcategory_id: subcategoryId,
+        name: form.name.trim(),
+        description: form.description.trim() || null,
+        preview_url: previewUrl,
+        gallery: galleryUrls,
+        price_credits: Math.round(Number(form.price_credits)),
+        r2_object_key: r2ObjectKey,
+        active: form.active,
+        featured: form.featured,
+      };
 
-      setStatus('Published successfully.');
+      if (isEditing) {
+        const { error: updateError } = await supabase
+          .from('studio_3d_asset')
+          .update(payload)
+          .eq('id', editingId);
+        if (updateError) throw updateError;
+      } else {
+        const baseSlug = slugify(form.name) || 'asset';
+        const slug = `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
+        const { error: insertError } = await supabase
+          .from('studio_3d_asset')
+          .insert({ ...payload, slug });
+        if (insertError) throw insertError;
+      }
+
+      setStatus(isEditing ? 'Changes saved.' : 'Published successfully.');
       setProgress(100);
-      setFile(null);
-      resetImages();
-      setForm({
-        asset_type: 'character',
-        name: '',
-        description: '',
-        category: '',
-        subcategory: '',
-        price_credits: '',
-        featured: false,
-        active: true,
-      });
+      resetForm();
       await loadAssets();
     } catch (err) {
-      setError(err?.message || 'Unable to publish this 3D product.');
+      setError(err?.message || (isEditing ? 'Unable to save this 3D product.' : 'Unable to publish this 3D product.'));
       setStatus('');
       setProgress(0);
     } finally {
@@ -258,8 +349,18 @@ export default function Admin3DLibrary() {
       <div className="mb-6">
         <p className="text-[10px] uppercase tracking-[0.25em] text-white/45 font-bold">AISTAGE.ONE</p>
         <h2 className="text-3xl font-black mt-1">3D Library</h2>
-        <p className="text-sm text-white/55 mt-2">Upload AISTAGE-owned 3D ZIP products and their presentation images directly to the private R2 library, then publish them in the Studio catalog.</p>
+        <p className="text-sm text-white/55 mt-2">Upload and manage AISTAGE-owned 3D products, presentation images and gallery images.</p>
       </div>
+
+      {isEditing && (
+        <div className="mb-4 border border-white/20 bg-white/5 px-4 py-3 flex items-center justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-wider text-white/45 font-bold">Editing product</div>
+            <div className="font-black">{form.name}</div>
+          </div>
+          <button type="button" onClick={resetForm} className="h-9 px-4 border border-white/20 text-sm font-bold hover:bg-white/10">Cancel edit</button>
+        </div>
+      )}
 
       <form onSubmit={publish} className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_330px] gap-5">
         <div className="border border-white/15 bg-neutral-950 p-5 space-y-4">
@@ -300,7 +401,7 @@ export default function Admin3DLibrary() {
           <div className="space-y-3">
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-white/55">Product images</div>
-              <div className="text-xs text-white/40 mt-1">Add one main presentation image and any additional gallery images. They upload directly to R2 with the 3D product.</div>
+              <div className="text-xs text-white/40 mt-1">Choose or replace the main presentation image, and add/remove gallery images.</div>
             </div>
 
             <div className="grid md:grid-cols-[220px_minmax(0,1fr)] gap-4">
@@ -309,10 +410,19 @@ export default function Admin3DLibrary() {
                 {cover ? (
                   <div className="relative border border-white/15 bg-neutral-900 aspect-[4/3] overflow-hidden">
                     <img src={cover.preview} alt="Main product preview" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => chooseCover(null)} className="absolute top-2 right-2 h-8 w-8 bg-black/80 border border-white/20 flex items-center justify-center" aria-label="Remove main image">
-                      <X size={16} />
-                    </button>
-                    <div className="absolute left-2 bottom-2 bg-black/80 px-2 py-1 text-[10px] font-black uppercase tracking-wider">Cover</div>
+                    <button type="button" onClick={() => chooseCover(null)} className="absolute top-2 right-2 h-8 w-8 bg-black/80 border border-white/20 flex items-center justify-center" aria-label="Remove new main image"><X size={16} /></button>
+                    <div className="absolute left-2 bottom-2 bg-black/80 px-2 py-1 text-[10px] font-black uppercase tracking-wider">New cover</div>
+                  </div>
+                ) : existingCover ? (
+                  <div className="space-y-2">
+                    <div className="relative border border-white/15 bg-neutral-900 aspect-[4/3] overflow-hidden">
+                      <img src={existingCover} alt="Current main product preview" className="w-full h-full object-cover" />
+                      <div className="absolute left-2 bottom-2 bg-black/80 px-2 py-1 text-[10px] font-black uppercase tracking-wider">Current cover</div>
+                    </div>
+                    <label className="cursor-pointer block border border-white/20 px-3 py-2 text-center text-xs font-black hover:bg-white/10">
+                      Replace cover
+                      <input type="file" accept={IMAGE_ACCEPT} className="hidden" onChange={(e) => chooseCover(e.target.files?.[0] || null)} />
+                    </label>
                   </div>
                 ) : (
                   <label className="cursor-pointer border border-dashed border-white/25 bg-neutral-900/40 aspect-[4/3] flex flex-col items-center justify-center text-center p-4 hover:border-white/50">
@@ -327,12 +437,16 @@ export default function Admin3DLibrary() {
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-wider text-white/55 mb-2">Gallery</div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {existingGallery.map((url) => (
+                    <div key={url} className="relative border border-white/15 bg-neutral-900 aspect-square overflow-hidden">
+                      <img src={url} alt="Current gallery" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => setExistingGallery((current) => current.filter((item) => item !== url))} className="absolute top-1.5 right-1.5 h-7 w-7 bg-black/80 border border-white/20 flex items-center justify-center" aria-label="Remove gallery image"><X size={14} /></button>
+                    </div>
+                  ))}
                   {gallery.map((item) => (
                     <div key={item.id} className="relative border border-white/15 bg-neutral-900 aspect-square overflow-hidden">
-                      <img src={item.preview} alt="Product gallery preview" className="w-full h-full object-cover" />
-                      <button type="button" onClick={() => removeGallery(item.id)} className="absolute top-1.5 right-1.5 h-7 w-7 bg-black/80 border border-white/20 flex items-center justify-center" aria-label="Remove gallery image">
-                        <X size={14} />
-                      </button>
+                      <img src={item.preview} alt="New gallery preview" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => removeGallery(item.id)} className="absolute top-1.5 right-1.5 h-7 w-7 bg-black/80 border border-white/20 flex items-center justify-center" aria-label="Remove new gallery image"><X size={14} /></button>
                     </div>
                   ))}
                   <label className="cursor-pointer border border-dashed border-white/25 bg-neutral-900/40 aspect-square flex flex-col items-center justify-center text-center p-3 hover:border-white/50">
@@ -355,8 +469,10 @@ export default function Admin3DLibrary() {
           <div className="min-h-44 border border-dashed border-white/25 flex items-center justify-center text-center p-5">
             <label className="cursor-pointer w-full">
               <Upload size={30} className="mx-auto mb-3 text-white/60" />
-              <div className="font-black">{file ? file.name : 'Choose 3D ZIP'}</div>
-              <div className="text-xs text-white/45 mt-2">{file ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : 'The ZIP uploads directly from this browser to R2.'}</div>
+              <div className="font-black">{file ? file.name : isEditing && existingR2ObjectKey ? 'Keep current 3D ZIP' : 'Choose 3D ZIP'}</div>
+              <div className="text-xs text-white/45 mt-2">
+                {file ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : isEditing && existingR2ObjectKey ? 'Choose a new ZIP only if you want to replace the current model.' : 'The ZIP uploads directly from this browser to R2.'}
+              </div>
               <input type="file" accept=".zip,application/zip" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </label>
           </div>
@@ -375,9 +491,9 @@ export default function Admin3DLibrary() {
           {error && <div className="mt-4 border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200 flex gap-2"><AlertCircle size={17} className="shrink-0" />{error}</div>}
 
           <button type="submit" disabled={!canPublish || publishing} className="mt-4 w-full h-12 bg-white text-black font-black uppercase tracking-wider disabled:opacity-40">
-            {publishing ? 'Uploading…' : 'Upload & publish'}
+            {publishing ? (isEditing ? 'Saving…' : 'Uploading…') : (isEditing ? 'Save changes' : 'Upload & publish')}
           </button>
-          {!cover && <div className="mt-2 text-[11px] text-white/35 text-center">A main presentation image is required.</div>}
+          {!hasCover && <div className="mt-2 text-[11px] text-white/35 text-center">A main presentation image is required.</div>}
         </aside>
       </form>
 
@@ -391,13 +507,16 @@ export default function Admin3DLibrary() {
         ) : assets.length ? (
           <div className="divide-y divide-white/10">
             {assets.map((asset) => (
-              <div key={asset.id} className="px-4 py-3 grid grid-cols-[56px_1fr_auto_auto] gap-4 items-center text-sm">
+              <div key={asset.id} className="px-4 py-3 grid grid-cols-[56px_1fr_auto_auto_auto] gap-4 items-center text-sm">
                 <div className="w-14 h-14 border border-white/10 bg-neutral-900 overflow-hidden flex items-center justify-center">
                   {asset.preview_url ? <img src={asset.preview_url} alt="" className="w-full h-full object-cover" /> : <Box size={19} className="text-white/25" />}
                 </div>
                 <div><div className="font-bold">{asset.name}</div><div className="text-white/40 text-xs">{asset.asset_type} · {asset.gallery?.length || 0} gallery image{asset.gallery?.length === 1 ? '' : 's'}</div></div>
                 <div className="font-bold">{asset.price_credits} cr</div>
                 <div className={asset.active ? 'text-emerald-300 text-xs font-bold' : 'text-white/35 text-xs font-bold'}>{asset.active ? 'LIVE' : 'HIDDEN'}</div>
+                <button type="button" onClick={() => startEdit(asset)} className="h-9 px-3 border border-white/20 flex items-center gap-2 text-xs font-black hover:bg-white/10" aria-label={`Edit ${asset.name}`}>
+                  <Pencil size={14} /> Edit
+                </button>
               </div>
             ))}
           </div>
