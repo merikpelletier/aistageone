@@ -61,9 +61,7 @@ const STUDIO_TOOL_SECTIONS = [
     key: 'image_video',
     label: 'Image & Video',
     tools: [
-      { key: 'animate', label: 'Animate Image', icon: Film, action: 'animate' },
       { key: 'ai_video', label: 'AI Video', icon: Camera, action: 'ai_video' },
-      { key: 'video_tools', label: 'Video Reference', icon: Video, action: 'video_ref' },
       { key: 'lip_sync', label: 'Lip Sync', icon: Mic, action: 'lip_sync' },
     ],
   },
@@ -645,7 +643,7 @@ export default function Studio() {
     if (showAudioUploader) openTools.push('Audio Uploader');
     if (showDubbingStudio) openTools.push('Dubbing Studio');
     if (showTextToSpeech) openTools.push('Text to Speech');
-    if (showVideoTools) openTools.push('Video Tools');
+    if (showVideoTools) openTools.push('AI Video');
     if (showLipSync) openTools.push('Lip Sync');
     if (showAnimateImage) openTools.push('Animate Image');
     setAppContext({
@@ -704,7 +702,7 @@ export default function Studio() {
       ? 'set'
       : activeToolPanel?.startsWith?.('lab:')
         ? activeToolPanel.slice(4)
-        : activeToolPanel || (activeTab === 'stories' ? 'fotoplay' : null);
+        : activeToolPanel || (showVideoTools ? 'ai_video' : (activeTab === 'stories' ? 'fotoplay' : null));
   const activeShellTitle = 'AISTAGE Studio';
 
   const closeAllStudioTools = () => {
@@ -739,8 +737,8 @@ export default function Studio() {
     if (tool.action === 'dubbing') { setShowDubbingStudio(true); return; }
     if (tool.action === 'tts') { setShowTextToSpeech(true); return; }
     if (tool.action === 'lip_sync') { setShowLipSync(true); return; }
-    if (tool.action === 'animate') { setShowAnimateImage(true); return; }
-    if (tool.action === 'ai_video') { setVideoInitialMode('text'); setShowVideoTools(true); return; }
+    if (tool.action === 'animate') { setVideoInitialMode('image'); setShowVideoTools(true); return; }
+    if (tool.action === 'ai_video') { setVideoInitialMode(null); setShowVideoTools(true); return; }
     if (tool.action === 'video_ref') { setVideoInitialMode('video'); setShowVideoTools(true); return; }
     if (tool.action === 'timeline') { setActiveToolPanel('timeline'); return; }
     if (tool.action === 'lab') { setActiveToolPanel(`lab:${tool.labTool}`); return; }
@@ -849,13 +847,13 @@ export default function Studio() {
       {false && activeTab === 'lab' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5"><SketchStudio user={user} /></motion.div>}
 
       {false && activeTab === 'tools' && (
-        <LabWorkspace user={user} onOpenActor={() => setEditingActor(false)} onOpenSet={() => setActiveToolPanel('set')} onOpenVoiceRecorder={() => setShowVoiceRecorder(true)} onOpenAudioUploader={() => setShowAudioUploader(true)} onOpenDubbing={() => setShowDubbingStudio(true)} onOpenTTS={() => setShowTextToSpeech(true)} onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }} onOpenLipSync={() => setShowLipSync(true)} onOpenAnimateImage={() => setShowAnimateImage(true)} onJoinProject={handleJoinProject} onOpenFreeTimeline={() => setShowFreeTimeline(true)} onOpenLayout={() => setShowLayout(true)} hideProjects={true} />
+        <LabWorkspace user={user} onOpenActor={() => setEditingActor(false)} onOpenSet={() => setActiveToolPanel('set')} onOpenVoiceRecorder={() => setShowVoiceRecorder(true)} onOpenAudioUploader={() => setShowAudioUploader(true)} onOpenDubbing={() => setShowDubbingStudio(true)} onOpenTTS={() => setShowTextToSpeech(true)} onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }} onOpenLipSync={() => setShowLipSync(true)} onOpenAnimateImage={() => { setVideoInitialMode('image'); setShowVideoTools(true); }} onJoinProject={handleJoinProject} onOpenFreeTimeline={() => setShowFreeTimeline(true)} onOpenLayout={() => setShowLayout(true)} hideProjects={true} />
       )}
 
       {activeTab === 'stories' && <StoryBlocks user={user} onBack={() => setActiveTab('home')} />}
 
       {false && activeTab === 'vault' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 md:px-7"><VaultSection userEmail={user?.email} onUsePrompt={(text) => { setPendingPrompt(text); setShowAnimateImage(true); }} /></motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 md:px-7"><VaultSection userEmail={user?.email} onUsePrompt={(text) => { setPendingPrompt(text); setVideoInitialMode('image'); setShowVideoTools(true); }} /></motion.div>
       )}
 
       {activeToolPanel === 'set' && (
@@ -866,7 +864,7 @@ export default function Studio() {
 
       {activeToolPanel === 'vault' && (
         <div className="absolute inset-0 z-20 bg-[#202328]">
-          <StudioWorkspaceTool title="Vault"><div className="p-4 md:p-6"><VaultSection userEmail={user?.email} onUsePrompt={(text) => { setPendingPrompt(text); setShowAnimateImage(true); }} /></div></StudioWorkspaceTool>
+          <StudioWorkspaceTool title="Vault"><div className="p-4 md:p-6"><VaultSection userEmail={user?.email} onUsePrompt={(text) => { setPendingPrompt(text); setVideoInitialMode('image'); setShowVideoTools(true); }} /></div></StudioWorkspaceTool>
         </div>
       )}
 
@@ -880,7 +878,7 @@ export default function Studio() {
         <div className="absolute inset-0 z-20 bg-[#202328]">
           <StudioWorkspaceTool title={STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeToolPanel.slice(4))?.label || 'Tool'}>
             <div className="p-4 md:p-6">
-              <LabWorkspace user={user} directTool={activeToolPanel.slice(4)} directMode={true} onOpenActor={() => { setActiveToolPanel(null); setEditingActor(false); }} onOpenSet={() => setActiveToolPanel('set')} onOpenVoiceRecorder={() => setShowVoiceRecorder(true)} onOpenAudioUploader={() => setShowAudioUploader(true)} onOpenDubbing={() => setShowDubbingStudio(true)} onOpenTTS={() => setShowTextToSpeech(true)} onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }} onOpenLipSync={() => setShowLipSync(true)} onOpenAnimateImage={() => setShowAnimateImage(true)} onJoinProject={handleJoinProject} onOpenFreeTimeline={() => setShowFreeTimeline(true)} onOpenLayout={() => setShowLayout(true)} hideProjects={true} />
+              <LabWorkspace user={user} directTool={activeToolPanel.slice(4)} directMode={true} onOpenActor={() => { setActiveToolPanel(null); setEditingActor(false); }} onOpenSet={() => setActiveToolPanel('set')} onOpenVoiceRecorder={() => setShowVoiceRecorder(true)} onOpenAudioUploader={() => setShowAudioUploader(true)} onOpenDubbing={() => setShowDubbingStudio(true)} onOpenTTS={() => setShowTextToSpeech(true)} onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }} onOpenLipSync={() => setShowLipSync(true)} onOpenAnimateImage={() => { setVideoInitialMode('image'); setShowVideoTools(true); }} onJoinProject={handleJoinProject} onOpenFreeTimeline={() => setShowFreeTimeline(true)} onOpenLayout={() => setShowLayout(true)} hideProjects={true} />
             </div>
           </StudioWorkspaceTool>
         </div>
