@@ -11,6 +11,7 @@ const TYPES = [
 ];
 
 const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp,image/avif';
+const NEW_VALUE = '__new__';
 
 function slugify(value) {
   return String(value || '')
@@ -23,11 +24,7 @@ function slugify(value) {
 }
 
 function createImageItem(file) {
-  return {
-    id: crypto.randomUUID(),
-    file,
-    preview: URL.createObjectURL(file),
-  };
+  return { id: crypto.randomUUID(), file, preview: URL.createObjectURL(file) };
 }
 
 const EMPTY_FORM = {
@@ -56,6 +53,10 @@ export default function Admin3DLibrary() {
   const [publishing, setPublishing] = useState(false);
   const [assets, setAssets] = useState([]);
   const [loadingAssets, setLoadingAssets] = useState(true);
+  const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
+  const [newCategoryMode, setNewCategoryMode] = useState(false);
+  const [newSubcategoryMode, setNewSubcategoryMode] = useState(false);
 
   const isEditing = Boolean(editingId);
   const hasCover = Boolean(cover?.file || existingCover);
@@ -64,6 +65,21 @@ export default function Admin3DLibrary() {
   const canPublish = useMemo(
     () => Boolean(hasZip && hasCover && form.name.trim() && Number(form.price_credits) >= 0),
     [hasZip, hasCover, form]
+  );
+
+  const availableCategories = useMemo(
+    () => categories.filter((item) => item.asset_type === form.asset_type),
+    [categories, form.asset_type]
+  );
+
+  const selectedCategory = useMemo(
+    () => availableCategories.find((item) => item.name === form.category) || null,
+    [availableCategories, form.category]
+  );
+
+  const availableSubcategories = useMemo(
+    () => selectedCategory ? subcategories.filter((item) => item.category_id === selectedCategory.id) : [],
+    [subcategories, selectedCategory]
   );
 
   async function loadAssets() {
@@ -77,10 +93,60 @@ export default function Admin3DLibrary() {
     setLoadingAssets(false);
   }
 
-  useEffect(() => { loadAssets(); }, []);
+  async function loadTaxonomy() {
+    const [{ data: categoryRows, error: categoryError }, { data: subcategoryRows, error: subcategoryError }] = await Promise.all([
+      supabase
+        .from('studio_3d_category')
+        .select('id,asset_type,name,slug,active,sort_order')
+        .eq('active', true)
+        .order('sort_order')
+        .order('name'),
+      supabase
+        .from('studio_3d_subcategory')
+        .select('id,category_id,name,slug,active,sort_order')
+        .eq('active', true)
+        .order('sort_order')
+        .order('name'),
+    ]);
+    if (!categoryError) setCategories(categoryRows || []);
+    if (!subcategoryError) setSubcategories(subcategoryRows || []);
+  }
+
+  useEffect(() => {
+    loadAssets();
+    loadTaxonomy();
+  }, []);
 
   function update(name, value) {
     setForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function changeType(value) {
+    setForm((current) => ({ ...current, asset_type: value, category: '', subcategory: '' }));
+    setNewCategoryMode(false);
+    setNewSubcategoryMode(false);
+  }
+
+  function changeCategory(value) {
+    if (value === NEW_VALUE) {
+      setNewCategoryMode(true);
+      setNewSubcategoryMode(false);
+      setForm((current) => ({ ...current, category: '', subcategory: '' }));
+      return;
+    }
+    setNewCategoryMode(false);
+    setNewSubcategoryMode(false);
+    setForm((current) => ({ ...current, category: value, subcategory: '' }));
+  }
+
+  function changeSubcategory(value) {
+    if (value === NEW_VALUE) {
+      setNewSubcategoryMode(true);
+      setForm((current) => ({ ...current, subcategory: '' }));
+      return;
+    }
+    setNewSubcategoryMode(false);
+    update('subcategory', value);
   }
 
   function chooseCover(nextFile) {
@@ -121,6 +187,8 @@ export default function Admin3DLibrary() {
     setEditingId(null);
     setFile(null);
     setForm(EMPTY_FORM);
+    setNewCategoryMode(false);
+    setNewSubcategoryMode(false);
     setError('');
     setStatus('');
     setProgress(0);
@@ -131,21 +199,21 @@ export default function Admin3DLibrary() {
     let subcategory = '';
 
     if (categoryId) {
-      const { data } = await supabase
-        .from('studio_3d_category')
-        .select('name')
-        .eq('id', categoryId)
-        .maybeSingle();
-      category = data?.name || '';
+      const localCategory = categories.find((item) => item.id === categoryId);
+      if (localCategory) category = localCategory.name;
+      else {
+        const { data } = await supabase.from('studio_3d_category').select('name').eq('id', categoryId).maybeSingle();
+        category = data?.name || '';
+      }
     }
 
     if (subcategoryId) {
-      const { data } = await supabase
-        .from('studio_3d_subcategory')
-        .select('name')
-        .eq('id', subcategoryId)
-        .maybeSingle();
-      subcategory = data?.name || '';
+      const localSubcategory = subcategories.find((item) => item.id === subcategoryId);
+      if (localSubcategory) subcategory = localSubcategory.name;
+      else {
+        const { data } = await supabase.from('studio_3d_subcategory').select('name').eq('id', subcategoryId).maybeSingle();
+        subcategory = data?.name || '';
+      }
     }
 
     return { category, subcategory };
@@ -175,6 +243,8 @@ export default function Admin3DLibrary() {
     setExistingCover(fullAsset.preview_url || '');
     setExistingGallery(Array.isArray(fullAsset.gallery) ? fullAsset.gallery : []);
     setFile(null);
+    setNewCategoryMode(false);
+    setNewSubcategoryMode(false);
     setForm({
       asset_type: fullAsset.asset_type || 'character',
       name: fullAsset.name || '',
@@ -257,9 +327,7 @@ export default function Admin3DLibrary() {
       },
     });
     if (signError) throw signError;
-    if (!signed?.upload_url || !signed?.object_key) {
-      throw new Error('The upload function did not return a signed R2 URL.');
-    }
+    if (!signed?.upload_url || !signed?.object_key) throw new Error('The upload function did not return a signed R2 URL.');
 
     await uploadDirect(uploadFile, signed.upload_url, setProgress);
     return signed;
@@ -290,11 +358,7 @@ export default function Admin3DLibrary() {
       const galleryUrls = [...existingGallery];
       for (let index = 0; index < gallery.length; index += 1) {
         const item = gallery[index];
-        const uploaded = await signAndUpload(
-          item.file,
-          'preview',
-          `Uploading gallery image ${index + 1} of ${gallery.length}…`
-        );
+        const uploaded = await signAndUpload(item.file, 'preview', `Uploading gallery image ${index + 1} of ${gallery.length}…`);
         if (uploaded.public_url) galleryUrls.push(uploaded.public_url);
       }
 
@@ -317,24 +381,19 @@ export default function Admin3DLibrary() {
       };
 
       if (isEditing) {
-        const { error: updateError } = await supabase
-          .from('studio_3d_asset')
-          .update(payload)
-          .eq('id', editingId);
+        const { error: updateError } = await supabase.from('studio_3d_asset').update(payload).eq('id', editingId);
         if (updateError) throw updateError;
       } else {
         const baseSlug = slugify(form.name) || 'asset';
         const slug = `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
-        const { error: insertError } = await supabase
-          .from('studio_3d_asset')
-          .insert({ ...payload, slug });
+        const { error: insertError } = await supabase.from('studio_3d_asset').insert({ ...payload, slug });
         if (insertError) throw insertError;
       }
 
       setStatus(isEditing ? 'Changes saved.' : 'Published successfully.');
       setProgress(100);
       resetForm();
-      await loadAssets();
+      await Promise.all([loadAssets(), loadTaxonomy()]);
     } catch (err) {
       setError(err?.message || (isEditing ? 'Unable to save this 3D product.' : 'Unable to publish this 3D product.'));
       setStatus('');
@@ -349,7 +408,7 @@ export default function Admin3DLibrary() {
       <div className="mb-6">
         <p className="text-[10px] uppercase tracking-[0.25em] text-white/45 font-bold">AISTAGE.ONE</p>
         <h2 className="text-3xl font-black mt-1">3D Library</h2>
-        <p className="text-sm text-white/55 mt-2">Upload and manage AISTAGE-owned 3D products, presentation images and gallery images.</p>
+        <p className="text-sm text-white/55 mt-2">Upload and manage 3D products, presentation images and gallery images.</p>
       </div>
 
       {isEditing && (
@@ -367,7 +426,7 @@ export default function Admin3DLibrary() {
           <div className="grid sm:grid-cols-2 gap-4">
             <label className="space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-white/55">Type</span>
-              <select value={form.asset_type} onChange={(e) => update('asset_type', e.target.value)} className="w-full h-11 bg-neutral-900 border border-white/15 px-3">
+              <select value={form.asset_type} onChange={(e) => changeType(e.target.value)} className="w-full h-11 bg-neutral-900 border border-white/15 px-3">
                 {TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
               </select>
             </label>
@@ -388,14 +447,35 @@ export default function Admin3DLibrary() {
           </label>
 
           <div className="grid sm:grid-cols-2 gap-4">
-            <label className="space-y-2">
+            <div className="space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-white/55">Category</span>
-              <input value={form.category} onChange={(e) => update('category', e.target.value)} className="w-full h-11 bg-neutral-900 border border-white/15 px-3" placeholder="e.g. Historical" />
-            </label>
-            <label className="space-y-2">
+              <select value={newCategoryMode ? NEW_VALUE : form.category} onChange={(e) => changeCategory(e.target.value)} className="w-full h-11 bg-neutral-900 border border-white/15 px-3 text-white">
+                <option value="">No category</option>
+                {availableCategories.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+                <option value={NEW_VALUE}>+ Add new category</option>
+              </select>
+              {newCategoryMode && (
+                <input autoFocus value={form.category} onChange={(e) => update('category', e.target.value)} className="w-full h-11 bg-neutral-900 border border-[#23c7be]/60 px-3" placeholder="New category name" />
+              )}
+            </div>
+
+            <div className="space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-white/55">Subcategory</span>
-              <input value={form.subcategory} onChange={(e) => update('subcategory', e.target.value)} className="w-full h-11 bg-neutral-900 border border-white/15 px-3" />
-            </label>
+              <select
+                value={newSubcategoryMode ? NEW_VALUE : form.subcategory}
+                onChange={(e) => changeSubcategory(e.target.value)}
+                disabled={!form.category.trim()}
+                className="w-full h-11 bg-neutral-900 border border-white/15 px-3 text-white disabled:opacity-40"
+              >
+                <option value="">No subcategory</option>
+                {availableSubcategories.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+                <option value={NEW_VALUE}>+ Add new subcategory</option>
+              </select>
+              {newSubcategoryMode && form.category.trim() && (
+                <input autoFocus value={form.subcategory} onChange={(e) => update('subcategory', e.target.value)} className="w-full h-11 bg-neutral-900 border border-[#23c7be]/60 px-3" placeholder="New subcategory name" />
+              )}
+              {!form.category.trim() && <div className="text-[11px] text-white/35">Choose a category first.</div>}
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -500,7 +580,7 @@ export default function Admin3DLibrary() {
       <div className="mt-8 border border-white/15 bg-neutral-950">
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
           <div className="font-black flex items-center gap-2"><Box size={17} /> Published 3D products</div>
-          <button type="button" onClick={loadAssets} className="text-xs font-bold text-white/60 hover:text-white">Refresh</button>
+          <button type="button" onClick={() => { loadAssets(); loadTaxonomy(); }} className="text-xs font-bold text-white/60 hover:text-white">Refresh</button>
         </div>
         {loadingAssets ? (
           <div className="p-5 text-white/45">Loading…</div>
