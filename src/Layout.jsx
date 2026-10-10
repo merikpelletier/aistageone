@@ -33,7 +33,6 @@ export default function Layout({ children, currentPageName }) {
     };
   }, []);
 
-  // Track user activity globally
   useEffect(() => {
     const deviceId = localStorage.getItem('cochon_device_id');
     if (!deviceId) return;
@@ -56,13 +55,10 @@ export default function Layout({ children, currentPageName }) {
       }).catch(() => {});
     };
 
-    // Update activity every 2 minutes
     const interval = setInterval(updateActivity, 2 * 60 * 1000);
-
     return () => clearInterval(interval);
   }, []);
 
-  // Broadcast page name into app context
   useEffect(() => {
     const pageLabels = {
       Magazine: 'Magazine (dossier feed)',
@@ -77,7 +73,6 @@ export default function Layout({ children, currentPageName }) {
     setAppContext({ page: pageLabels[currentPageName] || currentPageName, section: null, detail: null });
   }, [currentPageName]);
 
-  // Don't show landscape block on admin page or desktop
   const isAdminPage = currentPageName === 'Admin';
   const isStudioPage = currentPageName === 'Studio';
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -100,7 +95,7 @@ export default function Layout({ children, currentPageName }) {
   const pageIcon = isMagazinePage ? '' : (pageSetting?.look?.icon_color || '');
   const pageSpacing = isMagazinePage ? 'default' : (pageSetting?.look?.spacing || 'default');
   const pageStyle = {
-    backgroundColor: isMagazinePage ? undefined : (pageSetting?.look?.background_color || undefined),
+    backgroundColor: isStudioPage ? '#202328' : (isMagazinePage ? undefined : (pageSetting?.look?.background_color || undefined)),
     '--aistage-surface-accent': pageAccent,
     '--aistage-surface-text': pageText || undefined,
     '--aistage-surface-icon': pageIcon || undefined,
@@ -116,7 +111,7 @@ export default function Layout({ children, currentPageName }) {
   const isMagazinePageWrapper = currentPageName === 'Magazine';
 
   return (
-    <div className={`min-h-screen ${isMagazinePageWrapper ? 'bg-black' : 'bg-yellow-400'}`} style={pageStyle} data-admin-spacing={pageSpacing}>
+    <div className={`min-h-screen ${isStudioPage ? 'bg-[#202328]' : isMagazinePageWrapper ? 'bg-black' : 'bg-yellow-400'}`} style={pageStyle} data-admin-spacing={pageSpacing}>
       {showLandscapeBlock && (
         <div className="fixed inset-0 bg-yellow-400 z-[9999] flex flex-col items-center justify-center">
           <div className="text-black text-center px-8">
@@ -170,98 +165,34 @@ export default function Layout({ children, currentPageName }) {
           --ring: 0 72% 51%;
           `}
         }
-        
-        * {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(0,0,0,0.2) transparent;
-        }
-        
-        *::-webkit-scrollbar {
-          width: 6px;
-        }
-        
-        *::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        
-        *::-webkit-scrollbar-thumb {
-          background: rgba(0,0,0,0.2);
-          border-radius: 3px;
-        }
-        
-        body {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-          -webkit-font-smoothing: antialiased;
-          font-weight: 700;
-        }
-        
-        ::selection {
-          background: rgba(220, 38, 38, 0.3);
-        }
-
-        .aistage-page-content [class*="bg-yellow-"] {
-          background-color: var(--aistage-surface-accent) !important;
-        }
-        .aistage-page-content [class*="text-yellow-"] {
-          color: var(--aistage-surface-accent) !important;
-        }
-        .aistage-page-content [class*="border-yellow-"] {
-          border-color: var(--aistage-surface-accent) !important;
-        }
-        .aistage-page-content [class*="ring-yellow-"] {
-          --tw-ring-color: var(--aistage-surface-accent) !important;
-        }
-        .aistage-page-content.aistage-page-text [class*="text-"] {
-          color: var(--aistage-surface-text) !important;
-        }
-        .aistage-page-content.aistage-page-icons svg {
-          color: var(--aistage-surface-icon) !important;
-          stroke: currentColor;
-        }
+        * { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.2) transparent; }
+        *::-webkit-scrollbar { width: 6px; }
+        *::-webkit-scrollbar-track { background: transparent; }
+        *::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; font-weight: 700; }
+        ::selection { background: rgba(220, 38, 38, 0.3); }
+        .aistage-page-content [class*="bg-yellow-"] { background-color: var(--aistage-surface-accent) !important; }
+        .aistage-page-content [class*="text-yellow-"] { color: var(--aistage-surface-accent) !important; }
+        .aistage-page-content [class*="border-yellow-"] { border-color: var(--aistage-surface-accent) !important; }
+        .aistage-page-content [class*="ring-yellow-"] { --tw-ring-color: var(--aistage-surface-accent) !important; }
+        .aistage-page-content.aistage-page-text [class*="text-"] { color: var(--aistage-surface-text) !important; }
+        .aistage-page-content.aistage-page-icons svg { color: var(--aistage-surface-icon) !important; stroke: currentColor; }
+        .studio-page-content { min-height: 100vh; background: #202328; }
 
         @media (min-width: 1024px) {
-          .studio-page-content [class*="max-w-[1500px]"] {
-            max-width: none !important;
-          }
-
-          .studio-page-content [class*="min-h-[calc(100vh-3.5rem)]"][class*="lg:p-8"] {
-            padding: 22px 28px !important;
-          }
-
-          .studio-page-content [class*="max-w-[1500px]"] > div:first-child {
-            margin-bottom: 14px !important;
-            padding-bottom: 14px !important;
-          }
-
-          .studio-page-content [class*="max-w-[1500px]"] > div:first-child h1 {
-            font-size: 2rem !important;
-            line-height: 1.05 !important;
-          }
-
-          .studio-page-content [class*="max-w-[1500px]"] > div:nth-child(2) {
-            margin-bottom: 16px !important;
-            padding: 10px !important;
-          }
-
-          .studio-page-content [class*="2xl:grid-cols-4"] {
-            grid-template-columns: repeat(auto-fill, minmax(280px, 320px)) !important;
-            justify-content: start !important;
-            align-items: start !important;
-            gap: 16px !important;
-          }
-
-          .studio-page-content [class*="2xl:grid-cols-4"] > article {
-            width: 100% !important;
-            max-width: 320px !important;
-          }
+          .studio-page-content [class*="max-w-[1500px]"] { max-width: none !important; }
+          .studio-page-content [class*="min-h-[calc(100vh-3.5rem)]"][class*="lg:p-8"] { padding: 22px 28px !important; }
+          .studio-page-content [class*="max-w-[1500px]"] > div:first-child { margin-bottom: 14px !important; padding-bottom: 14px !important; }
+          .studio-page-content [class*="max-w-[1500px]"] > div:first-child h1 { font-size: 2rem !important; line-height: 1.05 !important; }
+          .studio-page-content [class*="max-w-[1500px]"] > div:nth-child(2) { margin-bottom: 16px !important; padding: 10px !important; }
+          .studio-page-content [class*="2xl:grid-cols-4"] { grid-template-columns: repeat(auto-fill, minmax(280px, 320px)) !important; justify-content: start !important; align-items: start !important; gap: 16px !important; }
+          .studio-page-content [class*="2xl:grid-cols-4"] > article { width: 100% !important; max-width: 320px !important; }
         }
       `}</style>
-      
       {showAIBar && <PersistentAIBar agentName={agentBar?.configuration?.agent_name || 'production_assistant'} label={agentBar?.configuration?.label} placeholder={agentBar?.configuration?.placeholder} position={agentPosition} behavior={agentBar?.configuration?.prompt} permissions={agentBar?.configuration?.permissions} actions={agentBar?.configuration?.actions} model={agentBar?.configuration?.model} backgroundColor={agentBar?.look?.background_color} accentColor={agentBar?.look?.accent_color} textColor={agentBar?.look?.text_color || agentBar?.look?.foreground_color} iconColor={agentBar?.look?.icon_color || agentBar?.look?.foreground_color} />}
       <div className={`aistage-page-content${isStudioPage ? ' studio-page-content' : ''}${pageText ? ' aistage-page-text' : ''}${pageIcon ? ' aistage-page-icons' : ''}`} style={contentStyle}>
         {children}
       </div>
-      
       {showNav && (
         <>
           <ConfigurableBottomNav settings={settings} />
