@@ -142,7 +142,7 @@ function LibraryCatalog({ title, description, icon: Icon, assetTypes }) {
             </div>
           </article>;
         })}</div>
-        : <div className="flex min-h-[360px] items-center justify-center rounded-[4px] border border-dashed border-white/15 bg-[#17191d]"><div className="max-w-xl px-8 text-center"><Icon size={42} className="mx-auto mb-4 text-[#23c7be]/45" /><p className="text-lg font-black text-white">{assets.length ? 'No assets match these filters' : 'No 3D assets published yet'}</p><p className="mt-2 text-sm text-white/40">{assets.length ? 'Change the search, category or subcategory.' : 'Published AISTAGE-owned 3D products will appear here.'}</p></div></div>}
+        : <div className="flex min-h-[360px] items-center justify-center rounded-[4px] border border-dashed border-white/15 bg-[#17191d]"><div className="max-w-xl px-8 text-center"><Icon size={42} className="mx-auto mb-4 text-[#23c7be]/45" /><p className="text-lg font-black text-white">{assets.length ? 'No assets match these filters' : 'No 3D assets published yet'}</p><p className="mt-2 text-sm text-white/40">{assets.length ? 'Change the search, category or subcategory.' : 'Published 3D products from the AI Stage One library will appear here.'}</p></div></div>}
       </div>
 
       {galleryAsset && galleryImages.length > 0 && (
@@ -277,7 +277,7 @@ function Generate3D() {
 
 export default function ThreeDStudio({ mode = 'generate_3d' }) {
   if (mode === 'generate_3d') return <Generate3D />;
-  if (mode === 'characters_3d') return <LibraryCatalog title="Characters" description="AISTAGE-owned premium 3D characters, prepared for Studio workflows." icon={Users} assetTypes={['character']} />;
+  if (mode === 'characters_3d') return <LibraryCatalog title="Characters" description="Premium 3D characters from the AI Stage One library, prepared for Studio workflows." icon={Users} assetTypes={['character']} />;
   if (mode === 'clothing_3d') return <LibraryCatalog title="Clothing & Accessories" description="Wardrobe and accessories sold directly by AISTAGE.ONE." icon={ShoppingBag} assetTypes={['clothing', 'accessory']} />;
   if (mode === 'props_3d') return <LibraryCatalog title="Props & Sets" description="Props, furniture, environments and set pieces from the AISTAGE 3D library." icon={Layers} assetTypes={['prop', 'set']} />;
   return <LibraryCatalog title="My 3D Assets" description="3D products already purchased by this member." icon={FolderOpen} assetTypes={['character', 'clothing', 'accessory', 'prop', 'set']} />;
