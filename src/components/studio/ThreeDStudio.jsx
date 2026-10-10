@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Users, ShoppingBag, FolderOpen, Layers, Sparkles, Upload, Image as ImageIcon, Type, Grid3X3, SlidersHorizontal, ChevronDown, Search, Tag, Download, ShoppingCart } from 'lucide-react';
+import { Box, Users, ShoppingBag, FolderOpen, Layers, Sparkles, Upload, Image as ImageIcon, Type, Grid3X3, SlidersHorizontal, ChevronDown, ChevronLeft, ChevronRight, Search, Tag, Download, ShoppingCart, X, Images } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
 
 const MODES = [
@@ -27,6 +27,8 @@ function LibraryCatalog({ title, description, icon: Icon, assetTypes }) {
   const [sort, setSort] = useState('featured');
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState('');
+  const [galleryAsset, setGalleryAsset] = useState(null);
+  const [galleryIndex, setGalleryIndex] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -34,7 +36,7 @@ function LibraryCatalog({ title, description, icon: Icon, assetTypes }) {
       setLoading(true);
       setErrorText('');
       const [{ data: assetRows, error: assetError }, { data: categoryRows }, { data: subcategoryRows }, { data: purchaseRows }] = await Promise.all([
-        supabase.from('studio_3d_asset').select('id,asset_type,category_id,subcategory_id,name,slug,description,preview_url,badges,price_credits,featured,sort_order,created_at').in('asset_type', assetTypes).eq('active', true),
+        supabase.from('studio_3d_asset').select('id,asset_type,category_id,subcategory_id,name,slug,description,preview_url,gallery,badges,price_credits,featured,sort_order,created_at').in('asset_type', assetTypes).eq('active', true),
         supabase.from('studio_3d_category').select('id,asset_type,name,slug,sort_order').in('asset_type', assetTypes).eq('active', true).order('sort_order').order('name'),
         supabase.from('studio_3d_subcategory').select('id,category_id,name,slug,sort_order').eq('active', true).order('sort_order').order('name'),
         supabase.from('studio_3d_purchase').select('asset_id'),
@@ -57,6 +59,27 @@ function LibraryCatalog({ title, description, icon: Icon, assetTypes }) {
   useEffect(() => {
     setSubcategoryId('');
   }, [categoryId]);
+
+  const galleryImages = useMemo(() => {
+    if (!galleryAsset) return [];
+    return [galleryAsset.preview_url, ...(Array.isArray(galleryAsset.gallery) ? galleryAsset.gallery : [])].filter(Boolean);
+  }, [galleryAsset]);
+
+  useEffect(() => {
+    if (!galleryAsset) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setGalleryAsset(null);
+      if (event.key === 'ArrowLeft' && galleryImages.length > 1) setGalleryIndex((index) => (index - 1 + galleryImages.length) % galleryImages.length);
+      if (event.key === 'ArrowRight' && galleryImages.length > 1) setGalleryIndex((index) => (index + 1) % galleryImages.length);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [galleryAsset, galleryImages.length]);
+
+  function openGallery(asset, index = 0) {
+    setGalleryAsset(asset);
+    setGalleryIndex(index);
+  }
 
   const availableSubcategories = useMemo(() => subcategories.filter((item) => !categoryId || item.category_id === categoryId), [subcategories, categoryId]);
 
@@ -104,13 +127,44 @@ function LibraryCatalog({ title, description, icon: Icon, assetTypes }) {
         : errorText ? <div className="rounded-[4px] border border-red-400/25 bg-red-400/10 p-5 font-semibold text-red-200">{errorText}</div>
         : filteredAssets.length ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{filteredAssets.map((asset) => {
           const owned = purchases.has(asset.id);
+          const galleryCount = Array.isArray(asset.gallery) ? asset.gallery.length : 0;
           return <article key={asset.id} className="overflow-hidden rounded-[4px] border border-white/10 bg-[#17191d] transition hover:border-[#23c7be]/45 hover:shadow-[inset_2px_0_0_#23c7be]">
-            <div className="relative aspect-[4/3] overflow-hidden bg-[#1d2126]">{asset.preview_url ? <img src={asset.preview_url} alt="" className="h-full w-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center text-white/15"><Box size={52} strokeWidth={1.3} /></div>}{asset.featured && <span className="absolute left-2 top-2 rounded-[2px] border border-[#23c7be]/30 bg-[#17191d]/90 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[#8ee9e4]">Featured</span>}</div>
-            <div className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-lg font-black leading-tight text-white">{asset.name}</h3>{asset.description && <p className="mt-1 line-clamp-2 text-sm text-white/45">{asset.description}</p>}</div><div className="shrink-0 text-right"><div className="text-[10px] font-bold uppercase tracking-wider text-white/35">Price</div><div className="font-black text-[#8ee9e4]">{asset.price_credits} cr</div></div></div>{(asset.badges || []).length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{(asset.badges || []).map((badge) => <span key={badge} className="rounded-[2px] border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white/55"><Tag size={10} className="mr-1 inline" />{badge}</span>)}</div>}<button type="button" className={`mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-[3px] text-xs font-black uppercase tracking-[0.12em] ${owned ? 'border border-white/10 bg-white/[0.05] text-white' : 'bg-[#23c7be] text-[#071211] hover:bg-[#35d8cf]'}`}>{owned ? <><Download size={15} /> Download</> : <><ShoppingCart size={15} /> Buy · {asset.price_credits} credits</>}</button></div>
+            <button type="button" onClick={() => openGallery(asset, 0)} className="group relative block aspect-[4/3] w-full overflow-hidden bg-[#1d2126] text-left" aria-label={`View ${asset.name} gallery`}>
+              {asset.preview_url ? <img src={asset.preview_url} alt={asset.name || ''} className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]" /> : <div className="absolute inset-0 flex items-center justify-center text-white/15"><Box size={52} strokeWidth={1.3} /></div>}
+              {asset.featured && <span className="absolute left-2 top-2 rounded-[2px] border border-[#23c7be]/30 bg-[#17191d]/90 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[#8ee9e4]">Featured</span>}
+              {galleryCount > 0 && <span className="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-[2px] border border-white/15 bg-black/80 px-2 py-1.5 text-[10px] font-black uppercase tracking-wider text-white"><Images size={13} /> Gallery · {galleryCount + 1}</span>}
+            </button>
+            <div className="p-4">
+              <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-lg font-black leading-tight text-white">{asset.name}</h3>{asset.description && <p className="mt-1 line-clamp-2 text-sm text-white/45">{asset.description}</p>}</div><div className="shrink-0 text-right"><div className="text-[10px] font-bold uppercase tracking-wider text-white/35">Price</div><div className="font-black text-[#8ee9e4]">{asset.price_credits} cr</div></div></div>
+              {(asset.badges || []).length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{(asset.badges || []).map((badge) => <span key={badge} className="rounded-[2px] border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white/55"><Tag size={10} className="mr-1 inline" />{badge}</span>)}</div>}
+              {galleryCount > 0 && <button type="button" onClick={() => openGallery(asset, 0)} className="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-[3px] border border-white/15 bg-white/[0.03] text-[11px] font-black uppercase tracking-[0.1em] text-white hover:bg-white/[0.08]"><Images size={14} /> View gallery · {galleryCount + 1} images</button>}
+              <button type="button" className={`mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-[3px] text-xs font-black uppercase tracking-[0.12em] ${owned ? 'border border-white/10 bg-white/[0.05] text-white' : 'bg-[#23c7be] text-[#071211] hover:bg-[#35d8cf]'}`}>{owned ? <><Download size={15} /> Download</> : <><ShoppingCart size={15} /> Buy · {asset.price_credits} credits</>}</button>
+            </div>
           </article>;
         })}</div>
         : <div className="flex min-h-[360px] items-center justify-center rounded-[4px] border border-dashed border-white/15 bg-[#17191d]"><div className="max-w-xl px-8 text-center"><Icon size={42} className="mx-auto mb-4 text-[#23c7be]/45" /><p className="text-lg font-black text-white">{assets.length ? 'No assets match these filters' : 'No 3D assets published yet'}</p><p className="mt-2 text-sm text-white/40">{assets.length ? 'Change the search, category or subcategory.' : 'Published AISTAGE-owned 3D products will appear here.'}</p></div></div>}
       </div>
+
+      {galleryAsset && galleryImages.length > 0 && (
+        <div className="fixed inset-0 z-[7000] flex items-center justify-center bg-black/90 p-3 md:p-6" onClick={() => setGalleryAsset(null)}>
+          <div className="relative flex h-full max-h-[92vh] w-full max-w-[1200px] flex-col overflow-hidden rounded-[4px] border border-white/15 bg-[#17191d]" onClick={(event) => event.stopPropagation()}>
+            <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-white/10 px-4">
+              <div className="min-w-0"><div className="truncate font-black text-white">{galleryAsset.name}</div><div className="text-[11px] text-white/40">Image {galleryIndex + 1} of {galleryImages.length}</div></div>
+              <button type="button" onClick={() => setGalleryAsset(null)} className="flex h-9 w-9 items-center justify-center border border-white/15 bg-white/[0.03] text-white hover:bg-white/10" aria-label="Close gallery"><X size={19} /></button>
+            </div>
+
+            <div className="relative min-h-0 flex-1 bg-[#101214]">
+              <img src={galleryImages[galleryIndex]} alt={`${galleryAsset.name || '3D asset'} ${galleryIndex + 1}`} className="h-full w-full object-contain" />
+              {galleryImages.length > 1 && <>
+                <button type="button" onClick={() => setGalleryIndex((index) => (index - 1 + galleryImages.length) % galleryImages.length)} className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center border border-white/20 bg-black/70 text-white hover:bg-black" aria-label="Previous image"><ChevronLeft size={25} /></button>
+                <button type="button" onClick={() => setGalleryIndex((index) => (index + 1) % galleryImages.length)} className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center border border-white/20 bg-black/70 text-white hover:bg-black" aria-label="Next image"><ChevronRight size={25} /></button>
+              </>}
+            </div>
+
+            {galleryImages.length > 1 && <div className="flex flex-shrink-0 gap-2 overflow-x-auto border-t border-white/10 bg-[#17191d] p-3">{galleryImages.map((url, index) => <button key={`${url}-${index}`} type="button" onClick={() => setGalleryIndex(index)} className={`h-16 w-20 flex-shrink-0 overflow-hidden border ${index === galleryIndex ? 'border-[#23c7be]' : 'border-white/10 opacity-65 hover:opacity-100'}`} aria-label={`Open image ${index + 1}`}><img src={url} alt="" className="h-full w-full object-cover" /></button>)}</div>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
