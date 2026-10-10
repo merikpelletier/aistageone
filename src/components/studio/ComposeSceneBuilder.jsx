@@ -117,7 +117,6 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
   const [slots, setSlots] = useState([makeSlot(0, 'dialogue'), makeSlot(1, 'dialogue')]);
   const [elements, setElements] = useState([]);
   const [selectedSlotId, setSelectedSlotId] = useState(null);
-  const [characters, setCharacters] = useState([]);
   const [sets, setSets] = useState([]);
   const [vaultFolders, setVaultFolders] = useState([]);
   const [vaultAssets, setVaultAssets] = useState([]);
@@ -148,14 +147,12 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
   useEffect(() => {
     if (!userEmail) return;
     Promise.all([
-      base44.entities.CharacterSheet.filter({ user_email: userEmail }).catch(() => []),
       base44.entities.SetAsset.filter({ user_email: userEmail }).catch(() => []),
       base44.entities.VaultFolder.filter({ user_email: userEmail }, 'order', 100).catch(() => []),
       base44.entities.VaultAsset.filter({ user_email: userEmail, media_type: 'image' }, '-created_date', 300).catch(() => []),
       supabase.from('catalog_asset').select('id,title,description,featured_image,preview_images,category_id,creator_name,tags').eq('status', 'published').order('title', { ascending: true }).limit(500).then(({ data }) => data || []).catch(() => []),
       supabase.from('asset_category').select('id,key,label_en,label_fr,display_order').eq('is_active', true).order('display_order', { ascending: true }).then(({ data }) => data || []).catch(() => []),
-    ]).then(([chars, userSets, folders, vault, shop, categories]) => {
-      setCharacters(chars || []);
+    ]).then(([userSets, folders, vault, shop, categories]) => {
       setSets(userSets || []);
       setVaultFolders(folders || []);
       setVaultAssets(vault || []);
@@ -294,6 +291,12 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
       </section>
 
       <section className="space-y-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-white">Prompt</p>
+        <textarea value={prompt} onChange={e => setPrompt(e.target.value)} rows={3} placeholder="Mood, action, lighting, camera, additional direction…" className="w-full resize-none bg-white/10 px-4 py-3 text-sm text-white" />
+        <div className="flex flex-wrap gap-2">{['16:9', '4:3', '9:16', '1:1'].map(ratio => <button type="button" key={ratio} onClick={() => setAspectRatio(ratio)} className={`px-3 py-2 text-xs font-bold ${aspectRatio === ratio ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white'}`}>{ratio}</button>)}</div>
+      </section>
+
+      <section className="space-y-2">
         <p className="text-xs font-bold uppercase tracking-wider text-white">Scene Template</p>
         <div className="flex flex-wrap gap-2">
           {TEMPLATES.map(item => <button type="button" key={item.id} onClick={() => chooseTemplate(item.id)} className={`px-3 py-2 text-xs font-bold ${templateId === item.id ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{item.label}</button>)}
@@ -323,13 +326,6 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
               </div>}
             </div>)}
           </div>
-        </div>
-      </section>
-
-      <section className="space-y-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-white">Character Library {selectedSlot ? `→ ${selectedSlot.label}` : '— select a Master Scene slot first'}</p>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-8">
-          {characters.map(character => <Thumb key={character.id} image={getCharacterImage(character)} label={character.character_name || 'Character'} selected={selectedSlot?.asset?.id === character.id} onClick={() => assignCharacter(character)} />)}
         </div>
       </section>
 
@@ -378,12 +374,6 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
           <input value={item.note} onChange={e => updateElement(item.id, { note: e.target.value })} placeholder="Placement instruction" className="bg-black p-2 text-xs text-white" />
           <button type="button" onClick={() => removeElement(item.id)} className="text-white/50"><Trash2 size={14} /></button>
         </div>)}
-      </section>
-
-      <section className="space-y-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-white">Prompt</p>
-        <textarea value={prompt} onChange={e => setPrompt(e.target.value)} rows={3} placeholder="Mood, action, lighting, camera, additional direction…" className="w-full resize-none bg-white/10 px-4 py-3 text-sm text-white" />
-        <div className="flex flex-wrap gap-2">{['16:9', '4:3', '9:16', '1:1'].map(ratio => <button type="button" key={ratio} onClick={() => setAspectRatio(ratio)} className={`px-3 py-2 text-xs font-bold ${aspectRatio === ratio ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white'}`}>{ratio}</button>)}</div>
       </section>
 
       {error && <p className="border border-red-400/30 bg-red-500/10 p-3 text-xs text-red-300">{error}</p>}
