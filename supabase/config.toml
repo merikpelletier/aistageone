@@ -44,3 +44,11 @@ verify_jwt = false
 
 [functions.generateSoundFx]
 verify_jwt = false
+
+# The 3D upload endpoint validates the authenticated admin inside the function.
+[functions.admin-3d-r2-upload]
+verify_jwt = false
+
+# Public image endpoint: only the previews/ namespace can be resolved.
+[functions.studio-3d-media]
+verify_jwt = false
