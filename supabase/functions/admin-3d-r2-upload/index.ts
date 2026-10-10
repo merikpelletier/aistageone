@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { S3Client, PutObjectCommand } from "npm:@aws-sdk/client-s3@3";
+import { PutBucketCorsCommand, PutObjectCommand, S3Client } from "npm:@aws-sdk/client-s3@3";
 import { getSignedUrl } from "npm:@aws-sdk/s3-request-presigner@3";
 
 const corsHeaders = {
@@ -58,6 +58,24 @@ Deno.serve(async (req) => {
       endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
       credentials: { accessKeyId, secretAccessKey },
     });
+
+    // Direct browser PUTs to a presigned R2 URL require bucket-level CORS.
+    // Keep this here so the 3D upload flow self-heals even if the R2 bucket
+    // is recreated or its CORS rules are cleared in Cloudflare.
+    await r2.send(new PutBucketCorsCommand({
+      Bucket: bucket,
+      CORSConfiguration: {
+        CORSRules: [
+          {
+            AllowedOrigins: ["*"],
+            AllowedMethods: ["PUT", "GET", "HEAD"],
+            AllowedHeaders: ["*"],
+            ExposeHeaders: ["ETag"],
+            MaxAgeSeconds: 86400,
+          },
+        ],
+      },
+    }));
 
     const body = await req.json();
     const filename = String(body.filename || "").trim();
