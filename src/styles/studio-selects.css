@@ -1,0 +1,26 @@
+.studio-page-content select {
+  color-scheme: dark;
+  background-color: #101214 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+.studio-page-content select:hover,
+.studio-page-content select:focus {
+  border-color: #23c7be !important;
+}
+
+.studio-page-content select option {
+  background-color: #17191d;
+  color: #ffffff;
+}
+
+.studio-page-content select option:checked {
+  background-color: #23c7be;
+  color: #071211;
+}
+
+.studio-page-content select:disabled {
+  color: rgba(255, 255, 255, 0.45) !important;
+  background-color: #17191d !important;
+}
