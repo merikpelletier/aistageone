@@ -79,10 +79,9 @@ export default function Layout({ children, currentPageName }) {
 
   // Don't show landscape block on admin page or desktop
   const isAdminPage = currentPageName === 'Admin';
+  const isStudioPage = currentPageName === 'Studio';
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const showLandscapeBlock = isLandscape && !isAdminPage && isMobile;
-
-
 
   const settings = runtime?.settings || [];
   const pageSetting = settings.find((item) => item.surface_type === 'page' && item.surface_key === currentPageName);
@@ -90,7 +89,7 @@ export default function Layout({ children, currentPageName }) {
   const bottomNavigation = settings.find((item) => item.surface_type === 'tool' && item.surface_key === 'bottom_navigation');
   const installPrompt = settings.find((item) => item.surface_type === 'tool' && item.surface_key === 'install_prompt');
   const agentPages = agentBar?.configuration?.pages || [];
-  const showNav = !isAdminPage && pageSetting?.configuration?.show_navigation !== false && bottomNavigation?.visible !== false && bottomNavigation?.active !== false;
+  const showNav = !isAdminPage && !isStudioPage && pageSetting?.configuration?.show_navigation !== false && bottomNavigation?.visible !== false && bottomNavigation?.active !== false;
   const showInstallPrompt = showNav && installPrompt?.visible !== false && installPrompt?.active !== false;
   const showAIBar = !isAdminPage && isAuthenticated && agentBar?.visible === true && agentBar?.active === true && (agentPages.length === 0 || agentPages.includes(currentPageName));
   const agentPosition = agentBar?.configuration?.position === 'bottom' ? 'bottom' : 'top';
@@ -219,10 +218,47 @@ export default function Layout({ children, currentPageName }) {
           color: var(--aistage-surface-icon) !important;
           stroke: currentColor;
         }
+
+        @media (min-width: 1024px) {
+          .studio-page-content [class*="max-w-[1500px]"] {
+            max-width: none !important;
+          }
+
+          .studio-page-content [class*="min-h-[calc(100vh-3.5rem)]"][class*="lg:p-8"] {
+            padding: 22px 28px !important;
+          }
+
+          .studio-page-content [class*="max-w-[1500px]"] > div:first-child {
+            margin-bottom: 14px !important;
+            padding-bottom: 14px !important;
+          }
+
+          .studio-page-content [class*="max-w-[1500px]"] > div:first-child h1 {
+            font-size: 2rem !important;
+            line-height: 1.05 !important;
+          }
+
+          .studio-page-content [class*="max-w-[1500px]"] > div:nth-child(2) {
+            margin-bottom: 16px !important;
+            padding: 10px !important;
+          }
+
+          .studio-page-content [class*="2xl:grid-cols-4"] {
+            grid-template-columns: repeat(auto-fill, minmax(280px, 320px)) !important;
+            justify-content: start !important;
+            align-items: start !important;
+            gap: 16px !important;
+          }
+
+          .studio-page-content [class*="2xl:grid-cols-4"] > article {
+            width: 100% !important;
+            max-width: 320px !important;
+          }
+        }
       `}</style>
       
       {showAIBar && <PersistentAIBar agentName={agentBar?.configuration?.agent_name || 'production_assistant'} label={agentBar?.configuration?.label} placeholder={agentBar?.configuration?.placeholder} position={agentPosition} behavior={agentBar?.configuration?.prompt} permissions={agentBar?.configuration?.permissions} actions={agentBar?.configuration?.actions} model={agentBar?.configuration?.model} backgroundColor={agentBar?.look?.background_color} accentColor={agentBar?.look?.accent_color} textColor={agentBar?.look?.text_color || agentBar?.look?.foreground_color} iconColor={agentBar?.look?.icon_color || agentBar?.look?.foreground_color} />}
-      <div className={`aistage-page-content${pageText ? ' aistage-page-text' : ''}${pageIcon ? ' aistage-page-icons' : ''}`} style={contentStyle}>
+      <div className={`aistage-page-content${isStudioPage ? ' studio-page-content' : ''}${pageText ? ' aistage-page-text' : ''}${pageIcon ? ' aistage-page-icons' : ''}`} style={contentStyle}>
         {children}
       </div>
       
