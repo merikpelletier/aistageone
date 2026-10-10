@@ -39,6 +39,18 @@ const PrivateRoute = ({ children }) => {
   return children;
 };
 
+const HomeRoute = () => {
+  const { user, isAuthenticated } = useAuth();
+
+  // The public landing page is only for visitors who are not signed in.
+  // Authenticated admin/guest users go straight back into the application.
+  if (isAuthenticated && ['admin', 'guest'].includes(user?.role)) {
+    return <Navigate to="/Index" replace />;
+  }
+
+  return <PrelaunchLanding />;
+};
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
 
@@ -58,7 +70,7 @@ const AuthenticatedApp = () => {
 
   return (
     <Routes>
-      <Route path="/" element={<PrelaunchLanding />} />
+      <Route path="/" element={<HomeRoute />} />
       {Object.entries(Pages).map(([path, Page]) => (
         <Route
           key={path}
