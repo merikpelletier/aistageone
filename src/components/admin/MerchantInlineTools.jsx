@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Upload } from 'lucide-react';
+import { Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import { base44, supabase } from '@/api/base44Client';
 
 const EMPTY_EXTERNAL = {
@@ -17,13 +17,14 @@ export default function MerchantInlineTools({ profileKey }) {
   const qc = useQueryClient();
   const [external, setExternal] = useState(EMPTY_EXTERNAL);
   const [uploading, setUploading] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
 
   const { data: products = [] } = useQuery({
     queryKey: ['merchant-inline-products'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('id,name,price,image_url,product_type,is_active')
+        .select('id,name,price,image_url,product_type,category,is_active')
         .eq('is_active', true)
         .order('order');
       if (error) throw error;
@@ -53,6 +54,15 @@ export default function MerchantInlineTools({ profileKey }) {
   const linkedProductIds = new Set(
     promotions.filter(p => p.promotion_kind === 'giftshop').map(p => p.product_id)
   );
+
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter(product => {
+      const haystack = `${product.name || ''} ${product.product_type || ''} ${product.category || ''}`.toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [products, productSearch]);
 
   const addGiftShop = useMutation({
     mutationFn: async productId => {
@@ -131,31 +141,65 @@ export default function MerchantInlineTools({ profileKey }) {
       </div>
 
       <div>
-        <p className="text-xs uppercase tracking-[0.14em] text-white/55 mb-3">Gift Shop Products</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {products.map(product => {
-            const linked = linkedProductIds.has(product.id);
-            return (
-              <div key={product.id} className="border border-white/10 bg-black">
-                <div className="aspect-square bg-white overflow-hidden">
-                  {product.image_url && <img src={product.image_url} alt="" className="w-full h-full object-contain" />}
-                </div>
-                <div className="p-2.5">
-                  <p className="text-xs text-white line-clamp-2">{product.name}</p>
-                  <p className="text-[11px] text-white/55 mt-1">{product.price}</p>
-                  <button
-                    type="button"
-                    disabled={linked || addGiftShop.isPending}
-                    onClick={() => addGiftShop.mutate(product.id)}
-                    className="mt-2 w-full border border-white/20 px-2 py-1.5 text-[11px] text-white disabled:opacity-40"
-                  >
-                    {linked ? 'On profile' : 'Add to profile'}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-3">
+          <p className="text-xs uppercase tracking-[0.14em] text-white/55">Gift Shop Products</p>
+          <div className="relative w-full sm:max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+            <input
+              value={productSearch}
+              onChange={e => setProductSearch(e.target.value)}
+              placeholder="Search Gift Shop products..."
+              className="input-ai w-full pl-9 pr-9"
+            />
+            {productSearch && (
+              <button
+                type="button"
+                onClick={() => setProductSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                aria-label="Clear product search"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
+
+        {productSearch && (
+          <p className="text-[11px] text-white/40 mb-3">
+            {filteredProducts.length} result{filteredProducts.length === 1 ? '' : 's'}
+          </p>
+        )}
+
+        {filteredProducts.length === 0 ? (
+          <div className="border border-dashed border-white/15 p-5 text-center text-sm text-white/45">
+            No Gift Shop product matches “{productSearch}”.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[640px] overflow-y-auto pr-1">
+            {filteredProducts.map(product => {
+              const linked = linkedProductIds.has(product.id);
+              return (
+                <div key={product.id} className="border border-white/10 bg-black">
+                  <div className="aspect-square bg-white overflow-hidden">
+                    {product.image_url && <img src={product.image_url} alt="" className="w-full h-full object-contain" />}
+                  </div>
+                  <div className="p-2.5">
+                    <p className="text-xs text-white line-clamp-2">{product.name}</p>
+                    <p className="text-[11px] text-white/55 mt-1">{product.price}</p>
+                    <button
+                      type="button"
+                      disabled={linked || addGiftShop.isPending}
+                      onClick={() => addGiftShop.mutate(product.id)}
+                      className="mt-2 w-full border border-white/20 px-2 py-1.5 text-[11px] text-white disabled:opacity-40"
+                    >
+                      {linked ? 'On profile' : 'Add to profile'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="border-t border-white/10 pt-4 space-y-3">
