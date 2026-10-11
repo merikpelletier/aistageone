@@ -23,7 +23,7 @@ export default function AdminUsers() {
   const { data: registeredMembers = [], isLoading: registeredLoading } = useQuery({
     queryKey: ['registeredMembersAdmin'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('admin_list_registered_members');
+      const { data, error } = await supabase.rpc('admin_list_member_profiles');
       if (error) throw error;
       return data || [];
     },
@@ -35,9 +35,9 @@ export default function AdminUsers() {
   });
 
   const moderationMutation = useMutation({
-    mutationFn: async ({ userId, status, reasonText, noteText }) => {
-      const { error } = await supabase.rpc('admin_set_member_moderation', {
-        p_user_id: userId,
+    mutationFn: async ({ profileId, status, reasonText, noteText }) => {
+      const { error } = await supabase.rpc('admin_set_profile_moderation', {
+        p_profile_id: profileId,
         p_status: status,
         p_reason: reasonText || null,
         p_internal_note: noteText || null,
@@ -46,6 +46,7 @@ export default function AdminUsers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['registeredMembersAdmin'] });
+      queryClient.invalidateQueries({ queryKey: ['memberProfiles'] });
       setModerationTarget(null);
       setModerationAction(null);
       setReason('');
@@ -88,7 +89,7 @@ export default function AdminUsers() {
       return;
     }
     moderationMutation.mutate({
-      userId: moderationTarget.user_id,
+      profileId: moderationTarget.profile_id,
       status: moderationAction,
       reasonText: moderationAction === 'active' ? '' : reason.trim(),
       noteText: internalNote.trim(),
@@ -135,8 +136,8 @@ export default function AdminUsers() {
       <section>
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-white text-lg font-light">Registered Members</h2>
-            <p className="text-white/45 text-xs mt-1">Freeze or expel authenticated member accounts. Actions are enforced at sign-in/session checks.</p>
+            <h2 className="text-white text-lg font-light">Members</h2>
+            <p className="text-white/45 text-xs mt-1">All public member profiles are managed here, including legacy profiles without a login account.</p>
           </div>
         </div>
 
@@ -148,7 +149,7 @@ export default function AdminUsers() {
               const status = member.moderation_status || 'active';
               const isAdmin = member.role === 'admin';
               return (
-                <div key={member.user_id} className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 p-4 bg-neutral-950 border border-white/10 rounded-sm">
+                <div key={member.profile_id} className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 p-4 bg-neutral-950 border border-white/10 rounded-sm">
                   <div className="flex items-center gap-4 min-w-0">
                     {member.avatar_url ? (
                       <img src={member.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
@@ -162,11 +163,12 @@ export default function AdminUsers() {
                         <span className="text-white font-medium truncate">{member.display_name || member.email}</span>
                         <Badge variant="outline" className={statusStyles[status] || statusStyles.active}>{status.toUpperCase()}</Badge>
                         {isAdmin && <Badge variant="outline" className="text-white/60 border-white/20">ADMIN</Badge>}
+                        {!member.has_auth_account && <Badge variant="outline" className="text-white/45 border-white/15">PROFILE ONLY</Badge>}
                       </div>
                       <p className="text-white/50 text-xs truncate mt-1">{member.email}</p>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-[11px] text-white/35">
-                        <span>Joined {member.created_at ? format(new Date(member.created_at), 'yyyy-MM-dd') : '—'}</span>
-                        <span>Last sign-in {member.last_sign_in_at ? format(new Date(member.last_sign_in_at), 'yyyy-MM-dd HH:mm') : '—'}</span>
+                        <span>Created {member.created_at ? format(new Date(member.created_at), 'yyyy-MM-dd') : '—'}</span>
+                        {member.has_auth_account && <span>Last sign-in {member.last_sign_in_at ? format(new Date(member.last_sign_in_at), 'yyyy-MM-dd HH:mm') : '—'}</span>}
                       </div>
                       {status !== 'active' && member.moderation_reason && (
                         <p className="text-white/55 text-xs mt-2">Reason: {member.moderation_reason}</p>
@@ -196,7 +198,7 @@ export default function AdminUsers() {
                 </div>
               );
             })}
-            {registeredMembers.length === 0 && <p className="text-white/50 text-sm py-4">No registered members.</p>}
+            {registeredMembers.length === 0 && <p className="text-white/50 text-sm py-4">No members.</p>}
           </div>
         )}
       </section>
