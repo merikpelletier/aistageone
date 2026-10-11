@@ -9,6 +9,15 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const [authError, setAuthError] = useState(null);
+  const [accountStatus, setAccountStatus] = useState('active');
+  const [accountRestrictionReason, setAccountRestrictionReason] = useState(null);
+  const [accountDeletionDueAt, setAccountDeletionDueAt] = useState(null);
+
+  const resetAccountState = () => {
+    setAccountStatus('active');
+    setAccountRestrictionReason(null);
+    setAccountDeletionDueAt(null);
+  };
 
   const checkUserAuth = useCallback(async ({ showLoading = true } = {}) => {
     if (showLoading) setIsLoadingAuth(true);
@@ -20,30 +29,38 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         setIsAuthenticated(false);
         setAuthError(null);
+        resetAccountState();
         return;
       }
 
       const currentUser = await base44.auth.me();
 
       if (currentUser?.role !== 'admin') {
-        const { data: moderationRows, error: moderationError } = await supabase.rpc('get_my_moderation_status');
-        if (moderationError) throw moderationError;
-        const moderation = moderationRows?.[0] || { status: 'active', reason: null };
+        const { data: accessRows, error: accessError } = await supabase.rpc('get_my_account_access');
+        if (accessError) throw accessError;
+        const access = accessRows?.[0] || { status: 'active', reason: null, deletion_due_at: null };
 
-        if (moderation.status === 'frozen' || moderation.status === 'expelled') {
+        if (access.status === 'frozen') {
           await supabase.auth.signOut();
           setUser(null);
           setIsAuthenticated(false);
+          setAccountStatus('frozen');
+          setAccountRestrictionReason(access.reason || null);
+          setAccountDeletionDueAt(null);
           setAuthError({
             type: 'account_restricted',
-            status: moderation.status,
-            message: moderation.status === 'frozen'
-              ? 'Your account has been temporarily frozen by AI Stage One administration.'
-              : 'Your account has been expelled from AI Stage One.',
-            reason: moderation.reason || null,
+            status: 'frozen',
+            message: 'Your account has been temporarily frozen by AI Stage One administration.',
+            reason: access.reason || null,
           });
           return;
         }
+
+        setAccountStatus(access.status || 'active');
+        setAccountRestrictionReason(access.reason || null);
+        setAccountDeletionDueAt(access.deletion_due_at || null);
+      } else {
+        resetAccountState();
       }
 
       setUser(currentUser);
@@ -72,6 +89,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setIsAuthenticated(false);
     setAuthChecked(true);
+    resetAccountState();
   };
 
   const navigateToLogin = () => base44.auth.redirectToLogin(window.location.href);
@@ -85,6 +103,9 @@ export const AuthProvider = ({ children }) => {
       isLoadingPublicSettings: false,
       authError,
       appPublicSettings: null,
+      accountStatus,
+      accountRestrictionReason,
+      accountDeletionDueAt,
       logout,
       navigateToLogin,
       checkAppState: checkUserAuth,
