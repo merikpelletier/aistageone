@@ -10,6 +10,7 @@ import { Plus, Edit2, Trash2, Eye, EyeOff, Layers, Upload, ChevronDown, ChevronR
 import AdminDossierCategories from './AdminDossierCategories';
 import AdminEpisodeProduction from './AdminEpisodeProduction';
 import SeriesPageEditor from './SeriesPageEditor';
+import DossierAssociatedMember from '@/components/DossierAssociatedMember';
 import { toast } from 'sonner';
 
 function DossierPagesIndex({ pages, onManage }) {
@@ -332,6 +333,18 @@ export default function AdminDossiers() {
                 placeholder="Author"
                 className="bg-neutral-900 border-white/10 text-white"
               />
+
+              {editingDossier.id && (
+                <div className="border border-white/10 bg-black/30 p-3">
+                  <p className="text-white/45 text-[10px] uppercase tracking-[0.18em] mb-2">Associated member</p>
+                  {(editingDossier.ai_member_id || editingDossier.submitted_by_email?.trim()) ? (
+                    <DossierAssociatedMember dossier={editingDossier} compact />
+                  ) : (
+                    <p className="text-white/45 text-sm">No member associated with this dossier.</p>
+                  )}
+                </div>
+              )}
+
               <Select
                 value={editingDossier.category || ''}
                 onValueChange={(value) => setEditingDossier({ ...editingDossier, category: value === '__none__' ? '' : value })}
