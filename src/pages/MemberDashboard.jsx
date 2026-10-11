@@ -50,8 +50,8 @@ export default function MemberDashboard() {
     queryKey: ['aiMemberProfile', aiMemberId],
     queryFn: async () => {
       if (!aiMemberId) return null;
-      const members = await base44.entities.AIMemberPublic.filter({ id: aiMemberId });
-      const member = members[0] || null;
+      const members = await base44.entities.AIMemberPublic.list('display_name', 500);
+      const member = members.find(item => String(item.id) === String(aiMemberId)) || null;
       if (!member) return null;
       return {
         ...member,
