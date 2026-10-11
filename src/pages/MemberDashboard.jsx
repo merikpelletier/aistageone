@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import MemberProfileCard from '@/components/MemberProfileCard';
 import DossierGallery from '@/components/DossierGallery';
 import MemberProfileEditor from '@/components/MemberProfileEditor';
@@ -20,8 +20,7 @@ import ProfilePresentation from '@/components/ProfilePresentation';
 import ProfileGallery from '@/components/ProfileGallery';
 import CreatorSubscriptionSection from '@/components/CreatorSubscriptionSection';
 import ProfileFansSponsors from '@/components/ProfileFansSponsors';
-import { Link, useSearchParams } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 
 export default function MemberDashboard() {
@@ -29,13 +28,15 @@ export default function MemberDashboard() {
   const [searchParams] = useSearchParams();
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [previewAsGuest, setPreviewAsGuest] = useState(false);
+
   const memberEmail = searchParams.get('email');
-  const viewingEmail = memberEmail || user?.email;
-  const isOwnProfile = !memberEmail || memberEmail === user?.email;
+  const aiMemberId = searchParams.get('aiMemberId');
+  const isAIProfile = !!aiMemberId;
+  const viewingEmail = isAIProfile ? null : (memberEmail || user?.email);
+  const isOwnProfile = !isAIProfile && (!memberEmail || memberEmail === user?.email);
   const effectiveIsOwnProfile = isOwnProfile && !previewAsGuest;
 
-  // Fetch the member's profile
-  const { data: profile, isLoading: profileLoading } = useQuery({
+  const { data: regularProfile, isLoading: regularProfileLoading } = useQuery({
     queryKey: ['memberProfile', viewingEmail],
     queryFn: async () => {
       if (!viewingEmail) return null;
@@ -45,35 +46,56 @@ export default function MemberDashboard() {
     enabled: !!viewingEmail,
   });
 
-  // Fetch member's dossiers via backend function (works for guests too)
-  const { data: dossiers = [], isLoading: dossiersLoading } = useQuery({
-    queryKey: ['memberDossiers', viewingEmail],
+  const { data: aiProfile, isLoading: aiProfileLoading } = useQuery({
+    queryKey: ['aiMemberProfile', aiMemberId],
     queryFn: async () => {
+      if (!aiMemberId) return null;
+      const members = await base44.entities.AIMemberPublic.filter({ id: aiMemberId });
+      const member = members[0] || null;
+      if (!member) return null;
+      return {
+        ...member,
+        title: member.title || member.headline || '',
+        banner_url: member.custom_banner_url || member.banner_url || '',
+        custom_banner_url: member.custom_banner_url || member.banner_url || '',
+        images: member.images || [],
+        links: member.links || [],
+        is_ai_generated: true,
+      };
+    },
+    enabled: !!aiMemberId,
+  });
+
+  const profile = isAIProfile ? aiProfile : regularProfile;
+  const profileLoading = isAIProfile ? aiProfileLoading : regularProfileLoading;
+  const identityKey = isAIProfile ? `ai:${aiMemberId}` : viewingEmail;
+
+  const { data: dossiers = [], isLoading: dossiersLoading } = useQuery({
+    queryKey: isAIProfile ? ['aiMemberDossiers', aiMemberId] : ['memberDossiers', viewingEmail],
+    queryFn: async () => {
+      if (isAIProfile) {
+        return base44.entities.Dossier.filter({ ai_member_id: aiMemberId });
+      }
       const res = await base44.functions.invoke('getMemberDossiers', { memberEmail: viewingEmail });
       return res.data?.dossiers || [];
     },
-    enabled: !!viewingEmail,
+    enabled: isAIProfile ? !!aiMemberId : !!viewingEmail,
   });
 
-  // Fetch active campaigns for this member (for banner display)
   const { data: campaigns = [] } = useQuery({
     queryKey: ['memberCampaigns', viewingEmail],
     queryFn: async () => {
       const results = await base44.entities.Campaign.filter({ member_email: viewingEmail, status: 'active' });
       return results;
     },
-    enabled: !!viewingEmail,
+    enabled: !!viewingEmail && !isAIProfile,
   });
 
-  // Build dossier_id -> campaign map for banner display
   const campaignsMap = {};
   for (const c of campaigns) {
-    if (c.linked_dossier_id) {
-      campaignsMap[c.linked_dossier_id] = c;
-    }
+    if (c.linked_dossier_id) campaignsMap[c.linked_dossier_id] = c;
   }
 
-  // Fetch ratings for dossiers
   const { data: ratingsMap = {} } = useQuery({
     queryKey: ['dossierRatings', dossiers.map(d => d.id)],
     queryFn: async () => {
@@ -91,7 +113,6 @@ export default function MemberDashboard() {
     enabled: dossiers.length > 0,
   });
 
-  // Fetch comments for dossiers
   const { data: commentsMap = {} } = useQuery({
     queryKey: ['dossierComments', dossiers.map(d => d.id)],
     queryFn: async () => {
@@ -109,8 +130,6 @@ export default function MemberDashboard() {
     enabled: dossiers.length > 0,
   });
 
-
-
   if (!user && !isLoadingAuth) {
     base44.auth.redirectToLogin(window.location.href);
     return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" /></div>;
@@ -120,9 +139,24 @@ export default function MemberDashboard() {
     return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" /></div>;
   }
 
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center px-6">
+        <div className="text-center">
+          <h1 className="text-white text-2xl font-light">Profile not found</h1>
+          <p className="text-white/50 text-sm mt-2">This member profile is unavailable.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const presentationUser = {
+    email: identityKey,
+    full_name: profile?.display_name || viewingEmail || 'Member',
+  };
+
   return (
     <div className="relative min-h-screen bg-black pb-20">
-      {/* Your Stage stripe — below the AI agent chat bar */}
       {isOwnProfile && (
         <div
           className="w-full bg-yellow-400 text-right px-4 hover:bg-red-600 transition-colors"
@@ -139,12 +173,8 @@ export default function MemberDashboard() {
       )}
 
       <div className="max-w-5xl mx-auto">
-        {/* Own profile — full MemberProfileCard */}
         {effectiveIsOwnProfile && viewingEmail && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <MemberProfileCard
               profile={profile}
               user={{ email: viewingEmail, full_name: profile?.display_name || user?.full_name || viewingEmail }}
@@ -154,10 +184,8 @@ export default function MemberDashboard() {
           </motion.div>
         )}
 
-        {/* Public profile — Published Work featured full-width, then masonry */}
-        {!effectiveIsOwnProfile && viewingEmail && (
+        {!effectiveIsOwnProfile && (
           <>
-            {/* Published Work — the star, full-width and prominent */}
             <div className="px-4 pt-4">
               <CollapsibleSection label="Published Work" accent="work" defaultOpen>
                 {!dossiersLoading && dossiers.length > 0 ? (
@@ -173,13 +201,9 @@ export default function MemberDashboard() {
               </CollapsibleSection>
             </div>
 
-            {/* Masonry columns */}
             <div className="px-4 pt-2 columns-1 sm:columns-2 lg:columns-3 gap-4">
               <CollapsibleSection label="Presentation" accent="presentation" defaultOpen>
-                <ProfilePresentation
-                  profile={profile}
-                  user={{ email: viewingEmail, full_name: profile?.display_name || viewingEmail }}
-                />
+                <ProfilePresentation profile={profile} user={presentationUser} />
               </CollapsibleSection>
 
               {profile?.images && profile.images.length > 0 && (
@@ -188,93 +212,83 @@ export default function MemberDashboard() {
                 </CollapsibleSection>
               )}
 
-              <CollapsibleSection label="Fans & Sponsors" accent="fans" defaultOpen>
-                <ProfileFansSponsors
-                  profile={profile}
-                  user={{ email: viewingEmail }}
-                />
-              </CollapsibleSection>
+              {!isAIProfile && (
+                <CollapsibleSection label="Fans & Sponsors" accent="fans" defaultOpen>
+                  <ProfileFansSponsors profile={profile} user={presentationUser} />
+                </CollapsibleSection>
+              )}
 
-              <CollapsibleSection label="Become a Sponsor" accent="sponsor" defaultOpen>
-                <BecomeSponsorBanner memberEmail={viewingEmail} />
-              </CollapsibleSection>
+              {!isAIProfile && (
+                <CollapsibleSection label="Become a Sponsor" accent="sponsor" defaultOpen>
+                  <BecomeSponsorBanner memberEmail={viewingEmail} />
+                </CollapsibleSection>
+              )}
 
-              <CollapsibleSection label="Contact" accent="contact" defaultOpen>
-                <MemberContactForm
-                  memberEmail={viewingEmail}
-                  memberName={profile?.display_name}
-                />
-              </CollapsibleSection>
+              {!isAIProfile && (
+                <CollapsibleSection label="Contact" accent="contact" defaultOpen>
+                  <MemberContactForm memberEmail={viewingEmail} memberName={profile?.display_name} />
+                </CollapsibleSection>
+              )}
 
               <CollapsibleSection label="Links" accent="links" defaultOpen>
-                <ProfileLinksSection profile={profile} isOwnProfile={effectiveIsOwnProfile} userEmail={viewingEmail} />
+                <ProfileLinksSection profile={profile} isOwnProfile={false} userEmail={identityKey} />
               </CollapsibleSection>
 
-              <CollapsibleSection label="Series" accent="series">
-                <MemberSeriesParticipation userEmail={viewingEmail} />
-              </CollapsibleSection>
+              {!isAIProfile && (
+                <CollapsibleSection label="Series" accent="series">
+                  <MemberSeriesParticipation userEmail={viewingEmail} />
+                </CollapsibleSection>
+              )}
             </div>
           </>
         )}
 
-        {/* Creator annual subscriptions */}
-        {viewingEmail && (
-          <CreatorSubscriptionSection
-            creatorEmail={viewingEmail}
-            isOwnProfile={effectiveIsOwnProfile}
-          />
+        {!isAIProfile && viewingEmail && (
+          <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />
         )}
 
-        {/* Tokens & Membership — own profile only */}
         {effectiveIsOwnProfile && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
             <TokensMembershipSection userEmail={viewingEmail} />
           </motion.div>
         )}
 
-        {/* Sponsors & Contributors — private, own profile only */}
         {effectiveIsOwnProfile && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
             <SponsorsContributorsSection userEmail={viewingEmail} />
           </motion.div>
         )}
 
-        {/* Links — distinct section, owner can add/remove (own profile only; public view renders in masonry above) */}
         {effectiveIsOwnProfile && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <ProfileLinksSection profile={profile} isOwnProfile={effectiveIsOwnProfile} userEmail={viewingEmail} />
           </motion.div>
         )}
 
-        {/* Publish Story — own profile only */}
         {effectiveIsOwnProfile && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
             <PublishStorySection userEmail={viewingEmail} />
           </motion.div>
         )}
 
-        {/* Campaign Manager — own profile only */}
         {effectiveIsOwnProfile && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}>
             <CampaignManager userEmail={viewingEmail} />
           </motion.div>
         )}
 
-        {/* Messages & Comments — own profile only */}
         {effectiveIsOwnProfile && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}>
             <MemberInboxSection userEmail={viewingEmail} />
           </motion.div>
         )}
 
-        {/* Series Participation — own profile only; public view renders in masonry above */}
         {effectiveIsOwnProfile && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
             <MemberSeriesParticipation userEmail={viewingEmail} />
           </motion.div>
         )}
 
-        {/* Dossiers Sliding Gallery — own profile only; public view renders in masonry above */}
         {effectiveIsOwnProfile && !dossiersLoading && dossiers.length > 0 && (
           <DossierGallery
             dossiers={dossiers}
@@ -285,7 +299,6 @@ export default function MemberDashboard() {
           />
         )}
 
-        {/* Log Out */}
         {isOwnProfile && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
             <button
@@ -299,14 +312,9 @@ export default function MemberDashboard() {
         )}
       </div>
 
-      {/* Profile Editor Modal */}
       <AnimatePresence>
         {showProfileEditor && isOwnProfile && (
-          <MemberProfileEditor
-            profile={profile}
-            user={user}
-            onClose={() => setShowProfileEditor(false)}
-          />
+          <MemberProfileEditor profile={profile} user={user} onClose={() => setShowProfileEditor(false)} />
         )}
       </AnimatePresence>
     </div>
