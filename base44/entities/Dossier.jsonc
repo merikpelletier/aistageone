@@ -16,122 +16,40 @@
     },
     "class": {
       "type": "string",
-      "enum": [
-        "Videos",
-        "Story",
-        "Assets",
-        "Kits",
-        "Merchandise"
-      ],
+      "enum": ["Videos", "Story", "Assets", "Kits", "Merchandise"],
       "description": "Content class for the dossier"
     },
-    "cover_image": {
-      "type": "string",
-      "description": "URL of the cover image (portrait)"
-    },
-    "cover_template_image": {
-      "type": "string",
-      "description": "Designed cover background (portrait) with the series title baked in. Copied from the StoryTheme at publish time. Story-class dossier cards render this as the background, overlay the story title at the top, and center cover_image inside the template frame."
-    },
-    "cover_image_landscape": {
-      "type": "string",
-      "description": "URL of the cover image for landscape (optional, falls back to cover_image)"
-    },
-    "cover_video": {
-      "type": "string",
-      "description": "URL of the cover video (portrait, optional)"
-    },
-    "cover_video_landscape": {
-      "type": "string",
-      "description": "URL of the cover video for landscape (optional, falls back to cover_video)"
-    },
+    "cover_image": { "type": "string", "description": "URL of the cover image (portrait)" },
+    "cover_template_image": { "type": "string", "description": "Designed cover background (portrait) with the series title baked in." },
+    "cover_image_landscape": { "type": "string", "description": "URL of the cover image for landscape" },
+    "cover_video": { "type": "string", "description": "URL of the cover video (portrait, optional)" },
+    "cover_video_landscape": { "type": "string", "description": "URL of the cover video for landscape" },
     "status": {
       "type": "string",
-      "enum": [
-        "draft",
-        "published",
-        "unpublished",
-        "pending_review",
-        "rejected"
-      ],
+      "enum": ["draft", "published", "unpublished", "pending_review", "rejected"],
       "default": "draft"
     },
-    "order": {
-      "type": "number",
-      "description": "Display order in the index"
-    },
-    "author_name": {
-      "type": "string"
-    },
-    "hide_text_on_cover": {
-      "type": "boolean",
-      "default": false,
-      "description": "Hide title and details on the cover page"
-    },
-    "has_portrait": {
-      "type": "boolean",
-      "default": true,
-      "description": "Content available in portrait format"
-    },
-    "has_landscape": {
-      "type": "boolean",
-      "default": false,
-      "description": "Content available in landscape format"
-    },
-    "submitted_by_email": {
-      "type": "string",
-      "description": "Email of the member who submitted this"
-    },
-    "submitted_by_name": {
-      "type": "string",
-      "description": "Name of the member who submitted this"
-    },
+    "order": { "type": "number", "description": "Display order in the index" },
+    "author_name": { "type": "string" },
+    "ai_member_id": { "type": "string", "description": "Optional AI Member identity associated with this dossier" },
+    "hide_text_on_cover": { "type": "boolean", "default": false, "description": "Hide title and details on the cover page" },
+    "has_portrait": { "type": "boolean", "default": true, "description": "Content available in portrait format" },
+    "has_landscape": { "type": "boolean", "default": false, "description": "Content available in landscape format" },
+    "submitted_by_email": { "type": "string", "description": "Email of the member who submitted this" },
+    "submitted_by_name": { "type": "string", "description": "Name of the member who submitted this" },
     "membership_type": {
       "type": "string",
-      "enum": [
-        "publisher",
-        "influencer",
-        "brand"
-      ],
+      "enum": ["publisher", "influencer", "brand"],
       "description": "Membership type of the submitter"
     },
-    "duration_days": {
-      "type": "number",
-      "description": "Chosen publication duration (1-30 days)"
-    },
-    "publish_until": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Automatic expiration date"
-    },
-    "submitted_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Submission date"
-    },
-    "approved_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Approval date"
-    },
-    "rejection_reason": {
-      "type": "string",
-      "description": "Reason for rejection (visible to the member)"
-    },
-    "requires_payment": {
-      "type": "boolean",
-      "default": false,
-      "description": "Brand: fees required before publication"
-    },
-    "payment_confirmed": {
-      "type": "boolean",
-      "default": false,
-      "description": "Payment confirmed by the admin"
-    },
-    "description": {
-      "type": "string",
-      "description": "Description/pitch of the submitted content"
-    },
+    "duration_days": { "type": "number", "description": "Chosen publication duration (1-30 days)" },
+    "publish_until": { "type": "string", "format": "date-time", "description": "Automatic expiration date" },
+    "submitted_at": { "type": "string", "format": "date-time", "description": "Submission date" },
+    "approved_at": { "type": "string", "format": "date-time", "description": "Approval date" },
+    "rejection_reason": { "type": "string", "description": "Reason for rejection (visible to the member)" },
+    "requires_payment": { "type": "boolean", "default": false, "description": "Brand: fees required before publication" },
+    "payment_confirmed": { "type": "boolean", "default": false, "description": "Payment confirmed by the admin" },
+    "description": { "type": "string", "description": "Description/pitch of the submitted content" },
     "access_level": {
       "type": "string",
       "enum": ["public", "subscribers"],
@@ -140,44 +58,20 @@
     },
     "product_placements": {
       "type": "array",
-      "description": "Product/brand placements associated with this dossier (dossier-level, not tied to a specific DossierPage)",
+      "description": "Product/brand placements associated with this dossier",
       "items": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string",
-            "description": "Product / brand name"
-          },
-          "image_url": {
-            "type": "string",
-            "description": "Product image URL"
-          },
-          "description": {
-            "type": "string",
-            "description": "Optional short description"
-          },
-          "url": {
-            "type": "string",
-            "description": "External product URL"
-          },
-          "page_reference": {
-            "type": "string",
-            "description": "Optional scene/page reference"
-          },
-          "order": {
-            "type": "number",
-            "description": "Display order"
-          }
+          "id": { "type": "string" },
+          "name": { "type": "string", "description": "Product / brand name" },
+          "image_url": { "type": "string", "description": "Product image URL" },
+          "description": { "type": "string", "description": "Optional short description" },
+          "url": { "type": "string", "description": "External product URL" },
+          "page_reference": { "type": "string", "description": "Optional scene/page reference" },
+          "order": { "type": "number", "description": "Display order" }
         }
       }
     }
   },
-  "required": [
-    "title",
-    "status",
-    "order"
-  ]
+  "required": ["title", "status", "order"]
 }

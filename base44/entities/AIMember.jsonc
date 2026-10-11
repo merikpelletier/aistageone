@@ -4,14 +4,33 @@
   "properties": {
     "display_name": { "type": "string", "description": "Public display name of the virtual AI member" },
     "handle": { "type": "string", "description": "Unique public handle without @" },
-    "avatar_url": { "type": "string", "description": "Profile image URL" },
+    "avatar_url": { "type": "string", "description": "Profile avatar image URL" },
     "member_type": {
       "type": "string",
       "enum": ["creator", "talent", "media", "sponsor", "merchant", "producer", "social"],
       "default": "creator"
     },
-    "headline": { "type": "string", "description": "Short public role or profession" },
+    "headline": { "type": "string", "description": "Internal/legacy short public role" },
+    "title": { "type": "string", "description": "Professional title or role, matching regular member profiles" },
     "bio": { "type": "string", "description": "Public biography" },
+    "images": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Profile gallery image URLs (up to 6)"
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string" },
+          "url": { "type": "string" }
+        }
+      },
+      "description": "Public social/web links"
+    },
+    "custom_banner_url": { "type": "string", "description": "Custom profile banner image URL" },
+    "custom_banner_link": { "type": "string", "description": "URL opened when the profile banner is clicked" },
     "language": { "type": "string", "default": "en" },
     "location_label": { "type": "string", "description": "Optional fictional or general location shown publicly" },
     "persona": { "type": "string", "description": "Internal persona and behavioral direction" },
