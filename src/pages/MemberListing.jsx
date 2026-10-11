@@ -29,7 +29,7 @@ function MemberCard({ profile }) {
             </h2>
             {isAI && (
               <span className="flex-shrink-0 border border-teal-400/50 text-teal-300 text-[10px] font-semibold uppercase tracking-[0.12em] px-2 py-1">
-                AI GENERATED
+                AI
               </span>
             )}
           </div>
