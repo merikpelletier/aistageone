@@ -179,6 +179,13 @@ export default function Layout({ children, currentPageName }) {
         .aistage-page-content.aistage-page-icons svg { color: var(--aistage-surface-icon) !important; stroke: currentColor; }
         .studio-page-content { min-height: 100vh; background: #202328; }
 
+        ${isStudioPage ? `
+        @media (min-width: 1024px) and (pointer: fine) {
+          html, body, #root { background: #202328 !important; }
+          :root { --background: 216 11% 14%; --foreground: 0 0% 100%; }
+        }
+        ` : ''}
+
         @media (min-width: 1024px) {
           .studio-page-content [class*="max-w-[1500px]"] { max-width: none !important; }
           .studio-page-content [class*="min-h-[calc(100vh-3.5rem)]"][class*="lg:p-8"] { padding: 22px 28px !important; }
