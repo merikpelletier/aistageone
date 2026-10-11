@@ -24,6 +24,28 @@ export const AuthProvider = ({ children }) => {
       }
 
       const currentUser = await base44.auth.me();
+
+      if (currentUser?.role !== 'admin') {
+        const { data: moderationRows, error: moderationError } = await supabase.rpc('get_my_moderation_status');
+        if (moderationError) throw moderationError;
+        const moderation = moderationRows?.[0] || { status: 'active', reason: null };
+
+        if (moderation.status === 'frozen' || moderation.status === 'expelled') {
+          await supabase.auth.signOut();
+          setUser(null);
+          setIsAuthenticated(false);
+          setAuthError({
+            type: 'account_restricted',
+            status: moderation.status,
+            message: moderation.status === 'frozen'
+              ? 'Your account has been temporarily frozen by AI Stage One administration.'
+              : 'Your account has been expelled from AI Stage One.',
+            reason: moderation.reason || null,
+          });
+          return;
+        }
+      }
+
       setUser(currentUser);
       setIsAuthenticated(true);
       setAuthError(null);
@@ -40,9 +62,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     checkUserAuth();
     const { data } = supabase.auth.onAuthStateChange(() => {
-      // Token refreshes and focus changes must not unmount the current page.
-      // In particular, an admin editor keeps all of its local form state while
-      // the refreshed session is verified in the background.
       window.setTimeout(() => checkUserAuth({ showLoading: false }), 0);
     });
     return () => data.subscription.unsubscribe();
