@@ -60,7 +60,7 @@
 }
 
 /* Desktop with mouse/trackpad only: make the Studio top bar truly fixed.
-   This leaves touch/mobile/tablet behavior untouched. */
+   No spacing, height, content, sidebar, mobile, or tablet position changes here. */
 @media (min-width: 1024px) and (pointer: fine) {
   .studio-shell > .sticky.top-0 {
     position: fixed !important;
@@ -69,10 +69,5 @@
     right: 0 !important;
     width: 100% !important;
     z-index: 6000 !important;
-  }
-
-  /* Replace the header's normal-flow height after it becomes fixed. */
-  .studio-shell > .flex {
-    padding-top: 3.5rem !important;
   }
 }
