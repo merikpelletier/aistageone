@@ -1,19 +1,51 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { base44, supabase } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Inbox, Send, MessageSquare, Loader2, FileText } from 'lucide-react';
+import { Inbox, Send, MessageSquare, Loader2, FileText, ShieldAlert } from 'lucide-react';
 
 export default function MemberInboxSection({ userEmail }) {
   const [tab, setTab] = useState('received');
-  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['memberMessages', userEmail],
     queryFn: async () => {
-      const res = await base44.functions.invoke('getMemberMessages', { memberEmail: userEmail });
-      return res.data;
+      const [regularRes, systemRes] = await Promise.all([
+        base44.functions.invoke('getMemberMessages', { memberEmail: userEmail }),
+        supabase
+          .from('member_system_message')
+          .select('id,subject,message,created_at,read_at,message_type')
+          .eq('member_email', userEmail)
+          .order('created_at', { ascending: false }),
+      ]);
+
+      if (systemRes.error) throw systemRes.error;
+
+      const regular = regularRes.data || {};
+      const systemMessages = (systemRes.data || []).map(item => ({
+        id: `system:${item.id}`,
+        user_name: 'AI Stage One Administration',
+        user_email: '',
+        content: item.message,
+        source_title: item.subject,
+        source_type: 'system',
+        date: item.created_at,
+        read: !!item.read_at,
+        status: item.read_at ? 'read' : 'unread',
+        is_system_message: true,
+        message_type: item.message_type,
+      }));
+
+      const received = [...systemMessages, ...(regular.received || [])].sort((a, b) =>
+        new Date(b.date || 0) - new Date(a.date || 0)
+      );
+
+      return {
+        ...regular,
+        received,
+        unreadCount: (regular.unreadCount || 0) + systemMessages.filter(item => !item.read).length,
+      };
     },
     enabled: !!userEmail,
   });
@@ -37,7 +69,6 @@ export default function MemberInboxSection({ userEmail }) {
 
   return (
     <div className="bg-black border border-white/10 rounded-3xl p-6 space-y-4 shadow-2xl">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center relative">
           <Inbox size={20} className="text-black" />
@@ -53,7 +84,6 @@ export default function MemberInboxSection({ userEmail }) {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-2">
         <button
           onClick={() => setTab('received')}
@@ -80,7 +110,6 @@ export default function MemberInboxSection({ userEmail }) {
         </button>
       </div>
 
-      {/* List */}
       {isLoading ? (
         <div className="flex justify-center py-8">
           <Loader2 size={20} className="animate-spin text-white/30" />
@@ -114,22 +143,27 @@ export default function MemberInboxSection({ userEmail }) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.03 }}
                 className={`flex gap-3 p-3 rounded-xl border ${
-                  isReceived && !item.read && item.status !== 'read'
-                    ? 'bg-yellow-400/5 border-yellow-400/20'
-                    : 'bg-white/5 border-white/10'
+                  item.is_system_message
+                    ? 'bg-red-500/5 border-red-500/25'
+                    : isReceived && !item.read && item.status !== 'read'
+                      ? 'bg-yellow-400/5 border-yellow-400/20'
+                      : 'bg-white/5 border-white/10'
                 }`}
               >
-                {/* Avatar */}
-                <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white/60 text-sm font-bold uppercase">
-                    {authorName.charAt(0)}
-                  </span>
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${item.is_system_message ? 'bg-red-500/15' : 'bg-white/10'}`}>
+                  {item.is_system_message ? (
+                    <ShieldAlert size={16} className="text-red-300" />
+                  ) : (
+                    <span className="text-white/60 text-sm font-bold uppercase">{authorName.charAt(0)}</span>
+                  )}
                 </div>
 
-                {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-white text-sm font-bold truncate">{authorName}</p>
+                    {item.is_system_message && (
+                      <span className="text-[10px] uppercase tracking-wider text-red-300 border border-red-500/30 px-1.5 py-0.5">Administrative</span>
+                    )}
                     {isReceived && !item.read && item.status !== 'read' && (
                       <span className="w-2 h-2 bg-yellow-400 rounded-full flex-shrink-0" />
                     )}
@@ -137,15 +171,15 @@ export default function MemberInboxSection({ userEmail }) {
                   {authorEmail && authorEmail !== userEmail && (
                     <p className="text-white/30 text-xs truncate">{authorEmail}</p>
                   )}
-                  <p className="text-white/70 text-sm mt-1 line-clamp-3">{content}</p>
+                  <p className="text-white/70 text-sm mt-1 line-clamp-5">{content}</p>
                   <div className="flex items-center gap-2 mt-1.5">
                     {sourceLink ? (
                       <Link to={sourceLink} className="flex items-center gap-1 text-yellow-400/80 text-xs hover:text-yellow-400 transition-colors">
                         <FileText size={10} />
-                        <span className="truncate max-w-[140px]">{item.source_title}</span>
+                        <span className="truncate max-w-[180px]">{item.source_title}</span>
                       </Link>
                     ) : (
-                      <span className="text-white/30 text-xs truncate max-w-[140px]">{item.source_title}</span>
+                      <span className="text-white/30 text-xs truncate max-w-[220px]">{item.source_title}</span>
                     )}
                     <span className="text-white/20 text-xs">·</span>
                     <span className="text-white/30 text-xs">{formatDate(item.date)}</span>
