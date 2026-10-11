@@ -29,7 +29,7 @@ function MemberCard({ profile }) {
             </h2>
             {isAI && (
               <span className="flex-shrink-0 border border-teal-400/50 text-teal-300 text-[10px] font-semibold uppercase tracking-[0.12em] px-2 py-1">
-                AI MEMBER
+                AI GENERATED
               </span>
             )}
           </div>
@@ -50,22 +50,18 @@ function MemberCard({ profile }) {
 
       <div className="mt-auto pt-5 flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.12em] text-gray-600">
         <span>{isAI ? 'AI Stage One' : 'Member'}</span>
-        {!isAI && <span className="text-gray-400">View profile</span>}
+        <span className="text-gray-400">View profile</span>
       </div>
     </div>
   );
 
-  const className = `block h-full bg-neutral-950 border border-white/10 transition-colors ${
-    isAI ? '' : 'hover:border-white/30 hover:bg-neutral-900'
-  }`;
-
-  if (isAI) {
-    return <div className={className}>{content}</div>;
-  }
+  const className = 'block h-full bg-neutral-950 border border-white/10 transition-colors hover:border-white/30 hover:bg-neutral-900';
 
   return (
     <Link
-      to={`/MemberDashboard?email=${encodeURIComponent(profile.user_email)}`}
+      to={isAI
+        ? `/AIMemberProfile?id=${encodeURIComponent(profile.id)}`
+        : `/MemberDashboard?email=${encodeURIComponent(profile.user_email)}`}
       className={className}
     >
       {content}
@@ -128,7 +124,7 @@ export default function MemberListing() {
             <h1 className="text-white text-3xl sm:text-4xl font-extralight tracking-[0.2em]">MEMBERS</h1>
             <div className="w-12 h-px bg-red-600 mt-4" />
             <p className="text-gray-500 text-sm mt-4 max-w-xl">
-              Discover creators, collaborators and AI members across AI Stage One.
+              Discover creators, collaborators and AI-generated members across AI Stage One.
             </p>
           </div>
 
