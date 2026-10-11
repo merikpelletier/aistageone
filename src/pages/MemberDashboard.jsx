@@ -148,6 +148,23 @@ export default function MemberDashboard() {
     full_name: profile?.display_name || viewingEmail,
   };
 
+  const bannerUrl = profile?.custom_banner_url || profile?.banner_url || profile?.cover_url || null;
+  const bannerLink = profile?.custom_banner_link || null;
+
+  const banner = bannerUrl ? (
+    <div className="px-4 pt-4">
+      {bannerLink ? (
+        <a href={bannerLink} target="_blank" rel="noreferrer" className="block overflow-hidden border border-white/10 bg-neutral-950">
+          <img src={bannerUrl} alt={`${profile?.display_name || 'Member'} banner`} className="w-full h-[180px] sm:h-[220px] lg:h-[260px] object-cover" />
+        </a>
+      ) : (
+        <div className="overflow-hidden border border-white/10 bg-neutral-950">
+          <img src={bannerUrl} alt={`${profile?.display_name || 'Member'} banner`} className="w-full h-[180px] sm:h-[220px] lg:h-[260px] object-cover" />
+        </div>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div className="relative min-h-screen bg-black pb-20">
       {isOwnProfile && (
@@ -166,6 +183,8 @@ export default function MemberDashboard() {
       )}
 
       <div className="max-w-5xl mx-auto">
+        {banner}
+
         {effectiveIsOwnProfile && viewingEmail && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <MemberProfileCard
