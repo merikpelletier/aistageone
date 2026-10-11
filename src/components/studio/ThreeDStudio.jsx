@@ -146,15 +146,15 @@ function LibraryCatalog({ title, description, icon: Icon, assetTypes }) {
       </div>
 
       {galleryAsset && galleryImages.length > 0 && (
-        <div className="fixed inset-0 z-[7000] flex items-center justify-center bg-black/90 p-3 md:p-6" onClick={() => setGalleryAsset(null)}>
-          <div className="relative flex h-full max-h-[92vh] w-full max-w-[1200px] flex-col overflow-hidden rounded-[4px] border border-white/15 bg-[#17191d]" onClick={(event) => event.stopPropagation()}>
+        <div className="fixed inset-x-0 bottom-0 top-14 z-[7000] flex items-center justify-center bg-black/90 p-3 md:p-5" onClick={() => setGalleryAsset(null)}>
+          <div className="relative flex h-full max-h-[calc(100vh-5rem)] w-full max-w-[1100px] flex-col overflow-hidden rounded-[4px] border border-white/15 bg-[#17191d]" onClick={(event) => event.stopPropagation()}>
             <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-white/10 px-4">
               <div className="min-w-0"><div className="truncate font-black text-white">{galleryAsset.name}</div><div className="text-[11px] text-white/40">Image {galleryIndex + 1} of {galleryImages.length}</div></div>
               <button type="button" onClick={() => setGalleryAsset(null)} className="flex h-9 w-9 items-center justify-center border border-white/15 bg-white/[0.03] text-white hover:bg-white/10" aria-label="Close gallery"><X size={19} /></button>
             </div>
 
-            <div className="relative min-h-0 flex-1 bg-[#101214]">
-              <img src={galleryImages[galleryIndex]} alt={`${galleryAsset.name || '3D asset'} ${galleryIndex + 1}`} className="h-full w-full object-contain" />
+            <div className="relative flex min-h-0 flex-1 items-center justify-center bg-[#101214] p-4 md:p-6 lg:p-8">
+              <img src={galleryImages[galleryIndex]} alt={`${galleryAsset.name || '3D asset'} ${galleryIndex + 1}`} className="block max-h-full max-w-full object-contain" />
               {galleryImages.length > 1 && <>
                 <button type="button" onClick={() => setGalleryIndex((index) => (index - 1 + galleryImages.length) % galleryImages.length)} className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center border border-white/20 bg-black/70 text-white hover:bg-black" aria-label="Previous image"><ChevronLeft size={25} /></button>
                 <button type="button" onClick={() => setGalleryIndex((index) => (index + 1) % galleryImages.length)} className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center border border-white/20 bg-black/70 text-white hover:bg-black" aria-label="Next image"><ChevronRight size={25} /></button>
