@@ -37,6 +37,7 @@ import AdminSalons from '@/components/admin/AdminSalons';
 import AdminUsers from '@/components/admin/AdminUsers';
 import AdminAIMembers from '@/components/admin/AdminAIMembers';
 import AdminProducts from '@/components/admin/AdminProducts';
+import AdminMerchantPromotions from '@/components/admin/AdminMerchantPromotions';
 import AdminContent from '@/components/admin/AdminContent';
 import AdminMessages from '@/components/admin/AdminMessages';
 import AdminPromos from '@/components/admin/AdminPromos';
@@ -71,6 +72,7 @@ const tabs = [
   ['users', 'Users', Users, <AdminUsers />],
   ['ai-members', 'AI Members', Bot, <AdminAIMembers />],
   ['products', 'Shop', ShoppingBag, <AdminProducts />],
+  ['merchant-promotions', 'Merchant Promos', ShoppingBag, <AdminMerchantPromotions />],
   ['olo-inventory', 'OLOSHOP Inventory', Boxes, <AdminOloInventory />],
   ['content', 'Content', FileText, <AdminContent />],
   ['messages', 'Messages', Settings, <AdminMessages />],
