@@ -23,7 +23,7 @@ export default function AdminUsers() {
   const { data: registeredMembers = [], isLoading: registeredLoading } = useQuery({
     queryKey: ['registeredMembersAdmin'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('admin_list_member_profiles');
+      const { data, error } = await supabase.rpc('admin_list_member_profiles_v2');
       if (error) throw error;
       return data || [];
     },
@@ -173,6 +173,9 @@ export default function AdminUsers() {
                       {status !== 'active' && member.moderation_reason && (
                         <p className="text-white/55 text-xs mt-2">Reason: {member.moderation_reason}</p>
                       )}
+                      {status === 'expelled' && member.deletion_due_at && (
+                        <p className="text-red-300 text-xs mt-1">Account closes automatically on {format(new Date(member.deletion_due_at), 'yyyy-MM-dd HH:mm')}</p>
+                      )}
                     </div>
                   </div>
 
@@ -246,6 +249,12 @@ export default function AdminUsers() {
           <div className="w-full max-w-lg bg-neutral-950 border border-white/20 p-6 shadow-2xl">
             <h3 className="text-white text-xl font-light">{moderationAction === 'frozen' ? 'Freeze member' : moderationAction === 'expelled' ? 'Expel member' : 'Restore member'}</h3>
             <p className="text-white/50 text-sm mt-2">{moderationTarget.display_name || moderationTarget.email} · {moderationTarget.email}</p>
+
+            {moderationAction === 'expelled' && (
+              <div className="mt-5 border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-100 leading-relaxed">
+                WARNING: Expelling this member starts a 30-day exit period. Their published content is removed immediately, they cannot publish or buy additional credits, and their account is scheduled for permanent closure 30 days from today. Any credits still unused at closure are recorded for accounting and are non-refundable.
+              </div>
+            )}
 
             {moderationAction !== 'active' && (
               <div className="mt-6">
