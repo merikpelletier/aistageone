@@ -6,46 +6,67 @@ import { Search } from 'lucide-react';
 
 function MemberCard({ profile }) {
   const isAI = profile._memberKind === 'ai';
+
   const content = (
-    <>
-      {profile.avatar_url ? (
-        <img
-          src={profile.avatar_url}
-          alt={profile.display_name}
-          className="w-12 h-12 rounded-full object-cover border border-white/15 flex-shrink-0"
-        />
-      ) : (
-        <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center flex-shrink-0 text-white text-xl font-light">
-          {profile.display_name?.charAt(0) || '?'}
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <p className="text-white font-semibold truncate">{profile.display_name || profile.user_email}</p>
-          {isAI && (
-            <span className="flex-shrink-0 border border-teal-400/40 text-teal-300 text-[10px] uppercase tracking-wider px-1.5 py-0.5">
-              AI MEMBER
-            </span>
+    <div className="h-full flex flex-col p-5">
+      <div className="flex items-start gap-4">
+        {profile.avatar_url ? (
+          <img
+            src={profile.avatar_url}
+            alt={profile.display_name}
+            className="w-20 h-20 object-cover border border-white/15 flex-shrink-0 bg-neutral-800"
+          />
+        ) : (
+          <div className="w-20 h-20 bg-neutral-800 border border-white/15 flex items-center justify-center flex-shrink-0 text-white text-2xl font-light">
+            {profile.display_name?.charAt(0) || '?'}
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1 pt-0.5">
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-white text-lg font-semibold leading-tight line-clamp-2">
+              {profile.display_name || profile.user_email}
+            </h2>
+            {isAI && (
+              <span className="flex-shrink-0 border border-teal-400/50 text-teal-300 text-[10px] font-semibold uppercase tracking-[0.12em] px-2 py-1">
+                AI MEMBER
+              </span>
+            )}
+          </div>
+
+          {profile.title && (
+            <p className="text-gray-300 text-sm leading-snug mt-2 line-clamp-2">
+              {profile.title}
+            </p>
           )}
         </div>
-        {profile.title && <p className="text-gray-400 text-sm truncate">{profile.title}</p>}
-        {profile.bio && <p className="text-gray-500 text-xs truncate mt-0.5">{profile.bio}</p>}
       </div>
-    </>
+
+      {profile.bio && (
+        <p className="text-gray-500 text-sm leading-relaxed mt-5 line-clamp-3">
+          {profile.bio}
+        </p>
+      )}
+
+      <div className="mt-auto pt-5 flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.12em] text-gray-600">
+        <span>{isAI ? 'AI Stage One' : 'Member'}</span>
+        {!isAI && <span className="text-gray-400">View profile</span>}
+      </div>
+    </div>
   );
 
+  const className = `block h-full bg-neutral-950 border border-white/10 transition-colors ${
+    isAI ? '' : 'hover:border-white/30 hover:bg-neutral-900'
+  }`;
+
   if (isAI) {
-    return (
-      <div className="flex items-center gap-4 bg-neutral-900 border border-white/10 rounded-lg p-4">
-        {content}
-      </div>
-    );
+    return <div className={className}>{content}</div>;
   }
 
   return (
     <Link
       to={`/MemberDashboard?email=${encodeURIComponent(profile.user_email)}`}
-      className="flex items-center gap-4 bg-neutral-900 border border-white/10 rounded-lg p-4 hover:border-white/25 hover:bg-neutral-800/80 transition-colors"
+      className={className}
     >
       {content}
     </Link>
@@ -73,6 +94,7 @@ export default function MemberListing() {
       _memberKind: 'regular',
       _directoryKey: `member:${profile.id}`,
     }));
+
     const virtualMembers = aiMembers.map(profile => ({
       ...profile,
       _memberKind: 'ai',
@@ -99,40 +121,45 @@ export default function MemberListing() {
   const isLoading = profilesLoading || aiMembersLoading;
 
   return (
-    <div className="min-h-screen bg-black pb-24 pt-8">
-      <div className="px-6 mb-5">
-        <h1 className="text-white text-3xl font-extralight tracking-widest">MEMBERS</h1>
-        <div className="w-10 h-0.5 bg-red-600 mt-3" />
-      </div>
+    <div className="min-h-screen bg-black pb-24 pt-10">
+      <div className="max-w-7xl mx-auto px-5 sm:px-7 lg:px-8">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-8">
+          <div>
+            <h1 className="text-white text-3xl sm:text-4xl font-extralight tracking-[0.2em]">MEMBERS</h1>
+            <div className="w-12 h-px bg-red-600 mt-4" />
+            <p className="text-gray-500 text-sm mt-4 max-w-xl">
+              Discover creators, collaborators and AI members across AI Stage One.
+            </p>
+          </div>
 
-      <div className="px-6 mb-5">
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search members..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full bg-neutral-900 border border-white/10 rounded-lg pl-9 pr-4 py-2.5 text-white placeholder:text-gray-500 text-sm focus:outline-none focus:border-white/25"
-          />
+          <div className="relative w-full lg:w-[420px]">
+            <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search members..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full bg-neutral-950 border border-white/15 pl-11 pr-4 py-3.5 text-white placeholder:text-gray-600 text-sm focus:outline-none focus:border-white/35"
+            />
+          </div>
         </div>
-      </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-        </div>
-      ) : (
-        <div className="px-6 space-y-2.5">
-          {filtered.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-10">No members found</p>
-          ) : (
-            filtered.map(profile => (
+        {isLoading ? (
+          <div className="flex justify-center py-24">
+            <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="border border-white/10 py-16 px-6 text-center">
+            <p className="text-gray-400 text-sm">No members found</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-5">
+            {filtered.map(profile => (
               <MemberCard key={profile._directoryKey} profile={profile} />
-            ))
-          )}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
