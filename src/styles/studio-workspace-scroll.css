@@ -74,4 +74,11 @@
   .studio-shell > .flex > main {
     padding-top: 3.5rem !important;
   }
+
+  /* Extend only the desktop sidebar background to the bottom of the viewport. */
+  .studio-shell > .flex > aside {
+    height: calc(100vh - 3.5rem) !important;
+    min-height: calc(100vh - 3.5rem) !important;
+    background: #17191d !important;
+  }
 }
