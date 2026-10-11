@@ -75,6 +75,7 @@ export default function Layout({ children, currentPageName }) {
 
   const isAdminPage = currentPageName === 'Admin';
   const isStudioPage = currentPageName === 'Studio';
+  const isIndexPage = currentPageName === 'Index';
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const showLandscapeBlock = isLandscape && !isAdminPage && isMobile;
 
@@ -95,7 +96,7 @@ export default function Layout({ children, currentPageName }) {
   const pageIcon = isMagazinePage ? '' : (pageSetting?.look?.icon_color || '');
   const pageSpacing = isMagazinePage ? 'default' : (pageSetting?.look?.spacing || 'default');
   const pageStyle = {
-    backgroundColor: isStudioPage ? '#202328' : (isMagazinePage ? undefined : (pageSetting?.look?.background_color || undefined)),
+    backgroundColor: isStudioPage ? '#202328' : (isIndexPage ? '#000000' : (isMagazinePage ? undefined : (pageSetting?.look?.background_color || undefined))),
     '--aistage-surface-accent': pageAccent,
     '--aistage-surface-text': pageText || undefined,
     '--aistage-surface-icon': pageIcon || undefined,
@@ -111,7 +112,7 @@ export default function Layout({ children, currentPageName }) {
   const isMagazinePageWrapper = currentPageName === 'Magazine';
 
   return (
-    <div className={`min-h-screen ${isStudioPage ? 'bg-[#202328]' : isMagazinePageWrapper ? 'bg-black' : 'bg-yellow-400'}`} style={pageStyle} data-admin-spacing={pageSpacing}>
+    <div className={`min-h-screen ${isStudioPage ? 'bg-[#202328]' : (isIndexPage || isMagazinePageWrapper) ? 'bg-black' : 'bg-yellow-400'}`} style={pageStyle} data-admin-spacing={pageSpacing}>
       {showLandscapeBlock && (
         <div className="fixed inset-0 bg-yellow-400 z-[9999] flex flex-col items-center justify-center">
           <div className="text-black text-center px-8">
@@ -184,6 +185,10 @@ export default function Layout({ children, currentPageName }) {
           html, body, #root { background: #202328 !important; }
           :root { --background: 216 11% 14%; --foreground: 0 0% 100%; }
         }
+        ` : ''}
+
+        ${isIndexPage ? `
+        html, body, #root { background: #000 !important; }
         ` : ''}
 
         @media (min-width: 1024px) {
