@@ -1,4 +1,5 @@
 import React from 'react';
+import DossierAssociatedMember from '@/components/DossierAssociatedMember';
 
 function isVideoUrl(url = '') {
   return /\.(mp4|webm|ogg)(\?|$)/i.test(url);
@@ -57,6 +58,10 @@ export default function DossierIndexPage({ page, pages, dossier, onNavigate }) {
               dangerouslySetInnerHTML={{ __html: page.content }}
             />
           )}
+
+          <div className="mt-5 md:mt-6 max-w-2xl">
+            <DossierAssociatedMember dossier={dossier} />
+          </div>
         </header>
 
         <div className="divide-y divide-white/15 border-y border-white/15">
