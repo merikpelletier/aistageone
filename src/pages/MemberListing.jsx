@@ -24,7 +24,7 @@ function MemberCard({ profile, sponsors = [] }) {
       to={isAI
         ? `/MemberDashboard?aiMemberId=${encodeURIComponent(profile.id)}`
         : `/MemberDashboard?email=${encodeURIComponent(profile.user_email)}`}
-      className="group relative block min-h-[520px] overflow-hidden border border-white/10 bg-neutral-950 transition-all duration-300 hover:-translate-y-1 hover:border-white/35"
+      className="group relative block min-h-[520px] xl:min-h-[430px] 2xl:min-h-[410px] overflow-hidden border border-white/10 bg-neutral-950 transition-all duration-300 hover:-translate-y-1 hover:border-white/35"
     >
       <div className="absolute inset-0">
         {heroImage ? (
@@ -39,10 +39,10 @@ function MemberCard({ profile, sponsors = [] }) {
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/5" />
-        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-44 xl:h-36 bg-gradient-to-t from-black to-transparent" />
       </div>
 
-      <div className="relative z-10 flex min-h-[520px] flex-col justify-between p-5 sm:p-6">
+      <div className="relative z-10 flex min-h-[520px] xl:min-h-[430px] 2xl:min-h-[410px] flex-col justify-between p-5 sm:p-6 xl:p-5">
         <div className="flex flex-wrap gap-2">
           {isAI && (
             <span className="border border-teal-300/70 bg-black/65 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-200 backdrop-blur-sm">
@@ -58,30 +58,30 @@ function MemberCard({ profile, sponsors = [] }) {
         </div>
 
         <div>
-          <div className="mb-5 flex items-end justify-between gap-4 border-b border-white/20 pb-5">
+          <div className="mb-5 xl:mb-4 flex items-end justify-between gap-4 border-b border-white/20 pb-5 xl:pb-4">
             <div className="min-w-0">
-              <h2 className="text-2xl sm:text-[28px] font-light leading-tight tracking-tight text-white">
+              <h2 className="text-2xl sm:text-[28px] xl:text-[22px] 2xl:text-[21px] font-light leading-tight tracking-tight text-white">
                 {profile.display_name || profile.user_email}
               </h2>
               {profile.title && (
-                <p className="mt-2 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.12em] text-white/70 line-clamp-2">
+                <p className="mt-2 text-[11px] sm:text-xs xl:text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70 line-clamp-2">
                   {profile.title}
                 </p>
               )}
             </div>
 
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center border border-white/25 bg-black/35 transition-colors group-hover:bg-white group-hover:text-black">
+            <div className="flex h-10 w-10 xl:h-9 xl:w-9 flex-shrink-0 items-center justify-center border border-white/25 bg-black/35 transition-colors group-hover:bg-white group-hover:text-black">
               <ArrowUpRight size={18} />
             </div>
           </div>
 
           {profile.bio && (
-            <p className="max-w-xl text-sm leading-relaxed text-white/70 line-clamp-3">
+            <p className="max-w-xl text-sm xl:text-[13px] leading-relaxed text-white/70 line-clamp-3 xl:line-clamp-2">
               {profile.bio}
             </p>
           )}
 
-          <div className="mt-5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
+          <div className="mt-5 xl:mt-4 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
             <span>View profile</span>
             {activeSponsors.length > 0 && <span>{activeSponsors.length} sponsor{activeSponsors.length > 1 ? 's' : ''}</span>}
           </div>
@@ -158,24 +158,24 @@ export default function MemberListing() {
   return (
     <div className="min-h-screen bg-black pb-24 pt-10">
       <div className="mx-auto max-w-[1500px] px-5 sm:px-7 lg:px-10">
-        <div className="mb-10 border-b border-white/10 pb-8 lg:flex lg:items-end lg:justify-between lg:gap-12">
+        <div className="mb-10 border-b border-white/10 pb-8 lg:flex lg:items-end lg:justify-between lg:gap-12 xl:mb-8 xl:pb-6">
           <div className="max-w-2xl">
             <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.3em] text-white/40">AI Stage One Community</p>
-            <h1 className="text-5xl font-extralight tracking-[0.17em] text-white sm:text-6xl">MEMBERS</h1>
+            <h1 className="text-5xl font-extralight tracking-[0.17em] text-white sm:text-6xl xl:text-5xl">MEMBERS</h1>
             <div className="mt-5 h-px w-16 bg-red-600" />
-            <p className="mt-5 max-w-xl text-sm leading-relaxed text-white/55 sm:text-base">
+            <p className="mt-5 max-w-xl text-sm leading-relaxed text-white/55 sm:text-base xl:text-sm">
               Meet the creators, collaborators and specialists shaping the work published on AI Stage One.
             </p>
           </div>
 
-          <div className="relative mt-7 w-full lg:mt-0 lg:w-[420px]">
+          <div className="relative mt-7 w-full lg:mt-0 lg:w-[420px] xl:w-[360px]">
             <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
             <input
               type="text"
               placeholder="Search members..."
               value={search}
               onChange={event => setSearch(event.target.value)}
-              className="w-full border border-white/15 bg-black/80 py-4 pl-11 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/40"
+              className="w-full border border-white/15 bg-black/80 py-4 xl:py-3.5 pl-11 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/40"
             />
           </div>
         </div>
@@ -189,7 +189,7 @@ export default function MemberListing() {
             <p className="text-sm text-white/45">No members found</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 xl:gap-4">
             {filtered.map(profile => (
               <MemberCard
                 key={profile._directoryKey}
