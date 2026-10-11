@@ -20,6 +20,7 @@ import ProfilePresentation from '@/components/ProfilePresentation';
 import ProfileGallery from '@/components/ProfileGallery';
 import CreatorSubscriptionSection from '@/components/CreatorSubscriptionSection';
 import ProfileFansSponsors from '@/components/ProfileFansSponsors';
+import MerchantProfileSection from '@/components/MerchantProfileSection';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -67,6 +68,7 @@ export default function MemberDashboard() {
 
   const profile = isAIProfile ? aiProfile : regularProfile;
   const profileLoading = isAIProfile ? aiProfileLoading : regularProfileLoading;
+  const isMerchant = profile?.member_type === 'merchant';
 
   const { data: dossiers = [], isLoading: dossiersLoading } = useQuery({
     queryKey: isAIProfile ? ['aiMemberDossiers', aiMemberId] : ['memberDossiers', viewingEmail],
@@ -165,7 +167,10 @@ export default function MemberDashboard() {
         <div className="min-w-0 pb-1">
           <h1 className="text-2xl sm:text-3xl font-light text-white drop-shadow-lg">{profile?.display_name}</h1>
           {profile?.title && <p className="mt-1 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.14em] text-white/75">{profile.title}</p>}
-          {isAIProfile && <span className="mt-2 inline-block border border-teal-300/60 bg-black/50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-teal-200">AI</span>}
+          <div className="mt-2 flex items-center gap-2">
+            {isMerchant && <span className="inline-block border border-white/40 bg-black/50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">MERCHANT</span>}
+            {isAIProfile && <span className="inline-block border border-teal-300/60 bg-black/50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-teal-200">AI</span>}
+          </div>
         </div>
       </div>
     </div>
@@ -205,6 +210,8 @@ export default function MemberDashboard() {
             />
           </motion.div>
         )}
+
+        {isMerchant && viewingEmail && <MerchantProfileSection profileKey={viewingEmail} />}
 
         {!effectiveIsOwnProfile && viewingEmail && (
           <>
