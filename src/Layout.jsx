@@ -72,6 +72,7 @@ export default function Layout({ children, currentPageName }) {
   const isIndexPage = currentPageName === 'Index';
   const isSponsorRequestPage = currentPageName === 'SponsorRequest';
   const isAccountPage = currentPageName === 'MemberDashboard';
+  const isGiftShopPage = currentPageName === 'Boutique';
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const showLandscapeBlock = isLandscape && !isAdminPage && isMobile;
 
@@ -92,7 +93,7 @@ export default function Layout({ children, currentPageName }) {
   const pageIcon = isMagazinePage ? '' : (pageSetting?.look?.icon_color || '');
   const pageSpacing = isMagazinePage ? 'default' : (pageSetting?.look?.spacing || 'default');
   const pageStyle = {
-    backgroundColor: (isStudioPage || isSponsorRequestPage) ? '#202328' : ((isIndexPage || isAccountPage) ? '#000000' : (isMagazinePage ? undefined : (pageSetting?.look?.background_color || undefined))),
+    backgroundColor: (isStudioPage || isSponsorRequestPage) ? '#202328' : ((isIndexPage || isAccountPage || isGiftShopPage) ? '#000000' : (isMagazinePage ? undefined : (pageSetting?.look?.background_color || undefined))),
     '--aistage-surface-accent': pageAccent,
     '--aistage-surface-text': pageText || undefined,
     '--aistage-surface-icon': pageIcon || undefined,
@@ -108,7 +109,7 @@ export default function Layout({ children, currentPageName }) {
   const isMagazinePageWrapper = currentPageName === 'Magazine';
 
   return (
-    <div className={`min-h-screen ${(isStudioPage || isSponsorRequestPage) ? 'bg-[#202328]' : (isIndexPage || isAccountPage || isMagazinePageWrapper) ? 'bg-black' : 'bg-yellow-400'}`} style={pageStyle} data-admin-spacing={pageSpacing}>
+    <div className={`min-h-screen ${(isStudioPage || isSponsorRequestPage) ? 'bg-[#202328]' : (isIndexPage || isAccountPage || isGiftShopPage || isMagazinePageWrapper) ? 'bg-black' : 'bg-yellow-400'}`} style={pageStyle} data-admin-spacing={pageSpacing}>
       {showLandscapeBlock && (
         <div className="fixed inset-0 bg-yellow-400 z-[9999] flex flex-col items-center justify-center">
           <div className="text-black text-center px-8">
@@ -187,7 +188,7 @@ export default function Layout({ children, currentPageName }) {
         html, body, #root { background: #202328 !important; }
         ` : ''}
 
-        ${(isIndexPage || isAccountPage) ? `
+        ${(isIndexPage || isAccountPage || isGiftShopPage) ? `
         html, body, #root { background: #000 !important; }
         ` : ''}
 
