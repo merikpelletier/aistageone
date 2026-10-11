@@ -11,7 +11,6 @@ import PageNotFound from './lib/PageNotFound';
 import MembershipPage from './pages/Membership';
 import SoumettreePage from './pages/Soumettre';
 import MemberDashboardPage from './pages/MemberDashboard';
-import AIMemberProfilePage from './pages/AIMemberProfile';
 import SponsorRequestPage from './pages/SponsorRequest';
 import MemberListingPage from './pages/MemberListing';
 import StudioPage from './pages/Studio';
@@ -43,8 +42,6 @@ const PrivateRoute = ({ children }) => {
 const HomeRoute = () => {
   const { user, isAuthenticated } = useAuth();
 
-  // The public landing page is only for visitors who are not signed in.
-  // Authenticated admin/guest users go straight back into the application.
   if (isAuthenticated && ['admin', 'guest'].includes(user?.role)) {
     return <Navigate to="/Index" replace />;
   }
@@ -88,7 +85,6 @@ const AuthenticatedApp = () => {
       <Route path="/Membership" element={<PrivateRoute><LayoutWrapper currentPageName="Membership"><MembershipPage /></LayoutWrapper></PrivateRoute>} />
       <Route path="/Soumettre" element={<PrivateRoute><LayoutWrapper currentPageName="Soumettre"><SoumettreePage /></LayoutWrapper></PrivateRoute>} />
       <Route path="/MemberDashboard" element={<PrivateRoute><LayoutWrapper currentPageName="MemberDashboard"><MemberDashboardPage /></LayoutWrapper></PrivateRoute>} />
-      <Route path="/AIMemberProfile" element={<PrivateRoute><LayoutWrapper currentPageName="AIMemberProfile"><AIMemberProfilePage /></LayoutWrapper></PrivateRoute>} />
       <Route path="/SponsorRequest" element={<PrivateRoute><LayoutWrapper currentPageName="SponsorRequest"><SponsorRequestPage /></LayoutWrapper></PrivateRoute>} />
       <Route path="/MemberListing" element={<PrivateRoute><LayoutWrapper currentPageName="MemberListing"><MemberListingPage /></LayoutWrapper></PrivateRoute>} />
       <Route path="/Studio" element={<PrivateRoute><LayoutWrapper currentPageName="Studio"><StudioPage /></LayoutWrapper></PrivateRoute>} />

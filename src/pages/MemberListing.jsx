@@ -60,7 +60,7 @@ function MemberCard({ profile }) {
   return (
     <Link
       to={isAI
-        ? `/AIMemberProfile?id=${encodeURIComponent(profile.id)}`
+        ? `/MemberDashboard?aiMemberId=${encodeURIComponent(profile.id)}`
         : `/MemberDashboard?email=${encodeURIComponent(profile.user_email)}`}
       className={className}
     >
