@@ -81,4 +81,36 @@
     min-height: calc(100vh - 3.5rem) !important;
     background: #17191d !important;
   }
+
+  /* 3D gallery: center it in the actual workspace and keep the model image
+     at a presentation size instead of filling most of the monitor. */
+  .studio-shell main div[class*="fixed"][class*="inset-x-0"][class*="bottom-0"][class*="top-14"][class*="z-[7000]"] {
+    left: var(--studio-toolbar-width, 210px) !important;
+    right: 0 !important;
+    padding: 20px 28px !important;
+  }
+
+  .studio-shell main div[class*="fixed"][class*="inset-x-0"][class*="bottom-0"][class*="top-14"][class*="z-[7000]"] > div {
+    width: min(860px, calc(100% - 56px)) !important;
+    max-width: 860px !important;
+    height: min(720px, calc(100vh - 7rem)) !important;
+    max-height: calc(100vh - 7rem) !important;
+    margin: auto !important;
+  }
+
+  .studio-shell main div[class*="fixed"][class*="inset-x-0"][class*="bottom-0"][class*="top-14"][class*="z-[7000]"] > div > div:nth-child(2) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 24px !important;
+  }
+
+  .studio-shell main div[class*="fixed"][class*="inset-x-0"][class*="bottom-0"][class*="top-14"][class*="z-[7000]"] > div > div:nth-child(2) > img {
+    width: auto !important;
+    height: auto !important;
+    max-width: min(600px, 100%) !important;
+    max-height: min(520px, calc(100vh - 13rem)) !important;
+    margin: auto !important;
+    object-fit: contain !important;
+  }
 }
