@@ -32,18 +32,18 @@ export default function MemberDashboard() {
   const memberEmail = searchParams.get('email');
   const aiMemberId = searchParams.get('aiMemberId');
   const isAIProfile = !!aiMemberId;
-  const viewingEmail = isAIProfile ? null : (memberEmail || user?.email);
+  const viewingEmail = isAIProfile ? `ai-member:${aiMemberId}` : (memberEmail || user?.email);
   const isOwnProfile = !isAIProfile && (!memberEmail || memberEmail === user?.email);
   const effectiveIsOwnProfile = isOwnProfile && !previewAsGuest;
 
   const { data: regularProfile, isLoading: regularProfileLoading } = useQuery({
     queryKey: ['memberProfile', viewingEmail],
     queryFn: async () => {
-      if (!viewingEmail) return null;
+      if (!viewingEmail || isAIProfile) return null;
       const profiles = await base44.entities.MemberProfile.filter({ user_email: viewingEmail });
       return profiles[0] || null;
     },
-    enabled: !!viewingEmail,
+    enabled: !!viewingEmail && !isAIProfile,
   });
 
   const { data: aiProfile, isLoading: aiProfileLoading } = useQuery({
@@ -55,9 +55,8 @@ export default function MemberDashboard() {
       if (!member) return null;
       return {
         ...member,
+        user_email: viewingEmail,
         title: member.title || member.headline || '',
-        banner_url: member.custom_banner_url || member.banner_url || '',
-        custom_banner_url: member.custom_banner_url || member.banner_url || '',
         images: member.images || [],
         links: member.links || [],
         is_ai_generated: true,
@@ -68,14 +67,11 @@ export default function MemberDashboard() {
 
   const profile = isAIProfile ? aiProfile : regularProfile;
   const profileLoading = isAIProfile ? aiProfileLoading : regularProfileLoading;
-  const identityKey = isAIProfile ? `ai:${aiMemberId}` : viewingEmail;
 
   const { data: dossiers = [], isLoading: dossiersLoading } = useQuery({
     queryKey: isAIProfile ? ['aiMemberDossiers', aiMemberId] : ['memberDossiers', viewingEmail],
     queryFn: async () => {
-      if (isAIProfile) {
-        return base44.entities.Dossier.filter({ ai_member_id: aiMemberId });
-      }
+      if (isAIProfile) return base44.entities.Dossier.filter({ ai_member_id: aiMemberId });
       const res = await base44.functions.invoke('getMemberDossiers', { memberEmail: viewingEmail });
       return res.data?.dossiers || [];
     },
@@ -84,11 +80,8 @@ export default function MemberDashboard() {
 
   const { data: campaigns = [] } = useQuery({
     queryKey: ['memberCampaigns', viewingEmail],
-    queryFn: async () => {
-      const results = await base44.entities.Campaign.filter({ member_email: viewingEmail, status: 'active' });
-      return results;
-    },
-    enabled: !!viewingEmail && !isAIProfile,
+    queryFn: async () => base44.entities.Campaign.filter({ member_email: viewingEmail, status: 'active' }),
+    enabled: !!viewingEmail,
   });
 
   const campaignsMap = {};
@@ -151,8 +144,8 @@ export default function MemberDashboard() {
   }
 
   const presentationUser = {
-    email: identityKey,
-    full_name: profile?.display_name || viewingEmail || 'Member',
+    email: viewingEmail,
+    full_name: profile?.display_name || viewingEmail,
   };
 
   return (
@@ -184,7 +177,7 @@ export default function MemberDashboard() {
           </motion.div>
         )}
 
-        {!effectiveIsOwnProfile && (
+        {!effectiveIsOwnProfile && viewingEmail && (
           <>
             <div className="px-4 pt-4">
               <CollapsibleSection label="Published Work" accent="work" defaultOpen>
@@ -212,38 +205,30 @@ export default function MemberDashboard() {
                 </CollapsibleSection>
               )}
 
-              {!isAIProfile && (
-                <CollapsibleSection label="Fans & Sponsors" accent="fans" defaultOpen>
-                  <ProfileFansSponsors profile={profile} user={presentationUser} />
-                </CollapsibleSection>
-              )}
-
-              {!isAIProfile && (
-                <CollapsibleSection label="Become a Sponsor" accent="sponsor" defaultOpen>
-                  <BecomeSponsorBanner memberEmail={viewingEmail} />
-                </CollapsibleSection>
-              )}
-
-              {!isAIProfile && (
-                <CollapsibleSection label="Contact" accent="contact" defaultOpen>
-                  <MemberContactForm memberEmail={viewingEmail} memberName={profile?.display_name} />
-                </CollapsibleSection>
-              )}
-
-              <CollapsibleSection label="Links" accent="links" defaultOpen>
-                <ProfileLinksSection profile={profile} isOwnProfile={false} userEmail={identityKey} />
+              <CollapsibleSection label="Fans & Sponsors" accent="fans" defaultOpen>
+                <ProfileFansSponsors profile={profile} user={presentationUser} />
               </CollapsibleSection>
 
-              {!isAIProfile && (
-                <CollapsibleSection label="Series" accent="series">
-                  <MemberSeriesParticipation userEmail={viewingEmail} />
-                </CollapsibleSection>
-              )}
+              <CollapsibleSection label="Become a Sponsor" accent="sponsor" defaultOpen>
+                <BecomeSponsorBanner memberEmail={viewingEmail} />
+              </CollapsibleSection>
+
+              <CollapsibleSection label="Contact" accent="contact" defaultOpen>
+                <MemberContactForm memberEmail={viewingEmail} memberName={profile?.display_name} />
+              </CollapsibleSection>
+
+              <CollapsibleSection label="Links" accent="links" defaultOpen>
+                <ProfileLinksSection profile={profile} isOwnProfile={effectiveIsOwnProfile} userEmail={viewingEmail} />
+              </CollapsibleSection>
+
+              <CollapsibleSection label="Series" accent="series">
+                <MemberSeriesParticipation userEmail={viewingEmail} />
+              </CollapsibleSection>
             </div>
           </>
         )}
 
-        {!isAIProfile && viewingEmail && (
+        {viewingEmail && (
           <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />
         )}
 
