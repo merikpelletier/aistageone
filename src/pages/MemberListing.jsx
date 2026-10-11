@@ -1,15 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
 
 function MemberCard({ profile }) {
-  return (
-    <Link
-      to={`/MemberDashboard?email=${encodeURIComponent(profile.user_email)}`}
-      className="flex items-center gap-4 bg-neutral-900 border border-white/10 rounded-lg p-4 hover:border-white/25 hover:bg-neutral-800/80 transition-colors"
-    >
+  const isAI = profile._memberKind === 'ai';
+  const content = (
+    <>
       {profile.avatar_url ? (
         <img
           src={profile.avatar_url}
@@ -22,10 +20,34 @@ function MemberCard({ profile }) {
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <p className="text-white font-semibold truncate">{profile.display_name || profile.user_email}</p>
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="text-white font-semibold truncate">{profile.display_name || profile.user_email}</p>
+          {isAI && (
+            <span className="flex-shrink-0 border border-teal-400/40 text-teal-300 text-[10px] uppercase tracking-wider px-1.5 py-0.5">
+              AI MEMBER
+            </span>
+          )}
+        </div>
         {profile.title && <p className="text-gray-400 text-sm truncate">{profile.title}</p>}
         {profile.bio && <p className="text-gray-500 text-xs truncate mt-0.5">{profile.bio}</p>}
       </div>
+    </>
+  );
+
+  if (isAI) {
+    return (
+      <div className="flex items-center gap-4 bg-neutral-900 border border-white/10 rounded-lg p-4">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      to={`/MemberDashboard?email=${encodeURIComponent(profile.user_email)}`}
+      className="flex items-center gap-4 bg-neutral-900 border border-white/10 rounded-lg p-4 hover:border-white/25 hover:bg-neutral-800/80 transition-colors"
+    >
+      {content}
     </Link>
   );
 }
@@ -33,21 +55,48 @@ function MemberCard({ profile }) {
 export default function MemberListing() {
   const [search, setSearch] = useState('');
 
-  const { data: profiles = [], isLoading } = useQuery({
+  const { data: profiles = [], isLoading: profilesLoading } = useQuery({
     queryKey: ['memberProfiles'],
     queryFn: () => base44.entities.MemberProfile.list('display_name'),
     staleTime: 2 * 60 * 1000,
   });
 
-  const filtered = profiles.filter(p => {
+  const { data: aiMembers = [], isLoading: aiMembersLoading } = useQuery({
+    queryKey: ['publicAiMembers'],
+    queryFn: () => base44.entities.AIMemberPublic.list('display_name', 200),
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const members = useMemo(() => {
+    const regularMembers = profiles.map(profile => ({
+      ...profile,
+      _memberKind: 'regular',
+      _directoryKey: `member:${profile.id}`,
+    }));
+    const virtualMembers = aiMembers.map(profile => ({
+      ...profile,
+      _memberKind: 'ai',
+      _directoryKey: `ai:${profile.id}`,
+    }));
+
+    return [...regularMembers, ...virtualMembers].sort((a, b) =>
+      String(a.display_name || '').localeCompare(String(b.display_name || ''))
+    );
+  }, [profiles, aiMembers]);
+
+  const filtered = members.filter(p => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
       p.display_name?.toLowerCase().includes(q) ||
       p.title?.toLowerCase().includes(q) ||
-      p.bio?.toLowerCase().includes(q)
+      p.bio?.toLowerCase().includes(q) ||
+      p.handle?.toLowerCase().includes(q) ||
+      p.member_type?.toLowerCase().includes(q)
     );
   });
+
+  const isLoading = profilesLoading || aiMembersLoading;
 
   return (
     <div className="min-h-screen bg-black pb-24 pt-8">
@@ -56,7 +105,6 @@ export default function MemberListing() {
         <div className="w-10 h-0.5 bg-red-600 mt-3" />
       </div>
 
-      {/* Search */}
       <div className="px-6 mb-5">
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -80,7 +128,7 @@ export default function MemberListing() {
             <p className="text-gray-400 text-sm text-center py-10">No members found</p>
           ) : (
             filtered.map(profile => (
-              <MemberCard key={profile.id} profile={profile} />
+              <MemberCard key={profile._directoryKey} profile={profile} />
             ))
           )}
         </div>
