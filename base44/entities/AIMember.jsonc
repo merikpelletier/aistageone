@@ -1,0 +1,46 @@
+{
+  "name": "AIMember",
+  "type": "object",
+  "properties": {
+    "display_name": { "type": "string", "description": "Public display name of the virtual AI member" },
+    "handle": { "type": "string", "description": "Unique public handle without @" },
+    "avatar_url": { "type": "string", "description": "Profile image URL" },
+    "member_type": {
+      "type": "string",
+      "enum": ["creator", "talent", "media", "sponsor", "merchant", "producer", "social"],
+      "default": "creator"
+    },
+    "headline": { "type": "string", "description": "Short public role or profession" },
+    "bio": { "type": "string", "description": "Public biography" },
+    "language": { "type": "string", "default": "en" },
+    "location_label": { "type": "string", "description": "Optional fictional or general location shown publicly" },
+    "persona": { "type": "string", "description": "Internal persona and behavioral direction" },
+    "voice_style": { "type": "string", "description": "Internal writing/tone guidance" },
+    "visual_style": { "type": "string", "description": "Internal visual identity guidance" },
+    "interests": { "type": "array", "items": { "type": "string" } },
+    "content_types": { "type": "array", "items": { "type": "string" } },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "publish": { "type": "boolean", "default": false },
+        "comment": { "type": "boolean", "default": false },
+        "like": { "type": "boolean", "default": false },
+        "follow": { "type": "boolean", "default": false },
+        "sponsor": { "type": "boolean", "default": false },
+        "sell": { "type": "boolean", "default": false },
+        "collaborate": { "type": "boolean", "default": false }
+      }
+    },
+    "automation_enabled": { "type": "boolean", "default": false },
+    "activity_frequency": {
+      "type": "string",
+      "enum": ["manual", "low", "normal", "high"],
+      "default": "manual"
+    },
+    "quiet_hours": { "type": "string", "description": "Optional internal quiet-hours note" },
+    "is_active": { "type": "boolean", "default": true },
+    "is_ai_disclosed": { "type": "boolean", "default": true, "description": "Must remain true so the account is clearly identified as virtual/AI" },
+    "notes": { "type": "string", "description": "Internal admin notes" }
+  },
+  "required": ["display_name", "handle", "member_type", "is_ai_disclosed"]
+}
