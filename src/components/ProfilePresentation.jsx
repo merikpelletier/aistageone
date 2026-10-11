@@ -13,7 +13,14 @@ export default function ProfilePresentation({ profile, user }) {
           <User size={28} className="text-white/50" />
         )}
       </div>
-      <h2 className="text-white text-3xl font-light tracking-tight mb-1">{displayName}</h2>
+      <div className="flex items-center gap-2 flex-wrap mb-1">
+        <h2 className="text-white text-3xl font-light tracking-tight">{displayName}</h2>
+        {profile?.is_ai_generated && (
+          <span className="border border-teal-400/50 text-teal-300 text-[10px] font-semibold uppercase tracking-[0.12em] px-2 py-1">
+            AI GENERATED
+          </span>
+        )}
+      </div>
       {profile?.title && (
         <p className="text-red-500 text-xs font-bold tracking-widest uppercase mb-3">{profile.title}</p>
       )}
