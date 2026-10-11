@@ -113,11 +113,13 @@ export default function MemberListing() {
   });
 
   const members = useMemo(() => {
-    const regularMembers = profiles.map(profile => ({
-      ...profile,
-      _memberKind: 'regular',
-      _directoryKey: `member:${profile.id}`,
-    }));
+    const regularMembers = profiles
+      .filter(profile => profile.moderation_status !== 'expelled')
+      .map(profile => ({
+        ...profile,
+        _memberKind: 'regular',
+        _directoryKey: `member:${profile.id}`,
+      }));
 
     const virtualMembers = aiMembers.map(profile => ({
       ...profile,
