@@ -35,6 +35,7 @@ import AdminPagesTools from '@/components/admin/AdminPagesTools';
 import AdminDossiers from '@/components/admin/AdminDossiers';
 import AdminSalons from '@/components/admin/AdminSalons';
 import AdminUsers from '@/components/admin/AdminUsers';
+import AdminAIMembers from '@/components/admin/AdminAIMembers';
 import AdminProducts from '@/components/admin/AdminProducts';
 import AdminContent from '@/components/admin/AdminContent';
 import AdminMessages from '@/components/admin/AdminMessages';
@@ -68,6 +69,7 @@ const tabs = [
   ['dossiers', 'Dossiers', BookOpen, <AdminDossiers />],
   ['salons', 'Chat Rooms', MessageSquare, <AdminSalons />],
   ['users', 'Users', Users, <AdminUsers />],
+  ['ai-members', 'AI Members', Bot, <AdminAIMembers />],
   ['products', 'Shop', ShoppingBag, <AdminProducts />],
   ['olo-inventory', 'OLOSHOP Inventory', Boxes, <AdminOloInventory />],
   ['content', 'Content', FileText, <AdminContent />],
