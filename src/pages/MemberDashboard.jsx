@@ -150,18 +150,24 @@ export default function MemberDashboard() {
 
   const bannerUrl = profile?.custom_banner_url || profile?.banner_url || profile?.cover_url || null;
   const bannerLink = profile?.custom_banner_link || null;
-
-  const banner = bannerUrl ? (
-    <div className="px-4 pt-4">
-      {bannerLink ? (
-        <a href={bannerLink} target="_blank" rel="noreferrer" className="block overflow-hidden border border-white/10 bg-neutral-950">
-          <img src={bannerUrl} alt={`${profile?.display_name || 'Member'} banner`} className="w-full h-[180px] sm:h-[220px] lg:h-[260px] object-cover" />
-        </a>
-      ) : (
-        <div className="overflow-hidden border border-white/10 bg-neutral-950">
-          <img src={bannerUrl} alt={`${profile?.display_name || 'Member'} banner`} className="w-full h-[180px] sm:h-[220px] lg:h-[260px] object-cover" />
+  const bannerInner = bannerUrl ? (
+    <div className="relative h-[180px] sm:h-[220px] lg:h-[240px] overflow-hidden border border-white/10 bg-neutral-950">
+      <img src={bannerUrl} alt={`${profile?.display_name || 'Member'} banner`} className="absolute inset-0 h-full w-full object-cover" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 flex items-end gap-4 p-5 sm:p-6">
+        <div className="h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 overflow-hidden border border-white/30 bg-black">
+          {profile?.avatar_url ? (
+            <img src={profile.avatar_url} alt={profile?.display_name || 'Member'} className="h-full w-full object-cover" />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-2xl text-white/50">{(profile?.display_name || '?').charAt(0)}</div>
+          )}
         </div>
-      )}
+        <div className="min-w-0 pb-1">
+          <h1 className="text-2xl sm:text-3xl font-light text-white drop-shadow-lg">{profile?.display_name}</h1>
+          {profile?.title && <p className="mt-1 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.14em] text-white/75">{profile.title}</p>}
+          {isAIProfile && <span className="mt-2 inline-block border border-teal-300/60 bg-black/50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-teal-200">AI</span>}
+        </div>
+      </div>
     </div>
   ) : null;
 
@@ -183,7 +189,11 @@ export default function MemberDashboard() {
       )}
 
       <div className="max-w-5xl mx-auto">
-        {banner}
+        {bannerInner && (
+          <div className="px-4 pt-4">
+            {bannerLink ? <a href={bannerLink} target="_blank" rel="noreferrer" className="block">{bannerInner}</a> : bannerInner}
+          </div>
+        )}
 
         {effectiveIsOwnProfile && viewingEmail && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -247,68 +257,19 @@ export default function MemberDashboard() {
           </>
         )}
 
-        {viewingEmail && (
-          <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />
-        )}
-
-        {effectiveIsOwnProfile && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <TokensMembershipSection userEmail={viewingEmail} />
-          </motion.div>
-        )}
-
-        {effectiveIsOwnProfile && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-            <SponsorsContributorsSection userEmail={viewingEmail} />
-          </motion.div>
-        )}
-
-        {effectiveIsOwnProfile && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <ProfileLinksSection profile={profile} isOwnProfile={effectiveIsOwnProfile} userEmail={viewingEmail} />
-          </motion.div>
-        )}
-
-        {effectiveIsOwnProfile && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-            <PublishStorySection userEmail={viewingEmail} />
-          </motion.div>
-        )}
-
-        {effectiveIsOwnProfile && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}>
-            <CampaignManager userEmail={viewingEmail} />
-          </motion.div>
-        )}
-
-        {effectiveIsOwnProfile && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}>
-            <MemberInboxSection userEmail={viewingEmail} />
-          </motion.div>
-        )}
-
-        {effectiveIsOwnProfile && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
-            <MemberSeriesParticipation userEmail={viewingEmail} />
-          </motion.div>
-        )}
-
-        {effectiveIsOwnProfile && !dossiersLoading && dossiers.length > 0 && (
-          <DossierGallery
-            dossiers={dossiers}
-            ratingsMap={ratingsMap}
-            commentsMap={commentsMap}
-            campaignsMap={campaignsMap}
-            label="Published Work"
-          />
-        )}
+        {viewingEmail && <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />}
+        {effectiveIsOwnProfile && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}><TokensMembershipSection userEmail={viewingEmail} /></motion.div>}
+        {effectiveIsOwnProfile && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}><SponsorsContributorsSection userEmail={viewingEmail} /></motion.div>}
+        {effectiveIsOwnProfile && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}><ProfileLinksSection profile={profile} isOwnProfile={effectiveIsOwnProfile} userEmail={viewingEmail} /></motion.div>}
+        {effectiveIsOwnProfile && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}><PublishStorySection userEmail={viewingEmail} /></motion.div>}
+        {effectiveIsOwnProfile && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}><CampaignManager userEmail={viewingEmail} /></motion.div>}
+        {effectiveIsOwnProfile && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}><MemberInboxSection userEmail={viewingEmail} /></motion.div>}
+        {effectiveIsOwnProfile && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}><MemberSeriesParticipation userEmail={viewingEmail} /></motion.div>}
+        {effectiveIsOwnProfile && !dossiersLoading && dossiers.length > 0 && <DossierGallery dossiers={dossiers} ratingsMap={ratingsMap} commentsMap={commentsMap} campaignsMap={campaignsMap} label="Published Work" />}
 
         {isOwnProfile && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-            <button
-              onClick={() => base44.auth.logout('/')}
-              className="w-full flex items-center justify-center gap-3 py-4 border border-white/60 text-white hover:text-white hover:border-white rounded-2xl font-bold tracking-widest text-sm transition-colors"
-            >
+            <button onClick={() => base44.auth.logout('/')} className="w-full flex items-center justify-center gap-3 py-4 border border-white/60 text-white hover:text-white hover:border-white rounded-2xl font-bold tracking-widest text-sm transition-colors">
               <LogOut size={16} />
               LOG OUT
             </button>
@@ -317,9 +278,7 @@ export default function MemberDashboard() {
       </div>
 
       <AnimatePresence>
-        {showProfileEditor && isOwnProfile && (
-          <MemberProfileEditor profile={profile} user={user} onClose={() => setShowProfileEditor(false)} />
-        )}
+        {showProfileEditor && isOwnProfile && <MemberProfileEditor profile={profile} user={user} onClose={() => setShowProfileEditor(false)} />}
       </AnimatePresence>
     </div>
   );
