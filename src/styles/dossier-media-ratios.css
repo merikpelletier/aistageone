@@ -1,0 +1,11 @@
+/* Dossier media: desktop must preserve the source video's aspect ratio.
+   DossierViewer fills large desktop regions with video; object-fit: contain
+   keeps 9:16, 16:9, 1:1 and other source formats intact instead of cropping. */
+@media (min-width: 1024px) {
+  .fixed.bg-black.z-30 video {
+    object-fit: contain !important;
+    background: #000;
+    max-width: 100%;
+    max-height: 100%;
+  }
+}
