@@ -8,6 +8,31 @@ import { ChevronDown, ChevronUp, LayoutGrid } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useAppContext } from '@/lib/AppContext';
 
+function escapeAudioUrl(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function addPageAudioToViewer(pages = []) {
+  return pages.map((page) => {
+    if (!page?.audio_url) return page;
+
+    const audioMarkup = `
+      <div data-dossier-page-audio="true" style="position:relative;z-index:60;width:min(520px,calc(100vw - 48px));margin:18px auto 0;pointer-events:auto;">
+        <audio controls preload="metadata" style="display:block;width:100%;" src="${escapeAudioUrl(page.audio_url)}"></audio>
+      </div>
+    `;
+
+    return {
+      ...page,
+      content: [page.content || '', audioMarkup].filter(Boolean).join('\n'),
+    };
+  });
+}
+
 export default function Magazine() {
   const { setAppContext } = useAppContext();
   const [searchParams] = useSearchParams();
@@ -384,7 +409,7 @@ export default function Magazine() {
       {/* Dossier Viewer */}
       {viewingDossier && viewingDossier.pages?.length > 0 && (
         <DossierViewer
-          pages={viewingDossier.pages}
+          pages={addPageAudioToViewer(viewingDossier.pages)}
           dossier={viewingDossier}
           onClose={() => setViewingDossier(null)}
         />
