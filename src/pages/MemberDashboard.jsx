@@ -250,7 +250,11 @@ export default function MemberDashboard() {
               </CollapsibleSection>
 
               <CollapsibleSection label="Contact" accent="contact" defaultOpen>
-                <MemberContactForm memberEmail={viewingEmail} memberName={profile?.display_name} />
+                <MemberContactForm
+                  memberEmail={viewingEmail}
+                  memberName={profile?.display_name}
+                  aiMemberId={isAIProfile ? aiMemberId : null}
+                />
               </CollapsibleSection>
 
               <CollapsibleSection label="Links" accent="links" defaultOpen>
