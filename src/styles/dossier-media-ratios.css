@@ -49,36 +49,41 @@
 }
 
 /* Dossier reader — mobile portrait.
-   Page audio stays at the very top. The page image is large directly below it,
-   followed by the title/content. Desktop/landscape is untouched. */
+   Keep the audio player fixed at the top. Center a large page image directly beneath it,
+   then continue with title/content. Desktop/landscape is untouched. */
 @media (max-width: 767px) {
   .fixed.bg-black.z-30
     .absolute.inset-0.flex.flex-col.overflow-y-auto:has([data-dossier-page-audio]) {
-    padding-top: 72px !important;
+    padding-top: 62px !important;
+    align-items: center !important;
   }
 
   .fixed.bg-black.z-30
     .absolute.inset-0.flex.flex-col.overflow-y-auto:has([data-dossier-page-audio])
     > img:first-of-type {
-    width: 100% !important;
+    display: block !important;
+    width: calc(100% - 20px) !important;
     height: auto !important;
-    max-height: 68vh !important;
+    max-height: 72vh !important;
     object-fit: contain !important;
+    object-position: center top !important;
     flex-shrink: 0 !important;
+    margin: 0 auto !important;
   }
 
   .fixed.bg-black.z-30
     .absolute.inset-0.flex.flex-col.overflow-y-auto:has([data-dossier-page-audio])
     > div.flex.flex-col.px-6.py-4.flex-1 {
+    width: 100% !important;
     flex: 0 0 auto !important;
-    padding-top: 12px !important;
+    padding-top: 10px !important;
   }
 
   .fixed.bg-black.z-30 [data-dossier-page-audio="true"] {
     position: absolute !important;
-    top: 10px !important;
-    left: 16px !important;
-    right: 16px !important;
+    top: 8px !important;
+    left: 12px !important;
+    right: 12px !important;
     width: auto !important;
     max-width: none !important;
     margin: 0 !important;
