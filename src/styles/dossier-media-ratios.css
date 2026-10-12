@@ -49,8 +49,8 @@
 }
 
 /* Dossier reader — portrait devices.
-   Scale from viewport proportions rather than device-width breakpoints:
-   large centered image, title/content, with audio fixed at the bottom. */
+   Let the page image use the full viewer while preserving its natural ratio.
+   Audio remains fixed at the bottom. */
 @media (orientation: portrait) {
   .fixed.bg-black.z-30
     .absolute.inset-0.flex.flex-col.overflow-y-auto:has([data-dossier-page-audio]) {
@@ -63,17 +63,17 @@
     .absolute.inset-0.flex.flex-col.overflow-y-auto:has([data-dossier-page-audio])
     > img:first-of-type {
     display: block !important;
-    width: 94vw !important;
-    height: auto !important;
-    max-height: 72vh !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
     object-fit: contain !important;
     object-position: center center !important;
-    position: relative !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
+    position: absolute !important;
+    inset: 0 !important;
+    margin: auto !important;
+    transform: none !important;
     flex-shrink: 0 !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
   }
 
   .fixed.bg-black.z-30
