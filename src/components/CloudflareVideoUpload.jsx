@@ -108,7 +108,7 @@ export default function CloudflareVideoUpload({
       setState('ready');
       setProgress(100);
       setMessage('Video ready on Cloudflare Stream.');
-      onReady?.(asset);
+      onReady?.({ ...asset, original_name: file.name || name });
     } catch (error) {
       if (cancelledRef.current) return reset();
       setState('error');
