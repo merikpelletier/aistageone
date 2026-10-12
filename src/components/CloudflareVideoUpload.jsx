@@ -1,35 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Upload, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { supabase } from '@/api/base44Client';
-
-const CHUNK_SIZE = 5 * 1024 * 1024;
-const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-async function invokeStream(body) {
-  const { data, error } = await supabase.functions.invoke('stream-upload', { body });
-  if (error) {
-    let message = error.message;
-    try { message = (await error.context.json()).error || message; } catch {}
-    throw new Error(message || 'Video service unavailable');
-  }
-  if (data?.error) throw new Error(data.error);
-  return data;
-}
-
-async function uploadChunk(url, chunk, offset) {
-  const response = await fetch(url, {
-    method: 'PATCH',
-    headers: {
-      'Tus-Resumable': '1.0.0',
-      'Upload-Offset': String(offset),
-      'Content-Type': 'application/offset+octet-stream',
-    },
-    body: chunk,
-  });
-  if (!response.ok) throw new Error(`Upload interrupted (${response.status})`);
-  const nextOffset = Number(response.headers.get('Upload-Offset'));
-  return Number.isFinite(nextOffset) ? nextOffset : offset + chunk.size;
-}
+import { uploadVideoToCloudflareStream } from '@/lib/cloudflareStreamUpload';
 
 export default function CloudflareVideoUpload({
   dossierId = null,
@@ -53,62 +24,33 @@ export default function CloudflareVideoUpload({
     if (inputRef.current) inputRef.current.value = '';
   };
 
-  const pollUntilReady = async (assetId) => {
-    setState('processing');
-    setMessage('Cloudflare is processing the video…');
-    for (let i = 0; i < 100 && !cancelledRef.current; i += 1) {
-      const result = await invokeStream({ action: 'status', asset_id: assetId });
-      if (result?.asset?.status === 'ready') return result.asset;
-      if (result?.asset?.status === 'error') throw new Error('Cloudflare could not process this video.');
-      await wait(3000);
-    }
-    throw new Error('The video is still processing. You can return to it shortly.');
-  };
-
   const startUpload = async (file) => {
     if (!file) return;
-    if (!file.type.startsWith('video/')) {
-      setState('error');
-      setMessage('Choose a video file.');
-      return;
-    }
-    if (file.size > 30 * 1024 * 1024 * 1024) {
-      setState('error');
-      setMessage('Cloudflare Stream accepts files up to 30 GB.');
-      return;
-    }
-
     cancelledRef.current = false;
     setState('preparing');
     setProgress(0);
     setMessage('Preparing secure upload…');
 
     try {
-      const provision = await invokeStream({
-        action: 'create_tus_upload',
-        file_size: file.size,
-        name: file.name || name,
-        dossier_id: dossierId,
-        max_duration_seconds: maxDurationSeconds,
+      const asset = await uploadVideoToCloudflareStream(file, {
+        dossierId,
+        maxDurationSeconds,
+        isCancelled: () => cancelledRef.current,
+        onProgress: (nextProgress, phase) => {
+          setProgress(nextProgress);
+          if (phase === 'processing') {
+            setState('processing');
+            setMessage('Cloudflare is processing the video…');
+          } else {
+            setState('uploading');
+            setMessage('Uploading directly to Cloudflare Stream…');
+          }
+        },
       });
-
-      if (!provision?.upload_url || !provision?.asset_id) throw new Error('Upload URL unavailable.');
-
-      setState('uploading');
-      setMessage('Uploading directly to Cloudflare Stream…');
-      let offset = 0;
-      while (offset < file.size) {
-        if (cancelledRef.current) throw new Error('Upload cancelled.');
-        const end = Math.min(offset + CHUNK_SIZE, file.size);
-        offset = await uploadChunk(provision.upload_url, file.slice(offset, end), offset);
-        setProgress(Math.min(100, Math.round((offset / file.size) * 100)));
-      }
-
-      const asset = await pollUntilReady(provision.asset_id);
       setState('ready');
       setProgress(100);
       setMessage('Video ready on Cloudflare Stream.');
-      onReady?.({ ...asset, original_name: file.name || name });
+      onReady?.({ ...asset, original_name: asset.original_name || file.name || name });
     } catch (error) {
       if (cancelledRef.current) return reset();
       setState('error');
