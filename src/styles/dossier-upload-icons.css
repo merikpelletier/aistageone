@@ -1,0 +1,5 @@
+label[for="page-media-upload"] svg,
+label[for="page-media-landscape-upload"] svg {
+  color: #fff !important;
+  stroke: #fff !important;
+}
