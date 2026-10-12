@@ -11,6 +11,7 @@ import {
   Film,
   Handshake,
   ImagePlus,
+  Inbox,
   Library,
   LogOut,
   Megaphone,
@@ -36,6 +37,7 @@ import AdminDossiers from '@/components/admin/AdminDossiers';
 import AdminSalons from '@/components/admin/AdminSalons';
 import AdminUsers from '@/components/admin/AdminUsers';
 import AdminAIMembers from '@/components/admin/AdminAIMembers';
+import AdminAIMemberMessages from '@/components/admin/AdminAIMemberMessages';
 import AdminProducts from '@/components/admin/AdminProducts';
 import AdminMerchantPromotions from '@/components/admin/AdminMerchantPromotions';
 import AdminContent from '@/components/admin/AdminContent';
@@ -71,6 +73,7 @@ const tabs = [
   ['salons', 'Chat Rooms', MessageSquare, <AdminSalons />],
   ['users', 'Users', Users, <AdminUsers />],
   ['ai-members', 'AI Members', Bot, <AdminAIMembers />],
+  ['ai-member-inbox', 'AI Inbox', Inbox, <AdminAIMemberMessages />],
   ['products', 'Shop', ShoppingBag, <AdminProducts />],
   ['merchant-promotions', 'Merchant Promos', ShoppingBag, <AdminMerchantPromotions />],
   ['olo-inventory', 'OLOSHOP Inventory', Boxes, <AdminOloInventory />],
