@@ -32,6 +32,7 @@ function DossierPagesIndex({ pages, onManage }) {
               <span className="text-white text-xs group-hover:text-white/90 transition-colors">
                 {page.episode_title || page.title || page.page_type}
               </span>
+              {page.audio_url && <span className="text-[10px] text-white/45">🔊</span>}
               <span className="text-white/20 text-xs ml-auto">{page.page_type}</span>
             </button>
           ))}
@@ -55,7 +56,7 @@ const PAGE_TYPE_ICONS = {
 export default function AdminDossiers() {
   const [editingDossier, setEditingDossier] = useState(null);
   const [showPageEditor, setShowPageEditor] = useState(null);
-  const [subTab, setSubTab] = useState('list'); // 'list' | 'categories'
+  const [subTab, setSubTab] = useState('list');
   const [expandedDossiers, setExpandedDossiers] = useState({});
 
   const toggleExpand = (id) => setExpandedDossiers(prev => ({ ...prev, [id]: !prev[id] }));
@@ -141,7 +142,6 @@ export default function AdminDossiers() {
         return;
       }
 
-      // These are platform safety/access requirements, not extra user-entered metadata.
       if (data.content_rating === '18+') {
         data.adult_age_gate_required = true;
         data.adult_warning_page_required = true;
@@ -185,81 +185,31 @@ export default function AdminDossiers() {
 
       {subTab === 'categories' && <AdminDossierCategories />}
 
-      {/* Dossier List */}
       {subTab === 'list' && (
         <div className="space-y-3">
         {dossiers.map((dossier) => (
-          <div
-            key={dossier.id}
-            className="bg-neutral-950 border border-white/10 rounded-sm p-4"
-          >
+          <div key={dossier.id} className="bg-neutral-950 border border-white/10 rounded-sm p-4">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex flex-col gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      const newOrder = Math.max(1, dossier.order - 1);
-                      updateDossierMutation.mutate({ id: dossier.id, data: { ...dossier, order: newOrder } });
-                    }}
-                    className="h-6 w-6 text-white hover:text-white"
-                  >
-                    ↑
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      updateDossierMutation.mutate({ id: dossier.id, data: { ...dossier, order: dossier.order + 1 } });
-                    }}
-                    className="h-6 w-6 text-white hover:text-white"
-                  >
-                    ↓
-                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => {
+                    const newOrder = Math.max(1, dossier.order - 1);
+                    updateDossierMutation.mutate({ id: dossier.id, data: { ...dossier, order: newOrder } });
+                  }} className="h-6 w-6 text-white hover:text-white">↑</Button>
+                  <Button variant="ghost" size="icon" onClick={() => {
+                    updateDossierMutation.mutate({ id: dossier.id, data: { ...dossier, order: dossier.order + 1 } });
+                  }} className="h-6 w-6 text-white hover:text-white">↓</Button>
                 </div>
-                {dossier.cover_image && (
-                  <img
-                    src={dossier.cover_image}
-                    alt=""
-                    className="w-20 h-14 object-cover rounded-sm"
-                  />
-                )}
+                {dossier.cover_image && <img src={dossier.cover_image} alt="" className="w-20 h-14 object-cover rounded-sm" />}
                 <div>
                   <h3 className="text-white font-light">{dossier.title}</h3>
-                  {dossier.subtitle && (
-                    <p className="text-white text-sm">{dossier.subtitle}</p>
-                  )}
+                  {dossier.subtitle && <p className="text-white text-sm">{dossier.subtitle}</p>}
                   <div className="flex items-center gap-2 mt-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      dossier.status === 'published' 
-                        ? 'bg-green-900/50 text-green-400' 
-                        : dossier.status === 'unpublished'
-                        ? 'bg-red-900/50 text-red-400'
-                        : 'bg-yellow-900/50 text-yellow-400'
-                    }`}>
-                      {dossier.status}
-                    </span>
-
-                    {dossier.category && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white">
-                        {dossier.category}
-                      </span>
-                    )}
-                    {dossier.content_rating && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-red-900/40 text-red-300 border border-red-500/20">
-                        {dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}
-                      </span>
-                    )}
-                    {(dossier.default_language || dossier.original_language) && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-sky-900/40 text-sky-300 border border-sky-500/20 uppercase">
-                        {dossier.default_language || dossier.original_language}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => toggleExpand(dossier.id)}
-                      className="text-white text-xs hover:text-white flex items-center gap-1 transition-colors"
-                    >
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${dossier.status === 'published' ? 'bg-green-900/50 text-green-400' : dossier.status === 'unpublished' ? 'bg-red-900/50 text-red-400' : 'bg-yellow-900/50 text-yellow-400'}`}>{dossier.status}</span>
+                    {dossier.category && <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white">{dossier.category}</span>}
+                    {dossier.content_rating && <span className="text-xs px-2 py-0.5 rounded-full bg-red-900/40 text-red-300 border border-red-500/20">{dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}</span>}
+                    {(dossier.default_language || dossier.original_language) && <span className="text-xs px-2 py-0.5 rounded-full bg-sky-900/40 text-sky-300 border border-sky-500/20 uppercase">{dossier.default_language || dossier.original_language}</span>}
+                    <button onClick={() => toggleExpand(dossier.id)} className="text-white text-xs hover:text-white flex items-center gap-1 transition-colors">
                       {expandedDossiers[dossier.id] ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                       {allPages.filter(p => p.dossier_id === dossier.id).length} pages
                     </button>
@@ -267,108 +217,47 @@ export default function AdminDossiers() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowPageEditor(dossier)}
-                  className="text-white hover:text-white"
-                >
-                  <Layers size={16} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setEditingDossier(dossier)}
-                  className="text-white hover:text-white"
-                >
-                  <Edit2 size={16} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => deleteDossierMutation.mutate(dossier.id)}
-                  className="text-white hover:text-red-500"
-                >
-                  <Trash2 size={16} />
-                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setShowPageEditor(dossier)} className="text-white hover:text-white"><Layers size={16} /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setEditingDossier(dossier)} className="text-white hover:text-white"><Edit2 size={16} /></Button>
+                <Button variant="ghost" size="icon" onClick={() => deleteDossierMutation.mutate(dossier.id)} className="text-white hover:text-red-500"><Trash2 size={16} /></Button>
               </div>
             </div>
-            {/* Pages index */}
-            {expandedDossiers[dossier.id] && (
-              <DossierPagesIndex
-                pages={allPages.filter(p => p.dossier_id === dossier.id)}
-                onManage={() => setShowPageEditor(dossier)}
-              />
-            )}
+            {expandedDossiers[dossier.id] && <DossierPagesIndex pages={allPages.filter(p => p.dossier_id === dossier.id)} onManage={() => setShowPageEditor(dossier)} />}
           </div>
         ))}
         </div>
       )}
 
-      {/* Edit Dossier Dialog */}
       <Dialog open={!!editingDossier} onOpenChange={() => setEditingDossier(null)}>
         <DialogContent className="bg-neutral-950 border-white/10 text-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-light tracking-wide">
-              {editingDossier?.id ? 'Edit' : 'New'} Dossier
-            </DialogTitle>
+            <DialogTitle className="font-light tracking-wide">{editingDossier?.id ? 'Edit' : 'New'} Dossier</DialogTitle>
           </DialogHeader>
           {editingDossier && (
             <div className="space-y-4 mt-4">
-              <Input
-                value={editingDossier.title}
-                onChange={(e) => setEditingDossier({ ...editingDossier, title: e.target.value })}
-                placeholder="Title"
-                className="bg-neutral-900 border-white/10 text-white"
-              />
-              <Input
-                value={editingDossier.subtitle || ''}
-                onChange={(e) => setEditingDossier({ ...editingDossier, subtitle: e.target.value })}
-                placeholder="Subtitle"
-                className="bg-neutral-900 border-white/10 text-white"
-              />
-              <Input
-                value={editingDossier.author_name || ''}
-                onChange={(e) => setEditingDossier({ ...editingDossier, author_name: e.target.value })}
-                placeholder="Author"
-                className="bg-neutral-900 border-white/10 text-white"
-              />
+              <Input value={editingDossier.title} onChange={(e) => setEditingDossier({ ...editingDossier, title: e.target.value })} placeholder="Title" className="bg-neutral-900 border-white/10 text-white" />
+              <Input value={editingDossier.subtitle || ''} onChange={(e) => setEditingDossier({ ...editingDossier, subtitle: e.target.value })} placeholder="Subtitle" className="bg-neutral-900 border-white/10 text-white" />
+              <Input value={editingDossier.author_name || ''} onChange={(e) => setEditingDossier({ ...editingDossier, author_name: e.target.value })} placeholder="Author" className="bg-neutral-900 border-white/10 text-white" />
 
               {editingDossier.id && (
                 <div className="border border-white/10 bg-black/30 p-3">
                   <p className="text-white/45 text-[10px] uppercase tracking-[0.18em] mb-2">Associated member</p>
-                  {(editingDossier.ai_member_id || editingDossier.submitted_by_email?.trim()) ? (
-                    <DossierAssociatedMember dossier={editingDossier} compact />
-                  ) : (
-                    <p className="text-white/45 text-sm">No member associated with this dossier.</p>
-                  )}
+                  {(editingDossier.ai_member_id || editingDossier.submitted_by_email?.trim()) ? <DossierAssociatedMember dossier={editingDossier} compact /> : <p className="text-white/45 text-sm">No member associated with this dossier.</p>}
                 </div>
               )}
 
-              <Select
-                value={editingDossier.category || ''}
-                onValueChange={(value) => setEditingDossier({ ...editingDossier, category: value === '__none__' ? '' : value })}
-              >
-                <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
-                  <SelectValue placeholder="Select a category..." />
-                </SelectTrigger>
+              <Select value={editingDossier.category || ''} onValueChange={(value) => setEditingDossier({ ...editingDossier, category: value === '__none__' ? '' : value })}>
+                <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue placeholder="Select a category..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">— No category —</SelectItem>
-                  {categories.map(cat => (
-                    <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-                  ))}
+                  {categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
                 </SelectContent>
               </Select>
 
               <div>
                 <label className="block text-white text-sm mb-2">Class</label>
-                <Select
-                  value={editingDossier.class || '__none__'}
-                  onValueChange={(value) => setEditingDossier({ ...editingDossier, class: value === '__none__' ? '' : value })}
-                >
-                  <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
-                    <SelectValue placeholder="Select a class..." />
-                  </SelectTrigger>
+                <Select value={editingDossier.class || '__none__'} onValueChange={(value) => setEditingDossier({ ...editingDossier, class: value === '__none__' ? '' : value })}>
+                  <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue placeholder="Select a class..." /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">— No class —</SelectItem>
                     <SelectItem value="Videos">Videos</SelectItem>
@@ -382,262 +271,74 @@ export default function AdminDossiers() {
 
               <div>
                 <label className="block text-white text-sm mb-2">Access</label>
-                <Select
-                  value={editingDossier.access_level || 'public'}
-                  onValueChange={(value) => setEditingDossier({ ...editingDossier, access_level: value })}
-                >
-                  <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="public">Public</SelectItem>
-                    <SelectItem value="subscribers">Subscribers only</SelectItem>
-                  </SelectContent>
+                <Select value={editingDossier.access_level || 'public'} onValueChange={(value) => setEditingDossier({ ...editingDossier, access_level: value })}>
+                  <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="public">Public</SelectItem><SelectItem value="subscribers">Subscribers only</SelectItem></SelectContent>
                 </Select>
-                <p className="text-white/50 text-xs mt-1.5">
-                  Subscribers only requires an active annual creator subscription.
-                </p>
+                <p className="text-white/50 text-xs mt-1.5">Subscribers only requires an active annual creator subscription.</p>
               </div>
 
               <div className="pt-3 border-t border-white/10 space-y-4">
-                <div>
-                  <p className="text-white text-sm font-medium">Classification & Languages</p>
-                  <p className="text-white/50 text-xs mt-1">
-                    These fields are required before a dossier can be published.
-                  </p>
-                </div>
-
+                <div><p className="text-white text-sm font-medium">Classification & Languages</p><p className="text-white/50 text-xs mt-1">These fields are required before a dossier can be published.</p></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-white text-sm mb-2">Content rating</label>
-                    <Select
-                      value={editingDossier.content_rating || '__none__'}
-                      onValueChange={(value) => setEditingDossier({ ...editingDossier, content_rating: value === '__none__' ? null : value })}
-                    >
-                      <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— Not classified —</SelectItem>
-                        <SelectItem value="all">All audiences</SelectItem>
-                        <SelectItem value="13+">13+</SelectItem>
-                        <SelectItem value="18+">18+</SelectItem>
-                      </SelectContent>
+                    <Select value={editingDossier.content_rating || '__none__'} onValueChange={(value) => setEditingDossier({ ...editingDossier, content_rating: value === '__none__' ? null : value })}>
+                      <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="__none__">— Not classified —</SelectItem><SelectItem value="all">All audiences</SelectItem><SelectItem value="13+">13+</SelectItem><SelectItem value="18+">18+</SelectItem></SelectContent>
                     </Select>
                   </div>
-
                   <div>
                     <label className="block text-white text-sm mb-2">Access model</label>
-                    <Select
-                      value={editingDossier.access_model || '__none__'}
-                      onValueChange={(value) => setEditingDossier({ ...editingDossier, access_model: value === '__none__' ? null : value })}
-                    >
-                      <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— Not set —</SelectItem>
-                        <SelectItem value="free">Free</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                      </SelectContent>
+                    <Select value={editingDossier.access_model || '__none__'} onValueChange={(value) => setEditingDossier({ ...editingDossier, access_model: value === '__none__' ? null : value })}>
+                      <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="__none__">— Not set —</SelectItem><SelectItem value="free">Free</SelectItem><SelectItem value="paid">Paid</SelectItem></SelectContent>
                     </Select>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-white text-sm mb-2">Original language</label>
-                    <Input
-                      value={editingDossier.original_language || ''}
-                      onChange={(e) => setEditingDossier({ ...editingDossier, original_language: e.target.value })}
-                      placeholder="en, fr, English…"
-                      className="bg-neutral-900 border-white/10 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-white text-sm mb-2">Default language</label>
-                    <Input
-                      value={editingDossier.default_language || ''}
-                      onChange={(e) => setEditingDossier({ ...editingDossier, default_language: e.target.value })}
-                      placeholder="en, fr, English…"
-                      className="bg-neutral-900 border-white/10 text-white"
-                    />
-                  </div>
+                  <div><label className="block text-white text-sm mb-2">Original language</label><Input value={editingDossier.original_language || ''} onChange={(e) => setEditingDossier({ ...editingDossier, original_language: e.target.value })} placeholder="en, fr, English…" className="bg-neutral-900 border-white/10 text-white" /></div>
+                  <div><label className="block text-white text-sm mb-2">Default language</label><Input value={editingDossier.default_language || ''} onChange={(e) => setEditingDossier({ ...editingDossier, default_language: e.target.value })} placeholder="en, fr, English…" className="bg-neutral-900 border-white/10 text-white" /></div>
                 </div>
-
-                <div>
-                  <label className="block text-white text-sm mb-2">Audio languages</label>
-                  <Input
-                    value={(editingDossier.audio_languages || []).join(', ')}
-                    onChange={(e) => setEditingDossier({
-                      ...editingDossier,
-                      audio_languages: e.target.value.split(',').map(v => v.trim()).filter(Boolean)
-                    })}
-                    placeholder="en, fr"
-                    className="bg-neutral-900 border-white/10 text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-white text-sm mb-2">Subtitle languages</label>
-                  <Input
-                    value={(editingDossier.subtitle_languages || []).join(', ')}
-                    onChange={(e) => setEditingDossier({
-                      ...editingDossier,
-                      subtitle_languages: e.target.value.split(',').map(v => v.trim()).filter(Boolean)
-                    })}
-                    placeholder="en, fr"
-                    className="bg-neutral-900 border-white/10 text-white"
-                  />
-                </div>
-
+                <div><label className="block text-white text-sm mb-2">Audio languages</label><Input value={(editingDossier.audio_languages || []).join(', ')} onChange={(e) => setEditingDossier({ ...editingDossier, audio_languages: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} placeholder="en, fr" className="bg-neutral-900 border-white/10 text-white" /></div>
+                <div><label className="block text-white text-sm mb-2">Subtitle languages</label><Input value={(editingDossier.subtitle_languages || []).join(', ')} onChange={(e) => setEditingDossier({ ...editingDossier, subtitle_languages: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} placeholder="en, fr" className="bg-neutral-900 border-white/10 text-white" /></div>
                 <label className="flex items-start gap-3 cursor-pointer bg-neutral-900/60 border border-white/10 p-3 rounded">
-                  <input
-                    type="checkbox"
-                    checked={editingDossier.public_promo_confirmed || false}
-                    onChange={(e) => setEditingDossier({ ...editingDossier, public_promo_confirmed: e.target.checked })}
-                    className="w-5 h-5 mt-0.5 accent-white cursor-pointer"
-                  />
-                  <span>
-                    <span className="block text-white text-sm">Public publication confirmed</span>
-                    <span className="block text-white/50 text-xs mt-1">
-                      Required for published dossiers. 18+ content automatically requires the adult gate and warning page.
-                    </span>
-                  </span>
+                  <input type="checkbox" checked={editingDossier.public_promo_confirmed || false} onChange={(e) => setEditingDossier({ ...editingDossier, public_promo_confirmed: e.target.checked })} className="w-5 h-5 mt-0.5 accent-white cursor-pointer" />
+                  <span><span className="block text-white text-sm">Public publication confirmed</span><span className="block text-white/50 text-xs mt-1">Required for published dossiers. 18+ content automatically requires the adult gate and warning page.</span></span>
                 </label>
               </div>
 
-              <div>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editingDossier.hide_text_on_cover || false}
-                    onChange={(e) => setEditingDossier({ ...editingDossier, hide_text_on_cover: e.target.checked })}
-                    className="w-5 h-5 accent-white cursor-pointer"
-                  />
-                  <span className="text-white text-sm">Hide title on cover</span>
-                </label>
-              </div>
+              <div><label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" checked={editingDossier.hide_text_on_cover || false} onChange={(e) => setEditingDossier({ ...editingDossier, hide_text_on_cover: e.target.checked })} className="w-5 h-5 accent-white cursor-pointer" /><span className="text-white text-sm">Hide title on cover</span></label></div>
               <div>
                 <label className="block text-white text-sm mb-2">Cover</label>
-                {editingDossier.cover_image && (
-                  <img src={editingDossier.cover_image} alt="" className="w-full h-32 object-cover rounded-sm mb-2" />
-                )}
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleImageUpload} 
-                  className="hidden" 
-                  id="dossier-image-upload"
-                />
-                <label htmlFor="dossier-image-upload">
-                 <Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild>
-                   <span>
-                     <Upload size={16} className="mr-2" />
-                     Choose an image
-                   </span>
-                 </Button>
-                </label>
-                <Input
-                  value={editingDossier.cover_image || ''}
-                  onChange={(e) => setEditingDossier({ ...editingDossier, cover_image: e.target.value })}
-                  placeholder="Or paste an image URL"
-                  className="bg-neutral-900 border-white/10 text-white text-sm"
-                />
+                {editingDossier.cover_image && <img src={editingDossier.cover_image} alt="" className="w-full h-32 object-cover rounded-sm mb-2" />}
+                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="dossier-image-upload" />
+                <label htmlFor="dossier-image-upload"><Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild><span><Upload size={16} className="mr-2" />Choose an image</span></Button></label>
+                <Input value={editingDossier.cover_image || ''} onChange={(e) => setEditingDossier({ ...editingDossier, cover_image: e.target.value })} placeholder="Or paste an image URL" className="bg-neutral-900 border-white/10 text-white text-sm" />
               </div>
               <div>
                 <label className="block text-white text-sm mb-2">🖥️ Landscape Cover <span className="text-white text-xs">(optional, uses portrait if empty)</span></label>
-                {editingDossier.cover_image_landscape && (
-                  <img src={editingDossier.cover_image_landscape} alt="" className="w-full h-32 object-cover rounded-sm mb-2" />
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-                    setEditingDossier({ ...editingDossier, cover_image_landscape: file_url });
-                  }}
-                  className="hidden"
-                  id="dossier-image-landscape-upload"
-                />
-                <label htmlFor="dossier-image-landscape-upload">
-                  <Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild>
-                    <span>
-                      <Upload size={16} className="mr-2" />
-                      Choose a landscape image
-                    </span>
-                  </Button>
-                </label>
-                <Input
-                  value={editingDossier.cover_image_landscape || ''}
-                  onChange={(e) => setEditingDossier({ ...editingDossier, cover_image_landscape: e.target.value })}
-                  placeholder="Or paste a URL"
-                  className="bg-neutral-900 border-white/10 text-white text-sm"
-                />
+                {editingDossier.cover_image_landscape && <img src={editingDossier.cover_image_landscape} alt="" className="w-full h-32 object-cover rounded-sm mb-2" />}
+                <input type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const { file_url } = await base44.integrations.Core.UploadFile({ file }); setEditingDossier({ ...editingDossier, cover_image_landscape: file_url }); }} className="hidden" id="dossier-image-landscape-upload" />
+                <label htmlFor="dossier-image-landscape-upload"><Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild><span><Upload size={16} className="mr-2" />Choose a landscape image</span></Button></label>
+                <Input value={editingDossier.cover_image_landscape || ''} onChange={(e) => setEditingDossier({ ...editingDossier, cover_image_landscape: e.target.value })} placeholder="Or paste a URL" className="bg-neutral-900 border-white/10 text-white text-sm" />
               </div>
-              <div>
-                <label className="block text-white text-sm mb-2">Portrait cover video (optional)</label>
-                <Input
-                  value={editingDossier.cover_video || ''}
-                  onChange={(e) => setEditingDossier({ ...editingDossier, cover_video: e.target.value })}
-                  placeholder="Portrait video URL"
-                  className="bg-neutral-900 border-white/10 text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-white text-sm mb-2">Landscape cover video (optional)</label>
-                <Input
-                  value={editingDossier.cover_video_landscape || ''}
-                  onChange={(e) => setEditingDossier({ ...editingDossier, cover_video_landscape: e.target.value })}
-                  placeholder="Landscape video URL"
-                  className="bg-neutral-900 border-white/10 text-white"
-                />
-              </div>
-              <Select
-                value={editingDossier.status}
-                onValueChange={(value) => setEditingDossier({ ...editingDossier, status: value })}
-              >
-                <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="pending_review">Pending review</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="unpublished">Unpublished</SelectItem>
-                </SelectContent>
+              <div><label className="block text-white text-sm mb-2">Portrait cover video (optional)</label><Input value={editingDossier.cover_video || ''} onChange={(e) => setEditingDossier({ ...editingDossier, cover_video: e.target.value })} placeholder="Portrait video URL" className="bg-neutral-900 border-white/10 text-white" /></div>
+              <div><label className="block text-white text-sm mb-2">Landscape cover video (optional)</label><Input value={editingDossier.cover_video_landscape || ''} onChange={(e) => setEditingDossier({ ...editingDossier, cover_video_landscape: e.target.value })} placeholder="Landscape video URL" className="bg-neutral-900 border-white/10 text-white" /></div>
+              <Select value={editingDossier.status} onValueChange={(value) => setEditingDossier({ ...editingDossier, status: value })}>
+                <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="draft">Draft</SelectItem><SelectItem value="pending_review">Pending review</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="unpublished">Unpublished</SelectItem></SelectContent>
               </Select>
               <div>
                 <label className="block text-white text-sm mb-2">Display Order (Position)</label>
                 <div className="flex items-end gap-2">
-                  <Input
-                    type="number"
-                    value={editingDossier.order}
-                    onChange={(e) => setEditingDossier({ ...editingDossier, order: parseInt(e.target.value) })}
-                    placeholder="Position number..."
-                    className="bg-neutral-900 border-white/10 text-white flex-1"
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => setEditingDossier({ ...editingDossier, order: Math.max(1, editingDossier.order - 1) })}
-                    className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 px-3"
-                  >
-                    ↑
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => setEditingDossier({ ...editingDossier, order: editingDossier.order + 1 })}
-                    className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 px-3"
-                  >
-                    ↓
-                  </Button>
+                  <Input type="number" value={editingDossier.order} onChange={(e) => setEditingDossier({ ...editingDossier, order: parseInt(e.target.value) })} placeholder="Position number..." className="bg-neutral-900 border-white/10 text-white flex-1" />
+                  <Button type="button" onClick={() => setEditingDossier({ ...editingDossier, order: Math.max(1, editingDossier.order - 1) })} className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 px-3">↑</Button>
+                  <Button type="button" onClick={() => setEditingDossier({ ...editingDossier, order: editingDossier.order + 1 })} className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 px-3">↓</Button>
                 </div>
                 <p className="text-white text-xs mt-1.5">Lower = appears first</p>
               </div>
 
-              {/* Product Placements */}
               <div className="pt-2 border-t border-white/10">
                 <label className="block text-white text-sm font-medium mb-2">Product Placements</label>
                 <p className="text-white text-xs mb-3">Brand/product mentions linked to this dossier (not tied to a specific page type).</p>
@@ -645,130 +346,28 @@ export default function AdminDossiers() {
                   {(editingDossier.product_placements || []).map((placement, idx) => (
                     <div key={placement.id || idx} className="p-3 bg-neutral-900/50 rounded border border-white/10 space-y-2">
                       <div className="flex gap-2">
-                        <Input
-                          value={placement.name || ''}
-                          onChange={(e) => {
-                            const updated = [...(editingDossier.product_placements || [])];
-                            updated[idx] = { ...updated[idx], name: e.target.value };
-                            setEditingDossier({ ...editingDossier, product_placements: updated });
-                          }}
-                          placeholder="Product / brand name"
-                          className="bg-neutral-900 border-white/10 text-white flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            const updated = (editingDossier.product_placements || []).filter((_, i) => i !== idx);
-                            setEditingDossier({ ...editingDossier, product_placements: updated });
-                          }}
-                          className="text-white hover:text-red-500"
-                        >
-                          <Trash2 size={16} />
-                        </Button>
+                        <Input value={placement.name || ''} onChange={(e) => { const updated = [...(editingDossier.product_placements || [])]; updated[idx] = { ...updated[idx], name: e.target.value }; setEditingDossier({ ...editingDossier, product_placements: updated }); }} placeholder="Product / brand name" className="bg-neutral-900 border-white/10 text-white flex-1" />
+                        <Button type="button" variant="ghost" size="icon" onClick={() => { const updated = (editingDossier.product_placements || []).filter((_, i) => i !== idx); setEditingDossier({ ...editingDossier, product_placements: updated }); }} className="text-white hover:text-red-500"><Trash2 size={16} /></Button>
                       </div>
-                      <Input
-                        value={placement.image_url || ''}
-                        onChange={(e) => {
-                          const updated = [...(editingDossier.product_placements || [])];
-                          updated[idx] = { ...updated[idx], image_url: e.target.value };
-                          setEditingDossier({ ...editingDossier, product_placements: updated });
-                        }}
-                        placeholder="Product image URL"
-                        className="bg-neutral-900 border-white/10 text-white text-sm"
-                      />
-                      <Textarea
-                        value={placement.description || ''}
-                        onChange={(e) => {
-                          const updated = [...(editingDossier.product_placements || [])];
-                          updated[idx] = { ...updated[idx], description: e.target.value };
-                          setEditingDossier({ ...editingDossier, product_placements: updated });
-                        }}
-                        placeholder="Optional short description"
-                        className="bg-neutral-900 border-white/10 text-white text-sm"
-                        rows={2}
-                      />
-                      <Input
-                        value={placement.url || ''}
-                        onChange={(e) => {
-                          const updated = [...(editingDossier.product_placements || [])];
-                          updated[idx] = { ...updated[idx], url: e.target.value };
-                          setEditingDossier({ ...editingDossier, product_placements: updated });
-                        }}
-                        placeholder="External product URL"
-                        className="bg-neutral-900 border-white/10 text-white text-sm"
-                      />
-                      <Input
-                        value={placement.page_reference || ''}
-                        onChange={(e) => {
-                          const updated = [...(editingDossier.product_placements || [])];
-                          updated[idx] = { ...updated[idx], page_reference: e.target.value };
-                          setEditingDossier({ ...editingDossier, product_placements: updated });
-                        }}
-                        placeholder="Optional scene/page reference"
-                        className="bg-neutral-900 border-white/10 text-white text-sm"
-                      />
-                      <Input
-                        type="number"
-                        value={placement.order ?? idx}
-                        onChange={(e) => {
-                          const updated = [...(editingDossier.product_placements || [])];
-                          updated[idx] = { ...updated[idx], order: parseInt(e.target.value) || 0 };
-                          setEditingDossier({ ...editingDossier, product_placements: updated });
-                        }}
-                        placeholder="Display order"
-                        className="bg-neutral-900 border-white/10 text-white text-sm"
-                      />
+                      <Input value={placement.image_url || ''} onChange={(e) => { const updated = [...(editingDossier.product_placements || [])]; updated[idx] = { ...updated[idx], image_url: e.target.value }; setEditingDossier({ ...editingDossier, product_placements: updated }); }} placeholder="Product image URL" className="bg-neutral-900 border-white/10 text-white text-sm" />
+                      <Textarea value={placement.description || ''} onChange={(e) => { const updated = [...(editingDossier.product_placements || [])]; updated[idx] = { ...updated[idx], description: e.target.value }; setEditingDossier({ ...editingDossier, product_placements: updated }); }} placeholder="Optional short description" className="bg-neutral-900 border-white/10 text-white text-sm" rows={2} />
+                      <Input value={placement.url || ''} onChange={(e) => { const updated = [...(editingDossier.product_placements || [])]; updated[idx] = { ...updated[idx], url: e.target.value }; setEditingDossier({ ...editingDossier, product_placements: updated }); }} placeholder="External product URL" className="bg-neutral-900 border-white/10 text-white text-sm" />
+                      <Input value={placement.page_reference || ''} onChange={(e) => { const updated = [...(editingDossier.product_placements || [])]; updated[idx] = { ...updated[idx], page_reference: e.target.value }; setEditingDossier({ ...editingDossier, product_placements: updated }); }} placeholder="Optional scene/page reference" className="bg-neutral-900 border-white/10 text-white text-sm" />
+                      <Input type="number" value={placement.order ?? idx} onChange={(e) => { const updated = [...(editingDossier.product_placements || [])]; updated[idx] = { ...updated[idx], order: parseInt(e.target.value) || 0 }; setEditingDossier({ ...editingDossier, product_placements: updated }); }} placeholder="Display order" className="bg-neutral-900 border-white/10 text-white text-sm" />
                     </div>
                   ))}
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      const updated = [...(editingDossier.product_placements || []), { id: `placement_${Date.now()}_${Math.random().toString(36).slice(2)}`, name: '', image_url: '', description: '', url: '', page_reference: '', order: (editingDossier.product_placements || []).length }];
-                      setEditingDossier({ ...editingDossier, product_placements: updated });
-                    }}
-                    className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"
-                  >
-                    <Plus size={14} className="mr-2" />
-                    Add Product
-                  </Button>
+                  <Button type="button" onClick={() => { const updated = [...(editingDossier.product_placements || []), { id: `placement_${Date.now()}_${Math.random().toString(36).slice(2)}`, name: '', image_url: '', description: '', url: '', page_reference: '', order: (editingDossier.product_placements || []).length }]; setEditingDossier({ ...editingDossier, product_placements: updated }); }} className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"><Plus size={14} className="mr-2" />Add Product</Button>
                 </div>
               </div>
 
-              <Button
-                onClick={handleSaveDossier}
-                className="w-full bg-white text-black hover:bg-white/90"
-              >
-                Save
-              </Button>
-
-              {editingDossier?.id && (
-                <Button
-                  type="button"
-                  className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"
-                  onClick={() => {
-                    setShowPageEditor(editingDossier);
-                    setEditingDossier(null);
-                  }}
-                >
-                  <Layers size={16} className="mr-2" />
-                  Manage pages (portrait &amp; landscape)
-                </Button>
-              )}
+              <Button onClick={handleSaveDossier} className="w-full bg-white text-black hover:bg-white/90">Save</Button>
+              {editingDossier?.id && <Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700" onClick={() => { setShowPageEditor(editingDossier); setEditingDossier(null); }}><Layers size={16} className="mr-2" />Manage pages (portrait &amp; landscape)</Button>}
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Page Editor Dialog */}
-      {showPageEditor && (
-        <PageEditor
-          dossier={showPageEditor}
-          pages={allPages.filter(p => p.dossier_id === showPageEditor.id)}
-          onClose={() => setShowPageEditor(null)}
-        />
-      )}
+      {showPageEditor && <PageEditor dossier={showPageEditor} pages={allPages.filter(p => p.dossier_id === showPageEditor.id)} onClose={() => setShowPageEditor(null)} />}
     </div>
   );
 }
@@ -780,16 +379,10 @@ function PageEditor({ dossier, pages, onClose }) {
   const createPageMutation = useMutation({
     mutationFn: (data) => base44.entities.DossierPage.create(data),
     onSuccess: async (newPage) => {
-      // If this is an episode page, auto-append it to the join_cast page's cast_episodes
       if (newPage.page_type === 'episode') {
         const joinCastPage = pages.find(p => p.page_type === 'join_cast');
         if (joinCastPage) {
-          const newEpisode = {
-            episode_title: newPage.episode_title || newPage.title || '',
-            episode_description: newPage.episode_description || newPage.content || '',
-            role: newPage.episode_role || '',
-            tools_hint: newPage.episode_tools_hint || ''
-          };
+          const newEpisode = { episode_title: newPage.episode_title || newPage.title || '', episode_description: newPage.episode_description || newPage.content || '', role: newPage.episode_role || '', tools_hint: newPage.episode_tools_hint || '' };
           const updatedEpisodes = [...(joinCastPage.cast_episodes || []), newEpisode];
           await base44.entities.DossierPage.update(joinCastPage.id, { cast_episodes: updatedEpisodes });
         }
@@ -799,32 +392,12 @@ function PageEditor({ dossier, pages, onClose }) {
     }
   });
 
-  const updatePageMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.DossierPage.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminDossierPages'] });
-    }
-  });
+  const updatePageMutation = useMutation({ mutationFn: ({ id, data }) => base44.entities.DossierPage.update(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['adminDossierPages'] }); } });
+  const deletePageMutation = useMutation({ mutationFn: (id) => base44.entities.DossierPage.delete(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['adminDossierPages'] }) });
 
-  const deletePageMutation = useMutation({
-    mutationFn: (id) => base44.entities.DossierPage.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['adminDossierPages'] })
-  });
-
-  // Sync series characters into episode productions when a series or episode page is saved.
   const syncPages = async (savedPage, allSiblings) => {
     const promises = [];
-
-    const toEpChar = (sc, existingMap) => ({
-      id: existingMap[sc.name]?.id || `char_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      name: sc.name,
-      description: sc.description || existingMap[sc.name]?.description || '',
-      photo_url: sc.photo_url || existingMap[sc.name]?.photo_url || '',
-      character_type: sc.character_type || existingMap[sc.name]?.character_type || '',
-      participation_methods: existingMap[sc.name]?.participation_methods || [],
-      reference_images: existingMap[sc.name]?.reference_images || [],
-    });
-
+    const toEpChar = (sc, existingMap) => ({ id: existingMap[sc.name]?.id || `char_${Date.now()}_${Math.random().toString(36).slice(2)}`, name: sc.name, description: sc.description || existingMap[sc.name]?.description || '', photo_url: sc.photo_url || existingMap[sc.name]?.photo_url || '', character_type: sc.character_type || existingMap[sc.name]?.character_type || '', participation_methods: existingMap[sc.name]?.participation_methods || [], reference_images: existingMap[sc.name]?.reference_images || [] });
     if (savedPage.page_type === 'series') {
       const sourceChars = (savedPage.series_characters || []).filter(c => c.name);
       const episodePages = allSiblings.filter(p => p.page_type === 'episode');
@@ -846,7 +419,6 @@ function PageEditor({ dossier, pages, onClose }) {
         promises.push(base44.entities.EpisodeProduction.update(prod.id, { characters: sourceChars.map(sc => toEpChar(sc, existingMap)) }));
       }
     }
-
     await Promise.all(promises);
     queryClient.invalidateQueries({ queryKey: ['adminDossierPages'] });
   };
@@ -855,8 +427,6 @@ function PageEditor({ dossier, pages, onClose }) {
     if (editingPage.id) {
       await updatePageMutation.mutateAsync({ id: editingPage.id, data: editingPage });
       await queryClient.invalidateQueries({ queryKey: ['adminDossierPages'] });
-      // Auto-sync on every save of series, kit, or episode pages
-      // Use editingPage as the authoritative data (replaces stale pages[] entry)
       if (['series', 'episode'].includes(editingPage.page_type)) {
         const pagesWithCurrent = pages.map(p => p.id === editingPage.id ? editingPage : p);
         await syncPages(editingPage, pagesWithCurrent);
@@ -870,9 +440,16 @@ function PageEditor({ dossier, pages, onClose }) {
   const handleMediaUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
     setEditingPage({ ...editingPage, media_url: file_url });
+  };
+
+  const handleAudioUpload = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setEditingPage(current => ({ ...current, audio_url: file_url }));
   };
 
   const sortedPages = [...pages].sort((a, b) => a.order - b.order);
@@ -880,993 +457,167 @@ function PageEditor({ dossier, pages, onClose }) {
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="bg-neutral-950 border-white/10 text-white max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-light tracking-wide">
-            Pages: {dossier.title}
-          </DialogTitle>
-        </DialogHeader>
-
+        <DialogHeader><DialogTitle className="font-light tracking-wide">Pages: {dossier.title}</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-4">
-          {/* Page List */}
           <div>
             <h3 className="text-white text-sm mb-3">Pages ({sortedPages.length})</h3>
-            {sortedPages.length === 0 ? (
-              <div className="text-center py-8 bg-neutral-900/50 rounded-sm border border-white/5">
-                <p className="text-white text-sm">No pages created</p>
-              </div>
-            ) : (
+            {sortedPages.length === 0 ? <div className="text-center py-8 bg-neutral-900/50 rounded-sm border border-white/5"><p className="text-white text-sm">No pages created</p></div> : (
               <div className="space-y-2">
                 {sortedPages.map((page) => (
-                  <div
-                    key={page.id}
-                    className={`flex items-center justify-between p-3 rounded-sm ${page.is_locked ? 'bg-red-900/20 border border-red-600/30' : page.is_hidden_from_public ? 'bg-orange-900/20 border border-orange-600/30' : 'bg-neutral-900'}`}
-                  >
+                  <div key={page.id} className={`flex items-center justify-between p-3 rounded-sm ${page.is_locked ? 'bg-red-900/20 border border-red-600/30' : page.is_hidden_from_public ? 'bg-orange-900/20 border border-orange-600/30' : 'bg-neutral-900'}`}>
                     <div className="flex items-center gap-3">
                       <span className="text-white text-sm w-6">{page.order}</span>
-                      {page.media_url && (
-                        <img src={page.media_url} alt="" className="w-12 h-8 object-cover rounded-sm" />
-                      )}
+                      {page.media_url && <img src={page.media_url} alt="" className="w-12 h-8 object-cover rounded-sm" />}
                       <div className="flex items-center gap-2">
                         <span className="text-white text-sm">{page.page_type}</span>
                         {page.title && <span className="text-white text-sm ml-2">- {page.title}</span>}
-                        {page.is_locked && (
-                          <span className="text-red-400 text-xs flex items-center gap-1">
-                            🔒 Locked
-                          </span>
-                        )}
-                        {page.is_hidden_from_public && !page.is_locked && (
-                          <span className="text-orange-400 text-xs flex items-center gap-1">
-                            👁️ Hidden
-                          </span>
-                        )}
+                        {page.audio_url && <span className="text-white/55 text-xs">🔊 Audio</span>}
+                        {page.is_locked && <span className="text-red-400 text-xs flex items-center gap-1">🔒 Locked</span>}
+                        {page.is_hidden_from_public && !page.is_locked && <span className="text-orange-400 text-xs flex items-center gap-1">👁️ Hidden</span>}
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => setEditingPage(page)} className="h-8 w-8 text-white">
-                        <Edit2 size={14} />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => deletePageMutation.mutate(page.id)} className="h-8 w-8 text-white hover:text-red-500">
-                        <Trash2 size={14} />
-                      </Button>
-                    </div>
+                    <div className="flex gap-2"><Button variant="ghost" size="icon" onClick={() => setEditingPage(page)} className="h-8 w-8 text-white"><Edit2 size={14} /></Button><Button variant="ghost" size="icon" onClick={() => deletePageMutation.mutate(page.id)} className="h-8 w-8 text-white hover:text-red-500"><Trash2 size={14} /></Button></div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-
-          <Button
-            onClick={() => setEditingPage({ page_type: 'text', order: sortedPages.length + 1, text_position: 'center', text_color: 'white' })}
-            className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"
-          >
-            <Plus size={16} className="mr-2" />
-            Add a page
-          </Button>
+          <Button onClick={() => setEditingPage({ page_type: 'text', order: sortedPages.length + 1, text_position: 'center', text_color: 'white' })} className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"><Plus size={16} className="mr-2" />Add a page</Button>
         </div>
 
-        {/* Page Edit Form */}
         {editingPage && (
           <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
-            <h3 className="text-white text-base font-light">
-              {editingPage.id ? 'Edit' : 'New'} Page
-            </h3>
-            
+            <h3 className="text-white text-base font-light">{editingPage.id ? 'Edit' : 'New'} Page</h3>
             <div>
               <label className="text-white text-sm block mb-2">Page type</label>
-              <Select
-                value={editingPage.page_type}
-                onValueChange={(value) => setEditingPage(prev => ({ ...prev, page_type: value }))}
-              >
-                <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={editingPage.page_type} onValueChange={(value) => setEditingPage(prev => ({ ...prev, page_type: value }))}>
+                <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cover">Cover</SelectItem>
-                  <SelectItem value="index">☰ Visual Index</SelectItem>
-                  <SelectItem value="contest">🏆 Contest / Open Call</SelectItem>
-                  <SelectItem value="credits">✦ Credits</SelectItem>
-                  <SelectItem value="text">Text only</SelectItem>
-                  <SelectItem value="image">Image only</SelectItem>
-                  <SelectItem value="video">Video only</SelectItem>
-                  <SelectItem value="mixed">Text + Image/Video</SelectItem>
-                  <SelectItem value="join_cast">🎬 Join the Cast</SelectItem>
-                  <SelectItem value="episode">🎭 Episode</SelectItem>
-                  <SelectItem value="series">📺 Series</SelectItem>
-                  <SelectItem value="member_episodes">🌟 Member Episodes</SelectItem>
-                  <SelectItem value="block_player">▶ Block Player</SelectItem>
+                  <SelectItem value="cover">Cover</SelectItem><SelectItem value="index">☰ Visual Index</SelectItem><SelectItem value="contest">🏆 Contest / Open Call</SelectItem><SelectItem value="credits">✦ Credits</SelectItem><SelectItem value="text">Text only</SelectItem><SelectItem value="image">Image only</SelectItem><SelectItem value="video">Video only</SelectItem><SelectItem value="mixed">Text + Image/Video</SelectItem><SelectItem value="join_cast">🎬 Join the Cast</SelectItem><SelectItem value="episode">🎭 Episode</SelectItem><SelectItem value="series">📺 Series</SelectItem><SelectItem value="member_episodes">🌟 Member Episodes</SelectItem><SelectItem value="block_player">▶ Block Player</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Index page fields */}
-            {editingPage.page_type === 'index' && (
-              <div className="p-3 bg-neutral-800/50 border border-white/10 rounded space-y-2">
-                <p className="text-white text-sm font-medium">☰ Visual dossier index</p>
-                <p className="text-white/60 text-xs">This page automatically displays all other public dossier pages as visual cards. Use the title and text fields below for its heading and introduction.</p>
-              </div>
-            )}
+            {editingPage.page_type === 'index' && <div className="p-3 bg-neutral-800/50 border border-white/10 rounded space-y-2"><p className="text-white text-sm font-medium">☰ Visual dossier index</p><p className="text-white/60 text-xs">This page automatically displays all other public dossier pages as visual cards. Use the title and text fields below for its heading and introduction.</p></div>}
 
-            {/* Credits fields */}
             {editingPage.page_type === 'credits' && (
               <div className="p-4 bg-neutral-800/50 border border-white/10 rounded space-y-4">
-                <div>
-                  <p className="text-white text-sm font-medium">✦ Structured Credits</p>
-                  <p className="text-white/55 text-xs mt-1">
-                    Add sections such as Characters & Actors, Director, Writer, Sets, Costumes or Sponsors. Product Placements are added automatically from the dossier.
-                  </p>
-                </div>
-
+                <div><p className="text-white text-sm font-medium">✦ Structured Credits</p><p className="text-white/55 text-xs mt-1">Add sections such as Characters & Actors, Director, Writer, Sets, Costumes or Sponsors. Product Placements are added automatically from the dossier.</p></div>
                 <div className="space-y-4">
                   {(editingPage.credits_sections || []).map((section, sectionIndex) => (
                     <div key={sectionIndex} className="border border-white/10 bg-neutral-950 p-4 space-y-3">
                       <div className="flex gap-2 items-start">
-                        <Input
-                          value={section.title || ''}
-                          onChange={(e) => {
-                            const next = [...(editingPage.credits_sections || [])];
-                            next[sectionIndex] = { ...next[sectionIndex], title: e.target.value };
-                            setEditingPage({ ...editingPage, credits_sections: next });
-                          }}
-                          placeholder="Section title (e.g. Characters & Actors)"
-                          className="bg-neutral-900 border-white/10 text-white"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            const next = (editingPage.credits_sections || []).filter((_, i) => i !== sectionIndex);
-                            setEditingPage({ ...editingPage, credits_sections: next });
-                          }}
-                          className="text-white hover:text-red-500"
-                        >
-                          <Trash2 size={16} />
-                        </Button>
+                        <Input value={section.title || ''} onChange={(e) => { const next = [...(editingPage.credits_sections || [])]; next[sectionIndex] = { ...next[sectionIndex], title: e.target.value }; setEditingPage({ ...editingPage, credits_sections: next }); }} placeholder="Section title (e.g. Characters & Actors)" className="bg-neutral-900 border-white/10 text-white" />
+                        <Button type="button" variant="ghost" size="icon" onClick={() => { const next = (editingPage.credits_sections || []).filter((_, i) => i !== sectionIndex); setEditingPage({ ...editingPage, credits_sections: next }); }} className="text-white hover:text-red-500"><Trash2 size={16} /></Button>
                       </div>
-
-
                       <div className="space-y-2">
                         <p className="text-white/70 text-xs uppercase tracking-wider">Credits in this section</p>
                         {(section.entries || []).map((entry, entryIndex) => (
                           <div key={entryIndex} className="space-y-2 border-b border-white/10 pb-3 last:border-b-0">
                             <div className="grid grid-cols-1 md:grid-cols-[180px_1fr_1fr_auto] gap-2 items-start">
-                            <Input
-                              value={entry.role || ''}
-                              onChange={(e) => {
-                                const next = [...(editingPage.credits_sections || [])];
-                                const entries = [...(next[sectionIndex].entries || [])];
-                                entries[entryIndex] = { ...entries[entryIndex], role: e.target.value };
-                                next[sectionIndex] = { ...next[sectionIndex], entries };
-                                setEditingPage({ ...editingPage, credits_sections: next });
-                              }}
-                              placeholder="Role / Character"
-                              className="bg-neutral-900 border-white/10 text-white"
-                            />
-                            <Input
-                              value={entry.name || ''}
-                              onChange={(e) => {
-                                const next = [...(editingPage.credits_sections || [])];
-                                const entries = [...(next[sectionIndex].entries || [])];
-                                entries[entryIndex] = { ...entries[entryIndex], name: e.target.value };
-                                next[sectionIndex] = { ...next[sectionIndex], entries };
-                                setEditingPage({ ...editingPage, credits_sections: next });
-                              }}
-                              placeholder="Name"
-                              className="bg-neutral-900 border-white/10 text-white"
-                            />
-                            <Input
-                              value={entry.note || ''}
-                              onChange={(e) => {
-                                const next = [...(editingPage.credits_sections || [])];
-                                const entries = [...(next[sectionIndex].entries || [])];
-                                entries[entryIndex] = { ...entries[entryIndex], note: e.target.value };
-                                next[sectionIndex] = { ...next[sectionIndex], entries };
-                                setEditingPage({ ...editingPage, credits_sections: next });
-                              }}
-                              placeholder="Note (optional)"
-                              className="bg-neutral-900 border-white/10 text-white"
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                const next = [...(editingPage.credits_sections || [])];
-                                const entries = (next[sectionIndex].entries || []).filter((_, i) => i !== entryIndex);
-                                next[sectionIndex] = { ...next[sectionIndex], entries };
-                                setEditingPage({ ...editingPage, credits_sections: next });
-                              }}
-                              className="text-white hover:text-red-500"
-                            >
-                              <Trash2 size={15} />
-                            </Button>
+                              <Input value={entry.role || ''} onChange={(e) => { const next = [...(editingPage.credits_sections || [])]; const entries = [...(next[sectionIndex].entries || [])]; entries[entryIndex] = { ...entries[entryIndex], role: e.target.value }; next[sectionIndex] = { ...next[sectionIndex], entries }; setEditingPage({ ...editingPage, credits_sections: next }); }} placeholder="Role / Character" className="bg-neutral-900 border-white/10 text-white" />
+                              <Input value={entry.name || ''} onChange={(e) => { const next = [...(editingPage.credits_sections || [])]; const entries = [...(next[sectionIndex].entries || [])]; entries[entryIndex] = { ...entries[entryIndex], name: e.target.value }; next[sectionIndex] = { ...next[sectionIndex], entries }; setEditingPage({ ...editingPage, credits_sections: next }); }} placeholder="Name" className="bg-neutral-900 border-white/10 text-white" />
+                              <Input value={entry.note || ''} onChange={(e) => { const next = [...(editingPage.credits_sections || [])]; const entries = [...(next[sectionIndex].entries || [])]; entries[entryIndex] = { ...entries[entryIndex], note: e.target.value }; next[sectionIndex] = { ...next[sectionIndex], entries }; setEditingPage({ ...editingPage, credits_sections: next }); }} placeholder="Note (optional)" className="bg-neutral-900 border-white/10 text-white" />
+                              <Button type="button" variant="ghost" size="icon" onClick={() => { const next = [...(editingPage.credits_sections || [])]; const entries = (next[sectionIndex].entries || []).filter((_, i) => i !== entryIndex); next[sectionIndex] = { ...next[sectionIndex], entries }; setEditingPage({ ...editingPage, credits_sections: next }); }} className="text-white hover:text-red-500"><Trash2 size={15} /></Button>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
                               {entry.image_url && <img src={entry.image_url} alt="" className="h-14 w-14 object-cover border border-white/10" />}
-                              <input
-                                type="file"
-                                accept="image/*"
-                                id={`credit-entry-image-${sectionIndex}-${entryIndex}`}
-                                className="hidden"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  const { file_url } = await base44.integrations.Core.UploadFile({ file });
-                                  const next = [...(editingPage.credits_sections || [])];
-                                  const entries = [...(next[sectionIndex].entries || [])];
-                                  entries[entryIndex] = { ...entries[entryIndex], image_url: file_url };
-                                  next[sectionIndex] = { ...next[sectionIndex], entries };
-                                  setEditingPage({ ...editingPage, credits_sections: next });
-                                }}
-                              />
-                              <label htmlFor={`credit-entry-image-${sectionIndex}-${entryIndex}`}>
-                                <Button type="button" asChild className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700">
-                                  <span><Upload size={14} className="mr-2" />{entry.image_url ? 'Change photo' : 'Add photo'}</span>
-                                </Button>
-                              </label>
-                              {entry.image_url && (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    const next = [...(editingPage.credits_sections || [])];
-                                    const entries = [...(next[sectionIndex].entries || [])];
-                                    entries[entryIndex] = { ...entries[entryIndex], image_url: '' };
-                                    next[sectionIndex] = { ...next[sectionIndex], entries };
-                                    setEditingPage({ ...editingPage, credits_sections: next });
-                                  }}
-                                  className="text-white hover:text-red-500"
-                                >
-                                  Remove photo
-                                </Button>
-                              )}
+                              <input type="file" accept="image/*" id={`credit-entry-image-${sectionIndex}-${entryIndex}`} className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const { file_url } = await base44.integrations.Core.UploadFile({ file }); const next = [...(editingPage.credits_sections || [])]; const entries = [...(next[sectionIndex].entries || [])]; entries[entryIndex] = { ...entries[entryIndex], image_url: file_url }; next[sectionIndex] = { ...next[sectionIndex], entries }; setEditingPage({ ...editingPage, credits_sections: next }); }} />
+                              <label htmlFor={`credit-entry-image-${sectionIndex}-${entryIndex}`}><Button type="button" asChild className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"><span><Upload size={14} className="mr-2" />{entry.image_url ? 'Change photo' : 'Add photo'}</span></Button></label>
+                              {entry.image_url && <Button type="button" variant="ghost" onClick={() => { const next = [...(editingPage.credits_sections || [])]; const entries = [...(next[sectionIndex].entries || [])]; entries[entryIndex] = { ...entries[entryIndex], image_url: '' }; next[sectionIndex] = { ...next[sectionIndex], entries }; setEditingPage({ ...editingPage, credits_sections: next }); }} className="text-white hover:text-red-500">Remove photo</Button>}
                             </div>
                           </div>
                         ))}
-
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            const next = [...(editingPage.credits_sections || [])];
-                            const entries = [...(next[sectionIndex].entries || []), { role: '', name: '', note: '' }];
-                            next[sectionIndex] = { ...next[sectionIndex], entries };
-                            setEditingPage({ ...editingPage, credits_sections: next });
-                          }}
-                          className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"
-                        >
-                          <Plus size={14} className="mr-2" />Add credit
-                        </Button>
+                        <Button type="button" onClick={() => { const next = [...(editingPage.credits_sections || [])]; const entries = [...(next[sectionIndex].entries || []), { role: '', name: '', note: '' }]; next[sectionIndex] = { ...next[sectionIndex], entries }; setEditingPage({ ...editingPage, credits_sections: next }); }} className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"><Plus size={14} className="mr-2" />Add credit</Button>
                       </div>
                     </div>
                   ))}
-
-                  <Button
-                    type="button"
-                    onClick={() => setEditingPage({
-                      ...editingPage,
-                      credits_sections: [
-                        ...(editingPage.credits_sections || []),
-                        { title: '', entries: [{ role: '', name: '', note: '' }] }
-                      ]
-                    })}
-                    className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"
-                  >
-                    <Plus size={14} className="mr-2" />Add credits section
-                  </Button>
+                  <Button type="button" onClick={() => setEditingPage({ ...editingPage, credits_sections: [...(editingPage.credits_sections || []), { title: '', entries: [{ role: '', name: '', note: '' }] }] })} className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"><Plus size={14} className="mr-2" />Add credits section</Button>
                 </div>
               </div>
             )}
 
-            {/* Contest fields */}
             {editingPage.page_type === 'contest' && (
               <div className="p-3 bg-neutral-800/50 border border-white/10 rounded space-y-3">
                 <p className="text-white text-sm font-medium">🏆 Contest / Open Call</p>
-                <Input
-                  value={editingPage.contest_category || ''}
-                  onChange={(e) => setEditingPage({ ...editingPage, contest_category: e.target.value })}
-                  placeholder="Category (e.g. Next Face, Designer, Actor)"
-                  className="bg-neutral-900 border-white/10 text-white"
-                />
-                <div>
-                  <label className="text-white text-sm block mb-2">Deadline</label>
-                  <Input
-                    type="datetime-local"
-                    value={editingPage.contest_deadline ? String(editingPage.contest_deadline).slice(0, 16) : ''}
-                    onChange={(e) => setEditingPage({ ...editingPage, contest_deadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
-                    className="bg-neutral-900 border-white/10 text-white"
-                  />
-                </div>
-                <Textarea
-                  value={editingPage.contest_reward || ''}
-                  onChange={(e) => setEditingPage({ ...editingPage, contest_reward: e.target.value })}
-                  placeholder="Opportunity / prize"
-                  className="bg-neutral-900 border-white/10 text-white"
-                  rows={3}
-                />
-                <Textarea
-                  value={editingPage.contest_rules || ''}
-                  onChange={(e) => setEditingPage({ ...editingPage, contest_rules: e.target.value })}
-                  placeholder="How to enter / eligibility / rules"
-                  className="bg-neutral-900 border-white/10 text-white"
-                  rows={4}
-                />
-                <Input
-                  value={editingPage.contest_cta_label || ''}
-                  onChange={(e) => setEditingPage({ ...editingPage, contest_cta_label: e.target.value })}
-                  placeholder="Button label (default: Submit entry)"
-                  className="bg-neutral-900 border-white/10 text-white"
-                />
+                <Input value={editingPage.contest_category || ''} onChange={(e) => setEditingPage({ ...editingPage, contest_category: e.target.value })} placeholder="Category (e.g. Next Face, Designer, Actor)" className="bg-neutral-900 border-white/10 text-white" />
+                <div><label className="text-white text-sm block mb-2">Deadline</label><Input type="datetime-local" value={editingPage.contest_deadline ? String(editingPage.contest_deadline).slice(0, 16) : ''} onChange={(e) => setEditingPage({ ...editingPage, contest_deadline: e.target.value ? new Date(e.target.value).toISOString() : null })} className="bg-neutral-900 border-white/10 text-white" /></div>
+                <Textarea value={editingPage.contest_reward || ''} onChange={(e) => setEditingPage({ ...editingPage, contest_reward: e.target.value })} placeholder="Opportunity / prize" className="bg-neutral-900 border-white/10 text-white" rows={3} />
+                <Textarea value={editingPage.contest_rules || ''} onChange={(e) => setEditingPage({ ...editingPage, contest_rules: e.target.value })} placeholder="How to enter / eligibility / rules" className="bg-neutral-900 border-white/10 text-white" rows={4} />
+                <Input value={editingPage.contest_cta_label || ''} onChange={(e) => setEditingPage({ ...editingPage, contest_cta_label: e.target.value })} placeholder="Button label (default: Submit entry)" className="bg-neutral-900 border-white/10 text-white" />
                 <div className="pt-2 border-t border-white/10 space-y-3">
                   <p className="text-white text-sm font-medium">Appearance</p>
-                  <Select
-                    value={editingPage.contest_media_style || 'hero'}
-                    onValueChange={(value) => setEditingPage({ ...editingPage, contest_media_style: value })}
-                  >
-                    <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hero">Media as hero banner</SelectItem>
-                      <SelectItem value="background">Media as full-page background</SelectItem>
-                      <SelectItem value="none">Do not display page media</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div>
-                    <label className="text-white text-sm block mb-2">Background overlay: {editingPage.contest_overlay_opacity ?? 45}%</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="90"
-                      step="5"
-                      value={editingPage.contest_overlay_opacity ?? 45}
-                      onChange={(e) => setEditingPage({ ...editingPage, contest_overlay_opacity: Number(e.target.value) })}
-                      className="w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-white text-sm block mb-2">Accent color</label>
-                    <div className="flex gap-3 items-center">
-                      <input
-                        type="color"
-                        value={editingPage.contest_accent_color || '#ffffff'}
-                        onChange={(e) => setEditingPage({ ...editingPage, contest_accent_color: e.target.value })}
-                        className="w-14 h-10 bg-transparent border border-white/20"
-                      />
-                      <Input
-                        value={editingPage.contest_accent_color || '#ffffff'}
-                        onChange={(e) => setEditingPage({ ...editingPage, contest_accent_color: e.target.value })}
-                        className="bg-neutral-900 border-white/10 text-white"
-                      />
-                    </div>
-                  </div>
+                  <Select value={editingPage.contest_media_style || 'hero'} onValueChange={(value) => setEditingPage({ ...editingPage, contest_media_style: value })}><SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="hero">Media as hero banner</SelectItem><SelectItem value="background">Media as full-page background</SelectItem><SelectItem value="none">Do not display page media</SelectItem></SelectContent></Select>
+                  <div><label className="text-white text-sm block mb-2">Background overlay: {editingPage.contest_overlay_opacity ?? 45}%</label><input type="range" min="0" max="90" step="5" value={editingPage.contest_overlay_opacity ?? 45} onChange={(e) => setEditingPage({ ...editingPage, contest_overlay_opacity: Number(e.target.value) })} className="w-full" /></div>
+                  <div><label className="text-white text-sm block mb-2">Accent color</label><div className="flex gap-3 items-center"><input type="color" value={editingPage.contest_accent_color || '#ffffff'} onChange={(e) => setEditingPage({ ...editingPage, contest_accent_color: e.target.value })} className="w-14 h-10 bg-transparent border border-white/20" /><Input value={editingPage.contest_accent_color || '#ffffff'} onChange={(e) => setEditingPage({ ...editingPage, contest_accent_color: e.target.value })} className="bg-neutral-900 border-white/10 text-white" /></div></div>
                 </div>
-                <Select
-                  value={editingPage.contest_status || 'open'}
-                  onValueChange={(value) => setEditingPage({ ...editingPage, contest_status: value })}
-                >
-                  <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div>
-                  <p className="text-white text-sm mb-2">Accepted submission content</p>
-                  <div className="flex flex-wrap gap-4">
-                    {[['text','Message'], ['link','Portfolio / link'], ['media','Image / video']].map(([value, label]) => {
-                      const selected = (editingPage.contest_submission_types || ['text','link','media']).includes(value);
-                      return (
-                        <label key={value} className="flex items-center gap-2 text-white/80 text-sm cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selected}
-                            onChange={(e) => {
-                              const current = editingPage.contest_submission_types || ['text','link','media'];
-                              const next = e.target.checked ? Array.from(new Set([...current, value])) : current.filter((item) => item !== value);
-                              setEditingPage({ ...editingPage, contest_submission_types: next });
-                            }}
-                          />
-                          {label}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
+                <Select value={editingPage.contest_status || 'open'} onValueChange={(value) => setEditingPage({ ...editingPage, contest_status: value })}><SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="draft">Draft</SelectItem><SelectItem value="open">Open</SelectItem><SelectItem value="closed">Closed</SelectItem></SelectContent></Select>
+                <div><p className="text-white text-sm mb-2">Accepted submission content</p><div className="flex flex-wrap gap-4">{[['text','Message'], ['link','Portfolio / link'], ['media','Image / video']].map(([value, label]) => { const selected = (editingPage.contest_submission_types || ['text','link','media']).includes(value); return <label key={value} className="flex items-center gap-2 text-white/80 text-sm cursor-pointer"><input type="checkbox" checked={selected} onChange={(e) => { const current = editingPage.contest_submission_types || ['text','link','media']; const next = e.target.checked ? Array.from(new Set([...current, value])) : current.filter((item) => item !== value); setEditingPage({ ...editingPage, contest_submission_types: next }); }} />{label}</label>; })}</div></div>
               </div>
             )}
 
-            {/* Join the Cast: episode list preview */}
-            {editingPage.page_type === 'join_cast' && (
-              <div className="p-3 bg-neutral-800/50 border border-white/10 rounded space-y-2">
-                <p className="text-white text-sm font-medium">🎭 Episodes in this cast page</p>
-                {(editingPage.cast_episodes || []).length === 0 ? (
-                  <p className="text-white text-xs">No episodes yet — create Episode pages and they'll appear here automatically.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {(editingPage.cast_episodes || []).map((ep, idx) => (
-                      <div key={idx} className="flex items-start justify-between p-2 bg-neutral-900 rounded text-sm">
-                        <div>
-                          <p className="text-white font-medium">{ep.episode_title || '(untitled)'}</p>
-                          {ep.role && <p className="text-white text-xs">Role: {ep.role}</p>}
-                          {ep.episode_description && <p className="text-white text-xs mt-0.5 line-clamp-1">{ep.episode_description}</p>}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = (editingPage.cast_episodes || []).filter((_, i) => i !== idx);
-                            setEditingPage({ ...editingPage, cast_episodes: updated });
-                          }}
-                          className="text-white hover:text-red-500 ml-3 mt-0.5"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            {editingPage.page_type === 'join_cast' && <div className="p-3 bg-neutral-800/50 border border-white/10 rounded space-y-2"><p className="text-white text-sm font-medium">🎭 Episodes in this cast page</p>{(editingPage.cast_episodes || []).length === 0 ? <p className="text-white text-xs">No episodes yet — create Episode pages and they'll appear here automatically.</p> : <div className="space-y-2">{(editingPage.cast_episodes || []).map((ep, idx) => <div key={idx} className="flex items-start justify-between p-2 bg-neutral-900 rounded text-sm"><div><p className="text-white font-medium">{ep.episode_title || '(untitled)'}</p>{ep.role && <p className="text-white text-xs">Role: {ep.role}</p>}{ep.episode_description && <p className="text-white text-xs mt-0.5 line-clamp-1">{ep.episode_description}</p>}</div><button type="button" onClick={() => { const updated = (editingPage.cast_episodes || []).filter((_, i) => i !== idx); setEditingPage({ ...editingPage, cast_episodes: updated }); }} className="text-white hover:text-red-500 ml-3 mt-0.5"><Trash2 size={13} /></button></div>)}</div>}</div>}
 
-            {/* Series fields */}
-            {editingPage.page_type === 'series' && (
-              <div className="p-3 bg-neutral-800/50 border border-white/10 rounded">
-                <p className="text-white text-sm font-medium mb-3">📺 Series content</p>
-                <SeriesPageEditor page={editingPage} onChange={setEditingPage} />
-              </div>
-            )}
+            {editingPage.page_type === 'series' && <div className="p-3 bg-neutral-800/50 border border-white/10 rounded"><p className="text-white text-sm font-medium mb-3">📺 Series content</p><SeriesPageEditor page={editingPage} onChange={setEditingPage} /></div>}
 
-            {/* Block Player fields */}
-            {editingPage.page_type === 'block_player' && (
-              <div className="space-y-3">
-                <div className="p-3 bg-neutral-800/50 border border-white/10 rounded">
-                  <p className="text-white text-sm font-medium mb-2">▶ Block Player Configuration</p>
-                  <p className="text-white text-xs mb-3">Select which episode's blocks to play in this page.</p>
-                  <label className="text-white text-sm block mb-2">Episode</label>
-                  <Select
-                    value={editingPage.block_player_episode_page_id || ''}
-                    onValueChange={(value) => setEditingPage({ ...editingPage, block_player_episode_page_id: value })}
-                  >
-                    <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
-                      <SelectValue placeholder="Select an episode..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pages.filter(p => p.page_type === 'episode').length === 0 ? (
-                        <SelectItem value={null} disabled>No episodes available</SelectItem>
-                      ) : (
-                        pages.filter(p => p.page_type === 'episode').map(ep => (
-                          <SelectItem key={ep.id} value={ep.id}>{ep.episode_title || ep.title || 'Untitled Episode'}</SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
+            {editingPage.page_type === 'block_player' && <div className="space-y-3"><div className="p-3 bg-neutral-800/50 border border-white/10 rounded"><p className="text-white text-sm font-medium mb-2">▶ Block Player Configuration</p><p className="text-white text-xs mb-3">Select which episode's blocks to play in this page.</p><label className="text-white text-sm block mb-2">Episode</label><Select value={editingPage.block_player_episode_page_id || ''} onValueChange={(value) => setEditingPage({ ...editingPage, block_player_episode_page_id: value })}><SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue placeholder="Select an episode..." /></SelectTrigger><SelectContent>{pages.filter(p => p.page_type === 'episode').length === 0 ? <SelectItem value={null} disabled>No episodes available</SelectItem> : pages.filter(p => p.page_type === 'episode').map(ep => <SelectItem key={ep.id} value={ep.id}>{ep.episode_title || ep.title || 'Untitled Episode'}</SelectItem>)}</SelectContent></Select></div></div>}
 
-            {/* Episode fields */}
             {editingPage.page_type === 'episode' && (
               <div className="space-y-3">
-                {/* Lock Control - Admin Only */}
-                <div className="flex items-center justify-between p-3 bg-red-900/20 border border-red-600/30 rounded">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="episode-locked"
-                      checked={editingPage.is_locked || false}
-                      onChange={(e) => setEditingPage({ ...editingPage, is_locked: e.target.checked })}
-                      className="w-4 h-4 accent-red-500"
-                    />
-                    <label htmlFor="episode-locked" className="text-red-300 text-sm font-medium">🔒 Lock Episode</label>
-                  </div>
-                  <span className="text-red-400/60 text-xs">
-                    {editingPage.is_locked ? 'Members cannot create scenes' : 'Members can create scenes'}
-                  </span>
-                </div>
-
-                {/* Hide from Public - Admin Only */}
-                <div className="flex items-center justify-between p-3 bg-orange-900/20 border border-orange-600/30 rounded">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="episode-hidden"
-                      checked={editingPage.is_hidden_from_public || false}
-                      onChange={(e) => setEditingPage({ ...editingPage, is_hidden_from_public: e.target.checked })}
-                      className="w-4 h-4 accent-orange-500"
-                    />
-                    <label htmlFor="episode-hidden" className="text-orange-300 text-sm font-medium">👁️ Hide from Public</label>
-                  </div>
-                  <span className="text-orange-400/60 text-xs">
-                    {editingPage.is_hidden_from_public ? 'Hidden from dossier' : 'Visible in dossier'}
-                  </span>
-                </div>
-
-                <div className="p-3 bg-neutral-800/50 border border-white/10 rounded space-y-3">
-                  <p className="text-white text-sm font-medium">🎭 Episode details</p>
-                  <Input
-                    value={editingPage.episode_title || ''}
-                    onChange={(e) => setEditingPage({ ...editingPage, episode_title: e.target.value })}
-                    placeholder="Episode title"
-                    className="bg-neutral-900 border-white/10 text-white"
-                  />
-                  <Textarea
-                    value={editingPage.episode_description || ''}
-                    onChange={(e) => setEditingPage({ ...editingPage, episode_description: e.target.value })}
-                    placeholder="Episode description / brief"
-                    className="bg-neutral-900 border-white/10 text-white"
-                    rows={3}
-                  />
-                  <Input
-                    value={editingPage.episode_role || ''}
-                    onChange={(e) => setEditingPage({ ...editingPage, episode_role: e.target.value })}
-                    placeholder="Role / character available"
-                    className="bg-neutral-900 border-white/10 text-white"
-                  />
-                  <Input
-                    value={editingPage.episode_tools_hint || ''}
-                    onChange={(e) => setEditingPage({ ...editingPage, episode_tools_hint: e.target.value })}
-                    placeholder="Suggested AI tools (e.g. image, video)"
-                    className="bg-neutral-900 border-white/10 text-white"
-                  />
-                </div>
-
-                {/* Production Room Setup — only available after the page is saved */}
-                {editingPage.id ? (
-                  <div className="p-3 bg-neutral-900 border border-red-600/30 rounded space-y-3">
-                    <p className="text-red-400 text-sm font-medium">🎬 Production Room Setup</p>
-                    <p className="text-white text-xs">Configure characters, tools, and workflow instructions for this episode's Production Room.</p>
-                    <AdminEpisodeProduction episodePage={{ ...editingPage, dossier_id: editingPage.dossier_id || dossier.id }} dossier={dossier} />
-                  </div>
-                ) : (
-                  <p className="text-white text-xs px-1">💡 Save this page first to configure the Production Room setup.</p>
-                )}
+                <div className="flex items-center justify-between p-3 bg-red-900/20 border border-red-600/30 rounded"><div className="flex items-center gap-2"><input type="checkbox" id="episode-locked" checked={editingPage.is_locked || false} onChange={(e) => setEditingPage({ ...editingPage, is_locked: e.target.checked })} className="w-4 h-4 accent-red-500" /><label htmlFor="episode-locked" className="text-red-300 text-sm font-medium">🔒 Lock Episode</label></div><span className="text-red-400/60 text-xs">{editingPage.is_locked ? 'Members cannot create scenes' : 'Members can create scenes'}</span></div>
+                <div className="flex items-center justify-between p-3 bg-orange-900/20 border border-orange-600/30 rounded"><div className="flex items-center gap-2"><input type="checkbox" id="episode-hidden" checked={editingPage.is_hidden_from_public || false} onChange={(e) => setEditingPage({ ...editingPage, is_hidden_from_public: e.target.checked })} className="w-4 h-4 accent-orange-500" /><label htmlFor="episode-hidden" className="text-orange-300 text-sm font-medium">👁️ Hide from Public</label></div><span className="text-orange-400/60 text-xs">{editingPage.is_hidden_from_public ? 'Hidden from dossier' : 'Visible in dossier'}</span></div>
+                <div className="p-3 bg-neutral-800/50 border border-white/10 rounded space-y-3"><p className="text-white text-sm font-medium">🎭 Episode details</p><Input value={editingPage.episode_title || ''} onChange={(e) => setEditingPage({ ...editingPage, episode_title: e.target.value })} placeholder="Episode title" className="bg-neutral-900 border-white/10 text-white" /><Textarea value={editingPage.episode_description || ''} onChange={(e) => setEditingPage({ ...editingPage, episode_description: e.target.value })} placeholder="Episode description / brief" className="bg-neutral-900 border-white/10 text-white" rows={3} /><Input value={editingPage.episode_role || ''} onChange={(e) => setEditingPage({ ...editingPage, episode_role: e.target.value })} placeholder="Role / character available" className="bg-neutral-900 border-white/10 text-white" /><Input value={editingPage.episode_tools_hint || ''} onChange={(e) => setEditingPage({ ...editingPage, episode_tools_hint: e.target.value })} placeholder="Suggested AI tools (e.g. image, video)" className="bg-neutral-900 border-white/10 text-white" /></div>
+                {editingPage.id ? <div className="p-3 bg-neutral-900 border border-red-600/30 rounded space-y-3"><p className="text-red-400 text-sm font-medium">🎬 Production Room Setup</p><p className="text-white text-xs">Configure characters, tools, and workflow instructions for this episode's Production Room.</p><AdminEpisodeProduction episodePage={{ ...editingPage, dossier_id: editingPage.dossier_id || dossier.id }} dossier={dossier} /></div> : <p className="text-white text-xs px-1">💡 Save this page first to configure the Production Room setup.</p>}
               </div>
             )}
 
-            {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && (
-              <div className="p-3 bg-neutral-800/50 border border-white/10 rounded">
-                <label className="text-white text-sm font-medium block mb-2">🖼️ Image layout <span className="text-white font-normal">(for Text + Image pages)</span></label>
-                <Select
-                  value={editingPage.image_layout || 'background'}
-                  onValueChange={(value) => setEditingPage(prev => ({ ...prev, image_layout: value }))}
-                >
-                  <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="background">Image as background (behind text)</SelectItem>
-                    <SelectItem value="above">Image above text</SelectItem>
-                    <SelectItem value="below">Image below text</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && <div className="p-3 bg-neutral-800/50 border border-white/10 rounded"><label className="text-white text-sm font-medium block mb-2">🖼️ Image layout <span className="text-white font-normal">(for Text + Image pages)</span></label><Select value={editingPage.image_layout || 'background'} onValueChange={(value) => setEditingPage(prev => ({ ...prev, image_layout: value }))}><SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="background">Image as background (behind text)</SelectItem><SelectItem value="above">Image above text</SelectItem><SelectItem value="below">Image below text</SelectItem></SelectContent></Select></div>}
 
-            {/* Hide from Public toggle for non-episode pages */}
-            {editingPage.page_type !== 'episode' && (
-              <div className="flex items-center justify-between p-3 bg-orange-900/20 border border-orange-600/30 rounded">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="page-hidden"
-                    checked={editingPage.is_hidden_from_public || false}
-                    onChange={(e) => setEditingPage({ ...editingPage, is_hidden_from_public: e.target.checked })}
-                    className="w-4 h-4 accent-orange-500"
-                  />
-                  <label htmlFor="page-hidden" className="text-orange-300 text-sm font-medium">👁️ Hide from Public</label>
-                </div>
-                <span className="text-orange-400/60 text-xs">
-                  {editingPage.is_hidden_from_public ? 'Hidden from dossier' : 'Visible in dossier'}
-                </span>
-              </div>
-            )}
+            {editingPage.page_type !== 'episode' && <div className="flex items-center justify-between p-3 bg-orange-900/20 border border-orange-600/30 rounded"><div className="flex items-center gap-2"><input type="checkbox" id="page-hidden" checked={editingPage.is_hidden_from_public || false} onChange={(e) => setEditingPage({ ...editingPage, is_hidden_from_public: e.target.checked })} className="w-4 h-4 accent-orange-500" /><label htmlFor="page-hidden" className="text-orange-300 text-sm font-medium">👁️ Hide from Public</label></div><span className="text-orange-400/60 text-xs">{editingPage.is_hidden_from_public ? 'Hidden from dossier' : 'Visible in dossier'}</span></div>}
 
-            {editingPage.page_type !== 'join_cast' && (
-              <>
+            {editingPage.page_type !== 'join_cast' && <><div><label className="text-white text-sm block mb-2">Title (optional)</label><Input value={editingPage.title || ''} onChange={(e) => setEditingPage({ ...editingPage, title: e.target.value })} placeholder="Page title..." className="bg-neutral-900 border-white/10 text-white" /></div><label className="flex items-center gap-3 p-3 border border-white/10 bg-neutral-900/50 cursor-pointer"><input type="checkbox" checked={editingPage.hide_title || false} onChange={(e) => setEditingPage({ ...editingPage, hide_title: e.target.checked })} className="w-4 h-4" /><div><p className="text-white text-sm font-medium">Hide page title</p><p className="text-white/50 text-xs">Keep the title for admin/navigation, but do not display it on the public page.</p></div></label></>}
+
+            {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && <div><label className="text-white text-sm block mb-2">Text</label><Textarea value={editingPage.content || ''} onChange={(e) => setEditingPage({ ...editingPage, content: e.target.value })} placeholder="Page text content..." className="bg-neutral-900 border-white/10 text-white min-h-[400px] text-base" rows={20} /></div>}
+
+            {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && editingPage.page_type !== 'credits' && <><div className="flex items-center gap-2 pt-2"><input type="checkbox" id="page-is-product" checked={editingPage.is_product || false} onChange={(e) => setEditingPage({ ...editingPage, is_product: e.target.checked })} className="w-4 h-4" /><label htmlFor="page-is-product" className="text-white text-sm">This page is a product</label></div>{editingPage.is_product && <><Input value={editingPage.price || ''} onChange={(e) => setEditingPage({ ...editingPage, price: e.target.value })} placeholder="Price (e.g. $25)" className="bg-white text-black border-white font-medium placeholder:text-black" /><div className="space-y-2"><label className="text-white text-sm">Product gallery (max 12 images)</label><div className="grid grid-cols-4 gap-2">{(editingPage.images || []).map((img, idx) => <div key={idx} className="relative group"><img src={img} alt="" className="w-full h-20 object-cover rounded" /><button type="button" onClick={() => { const newImages = editingPage.images.filter((_, i) => i !== idx); setEditingPage({ ...editingPage, images: newImages }); }} className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button></div>)}</div>{(!editingPage.images || editingPage.images.length < 12) && <><input type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const { file_url } = await base44.integrations.Core.UploadFile({ file }); const newImages = [...(editingPage.images || []), file_url]; setEditingPage({ ...editingPage, images: newImages }); }} className="hidden" id="gallery-image-upload" /><label htmlFor="gallery-image-upload"><Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700" asChild><span><Upload size={14} className="mr-2" />Add an image ({(editingPage.images || []).length}/12)</span></Button></label></>}</div><div className="space-y-3 pt-2"><label className="text-white text-sm">Product options (size, color...)</label>{(editingPage.product_options || []).map((option, optIdx) => <div key={optIdx} className="p-3 bg-neutral-900/50 rounded border border-white/10 space-y-2"><div className="flex gap-2"><Input value={option.name} onChange={(e) => { const newOptions = [...(editingPage.product_options || [])]; newOptions[optIdx].name = e.target.value; setEditingPage({ ...editingPage, product_options: newOptions }); }} placeholder="Name (e.g. Size, Color)" className="bg-neutral-900 border-white/10 text-white flex-1" /><Button type="button" variant="ghost" size="icon" onClick={() => { const newOptions = editingPage.product_options.filter((_, i) => i !== optIdx); setEditingPage({ ...editingPage, product_options: newOptions }); }} className="text-white hover:text-red-500"><Trash2 size={16} /></Button></div><div className="space-y-1"><label className="text-white text-xs">Values:</label>{(option.values || []).map((value, valIdx) => <div key={valIdx} className="flex gap-2"><Input value={value} onChange={(e) => { const newOptions = [...(editingPage.product_options || [])]; newOptions[optIdx].values[valIdx] = e.target.value; setEditingPage({ ...editingPage, product_options: newOptions }); }} placeholder="Value" className="bg-neutral-900 border-white/10 text-white text-sm flex-1" /><Button type="button" variant="ghost" size="icon" onClick={() => { const newOptions = [...(editingPage.product_options || [])]; newOptions[optIdx].values = newOptions[optIdx].values.filter((_, i) => i !== valIdx); setEditingPage({ ...editingPage, product_options: newOptions }); }} className="h-9 w-9 text-white hover:text-red-500"><Trash2 size={14} /></Button></div>)}<Button type="button" size="sm" onClick={() => { const newOptions = [...(editingPage.product_options || [])]; if (!newOptions[optIdx].values) newOptions[optIdx].values = []; newOptions[optIdx].values.push(''); setEditingPage({ ...editingPage, product_options: newOptions }); }} className="w-full bg-neutral-600 border border-white/30 text-white hover:bg-neutral-500 h-8 text-xs"><Plus size={12} className="mr-1" />Add a value</Button></div></div>)}<Button type="button" size="sm" onClick={() => { const newOptions = [...(editingPage.product_options || []), { name: '', values: [] }]; setEditingPage({ ...editingPage, product_options: newOptions }); }} className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"><Plus size={14} className="mr-2" />Add an option</Button></div></>}</>}
+
+            {editingPage.page_type !== 'join_cast' && <>
               <div>
-                <label className="text-white text-sm block mb-2">Title (optional)</label>
-                <Input
-                  value={editingPage.title || ''}
-                  onChange={(e) => setEditingPage({ ...editingPage, title: e.target.value })}
-                  placeholder="Page title..."
-                  className="bg-neutral-900 border-white/10 text-white"
-                />
+                <label className="text-white text-sm block mb-2">📱 Image / Video — Portrait</label>
+                {editingPage.media_url && <div className="mb-2">{editingPage.media_url.match(/\.(mp4|webm|ogg)$/i) ? <><video src={editingPage.media_url} controls allowFullScreen playsInline className="w-full h-32 rounded-sm" /><a href={editingPage.media_url} target="_blank" rel="noopener noreferrer" className="block w-full text-center bg-neutral-700 text-white text-xs py-1.5 rounded mt-1">⛶ Open fullscreen</a></> : <img src={editingPage.media_url} alt="" className="w-full max-h-64 object-contain rounded-sm bg-neutral-900" />}</div>}
+                <input type="file" accept="image/*,video/*" onChange={handleMediaUpload} className="hidden" id="page-media-upload" />
+                <label htmlFor="page-media-upload"><Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild><span><Upload size={16} className="mr-2" />{editingPage.media_url ? 'Change' : 'Add image/video'}</span></Button></label>
+                <Input value={editingPage.media_url || ''} onChange={(e) => setEditingPage({ ...editingPage, media_url: e.target.value })} placeholder="Or paste a URL" className="bg-neutral-900 border-white/10 text-white text-sm" />
               </div>
-              <label className="flex items-center gap-3 p-3 border border-white/10 bg-neutral-900/50 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={editingPage.hide_title || false}
-                  onChange={(e) => setEditingPage({ ...editingPage, hide_title: e.target.checked })}
-                  className="w-4 h-4"
-                />
+              <div>
+                <label className="text-white text-sm block mb-2">🖥️ Image / Video — Landscape <span className="text-white">(optional, uses portrait if empty)</span></label>
+                {editingPage.media_url_landscape && <div className="mb-2">{editingPage.media_url_landscape.match(/\.(mp4|webm|ogg)$/i) ? <><video src={editingPage.media_url_landscape} controls allowFullScreen playsInline className="w-full h-32 rounded-sm" /><a href={editingPage.media_url_landscape} target="_blank" rel="noopener noreferrer" className="block w-full text-center bg-neutral-700 text-white text-xs py-1.5 rounded mt-1">⛶ Open fullscreen</a></> : <img src={editingPage.media_url_landscape} alt="" className="w-full h-32 object-cover rounded-sm" />}</div>}
+                <input type="file" accept="image/*,video/*" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const { file_url } = await base44.integrations.Core.UploadFile({ file }); setEditingPage({ ...editingPage, media_url_landscape: file_url }); }} className="hidden" id="page-media-landscape-upload" />
+                <label htmlFor="page-media-landscape-upload"><Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild><span><Upload size={16} className="mr-2" />{editingPage.media_url_landscape ? 'Change' : 'Add landscape image/video'}</span></Button></label>
+                <Input value={editingPage.media_url_landscape || ''} onChange={(e) => setEditingPage({ ...editingPage, media_url_landscape: e.target.value })} placeholder="Or paste a URL" className="bg-neutral-900 border-white/10 text-white text-sm" />
+              </div>
+
+              <div className="border border-white/10 bg-neutral-900/50 p-4 space-y-3">
                 <div>
-                  <p className="text-white text-sm font-medium">Hide page title</p>
-                  <p className="text-white/50 text-xs">Keep the title for admin/navigation, but do not display it on the public page.</p>
+                  <label className="text-white text-sm font-medium block">🔊 Audio accompanying this page</label>
+                  <p className="text-white/45 text-xs mt-1">Add narration, music, an interview or ambience that plays while this page's image stays on screen.</p>
                 </div>
-              </label>
-              </>
-            )}
-
-            {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && (
-              <div>
-                <label className="text-white text-sm block mb-2">Text</label>
-                <Textarea
-                  value={editingPage.content || ''}
-                  onChange={(e) => setEditingPage({ ...editingPage, content: e.target.value })}
-                  placeholder="Page text content..."
-                  className="bg-neutral-900 border-white/10 text-white min-h-[400px] text-base"
-                  rows={20}
-                />
+                {editingPage.audio_url && <audio src={editingPage.audio_url} controls preload="metadata" className="w-full" />}
+                <input type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" onChange={handleAudioUpload} className="hidden" id="page-audio-upload" />
+                <div className="flex gap-2">
+                  <label htmlFor="page-audio-upload" className="flex-1"><Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700" asChild><span><Upload size={16} className="mr-2" />{editingPage.audio_url ? 'Change audio' : 'Add audio file'}</span></Button></label>
+                  {editingPage.audio_url && <Button type="button" variant="ghost" onClick={() => setEditingPage({ ...editingPage, audio_url: '' })} className="text-white hover:text-red-400 border border-white/10">Remove</Button>}
+                </div>
+                <Input value={editingPage.audio_url || ''} onChange={(e) => setEditingPage({ ...editingPage, audio_url: e.target.value })} placeholder="Or paste an audio URL" className="bg-neutral-900 border-white/10 text-white text-sm" />
               </div>
-            )}
-
-            {/* Product Configuration */}
-            {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && editingPage.page_type !== 'credits' && <><div className="flex items-center gap-2 pt-2">
-              <input
-                type="checkbox"
-                id="page-is-product"
-                checked={editingPage.is_product || false}
-                onChange={(e) => setEditingPage({ ...editingPage, is_product: e.target.checked })}
-                className="w-4 h-4"
-              />
-              <label htmlFor="page-is-product" className="text-white text-sm">This page is a product</label>
-            </div>
-            
-            {editingPage.is_product && (
-              <>
-                <Input
-                  value={editingPage.price || ''}
-                  onChange={(e) => setEditingPage({ ...editingPage, price: e.target.value })}
-                  placeholder="Price (e.g. $25)"
-                  className="bg-white text-black border-white font-medium placeholder:text-black"
-                />
-                
-                {/* Product Gallery */}
-                <div className="space-y-2">
-                  <label className="text-white text-sm">Product gallery (max 12 images)</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {(editingPage.images || []).map((img, idx) => (
-                      <div key={idx} className="relative group">
-                        <img src={img} alt="" className="w-full h-20 object-cover rounded" />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newImages = editingPage.images.filter((_, i) => i !== idx);
-                            setEditingPage({ ...editingPage, images: newImages });
-                          }}
-                          className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  {(!editingPage.images || editingPage.images.length < 12) && (
-                    <>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const { file_url } = await base44.integrations.Core.UploadFile({ file });
-                          const newImages = [...(editingPage.images || []), file_url];
-                          setEditingPage({ ...editingPage, images: newImages });
-                        }} 
-                        className="hidden" 
-                        id="gallery-image-upload"
-                      />
-                      <label htmlFor="gallery-image-upload">
-                        <Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700" asChild>
-                          <span>
-                            <Upload size={14} className="mr-2" />
-                            Add an image ({(editingPage.images || []).length}/12)
-                          </span>
-                        </Button>
-                      </label>
-                    </>
-                  )}
-                </div>
-                
-                {/* Product Options */}
-                <div className="space-y-3 pt-2">
-                  <label className="text-white text-sm">Product options (size, color...)</label>
-                  {(editingPage.product_options || []).map((option, optIdx) => (
-                    <div key={optIdx} className="p-3 bg-neutral-900/50 rounded border border-white/10 space-y-2">
-                      <div className="flex gap-2">
-                        <Input
-                          value={option.name}
-                          onChange={(e) => {
-                            const newOptions = [...(editingPage.product_options || [])];
-                            newOptions[optIdx].name = e.target.value;
-                            setEditingPage({ ...editingPage, product_options: newOptions });
-                          }}
-                          placeholder="Name (e.g. Size, Color)"
-                          className="bg-neutral-900 border-white/10 text-white flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            const newOptions = editingPage.product_options.filter((_, i) => i !== optIdx);
-                            setEditingPage({ ...editingPage, product_options: newOptions });
-                          }}
-                          className="text-white hover:text-red-500"
-                        >
-                          <Trash2 size={16} />
-                        </Button>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <label className="text-white text-xs">Values:</label>
-                        {(option.values || []).map((value, valIdx) => (
-                          <div key={valIdx} className="flex gap-2">
-                            <Input
-                              value={value}
-                              onChange={(e) => {
-                                const newOptions = [...(editingPage.product_options || [])];
-                                newOptions[optIdx].values[valIdx] = e.target.value;
-                                setEditingPage({ ...editingPage, product_options: newOptions });
-                              }}
-                              placeholder="Value"
-                              className="bg-neutral-900 border-white/10 text-white text-sm flex-1"
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                const newOptions = [...(editingPage.product_options || [])];
-                                newOptions[optIdx].values = newOptions[optIdx].values.filter((_, i) => i !== valIdx);
-                                setEditingPage({ ...editingPage, product_options: newOptions });
-                              }}
-                              className="h-9 w-9 text-white hover:text-red-500"
-                            >
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => {
-                            const newOptions = [...(editingPage.product_options || [])];
-                            if (!newOptions[optIdx].values) newOptions[optIdx].values = [];
-                            newOptions[optIdx].values.push('');
-                            setEditingPage({ ...editingPage, product_options: newOptions });
-                          }}
-                          className="w-full bg-neutral-600 border border-white/30 text-white hover:bg-neutral-500 h-8 text-xs"
-                        >
-                          <Plus size={12} className="mr-1" />
-                          Add a value
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => {
-                      const newOptions = [...(editingPage.product_options || []), { name: '', values: [] }];
-                      setEditingPage({ ...editingPage, product_options: newOptions });
-                    }}
-                    className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"
-                  >
-                    <Plus size={14} className="mr-2" />
-                    Add an option
-                  </Button>
-                </div>
-              </>
-            )}
             </>}
 
-            {/* Portrait & Landscape media */}
-            {editingPage.page_type !== 'join_cast' && (
-              <>
-                <div>
-                  <label className="text-white text-sm block mb-2">📱 Image / Video — Portrait</label>
-                  {editingPage.media_url && (
-                    <div className="mb-2">
-                      {editingPage.media_url.match(/\.(mp4|webm|ogg)$/i) ? (
-                        <><video src={editingPage.media_url} controls allowFullScreen playsInline className="w-full h-32 rounded-sm" />
-                        <a href={editingPage.media_url} target="_blank" rel="noopener noreferrer" className="block w-full text-center bg-neutral-700 text-white text-xs py-1.5 rounded mt-1">
-                          ⛶ Open fullscreen
-                        </a></>
+            {editingPage.page_type === 'mixed' && <div className="space-y-2"><label className="text-white text-sm block">🖼️ Media gallery <span className="text-white text-xs">(optional extra images/videos)</span></label><div className="grid grid-cols-4 gap-2">{(editingPage.images || []).map((img, idx) => <div key={idx} className="relative group">{img.match(/\.(mp4|webm|ogg)$/i) ? <video src={img} className="w-full h-20 object-cover rounded" /> : <img src={img} alt="" className="w-full h-20 object-cover rounded" />}<button type="button" onClick={() => { const newImages = editingPage.images.filter((_, i) => i !== idx); setEditingPage({ ...editingPage, images: newImages }); }} className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs">×</button></div>)}</div><input type="file" accept="image/*,video/*" multiple onChange={async (e) => { const files = Array.from(e.target.files || []); const urls = await Promise.all(files.map(async (file) => { const { file_url } = await base44.integrations.Core.UploadFile({ file }); return file_url; })); setEditingPage({ ...editingPage, images: [...(editingPage.images || []), ...urls] }); }} className="hidden" id="mixed-gallery-upload" /><label htmlFor="mixed-gallery-upload"><Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700" asChild><span><Upload size={14} className="mr-2" />Add images/videos ({(editingPage.images || []).length})</span></Button></label></div>}
 
-                      ) : (
-                        <img src={editingPage.media_url} alt="" className="w-full max-h-64 object-contain rounded-sm bg-neutral-900" />
-                      )}
-                    </div>
-                  )}
-                  <input 
-                    type="file" 
-                    accept="image/*,video/*" 
-                    onChange={handleMediaUpload} 
-                    className="hidden" 
-                    id="page-media-upload"
-                  />
-                  <label htmlFor="page-media-upload">
-                    <Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild>
-                      <span>
-                        <Upload size={16} className="mr-2" />
-                        {editingPage.media_url ? 'Change' : 'Add image/video'}
-                      </span>
-                    </Button>
-                  </label>
-                  <Input
-                    value={editingPage.media_url || ''}
-                    onChange={(e) => setEditingPage({ ...editingPage, media_url: e.target.value })}
-                    placeholder="Or paste a URL"
-                    className="bg-neutral-900 border-white/10 text-white text-sm"
-                  />
-                </div>
+            {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && <div className="grid grid-cols-2 gap-4"><div><label className="text-white text-sm block mb-2">Text position</label><Select value={editingPage.text_position} onValueChange={(value) => setEditingPage({ ...editingPage, text_position: value })}><SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="top">Top</SelectItem><SelectItem value="center">Center</SelectItem><SelectItem value="bottom">Bottom</SelectItem></SelectContent></Select></div><div><label className="text-white text-sm block mb-2">Text color</label><Select value={editingPage.text_color} onValueChange={(value) => setEditingPage({ ...editingPage, text_color: value })}><SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="white">White</SelectItem><SelectItem value="black">Black</SelectItem></SelectContent></Select></div></div>}
 
-                {/* Landscape media */}
-                <div>
-                  <label className="text-white text-sm block mb-2">🖥️ Image / Video — Landscape <span className="text-white">(optional, uses portrait if empty)</span></label>
-                  {editingPage.media_url_landscape && (
-                    <div className="mb-2">
-                      {editingPage.media_url_landscape.match(/\.(mp4|webm|ogg)$/i) ? (
-                        <><video src={editingPage.media_url_landscape} controls allowFullScreen playsInline className="w-full h-32 rounded-sm" />
-                        <a href={editingPage.media_url_landscape} target="_blank" rel="noopener noreferrer" className="block w-full text-center bg-neutral-700 text-white text-xs py-1.5 rounded mt-1">
-                          ⛶ Open fullscreen
-                        </a></>
-
-                      ) : (
-                        <img src={editingPage.media_url_landscape} alt="" className="w-full h-32 object-cover rounded-sm" />
-                      )}
-                    </div>
-                  )}
-                  <input 
-                    type="file" 
-                    accept="image/*,video/*" 
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-                      setEditingPage({ ...editingPage, media_url_landscape: file_url });
-                    }} 
-                    className="hidden" 
-                    id="page-media-landscape-upload"
-                  />
-                  <label htmlFor="page-media-landscape-upload">
-                    <Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild>
-                      <span>
-                        <Upload size={16} className="mr-2" />
-                        {editingPage.media_url_landscape ? 'Change' : 'Add landscape image/video'}
-                      </span>
-                    </Button>
-                  </label>
-                  <Input
-                    value={editingPage.media_url_landscape || ''}
-                    onChange={(e) => setEditingPage({ ...editingPage, media_url_landscape: e.target.value })}
-                    placeholder="Or paste a URL"
-                    className="bg-neutral-900 border-white/10 text-white text-sm"
-                  />
-                </div>
-              </>
-            )}
-
-            {/* Media Gallery — only for mixed (Text + Image/Video) pages */}
-            {editingPage.page_type === 'mixed' && (
-              <div className="space-y-2">
-                <label className="text-white text-sm block">🖼️ Media gallery <span className="text-white text-xs">(optional extra images/videos)</span></label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(editingPage.images || []).map((img, idx) => (
-                    <div key={idx} className="relative group">
-                      {img.match(/\.(mp4|webm|ogg)$/i) ? (
-                        <video src={img} className="w-full h-20 object-cover rounded" />
-                      ) : (
-                        <img src={img} alt="" className="w-full h-20 object-cover rounded" />
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newImages = editingPage.images.filter((_, i) => i !== idx);
-                          setEditingPage({ ...editingPage, images: newImages });
-                        }}
-                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  multiple
-                  onChange={async (e) => {
-                    const files = Array.from(e.target.files || []);
-                    const urls = await Promise.all(files.map(async (file) => {
-                      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-                      return file_url;
-                    }));
-                    setEditingPage({ ...editingPage, images: [...(editingPage.images || []), ...urls] });
-                  }}
-                  className="hidden"
-                  id="mixed-gallery-upload"
-                />
-                <label htmlFor="mixed-gallery-upload">
-                  <Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700" asChild>
-                    <span>
-                      <Upload size={14} className="mr-2" />
-                      Add images/videos ({(editingPage.images || []).length})
-                    </span>
-                  </Button>
-                </label>
-              </div>
-            )}
-
-            {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-white text-sm block mb-2">Text position</label>
-                <Select
-                  value={editingPage.text_position}
-                  onValueChange={(value) => setEditingPage({ ...editingPage, text_position: value })}
-                >
-                  <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="top">Top</SelectItem>
-                    <SelectItem value="center">Center</SelectItem>
-                    <SelectItem value="bottom">Bottom</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-white text-sm block mb-2">Text color</label>
-                <Select
-                  value={editingPage.text_color}
-                  onValueChange={(value) => setEditingPage({ ...editingPage, text_color: value })}
-                >
-                  <SelectTrigger className="bg-neutral-900 border-white/10 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="white">White</SelectItem>
-                    <SelectItem value="black">Black</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>}
-
-            <div>
-              <label className="text-white text-sm block mb-2">Display Order (Position)</label>
-              <div className="flex items-end gap-2">
-                <Input
-                  type="number"
-                  value={editingPage.order}
-                  onChange={(e) => setEditingPage({ ...editingPage, order: parseInt(e.target.value) })}
-                  placeholder="Position number..."
-                  className="bg-neutral-900 border-white/10 text-white flex-1"
-                />
-                <Button
-                  type="button"
-                  onClick={() => setEditingPage({ ...editingPage, order: Math.max(1, editingPage.order - 1) })}
-                  className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 px-3"
-                >
-                  ↑
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => setEditingPage({ ...editingPage, order: editingPage.order + 1 })}
-                  className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 px-3"
-                >
-                  ↓
-                </Button>
-              </div>
-              <p className="text-white text-xs mt-1.5">Lower = appears first</p>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <Button onClick={() => setEditingPage(null)} className="flex-1 bg-neutral-600 border border-white/30 text-white hover:bg-neutral-500">
-                Cancel
-              </Button>
-              <Button onClick={handleSavePage} className="flex-1 bg-white text-black hover:bg-white/90">
-                Save page
-              </Button>
-            </div>
+            <div><label className="text-white text-sm block mb-2">Display Order (Position)</label><div className="flex items-end gap-2"><Input type="number" value={editingPage.order} onChange={(e) => setEditingPage({ ...editingPage, order: parseInt(e.target.value) })} placeholder="Position number..." className="bg-neutral-900 border-white/10 text-white flex-1" /><Button type="button" onClick={() => setEditingPage({ ...editingPage, order: Math.max(1, editingPage.order - 1) })} className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 px-3">↑</Button><Button type="button" onClick={() => setEditingPage({ ...editingPage, order: editingPage.order + 1 })} className="bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 px-3">↓</Button></div><p className="text-white text-xs mt-1.5">Lower = appears first</p></div>
+            <div className="flex gap-3 pt-2"><Button onClick={() => setEditingPage(null)} className="flex-1 bg-neutral-600 border border-white/30 text-white hover:bg-neutral-500">Cancel</Button><Button onClick={handleSavePage} className="flex-1 bg-white text-black hover:bg-white/90">Save page</Button></div>
           </div>
         )}
       </DialogContent>
