@@ -1,4 +1,5 @@
 import { supabase } from '@/api/supabaseClient';
+import { isVideoFile, uploadVideoToCloudflareStream } from '@/lib/cloudflareStreamUpload';
 
 export { supabase } from '@/api/supabaseClient';
 
@@ -381,9 +382,55 @@ async function invokeCoreFunction(name, payload) {
 }
 
 const coreIntegrations = {
-  async UploadFile({ file }) {
+  async UploadFile({ file, dossierId = null, saveToVault = true }) {
     const { data: userData } = await supabase.auth.getUser();
-    const owner = userData.user?.id || 'public';
+    const user = userData.user;
+
+    if (isVideoFile(file)) {
+      if (!user) throw new Error('Authentification requise pour uploader une vidéo');
+      const streamAsset = await uploadVideoToCloudflareStream(file, { dossierId });
+      const fileUrl = streamAsset?.playback_url;
+      if (!fileUrl) throw new Error('Cloudflare playback URL unavailable');
+
+      let vaultAssetId = null;
+      if (saveToVault && user.email) {
+        const { data: existing, error: existingError } = await supabase
+          .from('vault_asset')
+          .select('id')
+          .eq('user_email', user.email)
+          .eq('url', fileUrl)
+          .limit(1);
+        throwIfError(existingError);
+
+        if (existing?.[0]?.id) {
+          vaultAssetId = existing[0].id;
+        } else {
+          const { data: vaultAsset, error: vaultError } = await supabase
+            .from('vault_asset')
+            .insert({
+              created_by_id: user.id,
+              user_email: user.email,
+              name: String(file.name || 'Video').replace(/\.[^.]+$/, ''),
+              url: fileUrl,
+              media_type: 'video',
+              asset_category: 'reference',
+              source_dossier_id: dossierId || '',
+            })
+            .select('id')
+            .single();
+          throwIfError(vaultError);
+          vaultAssetId = vaultAsset?.id || null;
+        }
+      }
+
+      return {
+        file_url: fileUrl,
+        stream_asset: streamAsset,
+        vault_asset_id: vaultAssetId,
+      };
+    }
+
+    const owner = user?.id || 'public';
     const extension = file.name?.split('.').pop() || 'bin';
     const objectPath = `${owner}/${crypto.randomUUID()}.${extension}`;
     const { error } = await supabase.storage.from('media').upload(objectPath, file, {
