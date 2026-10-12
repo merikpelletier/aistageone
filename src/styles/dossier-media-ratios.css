@@ -47,3 +47,35 @@
     display: none !important;
   }
 }
+
+/* Dossier reader — mobile portrait.
+   Audio belongs directly below the page image, before the page title. The audio
+   markup is stored inside the page content, so lift only that control into the
+   image/audio/title sequence and remove the flex growth that created the large
+   empty black gap. Desktop/landscape is intentionally untouched. */
+@media (max-width: 767px) {
+  .fixed.bg-black.z-30
+    .absolute.inset-0.flex.flex-col.overflow-y-auto:has([data-dossier-page-audio])
+    > div.flex.flex-col.px-6.py-4.flex-1 {
+    flex: 0 0 auto !important;
+    padding-top: 78px !important;
+  }
+
+  .fixed.bg-black.z-30 [data-dossier-page-audio="true"] {
+    position: absolute !important;
+    top: calc(50vh + 24px) !important;
+    left: 24px !important;
+    right: 24px !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    z-index: 70 !important;
+    pointer-events: auto !important;
+  }
+
+  .fixed.bg-black.z-30 [data-dossier-page-audio="true"] audio {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
