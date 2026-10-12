@@ -1,5 +1,5 @@
 import VoicePicker from '@/components/studio/VoicePicker.jsx';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Volume2, X, Loader2, Type, CheckCircle2, Sliders, Sparkles } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -10,7 +10,6 @@ import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const EMOTIONS = [
-  { id: 'none', label: 'None', tag: '', icon: '😐' },
   { id: 'excited', label: 'Excited', tag: '[excited]', icon: '🤩' },
   { id: 'whispers', label: 'Whispers', tag: '[whispers]', icon: '🤫' },
   { id: 'sighs', label: 'Sighs', tag: '[sighs]', icon: '😮‍💨' },
@@ -21,9 +20,9 @@ const EMOTIONS = [
 
 export default function TextToSpeech({ onComplete, onClose, productionMethod = null, block = null, character = null, episodePageId, blockId, user, embedded = false, inline = false }) {
   const showContext = productionMethod && block;
+  const textAreaRef = useRef(null);
   const [voice, setVoice] = useState('Rachel');
   const [text, setText] = useState('');
-  const [emotion, setEmotion] = useState('none');
   const [stability, setStability] = useState(0.5);
   const [style, setStyle] = useState(0);
   const [speed, setSpeed] = useState(1);
@@ -35,19 +34,38 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
   const [isSaving, setIsSaving] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
 
-  const emotionTag = EMOTIONS.find(e => e.id === emotion)?.tag || '';
-  const directedText = emotionTag ? `${emotionTag} ${text}` : text;
-  const pricingInput = { text: directedText, voice, speed, stability, similarity_boost: 0.75, style, language_code: languageCode };
+  const pricingInput = { text, voice, speed, stability, similarity_boost: 0.75, style, language_code: languageCode };
   const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({ service: 'generateSpeech', kind: 'speech', input: pricingInput });
   const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
   const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({ service: 'generateSpeech', kind: 'speech', input: pricingInput, modelKey: effectiveModel });
+
+  const insertEmotionTag = (tag) => {
+    if (!tag) return;
+    const textarea = textAreaRef.current;
+    const position = textarea?.selectionStart ?? text.length;
+    const needsLeadingSpace = position > 0 && !/\s/.test(text[position - 1]);
+    const insertion = `${needsLeadingSpace ? ' ' : ''}${tag} `;
+    const nextText = `${text.slice(0, position)}${insertion}${text.slice(position)}`;
+
+    if (nextText.length > 5000) {
+      toast.error('Text is too long to add another emotion marker.');
+      return;
+    }
+
+    setText(nextText);
+    const nextPosition = position + insertion.length;
+    requestAnimationFrame(() => {
+      textarea?.focus();
+      textarea?.setSelectionRange(nextPosition, nextPosition);
+    });
+  };
 
   const handleGenerate = async () => {
     if (!text.trim()) return;
     setIsGenerating(true);
     try {
       const response = await base44.functions.invoke('generateSpeech', {
-        text: directedText,
+        text,
         voice,
         stability,
         similarity_boost: 0.75,
@@ -112,7 +130,7 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
           <header className="mb-5 flex items-center justify-between border-b border-white/10 bg-[#17191d] px-4 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Sparkles size={19} /></div>
-              <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#23c7be]">Sound & Voice</p><h3 className="text-xl font-black">Text to Speech</h3><p className="text-xs text-white/45">ElevenLabs v3 with emotions</p></div>
+              <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#23c7be]">Sound & Voice</p><h3 className="text-xl font-black">Text to Speech</h3><p className="text-xs text-white/45">ElevenLabs v3 with inline emotions</p></div>
             </div>
             {!embedded && !inline && <button onClick={onClose} className="rounded-[3px] border border-white/10 bg-white/[.04] p-2 hover:bg-white/10"><X size={20} /></button>}
           </header>
@@ -126,15 +144,16 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
               </section>
 
               <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-                <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.12em] text-white/45"><Sparkles size={14} className="text-[#23c7be]" /> Emotion</div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-                  {EMOTIONS.map((e) => <button key={e.id} onClick={() => setEmotion(e.id)} className={`rounded-[3px] border p-3 text-center transition ${emotion === e.id ? 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[.03] text-white/65 hover:bg-white/[.07]'}`}><div className="mb-1 text-xl">{e.icon}</div><div className="text-xs font-bold">{e.label}</div></button>)}
+                <div className="mb-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.12em] text-white/45"><Sparkles size={14} className="text-[#23c7be]" /> Emotion</div>
+                <p className="mb-3 text-[10px] text-white/35">Place the cursor in your text, then click an emotion to insert it.</p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                  {EMOTIONS.map((e) => <button key={e.id} onMouseDown={(event) => event.preventDefault()} onClick={() => insertEmotionTag(e.tag)} className="rounded-[3px] border border-white/10 bg-white/[.03] p-3 text-center text-white/65 transition hover:border-[#23c7be]/40 hover:bg-[#23c7be]/12 hover:text-[#8ee9e4]"><div className="mb-1 text-xl">{e.icon}</div><div className="text-xs font-bold">{e.label}</div></button>)}
                 </div>
               </section>
 
               <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
                 <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.12em] text-white/45"><Type size={14} className="text-[#23c7be]" /> Enter Text</div><span className="text-[10px] text-white/30">{text.length}/5000</span></div>
-                <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Type or paste your text here..." className="min-h-[160px] w-full resize-none rounded-[3px] border border-white/15 bg-black/25 p-4 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" maxLength={5000} />
+                <textarea ref={textAreaRef} value={text} onChange={(e) => setText(e.target.value)} placeholder="Type or paste your text here..." className="min-h-[160px] w-full resize-none rounded-[3px] border border-white/15 bg-black/25 p-4 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" maxLength={5000} />
               </section>
 
               <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
@@ -146,7 +165,7 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
                 </div>}
               </section>
 
-              {result && <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center gap-2"><CheckCircle2 size={18} className="text-[#23c7be]" /><div><p className="text-sm font-black">Speech Generated</p><p className="text-xs text-white/40">Voice: {voice}{emotion !== 'none' && ` · ${EMOTIONS.find(e => e.id === emotion)?.label}`}</p></div></div><audio src={result} controls className="w-full" /></section>}
+              {result && <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center gap-2"><CheckCircle2 size={18} className="text-[#23c7be]" /><div><p className="text-sm font-black">Speech Generated</p><p className="text-xs text-white/40">Voice: {voice}</p></div></div><audio src={result} controls className="w-full" /></section>}
             </div>
 
             <aside className="space-y-4">
