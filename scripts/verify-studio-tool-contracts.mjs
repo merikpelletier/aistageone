@@ -61,16 +61,24 @@ const speech = read('supabase/functions/_shared/replicateAi.ts');
 requireMarker('Speech', speech, "SPEECH_MODEL = 'elevenlabs/v3'");
 const speechEndpoint = read('supabase/functions/generateSpeech/index.ts');
 for (const marker of [
-  'ELEVENLABS_VOICES.has(voice)',
-  "PREVIEW_CACHE_DIRECTORY = 'voice-previews/elevenlabs-v3-v1'",
+  "modelKey = String(body.model_key || 'elevenlabs/v3')",
+  ".eq('kind', 'speech')",
+  'propsVoices(model)',
+  'buildTtsInput(model',
+  'runReplicateModel(model.model_key, input)',
+  'model_key: model.model_key',
   'credit_cost: 0',
-  'voice,',
 ]) requireMarker('Speech endpoint', speechEndpoint, marker);
+for (const marker of [
+  "ELEVENLABS_VOICES.has(voice)",
+  "PREVIEW_CACHE_DIRECTORY = 'voice-previews/elevenlabs-v3-v1'",
+  'base44.asServiceRole.integrations.Core.GenerateSpeech',
+]) forbidMarker('Speech endpoint legacy lock', speechEndpoint, marker);
 const base44Client = read('src/api/base44Client.js');
 requireMarker('Speech client bridge', base44Client, "GenerateSpeech: (payload) => invokeCoreFunction('generateSpeech', payload)");
 forbidMarker('Speech client bridge', base44Client, "GenerateSpeech: (payload) => invokeCoreFunction('generate-speech', payload)");
 const voicePreview = read('src/components/studio/VoicePreviewButton.jsx');
-for (const marker of ["base44.functions.invoke('generateSpeech'", 'voice: voiceId', 'preview: true']) {
+for (const marker of ["base44.functions.invoke('generateSpeech'", 'voice: voiceId', 'model_key: modelKey', 'language_code: language', 'preview: true']) {
   requireMarker('Voice preview', voicePreview, marker);
 }
 
@@ -150,7 +158,6 @@ const visit = (directoryUrl) => {
     if (entry.isDirectory()) visit(entryUrl);
     else if (activeExtensions.has(extname(entry.name))) {
       const content = readFileSync(entryUrl, 'utf8');
-
       for (const endpoint of forbiddenBase44Endpoints) forbidMarker(`Active source ${entryUrl.pathname}`, content, endpoint);
     }
   }
