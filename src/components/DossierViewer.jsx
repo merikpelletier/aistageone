@@ -18,6 +18,7 @@ import SponsorContentPlacement from '@/components/SponsorContentPlacement';
 import DossierIndexPage from '@/components/DossierIndexPage';
 import DossierContestPage from '@/components/DossierContestPage';
 import DossierCreditsPage from '@/components/DossierCreditsPage';
+import CloudflareStreamVideo, { isCloudflareStreamUrl } from '@/components/CloudflareStreamVideo';
 // Small helper: loads EpisodeProduction and shows a "Watch Blocks" button
 function EpisodeBlocksButton({ episodePageId, dossierId, onPlay }) {
   const [epProd, setEpProd] = React.useState(null);
@@ -305,15 +306,24 @@ export default function DossierViewer({ pages, onClose, dossier }) {
           {!isLandscape && !page?.is_product && page?.page_type !== 'series' && activeMediaUrl && !(page?.page_type === 'mixed' && page?.image_layout !== 'background') && (
             page?.page_type === 'video' ? (
               <div className="absolute inset-0 pointer-events-auto">
-                <video
-                  key={currentPage}
-                  src={activeMediaUrl}
-                  autoPlay
-                  loop
-                  playsInline
-                  controls
-                  className="w-full h-full object-cover"
-                />
+                {isCloudflareStreamUrl(activeMediaUrl) ? (
+                  <CloudflareStreamVideo
+                    key={currentPage}
+                    src={activeMediaUrl}
+                    controls
+                    className="w-full h-full"
+                  />
+                ) : (
+                  <video
+                    key={currentPage}
+                    src={activeMediaUrl}
+                    autoPlay
+                    loop
+                    playsInline
+                    controls
+                    className="w-full h-full object-cover"
+                  />
+                )}
                 <button
                   onClick={(e) => { e.stopPropagation(); setFullscreenImage(activeMediaUrl); }}
                   onTouchStart={(e) => e.stopPropagation()}
@@ -390,15 +400,24 @@ export default function DossierViewer({ pages, onClose, dossier }) {
               {activeMediaUrl && (
                 <div className="w-1/2 h-full flex-shrink-0 overflow-hidden pointer-events-auto">
                   {page?.page_type === 'video' ? (
-                    <video
-                      key={currentPage}
-                      src={activeMediaUrl}
-                      autoPlay
-                      loop
-                      playsInline
-                      controls
-                      className="w-full h-full object-cover pointer-events-auto"
-                    />
+                    isCloudflareStreamUrl(activeMediaUrl) ? (
+                      <CloudflareStreamVideo
+                        key={currentPage}
+                        src={activeMediaUrl}
+                        controls
+                        className="w-full h-full pointer-events-auto"
+                      />
+                    ) : (
+                      <video
+                        key={currentPage}
+                        src={activeMediaUrl}
+                        autoPlay
+                        loop
+                        playsInline
+                        controls
+                        className="w-full h-full object-cover pointer-events-auto"
+                      />
+                    )
                   ) : (
                     <img
                       src={activeMediaUrl}
@@ -437,7 +456,6 @@ export default function DossierViewer({ pages, onClose, dossier }) {
               }}
             />
           )}
-
           {/* Production Kit page — show spinner, production room opens via overlay */}
           {page?.page_type === 'production_kit' && !kitProductionPage && (() => {
             if (!kitProductionDismissed.current) {
