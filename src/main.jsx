@@ -14,6 +14,7 @@ import '@/styles/voice-recorder.css'
 import '@/styles/studio-workspace-scroll.css'
 import '@/styles/studio-selects.css'
 import '@/styles/dossier-media-ratios.css'
+import '@/styles/dossier-upload-icons.css'
 import { registerServiceWorker } from '@/lib/registerServiceWorker'
 
 registerServiceWorker()
