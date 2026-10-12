@@ -7,6 +7,19 @@ function isStreamHls(url = '') {
   return /\.cloudflarestream\.com\/.*\/manifest\/video\.m3u8(?:\?|$)/i.test(url);
 }
 
+function streamThumbnailUrl(url = '') {
+  if (!isStreamHls(url)) return null;
+  try {
+    const parsed = new URL(url);
+    const parts = parsed.pathname.split('/').filter(Boolean);
+    const videoId = parts[0];
+    if (!videoId) return null;
+    return `${parsed.origin}/${videoId}/thumbnails/thumbnail.jpg?time=1s&height=480`;
+  } catch {
+    return null;
+  }
+}
+
 function loadHls() {
   if (window.Hls) return Promise.resolve(window.Hls);
   const existing = document.getElementById(HLS_SCRIPT_ID);
@@ -68,16 +81,30 @@ export default function CloudflareHlsBridge() {
       }
     };
 
+    const fixStreamImagePreview = (image) => {
+      if (!(image instanceof HTMLImageElement)) return;
+      const source = image.getAttribute('src') || '';
+      if (!isStreamHls(source)) return;
+      const thumbnail = streamThumbnailUrl(source);
+      if (!thumbnail) return;
+      image.dataset.streamHlsSource = source;
+      image.src = thumbnail;
+      image.alt = image.alt || 'Cloudflare Stream video preview';
+    };
+
     const scan = (root) => {
       if (root instanceof HTMLVideoElement) attach(root);
+      if (root instanceof HTMLImageElement) fixStreamImagePreview(root);
       root?.querySelectorAll?.('video[src]')?.forEach(attach);
+      root?.querySelectorAll?.('img[src]')?.forEach(fixStreamImagePreview);
     };
 
     scan(document);
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.target instanceof HTMLVideoElement) {
-          attach(mutation.target);
+        if (mutation.type === 'attributes') {
+          if (mutation.target instanceof HTMLVideoElement) attach(mutation.target);
+          if (mutation.target instanceof HTMLImageElement) fixStreamImagePreview(mutation.target);
         }
         mutation.addedNodes.forEach((node) => {
           if (node instanceof Element) scan(node);
