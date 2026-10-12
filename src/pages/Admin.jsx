@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
+  BarChart3,
   BookOpen,
   Bot,
   Boxes,
@@ -62,10 +63,12 @@ import AdminProductPlacements from '@/components/admin/AdminProductPlacements';
 import Admin3DLibrary from '@/components/admin/Admin3DLibrary';
 import AdminPrelaunch from '@/components/admin/AdminPrelaunch';
 import AdminSetDesignerImages from '@/components/admin/AdminSetDesignerImages';
+import AdminAnalytics from '@/components/admin/AdminAnalytics';
 
 const triggerClass = 'flex-1 py-3 text-xs tracking-wide text-white hover:text-white data-[state=active]:bg-white data-[state=active]:text-black rounded-sm';
 
 const tabs = [
+  ['analytics', 'Analytics', BarChart3, <AdminAnalytics />],
   ['prelaunch', 'Pre-launch', Users, <AdminPrelaunch />],
   ['pages-tools', 'Pages & Tools', MonitorCog, <AdminPagesTools />],
   ['set-designer-images', 'Set Designer Images', ImagePlus, <AdminSetDesignerImages />],
