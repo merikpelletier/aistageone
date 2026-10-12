@@ -6,7 +6,7 @@ const CHUNK_SIZE = 5 * 1024 * 1024;
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function invokeStream(body) {
-  const { data, error } = await supabase.functions.invoke('stream-tus-upload', { body });
+  const { data, error } = await supabase.functions.invoke('stream-upload', { body });
   if (error) {
     let message = error.message;
     try { message = (await error.context.json()).error || message; } catch {}
@@ -85,7 +85,7 @@ export default function CloudflareVideoUpload({
 
     try {
       const provision = await invokeStream({
-        action: 'create',
+        action: 'create_tus_upload',
         file_size: file.size,
         name: file.name || name,
         dossier_id: dossierId,
