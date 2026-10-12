@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Send } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function MemberContactForm({ memberEmail, memberName }) {
+export default function MemberContactForm({ memberEmail, memberName, aiMemberId = null }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -15,6 +15,19 @@ export default function MemberContactForm({ memberEmail, memberName }) {
 
   const sendMutation = useMutation({
     mutationFn: async (data) => {
+      if (aiMemberId) {
+        return base44.entities.AIMemberMessage.create({
+          ai_member_id: aiMemberId,
+          direction: 'incoming',
+          sender_name: data.name.trim(),
+          sender_email: data.email.trim().toLowerCase(),
+          subject: data.subject.trim(),
+          content: data.message.trim(),
+          status: 'unread',
+          sent_by: 'visitor',
+        });
+      }
+
       return base44.integrations.Core.SendEmail({
         to: memberEmail,
         subject: `New message from ${data.name}: ${data.subject}`,
@@ -92,6 +105,12 @@ export default function MemberContactForm({ memberEmail, memberName }) {
             className="w-full bg-yellow-50 border-2 border-black/20 rounded p-3 text-black placeholder:text-black focus:outline-none focus:border-black resize-none"
             required
           />
+
+          {sendMutation.isError && (
+            <p className="text-red-700 text-sm">
+              {sendMutation.error?.message || 'Message could not be sent.'}
+            </p>
+          )}
 
           <button
             type="submit"
