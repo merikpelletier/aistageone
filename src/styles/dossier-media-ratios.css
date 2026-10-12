@@ -67,9 +67,12 @@
     height: auto !important;
     max-height: 72vh !important;
     object-fit: contain !important;
-    object-position: center top !important;
+    object-position: center center !important;
     flex-shrink: 0 !important;
-    margin: 0 auto !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    margin-top: auto !important;
+    margin-bottom: auto !important;
   }
 
   .fixed.bg-black.z-30
