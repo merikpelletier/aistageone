@@ -36,7 +36,6 @@ import { Button } from '@/components/ui/button';
 import AdminModels from '@/components/admin/AdminModels';
 import AdminFinance from '@/components/admin/AdminFinance';
 import AdminVideoBilling from '@/components/admin/AdminVideoBilling';
-import AdminVideoLibrary from '@/components/admin/AdminVideoLibrary';
 import AdminOloInventory from '@/components/admin/AdminOloInventory';
 import AdminPagesTools from '@/components/admin/AdminPagesTools';
 import AdminDossiers from '@/components/admin/AdminDossiers';
@@ -80,7 +79,6 @@ const groups = [
     icon: BookOpen,
     items: [
       ['dossiers', 'Dossiers', BookOpen, <AdminDossiers />],
-      ['video-library', 'Video Library', Film, <AdminVideoLibrary />],
       ['content', 'Content', FileText, <AdminContent />],
       ['submissions', 'Submissions', BookOpen, <AdminSubmissions />],
       ['sketch-templates', 'Sketches', Film, <AdminSketchTemplates />],
