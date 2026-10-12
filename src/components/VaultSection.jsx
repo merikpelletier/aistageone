@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bookmark, Trash2, X, Folder, Plus, ChevronDown, Pencil, FileText, Volume2, Upload, Download, Loader2, Info, Star } from 'lucide-react';
 import ScriptEditor from '@/components/studio/ScriptEditor';
 import AssetInspector from '@/components/studio/AssetInspector';
+import CloudflareVideoUpload from '@/components/CloudflareVideoUpload';
+import CloudflareStreamVideo, { isCloudflareStreamUrl } from '@/components/CloudflareStreamVideo';
 import { toast } from 'sonner';
 
 function VisibleTags({ tags = [] }) {
@@ -52,7 +54,7 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
     try {
       let uploaded = 0;
       for (const file of files) {
-        const mediaType = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : null;
+        const mediaType = file.type.startsWith('image/') ? 'image' : file.type.startsWith('audio/') ? 'audio' : null;
         if (!mediaType) continue;
         const { file_url } = await base44.integrations.Core.UploadFile({ file });
         await base44.entities.VaultAsset.create({
@@ -68,12 +70,33 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
       }
       await queryClient.invalidateQueries({ queryKey: ['vaultAssets', userEmail] });
       if (uploaded) toast.success(`${uploaded} media file${uploaded === 1 ? '' : 's'} uploaded to Vault`);
-      else toast.error('Select image, video, or audio files');
+      else toast.error('Select image or audio files');
     } catch (error) {
       toast.error(error.message || 'Unable to upload media');
     } finally {
       setUploading(false);
       input.value = '';
+    }
+  };
+
+  const saveStreamVideo = async (streamAsset) => {
+    if (!userEmail) { toast.error('Sign in to upload video'); return; }
+    if (!streamAsset?.playback_url) { toast.error('Cloudflare playback URL is unavailable'); return; }
+    try {
+      await base44.entities.VaultAsset.create({
+        user_email: userEmail,
+        author_name: userEmail,
+        url: streamAsset.playback_url,
+        name: String(streamAsset.original_name || 'Stream video').replace(/\.[^.]+$/, ''),
+        media_type: 'video',
+        asset_category: 'cloudflare_stream',
+        source_dossier_id: '',
+      });
+      await queryClient.invalidateQueries({ queryKey: ['vaultAssets', userEmail] });
+      await queryClient.invalidateQueries({ queryKey: ['vaultAssetsForPicker', userEmail] });
+      toast.success('Video uploaded to Cloudflare Stream and added to Vault');
+    } catch (error) {
+      toast.error(error.message || 'Video is on Cloudflare but could not be added to Vault');
     }
   };
 
@@ -181,6 +204,7 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
     const moveOptions = currentFolderId
       ? [{ id: 'unfiled', name: 'Unfiled' }, ...folders.filter(f => f.id !== currentFolderId)]
       : folders;
+    const streamVideo = asset.media_type === 'video' && isCloudflareStreamUrl(asset.url);
 
     return (
       <article className="min-w-0 overflow-hidden rounded-[4px] border border-white/10 bg-[#17191d] transition hover:border-[#23c7be]/35">
@@ -194,7 +218,7 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
             </button>
           ) : asset.media_type === 'video' ? (
             <button onClick={() => setLightboxUrl(asset.url)} className="relative h-full w-full bg-black">
-              <video src={asset.url} className="h-full w-full object-contain" muted preload="metadata" />
+              <CloudflareStreamVideo src={asset.url} title={asset.name || 'Vault video'} className="h-full w-full object-contain" muted previewOnly />
               <span className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[3px] border border-white/15 bg-black/70">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z" /></svg>
               </span>
@@ -212,7 +236,7 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
 
           <div className="absolute right-2 top-2 flex gap-1.5">
             <button onClick={() => setInspectorAsset(asset)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:border-[#23c7be]/40 hover:text-[#8ee9e4]" title="Asset details"><Info size={14} /></button>
-            <button onClick={() => downloadAsset(asset)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:border-[#23c7be]/40 hover:text-[#8ee9e4]" title="Download"><Download size={14} /></button>
+            {!streamVideo && <button onClick={() => downloadAsset(asset)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:border-[#23c7be]/40 hover:text-[#8ee9e4]" title="Download"><Download size={14} /></button>}
             <button onClick={() => { setEditingName(asset.id); setNameDraft(asset.name || ''); }} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:text-white" title="Rename"><Pencil size={14} /></button>
             <button onClick={() => deleteAsset(asset.id)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-red-400/25 bg-black/75 text-red-300 hover:bg-red-400/10" title="Delete"><Trash2 size={14} /></button>
           </div>
@@ -265,12 +289,15 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
           <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Bookmark size={19} fill="currentColor" /></div>
           <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Library & Assets</p><div className="flex items-baseline gap-2"><h2 className="text-xl font-black text-white">My Vault</h2><span className="text-xs font-bold text-white/35">{assets.length} assets</span></div></div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-start gap-2">
           <label className={`flex cursor-pointer items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs font-black text-white transition hover:bg-white/[0.08] ${uploading ? 'pointer-events-none opacity-60' : ''}`}>
             {uploading ? <Loader2 size={15} className="animate-spin text-[#23c7be]" /> : <Upload size={15} className="text-[#23c7be]" />}
-            {uploading ? 'Uploading…' : 'Upload media'}
-            <input type="file" accept="image/*,video/*,audio/*" multiple className="hidden" onChange={uploadMedia} disabled={uploading} />
+            {uploading ? 'Uploading…' : 'Upload image/audio'}
+            <input type="file" accept="image/*,audio/*" multiple className="hidden" onChange={uploadMedia} disabled={uploading} />
           </label>
+          <div className="min-w-[190px]">
+            <CloudflareVideoUpload label="Upload video" onReady={saveStreamVideo} />
+          </div>
           <button onClick={() => setShowNewFolder(true)} className="flex items-center gap-2 rounded-[3px] bg-[#23c7be] px-4 py-2.5 text-xs font-black text-[#071211] transition hover:bg-[#35d8cf]"><Plus size={15} /> New Folder</button>
         </div>
       </header>
@@ -326,7 +353,7 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
       {lightboxUrl && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4" onClick={() => setLightboxUrl(null)}>
           <button className="absolute right-4 top-8 z-10 flex h-9 w-9 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.05] text-white"><X size={20} /></button>
-          {lightboxUrl.match(/\.(mp4|webm|mov|m4v)(\?|$)/i) ? <video src={lightboxUrl} controls autoPlay className="max-h-full max-w-full rounded-[4px]" onClick={(e) => e.stopPropagation()} /> : <img src={lightboxUrl} alt="" className="max-h-full max-w-full rounded-[4px] object-contain" onClick={(e) => e.stopPropagation()} />}
+          {(isCloudflareStreamUrl(lightboxUrl) || lightboxUrl.match(/\.(mp4|webm|mov|m4v)(\?|$)/i)) ? <CloudflareStreamVideo src={lightboxUrl} controls autoPlay className="max-h-full max-w-full w-[min(1100px,94vw)] aspect-video rounded-[4px]" /> : <img src={lightboxUrl} alt="" className="max-h-full max-w-full rounded-[4px] object-contain" onClick={(e) => e.stopPropagation()} />}
         </div>
       )}
 
