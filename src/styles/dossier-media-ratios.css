@@ -1,11 +1,49 @@
-/* Dossier media: desktop must preserve the source video's aspect ratio.
-   DossierViewer fills large desktop regions with video; object-fit: contain
-   keeps 9:16, 16:9, 1:1 and other source formats intact instead of cropping. */
+/* Dossier media — desktop
+   Keep source ratios intact and center video-only dossier pages in the viewport. */
 @media (min-width: 1024px) {
   .fixed.bg-black.z-30 video {
     object-fit: contain !important;
     background: #000;
     max-width: 100%;
     max-height: 100%;
+  }
+
+  /* DossierViewer landscape normally uses a 50/50 media/text split inside max-w-5xl.
+     For a video page with no visible title/content, use the full viewport and center
+     the native-ratio video instead of leaving it in the left half. */
+  .fixed.bg-black.z-30 > .relative.w-full.max-w-5xl:has(> .flex.w-full.h-full > div:nth-child(2):empty) {
+    max-width: 100vw !important;
+    width: 100vw !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .fixed.bg-black.z-30 > .relative.w-full.max-w-5xl:has(> .flex.w-full.h-full > div:nth-child(2):empty)
+    > .flex.w-full.h-full
+    > div:first-child {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+
+  .fixed.bg-black.z-30 > .relative.w-full.max-w-5xl:has(> .flex.w-full.h-full > div:nth-child(2):empty)
+    > .flex.w-full.h-full
+    > div:first-child
+    > video {
+    width: auto !important;
+    height: 100% !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    object-fit: contain !important;
+    margin: 0 auto !important;
+  }
+
+  .fixed.bg-black.z-30 > .relative.w-full.max-w-5xl:has(> .flex.w-full.h-full > div:nth-child(2):empty)
+    > .flex.w-full.h-full
+    > div:nth-child(2) {
+    display: none !important;
   }
 }
