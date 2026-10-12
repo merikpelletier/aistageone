@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { Analytics } from '@vercel/analytics/react'
 import App from '@/App.jsx'
+import CloudflareHlsBridge from '@/components/CloudflareHlsBridge'
 import '@/index.css'
 import '@/styles/fotoplay-workspace.css'
 import '@/styles/fotoplay-desktop-compact.css'
@@ -20,6 +21,7 @@ registerServiceWorker()
 ReactDOM.createRoot(document.getElementById('root')).render(
   <>
     <App />
+    <CloudflareHlsBridge />
     <Analytics />
   </>
 )
