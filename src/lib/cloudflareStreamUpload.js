@@ -5,7 +5,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function isVideoFile(file) {
   if (!file) return false;
-  if (file.type?.startsWith('video/')) return true;
+  if (file.type) return file.type.startsWith('video/');
   return /\.(mp4|mov|mkv|avi|webm|mpg|mpeg|3gp|mxf|m4v)$/i.test(file.name || '');
 }
 
