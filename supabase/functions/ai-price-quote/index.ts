@@ -24,7 +24,7 @@ serveWithCors(async request=>{
       if(!effectiveKind)return Response.json({options:[]});
 
       const {data:catalog,error:ce}=await serviceClient.from('ai_model_catalog')
-        .select('model_key,name,description,kind,enabled')
+        .select('model_key,name,description,kind,enabled,schema,capabilities')
         .eq('kind',effectiveKind).eq('enabled',true)
         .neq('model_key','bytedance/seedream-4.5')
         .order('name',{ascending:true});
@@ -38,27 +38,27 @@ serveWithCors(async request=>{
       const results=[];
       for(const model of catalog||[]){
         const explicit=optionMap.get(model.model_key);
+        const base={
+          model_key:model.model_key,
+          name:model.name||model.model_key,
+          description:model.description||'',
+          kind:effectiveKind,
+          recommended:Boolean(explicit?.recommended),
+          display_order:explicit?.display_order??999,
+          schema:model.schema||null,
+          capabilities:model.capabilities||null,
+        };
         try{
           const quote=await quoteAiService(serviceClient,service,body.input||{},model.model_key,effectiveKind);
           results.push({
-            model_key:model.model_key,
-            name:model.name||model.model_key,
-            description:model.description||'',
-            kind:effectiveKind,
-            recommended:Boolean(explicit?.recommended),
-            display_order:explicit?.display_order??999,
+            ...base,
             credits:quote.credits,
             estimated:quote.estimated,
             billing_type:quote.billing_type,
           });
         }catch(e){
           results.push({
-            model_key:model.model_key,
-            name:model.name||model.model_key,
-            description:model.description||'',
-            kind:effectiveKind,
-            recommended:Boolean(explicit?.recommended),
-            display_order:explicit?.display_order??999,
+            ...base,
             credits:null,
             unavailable_reason:e instanceof Error?e.message:'Tarif indisponible',
           });
