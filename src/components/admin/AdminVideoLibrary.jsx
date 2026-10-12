@@ -1,7 +1,6 @@
 import React from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/api/base44Client';
-import CloudflareVideoUpload from '@/components/CloudflareVideoUpload';
 import { Film, RefreshCw } from 'lucide-react';
 
 function formatDuration(seconds) {
@@ -13,7 +12,6 @@ function formatDuration(seconds) {
 }
 
 export default function AdminVideoLibrary() {
-  const qc = useQueryClient();
   const query = useQuery({
     queryKey: ['stream-video-library'],
     queryFn: async () => {
@@ -30,20 +28,12 @@ export default function AdminVideoLibrary() {
 
   return (
     <div className="space-y-6">
-      <section className="border border-white/10 bg-neutral-950 p-5 space-y-4">
-        <div>
-          <h2 className="text-xl font-light">Cloudflare Stream</h2>
-          <p className="mt-1 text-sm text-white/50">Upload publication videos directly to AISTAGE.ONE. Files go from the browser to Cloudflare Stream; the Cloudflare API token stays server-side.</p>
-        </div>
-        <CloudflareVideoUpload
-          label="Upload video to AISTAGE.ONE"
-          onReady={() => qc.invalidateQueries({ queryKey: ['stream-video-library'] })}
-        />
-      </section>
-
       <section className="border border-white/10 bg-neutral-950 p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2"><Film size={18} /><h3 className="text-lg font-light">Video library</h3></div>
+          <div>
+            <div className="flex items-center gap-2"><Film size={18} /><h2 className="text-xl font-light">Cloudflare Stream</h2></div>
+            <p className="mt-1 text-sm text-white/50">Technical monitoring of videos uploaded from AISTAGE.ONE creator workflows.</p>
+          </div>
           <button type="button" onClick={() => query.refetch()} className="min-h-10 px-3 border border-white/15 text-sm flex items-center gap-2 hover:bg-white/5"><RefreshCw size={14} />Refresh</button>
         </div>
         {query.isLoading ? <p className="text-sm text-white/50">Loading…</p> : query.error ? <p className="text-sm text-red-300">{query.error.message}</p> : !query.data?.length ? <p className="text-sm text-white/45">No Stream videos yet.</p> : (
