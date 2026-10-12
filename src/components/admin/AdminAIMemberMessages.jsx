@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Inbox, Loader2, Mail, Send } from 'lucide-react';
+import { Bot, Inbox, Loader2, Mail, Send } from 'lucide-react';
 
 const formatDate = value => {
   if (!value) return '';
@@ -15,11 +15,18 @@ const safeReplySubject = subject => {
   return /^re:/i.test(value) ? value : `Re: ${value}`;
 };
 
-export default function AdminAIMemberMessages({ members = [] }) {
+export default function AdminAIMemberMessages({ members: suppliedMembers }) {
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [replyError, setReplyError] = useState('');
+
+  const { data: queriedMembers = [] } = useQuery({
+    queryKey: ['ai-members'],
+    queryFn: () => base44.entities.AIMember.list('-created_date', 200),
+    enabled: !suppliedMembers,
+  });
+  const members = suppliedMembers || queriedMembers;
 
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ['ai-member-messages'],
@@ -27,6 +34,7 @@ export default function AdminAIMemberMessages({ members = [] }) {
   });
 
   const refreshMessages = () => qc.invalidateQueries({ queryKey: ['ai-member-messages'] });
+  const refreshMembers = () => qc.invalidateQueries({ queryKey: ['ai-members'] });
 
   const selectedMessage = useMemo(
     () => messages.find(message => message.id === selectedId) || null,
@@ -51,6 +59,11 @@ export default function AdminAIMemberMessages({ members = [] }) {
       read_at: new Date().toISOString(),
     }),
     onSuccess: refreshMessages,
+  });
+
+  const updateReplyMode = useMutation({
+    mutationFn: ({ id, mode }) => base44.entities.AIMember.update(id, { message_reply_mode: mode }),
+    onSuccess: refreshMembers,
   });
 
   const selectMessage = message => {
@@ -102,7 +115,7 @@ export default function AdminAIMemberMessages({ members = [] }) {
   const unreadCount = incomingMessages.filter(message => message.status === 'unread').length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 text-white">
       <div className="border border-white/15 bg-neutral-950 p-4 flex items-center gap-3">
         <div className="w-10 h-10 border border-white/15 flex items-center justify-center">
           <Inbox size={18} />
@@ -110,6 +123,35 @@ export default function AdminAIMemberMessages({ members = [] }) {
         <div>
           <h3 className="text-sm font-medium">AI Member Inbox</h3>
           <p className="text-xs text-white/45">Messages sent from AI Member public profiles. {unreadCount} unread.</p>
+        </div>
+      </div>
+
+      <div className="border border-white/10 bg-neutral-950 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Bot size={15} className="text-teal-300" />
+          <div>
+            <p className="text-sm font-medium">Reply mode by AI Member</p>
+            <p className="text-[11px] text-white/40">Off is manual only. Assist and Auto are stored now; AI generation will be connected in the next layer.</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+          {members.map(member => (
+            <div key={member.id} className="border border-white/10 p-3 flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{member.display_name}</p>
+                <p className="text-[11px] text-white/35 truncate">@{member.handle}</p>
+              </div>
+              <select
+                value={member.message_reply_mode || 'off'}
+                onChange={event => updateReplyMode.mutate({ id: member.id, mode: event.target.value })}
+                className="input-ai text-xs"
+              >
+                <option value="off">Off</option>
+                <option value="assist">Assist</option>
+                <option value="auto">Auto</option>
+              </select>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -180,7 +222,7 @@ export default function AdminAIMemberMessages({ members = [] }) {
                 />
                 {replyError && <p className="text-xs text-red-300">{replyError}</p>}
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] text-white/35">Manual admin reply. AI replies remain off until configured.</p>
+                  <p className="text-[11px] text-white/35">Manual admin reply sends email and stays in this conversation history.</p>
                   <button
                     onClick={() => sendReply.mutate()}
                     disabled={!replyText.trim() || sendReply.isPending}
@@ -194,6 +236,7 @@ export default function AdminAIMemberMessages({ members = [] }) {
           )}
         </div>
       </div>
+      <style>{`.input-ai{background:#0a0a0a;border:1px solid rgba(255,255,255,.15);color:white;padding:.55rem .7rem;font-size:.875rem;outline:none}.input-ai:focus{border-color:rgba(255,255,255,.4)}.input-ai option{background:#0a0a0a;color:white}`}</style>
     </div>
   );
 }
