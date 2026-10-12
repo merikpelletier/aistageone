@@ -1,7 +1,7 @@
 import VoicePicker from '@/components/studio/VoicePicker.jsx';
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Volume2, X, Loader2, Type, CheckCircle2, Sliders, Sparkles } from 'lucide-react';
+import { Volume2, X, Loader2, Type, CheckCircle2, Sliders, Sparkles, RotateCcw, Pencil } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import ProductionContextInfo from '@/components/ProductionContextInfo';
@@ -37,6 +37,8 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
   const pricingInput = { text, voice, speed, stability, similarity_boost: 0.75, style, language_code: languageCode };
   const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({ service: 'generateSpeech', kind: 'speech', input: pricingInput });
   const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const activeModel = modelOptions.find(m => m.model_key === effectiveModel);
+  const activeModelName = activeModel?.name || effectiveModel || 'Unknown';
   const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({ service: 'generateSpeech', kind: 'speech', input: pricingInput, modelKey: effectiveModel });
 
   const insertEmotionTag = (tag) => {
@@ -81,6 +83,20 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleEditAgain = () => {
+    setResult(null);
+    requestAnimationFrame(() => textAreaRef.current?.focus());
+  };
+
+  const handleStartOver = () => {
+    setResult(null);
+    setText('');
+    setStability(0.5);
+    setStyle(0);
+    setSpeed(1);
+    requestAnimationFrame(() => textAreaRef.current?.focus());
   };
 
   const handleUseAudio = () => {
@@ -130,7 +146,7 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
           <header className="mb-5 flex items-center justify-between border-b border-white/10 bg-[#17191d] px-4 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Sparkles size={19} /></div>
-              <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#23c7be]">Sound & Voice</p><h3 className="text-xl font-black">Text to Speech</h3><p className="text-xs text-white/45">ElevenLabs v3 with inline emotions</p></div>
+              <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#23c7be]">Sound & Voice</p><h3 className="text-xl font-black">Text to Speech</h3><p className="text-xs text-white/45">Inline emotion tags for Eleven v3 / v4</p></div>
             </div>
             {!embedded && !inline && <button onClick={onClose} className="rounded-[3px] border border-white/10 bg-white/[.04] p-2 hover:bg-white/10"><X size={20} /></button>}
           </header>
@@ -145,7 +161,7 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
 
               <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
                 <div className="mb-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.12em] text-white/45"><Sparkles size={14} className="text-[#23c7be]" /> Emotion</div>
-                <p className="mb-3 text-[10px] text-white/35">Place the cursor in your text, then click an emotion to insert it.</p>
+                <p className="mb-3 text-[10px] text-white/35">Place the cursor in your text, then click an emotion to insert it exactly where the delivery should change.</p>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
                   {EMOTIONS.map((e) => <button key={e.id} onMouseDown={(event) => event.preventDefault()} onClick={() => insertEmotionTag(e.tag)} className="rounded-[3px] border border-white/10 bg-white/[.03] p-3 text-center text-white/65 transition hover:border-[#23c7be]/40 hover:bg-[#23c7be]/12 hover:text-[#8ee9e4]"><div className="mb-1 text-xl">{e.icon}</div><div className="text-xs font-bold">{e.label}</div></button>)}
                 </div>
@@ -165,7 +181,7 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
                 </div>}
               </section>
 
-              {result && <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center gap-2"><CheckCircle2 size={18} className="text-[#23c7be]" /><div><p className="text-sm font-black">Speech Generated</p><p className="text-xs text-white/40">Voice: {voice}</p></div></div><audio src={result} controls className="w-full" /></section>}
+              {result && <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center gap-2"><CheckCircle2 size={18} className="text-[#23c7be]" /><div><p className="text-sm font-black">Speech Generated</p><p className="text-xs text-white/40">Voice: {voice} · Model: {activeModelName}</p></div></div><audio src={result} controls className="w-full" /><div className="mt-3 grid gap-2 sm:grid-cols-3"><button onClick={handleGenerate} disabled={isGenerating || !text.trim()} className="flex items-center justify-center gap-2 rounded-[3px] border border-[#23c7be]/35 bg-[#23c7be]/10 px-3 py-2.5 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/15 disabled:opacity-40">{isGenerating ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />} Regenerate</button><button onClick={handleEditAgain} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[.04] px-3 py-2.5 text-xs font-black text-white/75 hover:bg-white/[.08]"><Pencil size={15} /> Edit & Try Again</button><button onClick={handleStartOver} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[.04] px-3 py-2.5 text-xs font-black text-white/60 hover:bg-white/[.08]"><RotateCcw size={15} /> Start Over</button></div></section>}
             </div>
 
             <aside className="space-y-4">
