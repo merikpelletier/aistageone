@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Edit2, Trash2, Eye, EyeOff, Layers, Upload, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Edit2, Trash2, Eye, EyeOff, Layers, Upload, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import AdminDossierCategories from './AdminDossierCategories';
 import AdminEpisodeProduction from './AdminEpisodeProduction';
 import SeriesPageEditor from './SeriesPageEditor';
@@ -374,6 +374,7 @@ export default function AdminDossiers() {
 
 function PageEditor({ dossier, pages, onClose }) {
   const [editingPage, setEditingPage] = useState(null);
+  const [mediaUpload, setMediaUpload] = useState({ target: null, status: 'idle' });
   const queryClient = useQueryClient();
 
   const createPageMutation = useMutation({
@@ -437,12 +438,24 @@ function PageEditor({ dossier, pages, onClose }) {
     }
   };
 
-  const handleMediaUpload = async (e) => {
+  const uploadPageMedia = async (e, target) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setEditingPage({ ...editingPage, media_url: file_url });
+    const isVideo = file.type?.startsWith('video/');
+    if (isVideo) setMediaUpload({ target, status: 'uploading' });
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setEditingPage(current => ({ ...current, [target === 'portrait' ? 'media_url' : 'media_url_landscape']: file_url }));
+      if (isVideo) setMediaUpload({ target: null, status: 'idle' });
+    } catch (error) {
+      if (isVideo) setMediaUpload({ target, status: 'error' });
+      throw error;
+    }
   };
+
+  const handleMediaUpload = (e) => uploadPageMedia(e, 'portrait');
+  const handleLandscapeMediaUpload = (e) => uploadPageMedia(e, 'landscape');
 
   const handleAudioUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -585,15 +598,15 @@ function PageEditor({ dossier, pages, onClose }) {
               <div>
                 <label className="text-white text-sm block mb-2">📱 Image / Video — Portrait</label>
                 {editingPage.media_url && <div className="mb-2">{editingPage.media_url.match(/\.(mp4|webm|ogg)$/i) ? <><video src={editingPage.media_url} controls allowFullScreen playsInline className="w-full h-32 rounded-sm" /><a href={editingPage.media_url} target="_blank" rel="noopener noreferrer" className="block w-full text-center bg-neutral-700 text-white text-xs py-1.5 rounded mt-1">⛶ Open fullscreen</a></> : <img src={editingPage.media_url} alt="" className="w-full max-h-64 object-contain rounded-sm bg-neutral-900" />}</div>}
-                <input type="file" accept="image/*,video/*" onChange={handleMediaUpload} className="hidden" id="page-media-upload" />
-                <label htmlFor="page-media-upload"><Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild><span><Upload size={16} className="mr-2" />{editingPage.media_url ? 'Change' : 'Add image/video'}</span></Button></label>
+                <input type="file" accept="image/*,video/*" onChange={handleMediaUpload} disabled={mediaUpload.status === 'uploading'} className="hidden" id="page-media-upload" />
+                <label htmlFor="page-media-upload"><Button type="button" disabled={mediaUpload.status === 'uploading'} className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild><span>{mediaUpload.target === 'portrait' && mediaUpload.status === 'uploading' ? <><Loader2 size={16} className="mr-2 animate-spin" />Uploading video…</> : mediaUpload.target === 'portrait' && mediaUpload.status === 'error' ? <>Upload failed</> : <><Upload size={16} className="mr-2" />{editingPage.media_url ? 'Change' : 'Add image/video'}</>}</span></Button></label>
                 <Input value={editingPage.media_url || ''} onChange={(e) => setEditingPage({ ...editingPage, media_url: e.target.value })} placeholder="Or paste a URL" className="bg-neutral-900 border-white/10 text-white text-sm" />
               </div>
               <div>
                 <label className="text-white text-sm block mb-2">🖥️ Image / Video — Landscape <span className="text-white">(optional, uses portrait if empty)</span></label>
                 {editingPage.media_url_landscape && <div className="mb-2">{editingPage.media_url_landscape.match(/\.(mp4|webm|ogg)$/i) ? <><video src={editingPage.media_url_landscape} controls allowFullScreen playsInline className="w-full h-32 rounded-sm" /><a href={editingPage.media_url_landscape} target="_blank" rel="noopener noreferrer" className="block w-full text-center bg-neutral-700 text-white text-xs py-1.5 rounded mt-1">⛶ Open fullscreen</a></> : <img src={editingPage.media_url_landscape} alt="" className="w-full h-32 object-cover rounded-sm" />}</div>}
-                <input type="file" accept="image/*,video/*" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const { file_url } = await base44.integrations.Core.UploadFile({ file }); setEditingPage({ ...editingPage, media_url_landscape: file_url }); }} className="hidden" id="page-media-landscape-upload" />
-                <label htmlFor="page-media-landscape-upload"><Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild><span><Upload size={16} className="mr-2" />{editingPage.media_url_landscape ? 'Change' : 'Add landscape image/video'}</span></Button></label>
+                <input type="file" accept="image/*,video/*" onChange={handleLandscapeMediaUpload} disabled={mediaUpload.status === 'uploading'} className="hidden" id="page-media-landscape-upload" />
+                <label htmlFor="page-media-landscape-upload"><Button type="button" disabled={mediaUpload.status === 'uploading'} className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild><span>{mediaUpload.target === 'landscape' && mediaUpload.status === 'uploading' ? <><Loader2 size={16} className="mr-2 animate-spin" />Uploading video…</> : mediaUpload.target === 'landscape' && mediaUpload.status === 'error' ? <>Upload failed</> : <><Upload size={16} className="mr-2" />{editingPage.media_url_landscape ? 'Change' : 'Add landscape image/video'}</>}</span></Button></label>
                 <Input value={editingPage.media_url_landscape || ''} onChange={(e) => setEditingPage({ ...editingPage, media_url_landscape: e.target.value })} placeholder="Or paste a URL" className="bg-neutral-900 border-white/10 text-white text-sm" />
               </div>
 
