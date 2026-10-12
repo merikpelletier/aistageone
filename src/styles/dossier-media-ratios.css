@@ -47,3 +47,26 @@
     display: none !important;
   }
 }
+
+/* Admin dossier PAGE editor — keep the page audio field immediately visible.
+   The actual audio upload/url control lives inside the page form and saves to
+   dossier_page.audio_url. This only fixes its placement/visibility. */
+[role="dialog"] div:has(> #page-audio-upload) {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 80 !important;
+  background: #0a0a0a !important;
+  border: 1px solid rgba(45, 212, 191, 0.55) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45) !important;
+}
+
+@media (min-width: 768px) {
+  [role="dialog"] div:has(> #page-audio-upload) {
+    position: fixed !important;
+    top: 88px !important;
+    right: 32px !important;
+    width: min(360px, calc(100vw - 64px)) !important;
+    max-width: 360px !important;
+    z-index: 9999 !important;
+  }
+}
