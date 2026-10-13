@@ -233,40 +233,40 @@ export default function MemberDashboard() {
 
         {effectiveIsOwnProfile ? (
           <>
-            <div className="px-0 lg:px-[1vw] lg:[column-width:46vw] lg:[column-gap:1vw]">
-              <div className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+            <div className="px-0 lg:px-[1vw] lg:flex lg:flex-wrap lg:items-start lg:gap-[1vw]">
+              <div className="lg:min-w-[31%] lg:flex-[1_1_48%]">
                 {viewingEmail && <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />}
               </div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="lg:min-w-[31%] lg:flex-[1_1_48%]">
                 <TokensMembershipSection userEmail={viewingEmail} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="lg:min-w-[31%] lg:flex-[1_1_38%]">
                 <MemberEconomicsSection ownerId={user?.id} dossiers={dossiers} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="lg:min-w-[31%] lg:flex-[1_1_58%]">
                 <SponsorsContributorsSection userEmail={viewingEmail} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lg:min-w-[28%] lg:flex-[1_1_28%]">
                 <ProfileLinksSection profile={profile} isOwnProfile={effectiveIsOwnProfile} userEmail={viewingEmail} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="lg:min-w-[48%] lg:flex-[1_1_68%]">
                 <MemberSeriesParticipation userEmail={viewingEmail} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="lg:min-w-[48%] lg:flex-[1_1_58%]">
                 <PublishStorySection userEmail={viewingEmail} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className="lg:min-w-[28%] lg:flex-[1_1_38%]">
                 <CampaignManager userEmail={viewingEmail} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }} className="lg:min-w-[31%] lg:flex-[1_1_48%]">
                 <MemberInboxSection userEmail={viewingEmail} />
               </motion.div>
             </div>
