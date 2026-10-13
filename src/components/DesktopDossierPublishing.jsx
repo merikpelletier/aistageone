@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { CheckCircle2, Edit3, Film, Layers, Loader2, Plus, Send } from 'lucide-react';
+import { CheckCircle2, Edit3, Film, Layers, Loader2, Plus, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import MemberDossierEditor from '@/components/MemberDossierEditor';
 import MemberDossierPages from '@/components/MemberDossierPages';
@@ -10,6 +10,7 @@ import MemberDossierPages from '@/components/MemberDossierPages';
 export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
   const qc = useQueryClient();
   const [publishingId, setPublishingId] = useState(null);
+  const [deletingDossierId, setDeletingDossierId] = useState(null);
   const [accessByStory, setAccessByStory] = useState({});
   const [editingDossier, setEditingDossier] = useState(undefined);
   const [managingDossier, setManagingDossier] = useState(null);
@@ -81,6 +82,35 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
       toast.error(error?.message || 'Unable to publish dossier.');
     } finally {
       setPublishingId(null);
+    }
+  };
+
+  const deleteDirectDossier = async (dossier) => {
+    const confirmed = window.confirm(`Delete "${dossier.title || 'this dossier'}" and all of its pages? This cannot be undone.`);
+    if (!confirmed) return;
+
+    setDeletingDossierId(dossier.id);
+    try {
+      const pages = await base44.entities.DossierPage.filter({ dossier_id: dossier.id });
+      for (const page of pages || []) {
+        await base44.entities.DossierPage.delete(page.id);
+      }
+      await base44.entities.Dossier.delete(dossier.id);
+
+      if (managingDossier?.id === dossier.id) setManagingDossier(null);
+      if (editingDossier?.id === dossier.id) setEditingDossier(undefined);
+
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['desktopMemberDirectDossiers', userEmail] }),
+        qc.invalidateQueries({ queryKey: ['desktopMemberDossiers', userEmail] }),
+        qc.invalidateQueries({ queryKey: ['memberDossiers'] }),
+      ]);
+      toast.success('Dossier deleted.');
+    } catch (error) {
+      console.error('Dossier delete failed', error);
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Unable to delete dossier.');
+    } finally {
+      setDeletingDossierId(null);
     }
   };
 
@@ -168,6 +198,13 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
                   <div className="flex shrink-0 gap-2">
                     <button onClick={() => setManagingDossier(dossier)} className="flex items-center gap-1.5 border border-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:border-white/50"><Layers size={12} /> Pages</button>
                     <button onClick={() => setEditingDossier(dossier)} className="flex items-center gap-1.5 border border-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:border-white/50"><Edit3 size={12} /> Edit</button>
+                    <button
+                      onClick={() => deleteDirectDossier(dossier)}
+                      disabled={deletingDossierId === dossier.id}
+                      className="flex items-center gap-1.5 border border-red-500/40 px-3 py-1.5 text-xs font-semibold text-red-400 hover:border-red-400 hover:text-red-300 disabled:opacity-50"
+                    >
+                      {deletingDossierId === dossier.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete
+                    </button>
                   </div>
                 </div>
 
