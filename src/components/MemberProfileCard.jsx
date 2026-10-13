@@ -32,7 +32,7 @@ export default function MemberProfileCard({ profile, user, isOwnProfile, onEdit 
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-black"
+      className="bg-black lg:max-w-4xl lg:mx-auto"
     >
       {/* User Icon */}
       <div className="px-8 pt-8 pb-2">
@@ -49,7 +49,7 @@ export default function MemberProfileCard({ profile, user, isOwnProfile, onEdit 
       <div className="px-8 pt-4 pb-6">
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1">
-            <h2 className="text-white text-4xl md:text-5xl font-light tracking-tight mb-2">{displayName}</h2>
+            <h2 className="text-white text-4xl md:text-5xl lg:text-4xl font-light tracking-tight mb-2">{displayName}</h2>
             {profile?.title && (
               <p className="text-red-500 text-xs font-bold tracking-widest uppercase">{profile.title}</p>
             )}
@@ -65,7 +65,7 @@ export default function MemberProfileCard({ profile, user, isOwnProfile, onEdit 
       {/* Bio */}
       {profile?.bio && (
         <div className="px-8 pb-8">
-          <p className="text-white text-base leading-relaxed">{profile.bio}</p>
+          <p className="text-white text-base leading-relaxed lg:max-w-3xl">{profile.bio}</p>
         </div>
       )}
 
