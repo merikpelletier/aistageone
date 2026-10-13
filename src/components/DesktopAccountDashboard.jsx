@@ -8,6 +8,7 @@ import ProfileLinksSection from '@/components/ProfileLinksSection';
 import CampaignManager from '@/components/CampaignManager';
 import MemberInboxSection from '@/components/MemberInboxSection';
 import DossierGallery from '@/components/DossierGallery';
+import DesktopDossierPublishing from '@/components/DesktopDossierPublishing';
 
 function DesktopPanel({ children, className = '' }) {
   return (
@@ -137,6 +138,8 @@ export default function DesktopAccountDashboard({
           </DesktopPanel>
         </section>
 
+        <DesktopDossierPublishing userEmail={viewingEmail} />
+
         {!dossiersLoading && dossiers.length > 0 && (
           <section className="mt-5 border-t border-white/15 pt-5">
             <DossierGallery
@@ -145,6 +148,7 @@ export default function DesktopAccountDashboard({
               commentsMap={commentsMap}
               campaignsMap={campaignsMap}
               label="Published Work"
+              ownerMode
             />
           </section>
         )}
