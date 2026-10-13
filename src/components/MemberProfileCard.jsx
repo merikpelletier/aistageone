@@ -89,8 +89,8 @@ export default function MemberProfileCard({ profile, user, isOwnProfile, onEdit,
         {profile?.images && profile.images.length > 0 && (
           <div className="px-8 pb-8 lg:px-0 lg:pt-[1.2%] lg:pb-0 lg:flex-[1.8_1_0%] lg:min-w-0">
             <p className="text-white text-xs font-bold uppercase tracking-widest mb-5 lg:mb-[0.7%] lg:text-[0.72vw]">Gallery</p>
-            <div className="lg:flex lg:items-start lg:gap-[0.8vw]">
-              <div className="grid grid-cols-3 gap-4 lg:flex lg:flex-1 lg:min-w-0 lg:gap-[0.8vw] lg:overflow-x-auto lg:overflow-y-hidden lg:pb-[0.6%]">
+            <div className="lg:flex lg:items-start lg:justify-start lg:gap-[0.8vw]">
+              <div className="grid grid-cols-3 gap-4 lg:flex lg:flex-none lg:w-auto lg:min-w-0 lg:gap-[0.8vw] lg:overflow-x-auto lg:overflow-y-hidden lg:pb-[0.6%]">
                 {profile.images.map((img, idx) => (
                   <div key={idx} className="relative aspect-[3/4] group cursor-pointer overflow-hidden rounded-md lg:aspect-auto lg:h-[20vh] lg:min-h-[14vh] lg:max-h-[22vh] lg:flex-[0_0_auto] lg:w-auto">
                     <img src={img} alt={`gallery-${idx}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
