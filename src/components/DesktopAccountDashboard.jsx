@@ -103,7 +103,7 @@ export default function DesktopAccountDashboard({
           </div>
 
           <DesktopPanel className="col-span-12 2xl:col-span-4">
-            <TokensMembershipSection userEmail={viewingEmail} variant="summary" />
+            <TokensMembershipSection userEmail={viewingEmail} variant="summary" desktopStacked />
           </DesktopPanel>
         </section>
 
