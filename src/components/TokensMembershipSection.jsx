@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Coins, BadgeCheck, ShoppingCart, Loader2, ArrowRight, History, TrendingUp, TrendingDown, Gift } from 'lucide-react';
 
@@ -18,7 +17,7 @@ const statusConfig = {
   rejected: { label: 'Rejected', color: 'text-red-400', bg: 'bg-red-400/20', border: 'border-red-400/40' },
 };
 
-export default function TokensMembershipSection({ userEmail }) {
+export default function TokensMembershipSection({ userEmail, variant = 'full' }) {
   const [purchasingId, setPurchasingId] = useState(null);
 
   const { data: balanceData, isLoading: balanceLoading } = useQuery({
@@ -49,7 +48,7 @@ export default function TokensMembershipSection({ userEmail }) {
         return db - da;
       }).slice(0, 50);
     },
-    enabled: !!userEmail,
+    enabled: !!userEmail && variant !== 'summary',
   });
 
   const handlePurchase = async (pkg) => {
@@ -71,8 +70,8 @@ export default function TokensMembershipSection({ userEmail }) {
   const membershipStatus = membership?.status || 'pending';
   const statusInfo = statusConfig[membershipStatus] || statusConfig.pending;
 
-  return (
-    <div className="bg-black border border-white/10 rounded-3xl p-6 space-y-5 shadow-2xl lg:rounded-xl lg:p-4 lg:space-y-3">
+  const summary = (
+    <>
       <div className="flex items-center gap-3 lg:gap-2">
         <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center lg:w-8 lg:h-8 lg:rounded-lg">
           <Coins size={20} className="text-black lg:w-4 lg:h-4" />
@@ -113,7 +112,11 @@ export default function TokensMembershipSection({ userEmail }) {
           <ArrowRight size={16} />
         </Link>
       </div>
+    </>
+  );
 
+  const details = (
+    <>
       {packages.length > 0 && (
         <div className="space-y-3 lg:space-y-2">
           <div className="flex items-center gap-2">
@@ -179,7 +182,22 @@ export default function TokensMembershipSection({ userEmail }) {
         </div>
       )}
 
-      {!membership && packages.length === 0 && transactions.length === 0 && <p className="text-white/40 text-sm text-center py-2">No membership or token packages available yet</p>}
+      {packages.length === 0 && transactions.length === 0 && <p className="text-white/40 text-sm text-center py-2">No token packages or credit history available yet</p>}
+    </>
+  );
+
+  if (variant === 'summary') {
+    return <div className="bg-black border border-white/10 rounded-3xl p-6 space-y-5 shadow-2xl lg:rounded-xl lg:p-4 lg:space-y-3">{summary}</div>;
+  }
+
+  if (variant === 'details') {
+    return <div className="bg-black border border-white/10 rounded-3xl p-6 space-y-5 shadow-2xl lg:rounded-xl lg:p-4 lg:space-y-3">{details}</div>;
+  }
+
+  return (
+    <div className="bg-black border border-white/10 rounded-3xl p-6 space-y-5 shadow-2xl lg:rounded-xl lg:p-4 lg:space-y-3">
+      {summary}
+      {details}
     </div>
   );
 }
