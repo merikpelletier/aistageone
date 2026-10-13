@@ -16,10 +16,6 @@ function formatCredits(value){
   return new Intl.NumberFormat('fr-CA',{maximumFractionDigits:0}).format(Number(value||0));
 }
 
-function formatCad(value){
-  return new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD',maximumFractionDigits:2}).format(Number(value||0));
-}
-
 async function loadPreview(){
   const {data,error}=await supabase.rpc('admin_publication_economics_preview');
   if(error)throw error;
@@ -38,8 +34,6 @@ export default function AdminPublicationEconomics(){
 
   const totalCostCredits=dossiers.reduce((sum,d)=>sum+Number(d.cost_credits||0),0);
   const totalRevenueCredits=dossiers.reduce((sum,d)=>sum+Number(d.revenue_credits||0),0);
-  const totalCostCad=dossiers.reduce((sum,d)=>sum+Number(d.cost_cad||0),0);
-  const totalRevenueCad=dossiers.reduce((sum,d)=>sum+Number(d.revenue_cad||0),0);
 
   return <div className="space-y-6">
     <div>
@@ -48,9 +42,9 @@ export default function AdminPublicationEconomics(){
     </div>
 
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <div className={card}><p className="text-xs uppercase tracking-widest text-white/40">Costs</p><p className="mt-2 text-2xl">{formatCredits(totalCostCredits)} crédits</p><p className="mt-1 text-xs text-white/45">{formatCad(totalCostCad)}</p></div>
-      <div className={card}><p className="text-xs uppercase tracking-widest text-white/40">Revenue</p><p className="mt-2 text-2xl">{formatCredits(totalRevenueCredits)} crédits</p><p className="mt-1 text-xs text-white/45">{formatCad(totalRevenueCad)}</p></div>
-      <div className={card}><p className="text-xs uppercase tracking-widest text-white/40">Net</p><p className="mt-2 text-2xl">{formatCredits(totalRevenueCredits-totalCostCredits)} crédits</p><p className="mt-1 text-xs text-white/45">{formatCad(totalRevenueCad-totalCostCad)}</p></div>
+      <div className={card}><p className="text-xs uppercase tracking-widest text-white/40">Costs</p><p className="mt-2 text-2xl">{formatCredits(totalCostCredits)} crédits</p></div>
+      <div className={card}><p className="text-xs uppercase tracking-widest text-white/40">Revenue</p><p className="mt-2 text-2xl">{formatCredits(totalRevenueCredits)} crédits</p></div>
+      <div className={card}><p className="text-xs uppercase tracking-widest text-white/40">Net</p><p className="mt-2 text-2xl">{formatCredits(totalRevenueCredits-totalCostCredits)} crédits</p></div>
       <div className={card}><p className="text-xs uppercase tracking-widest text-white/40">Current Vault billing</p><p className="mt-2 text-2xl">{formatCredits(billing.total_credits||0)} crédits</p><p className="mt-1 text-xs text-white/45">{billing.billing_month||'Aucun mois'} · {billing.status||'—'}</p></div>
     </div>
 
@@ -77,13 +71,11 @@ export default function AdminPublicationEconomics(){
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 text-sm">
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm">
           <div><p className="text-white/40">Images</p><p className="mt-1">{d.image_count||0} · {formatBytes(d.image_bytes)}</p></div>
           <div><p className="text-white/40">Vidéos</p><p className="mt-1">{d.video_count||0} · {(Number(d.video_seconds||0)/60).toFixed(1)} min</p></div>
           <div><p className="text-white/40">Audio</p><p className="mt-1">{d.audio_count||0} · {formatBytes(d.audio_bytes)}</p></div>
           <div><p className="text-white/40">Produits liés</p><p className="mt-1">{d.product_count||0}</p></div>
-          <div><p className="text-white/40">CAD costs</p><p className="mt-1">{formatCad(d.cost_cad)}</p></div>
-          <div><p className="text-white/40">CAD revenue</p><p className="mt-1">{formatCad(d.revenue_cad)}</p></div>
         </div>
       </div>)}
       {!dossiers.length&&<div className={card}><p className="text-white/60">Aucun dossier trouvé pour ce compte.</p></div>}
