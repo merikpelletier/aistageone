@@ -1,0 +1,26 @@
+@media (max-width: 1023px) {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    background: #000;
+  }
+
+  body {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  #root {
+    min-height: calc(100dvh - env(safe-area-inset-top));
+  }
+
+  .fixed.inset-0,
+  .fixed.top-0,
+  [class*="fixed"][class*="top-0"] {
+    top: env(safe-area-inset-top);
+  }
+
+  .fixed.inset-0 {
+    height: calc(100dvh - env(safe-area-inset-top));
+  }
+}
