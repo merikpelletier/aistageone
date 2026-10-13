@@ -265,10 +265,6 @@ export default function MemberDashboard() {
                 <MemberInboxSection userEmail={viewingEmail} />
               </motion.div>
             </div>
-
-            {!dossiersLoading && dossiers.length > 0 && (
-              <div className="w-full lg:mx-auto lg:max-w-[1500px] lg:px-6"><DossierGallery dossiers={dossiers} ratingsMap={ratingsMap} commentsMap={commentsMap} campaignsMap={campaignsMap} label="Published Work" /></div>
-            )}
           </>
         ) : (
           viewingEmail && <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />
