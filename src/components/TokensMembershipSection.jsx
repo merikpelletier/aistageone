@@ -103,13 +103,13 @@ export default function TokensMembershipSection({ userEmail, variant = 'full' })
 
         <Link
           to="/Membership"
-          className="col-span-2 w-full flex items-center justify-between px-5 py-3 bg-white text-black rounded-2xl font-bold text-sm uppercase tracking-wide hover:bg-white/90 transition-colors lg:col-span-1 lg:rounded-lg lg:py-2 lg:px-4"
+          className="col-span-2 w-full flex items-center justify-between px-5 py-3 bg-white text-black rounded-2xl font-bold text-sm uppercase tracking-wide hover:bg-white/90 transition-colors lg:col-span-1 lg:w-auto lg:justify-self-start lg:justify-center lg:rounded-lg lg:py-1.5 lg:px-3 lg:text-xs lg:tracking-normal"
         >
-          <span className="flex items-center gap-2">
-            <BadgeCheck size={16} />
+          <span className="flex items-center gap-2 lg:gap-1.5">
+            <BadgeCheck size={16} className="lg:w-3 lg:h-3" />
             {membership ? 'Change Membership' : 'Apply for Membership'}
           </span>
-          <ArrowRight size={16} />
+          <ArrowRight size={16} className="lg:w-3 lg:h-3 lg:ml-1" />
         </Link>
       </div>
     </>
