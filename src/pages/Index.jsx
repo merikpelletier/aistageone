@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { ChevronDown, Play, Sparkles } from 'lucide-react';
+import { ChevronDown, GripVertical, Play, Search, Sparkles } from 'lucide-react';
 import TopBanner from '@/components/TopBanner';
 
 const CLASS_ORDER = ['Videos', 'Story', 'Assets', 'Kits', 'Merchandise'];
@@ -22,6 +22,90 @@ const FALLBACK_FILLERS = Array.from({ length: 64 }, (_, index) => ({
   size: index % 9 === 0 ? 'medium' : 'small',
   isFallback: true,
 }));
+const PANEL_MIN_PERCENT = 25;
+const PANEL_DEFAULT_PERCENT = 25;
+const PANEL_MAX_PERCENT = 100;
+
+function localDayKey() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function hashString(value) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededValue(seed, id) {
+  let x = hashString(`${seed}:${id}`) || 1;
+  x ^= x << 13;
+  x ^= x >>> 17;
+  x ^= x << 5;
+  return (x >>> 0) / 4294967296;
+}
+
+function dailyShuffle(items, seed) {
+  return [...items].sort((a, b) => seededValue(seed, a.id) - seededValue(seed, b.id));
+}
+
+function dossierDateValue(dossier) {
+  const value = dossier.approved_at || dossier.submitted_at || dossier.updated_date || dossier.created_date || 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function isMemberDossier(dossier) {
+  return Boolean(dossier.ai_member_id || String(dossier.submitted_by_email || '').trim());
+}
+
+function buildDailyMasonry(dossiers, dayKey) {
+  if (dossiers.length <= 2) return [...dossiers];
+
+  const total = dossiers.length;
+  const newCount = Math.min(total, Math.max(1, Math.round(total * 0.4)));
+  const houseTarget = Math.min(total - newCount, Math.max(0, Math.round(total * 0.2)));
+  const memberTarget = Math.max(0, total - newCount - houseTarget);
+
+  const newest = [...dossiers]
+    .sort((a, b) => dossierDateValue(b) - dossierDateValue(a))
+    .slice(0, newCount);
+  const used = new Set(newest.map(d => d.id));
+
+  const remaining = dossiers.filter(d => !used.has(d.id));
+  const house = dailyShuffle(remaining.filter(d => !isMemberDossier(d)), `${dayKey}:house`).slice(0, houseTarget);
+  house.forEach(d => used.add(d.id));
+
+  const member = dailyShuffle(dossiers.filter(d => !used.has(d.id) && isMemberDossier(d)), `${dayKey}:member`).slice(0, memberTarget);
+  member.forEach(d => used.add(d.id));
+
+  const fill = dailyShuffle(dossiers.filter(d => !used.has(d.id)), `${dayKey}:fill`);
+  return [...dailyShuffle(newest, `${dayKey}:new`), ...house, ...member, ...fill];
+}
+
+function buildPopularityMap(ratings) {
+  const buckets = new Map();
+  ratings.forEach((entry) => {
+    if (!entry?.dossier_id || !Number.isFinite(Number(entry.rating))) return;
+    const current = buckets.get(entry.dossier_id) || { total: 0, count: 0 };
+    current.total += Number(entry.rating);
+    current.count += 1;
+    buckets.set(entry.dossier_id, current);
+  });
+
+  const scores = new Map();
+  buckets.forEach((value, id) => {
+    const average = value.count ? value.total / value.count : 0;
+    scores.set(id, average * 1000 + Math.min(value.count, 999));
+  });
+  return scores;
+}
 
 function DossierCard({ dossier }) {
   const img = dossier.cover_image;
@@ -36,19 +120,8 @@ function DossierCard({ dossier }) {
           {!dossier.hide_text_on_cover && <div className="absolute top-0 left-0 right-0 px-2 pt-2 text-center"><p className="text-white text-xl font-black uppercase tracking-wide leading-tight line-clamp-2 drop-shadow-[0_1px_6px_rgba(0,0,0,0.95)]">{dossier.title}</p></div>}
           {(dossier.content_rating || dossier.default_language || dossier.original_language) && (
             <div className="absolute top-2 right-2 z-30 flex items-center gap-1.5">
-              {dossier.content_rating && (
-                <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">
-                  {dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}
-                </span>
-              )}
-              {(dossier.default_language || dossier.original_language) && (
-                <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">
-                  {({
-                    en: 'EN', fr: 'FR', es: 'ES',
-                    English: 'EN', French: 'FR', Français: 'FR', Spanish: 'ES', Español: 'ES'
-                  })[dossier.default_language || dossier.original_language] || String(dossier.default_language || dossier.original_language).toUpperCase()}
-                </span>
-              )}
+              {dossier.content_rating && <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">{dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}</span>}
+              {(dossier.default_language || dossier.original_language) && <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">{({ en: 'EN', fr: 'FR', es: 'ES', English: 'EN', French: 'FR', Français: 'FR', Spanish: 'ES', Español: 'ES' })[dossier.default_language || dossier.original_language] || String(dossier.default_language || dossier.original_language).toUpperCase()}</span>}
             </div>
           )}
         </div>
@@ -63,19 +136,8 @@ function DossierCard({ dossier }) {
         {!dossier.hide_text_on_cover && <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black via-black/90 to-transparent pb-14 pt-2.5 px-2.5"><p className="text-white text-xl font-black uppercase leading-none tracking-tight line-clamp-3 drop-shadow-[0_2px_6px_rgba(0,0,0,1)]" style={{ WebkitTextStroke: '1.5px #FFC107' }}>{dossier.title}</p></div>}
         {(dossier.content_rating || dossier.default_language || dossier.original_language) && (
           <div className="absolute top-2 right-2 z-30 flex items-center gap-1.5">
-            {dossier.content_rating && (
-              <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">
-                {dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}
-              </span>
-            )}
-            {(dossier.default_language || dossier.original_language) && (
-              <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">
-                {({
-                  en: 'EN', fr: 'FR', es: 'ES',
-                  English: 'EN', French: 'FR', Français: 'FR', Spanish: 'ES', Español: 'ES'
-                })[dossier.default_language || dossier.original_language] || String(dossier.default_language || dossier.original_language).toUpperCase()}
-              </span>
-            )}
+            {dossier.content_rating && <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">{dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}</span>}
+            {(dossier.default_language || dossier.original_language) && <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">{({ en: 'EN', fr: 'FR', es: 'ES', English: 'EN', French: 'FR', Français: 'FR', Spanish: 'ES', Español: 'ES' })[dossier.default_language || dossier.original_language] || String(dossier.default_language || dossier.original_language).toUpperCase()}</span>}
           </div>
         )}
       </div>
@@ -138,7 +200,7 @@ function DesktopDossierTile({ dossier, size }) {
   const videoRef = useRef(null);
   const media = dossier.cover_video || null;
   const image = dossier.cover_image || dossier.cover_template_image || null;
-  const accent = CLASS_ACCENTS[dossier.class] || 'bg-yellow-400';
+  const accent = CLASS_ACCENTS[dossier.class] || 'bg-white';
   const startPreview = () => videoRef.current?.play().catch(() => {});
   const stopPreview = () => { if (videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 0; } };
   return (
@@ -149,19 +211,8 @@ function DesktopDossierTile({ dossier, size }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/5 to-transparent opacity-90" />
         {(dossier.content_rating || dossier.default_language || dossier.original_language) && (
           <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
-            {dossier.content_rating && (
-              <span className="bg-black/90 border border-white text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em]">
-                {dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}
-              </span>
-            )}
-            {(dossier.default_language || dossier.original_language) && (
-              <span className="bg-black/90 border border-white text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em]">
-                {({
-                  en: 'EN', fr: 'FR', es: 'ES',
-                  English: 'EN', French: 'FR', Français: 'FR', Spanish: 'ES', Español: 'ES'
-                })[dossier.default_language || dossier.original_language] || String(dossier.default_language || dossier.original_language).toUpperCase()}
-              </span>
-            )}
+            {dossier.content_rating && <span className="bg-black/90 border border-white text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em]">{dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}</span>}
+            {(dossier.default_language || dossier.original_language) && <span className="bg-black/90 border border-white text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em]">{({ en: 'EN', fr: 'FR', es: 'ES', English: 'EN', French: 'FR', Français: 'FR', Spanish: 'ES', Español: 'ES' })[dossier.default_language || dossier.original_language] || String(dossier.default_language || dossier.original_language).toUpperCase()}</span>}
           </div>
         )}
         <div className="absolute inset-x-0 bottom-0 p-3 md:p-4">
@@ -181,7 +232,7 @@ function DesktopFillerTile({ filler }) {
   const stopPreview = () => videoRef.current?.pause();
   const content = (
     <div onMouseEnter={startPreview} onMouseLeave={stopPreview} className="absolute inset-0 bg-black">
-      {filler.media_type === 'video' && filler.media_url ? <video ref={videoRef} src={filler.media_url} poster={filler.poster_url || undefined} muted loop playsInline preload="metadata" className="h-full w-full object-contain" /> : filler.media_url ? <img src={filler.media_url} alt={filler.label || 'Coming soon'} className="h-full w-full object-contain" /> : <div className="flex h-full flex-col items-center justify-center gap-3 bg-[radial-gradient(circle_at_30%_20%,rgba(255,214,0,.25),transparent_35%),radial-gradient(circle_at_70%_75%,rgba(220,38,38,.22),transparent_38%),#090909] p-5 text-center"><Sparkles className="text-yellow-400" size={22} /><span className="text-xs font-black uppercase tracking-[.22em] text-white/70">{filler.label || 'Coming soon'}</span></div>}
+      {filler.media_type === 'video' && filler.media_url ? <video ref={videoRef} src={filler.media_url} poster={filler.poster_url || undefined} muted loop playsInline preload="metadata" className="h-full w-full object-contain" /> : filler.media_url ? <img src={filler.media_url} alt={filler.label || 'Coming soon'} className="h-full w-full object-contain" /> : <div className="flex h-full flex-col items-center justify-center gap-3 bg-[radial-gradient(circle_at_30%_20%,rgba(20,184,166,.17),transparent_35%),radial-gradient(circle_at_70%_75%,rgba(255,255,255,.10),transparent_38%),#090909] p-5 text-center"><Sparkles className="text-white/70" size={22} /><span className="text-xs font-black uppercase tracking-[.22em] text-white/70">{filler.label || 'Coming soon'}</span></div>}
       <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
     </div>
   );
@@ -191,6 +242,7 @@ function DesktopFillerTile({ filler }) {
 function DesktopMasonry({ dossiers, fillers }) {
   const containerRef = useRef(null);
   const [realContentHeight, setRealContentHeight] = useState(null);
+
   useEffect(() => {
     setRealContentHeight(null);
     const frame = requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -233,9 +285,185 @@ function DesktopMasonry({ dossiers, fillers }) {
   );
 }
 
+function CompactGalleryCard({ dossier }) {
+  const image = dossier.cover_image || dossier.cover_template_image || dossier.cover_image_landscape;
+  return (
+    <Link to={`${createPageUrl('Magazine')}?dossier=${dossier.id}`} className="group min-w-[92px] max-w-[112px] flex-1">
+      <div className="aspect-[9/16] overflow-hidden bg-neutral-900 border border-white/10 transition group-hover:border-white/40">
+        {image ? <img src={image} alt={dossier.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center p-2 text-center text-[10px] font-bold text-white/60">{dossier.title}</div>}
+      </div>
+      <p className="mt-1.5 line-clamp-2 text-[11px] font-semibold leading-tight text-white/80 group-hover:text-white">{dossier.title}</p>
+    </Link>
+  );
+}
+
+function GalleryRow({ title, dossiers }) {
+  if (!dossiers.length) return null;
+  return (
+    <section className="mb-7">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h3 className="text-sm font-black uppercase tracking-[0.12em] text-white">{title}</h3>
+        <span className="text-[10px] font-semibold text-white/35">{dossiers.length}</span>
+      </div>
+      <div className="flex gap-2.5 overflow-x-auto pb-2 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,.22)_transparent]">
+        {dossiers.map(dossier => <CompactGalleryCard key={dossier.id} dossier={dossier} />)}
+      </div>
+    </section>
+  );
+}
+
+function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) {
+  const [panelWidth, setPanelWidth] = useState(() => {
+    const saved = Number(window.localStorage.getItem('aistage:index-browser-width'));
+    return Number.isFinite(saved) && saved >= PANEL_MIN_PERCENT && saved <= PANEL_MAX_PERCENT ? saved : PANEL_DEFAULT_PERCENT;
+  });
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState('All');
+  const draggingRef = useRef(false);
+
+  useEffect(() => {
+    window.localStorage.setItem('aistage:index-browser-width', String(Math.round(panelWidth)));
+  }, [panelWidth]);
+
+  useEffect(() => {
+    const onMove = (event) => {
+      if (!draggingRef.current) return;
+      const width = ((window.innerWidth - event.clientX) / window.innerWidth) * 100;
+      setPanelWidth(Math.min(PANEL_MAX_PERCENT, Math.max(PANEL_MIN_PERCENT, width)));
+    };
+    const onUp = () => { draggingRef.current = false; document.body.style.cursor = ''; document.body.style.userSelect = ''; };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, []);
+
+  const selectorOptions = useMemo(() => {
+    const categoryNames = categories.map(c => c.name).filter(Boolean);
+    return ['All', ...CLASS_ORDER, ...categoryNames.filter(name => !CLASS_ORDER.includes(name))];
+  }, [categories]);
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return dossiers.filter((dossier) => {
+      const selectorMatch = selected === 'All' || dossier.class === selected || dossier.category === selected;
+      if (!selectorMatch) return false;
+      if (!q) return true;
+      return [dossier.title, dossier.subtitle, dossier.category, dossier.class, dossier.author_name, dossier.submitted_by_name]
+        .filter(Boolean)
+        .some(value => String(value).toLowerCase().includes(q));
+    });
+  }, [dossiers, query, selected]);
+
+  const rankRow = (items, seed) => {
+    const sorted = [...items].sort((a, b) => (popularityMap.get(b.id) || 0) - (popularityMap.get(a.id) || 0));
+    const featured = sorted.slice(0, 4);
+    const featuredIds = new Set(featured.map(d => d.id));
+    const rest = dailyShuffle(items.filter(d => !featuredIds.has(d.id)), `${dayKey}:row:${seed}`);
+    return [...featured, ...rest];
+  };
+
+  const rows = useMemo(() => {
+    if (query.trim()) return [{ title: 'Search results', dossiers: rankRow(visible, 'search') }];
+
+    if (selected !== 'All') {
+      return [{ title: selected, dossiers: rankRow(visible, selected) }];
+    }
+
+    const result = [];
+    CLASS_ORDER.forEach((classLabel) => {
+      const items = visible.filter(d => d.class === classLabel);
+      if (items.length) result.push({ title: classLabel, dossiers: rankRow(items, `class:${classLabel}`) });
+    });
+    categories.forEach((category) => {
+      const items = visible.filter(d => d.category === category.name);
+      if (items.length) result.push({ title: category.name, dossiers: rankRow(items, `category:${category.name}`) });
+    });
+    const categorizedIds = new Set(result.flatMap(row => row.dossiers.map(d => d.id)));
+    const others = visible.filter(d => !categorizedIds.has(d.id));
+    if (others.length) result.push({ title: 'Others', dossiers: rankRow(others, 'others') });
+    return result;
+  }, [visible, selected, query, categories, popularityMap, dayKey]);
+
+  const startDrag = (event) => {
+    event.preventDefault();
+    draggingRef.current = true;
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+  };
+
+  return (
+    <aside
+      className="fixed bottom-0 right-0 top-0 z-40 hidden border-l border-white/15 bg-black/96 shadow-[-30px_0_70px_rgba(0,0,0,.55)] backdrop-blur-xl lg:flex lg:flex-col"
+      style={{ width: `${panelWidth}%`, minWidth: '320px' }}
+    >
+      <button
+        type="button"
+        onPointerDown={startDrag}
+        onDoubleClick={() => setPanelWidth(panelWidth >= 90 ? 25 : 100)}
+        aria-label="Resize classical browser"
+        title="Drag to resize. Double-click to open or close."
+        className="absolute -left-3 top-1/2 z-50 flex h-20 w-6 -translate-y-1/2 items-center justify-center border border-white/20 bg-neutral-950 text-white/70 shadow-xl hover:text-white"
+      >
+        <GripVertical size={16} />
+      </button>
+
+      <div className="border-b border-white/10 px-4 pb-3 pt-4 xl:px-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/35">Browse</p>
+            <h2 className="text-lg font-black text-white">Content Library</h2>
+          </div>
+          <div className="flex gap-1">
+            {[25, 50, 100].map(value => (
+              <button key={value} onClick={() => setPanelWidth(value)} className={`border px-2 py-1 text-[10px] font-black transition ${Math.round(panelWidth) === value ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}>{value}%</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35" />
+          <input
+            type="search"
+            value={query}
+            onChange={event => setQuery(event.target.value)}
+            placeholder="Search titles, creators, categories..."
+            className="w-full border border-white/15 bg-white/[0.04] py-2.5 pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/40"
+          />
+        </div>
+
+        <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {selectorOptions.map(option => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setSelected(option)}
+              className={`whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-4 xl:px-5">
+        {rows.length ? rows.map(row => <GalleryRow key={row.title} title={row.title} dossiers={row.dossiers} />) : <div className="flex min-h-[240px] items-center justify-center text-sm text-white/35">No content found.</div>}
+      </div>
+    </aside>
+  );
+}
+
 export default function Index() {
   const { data: dossiers = [], isLoading } = useQuery({ queryKey: ['dossiers', 'published'], queryFn: () => base44.entities.Dossier.filter({ status: 'published' }, 'order'), staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false });
   const { data: categories = [] } = useQuery({ queryKey: ['dossierCategories'], queryFn: () => base44.entities.DossierCategory.list('name'), staleTime: 5 * 60 * 1000 });
+  const { data: ratings = [] } = useQuery({
+    queryKey: ['dossierRatings', 'indexPopularity'],
+    queryFn: async () => { try { return await base44.entities.DossierRating.listAll(); } catch { return []; } },
+    staleTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
   const { data: configuredFillers = [] } = useQuery({
     queryKey: ['homeFillers'],
     queryFn: async () => { try { return await base44.entities.HomeFiller.filter({ is_active: true }, 'display_order', 50); } catch { return []; } },
@@ -243,6 +471,10 @@ export default function Index() {
   });
 
   const fillers = useMemo(() => [...configuredFillers, ...FALLBACK_FILLERS], [configuredFillers]);
+  const dayKey = localDayKey();
+  const popularityMap = useMemo(() => buildPopularityMap(ratings), [ratings]);
+  const desktopMasonryDossiers = useMemo(() => buildDailyMasonry(dossiers, dayKey), [dossiers, dayKey]);
+
   if (isLoading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" /></div>;
 
   const restDossiers = dossiers.slice(1);
@@ -251,12 +483,17 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-black pb-24">
-      <TopBanner dossiers={dossiers} />
-      <div className="pt-4 px-4 columns-1 sm:columns-2 gap-4 lg:hidden">
-        {classSections.map(section => <ClassSection key={section.classLabel} classLabel={section.classLabel} dossiers={section.dossiers} categories={categories} />)}
-        {noClass.length > 0 && <ClassSection classLabel="Others" dossiers={noClass} categories={categories} />}
+      <div className="lg:hidden">
+        <TopBanner dossiers={dossiers} />
+        <div className="pt-4 px-4 columns-1 sm:columns-2 gap-4">
+          {classSections.map(section => <ClassSection key={section.classLabel} classLabel={section.classLabel} dossiers={section.dossiers} categories={categories} />)}
+          {noClass.length > 0 && <ClassSection classLabel="Others" dossiers={noClass} categories={categories} />}
+        </div>
       </div>
-      <DesktopMasonry dossiers={restDossiers} fillers={fillers} />
+
+      <DesktopMasonry dossiers={desktopMasonryDossiers} fillers={fillers} />
+      <DesktopClassicBrowser dossiers={dossiers} categories={categories} popularityMap={popularityMap} dayKey={dayKey} />
+
       {dossiers.length === 0 && <div className="flex items-center justify-center py-20"><p className="text-white/50 text-sm">Aucun contenu disponible</p></div>}
     </div>
   );
