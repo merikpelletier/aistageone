@@ -177,6 +177,8 @@ export default function MemberDashboard() {
     </div>
   ) : null;
 
+  const ownerPanelClass = 'lg:min-w-0 lg:min-h-0 lg:flex-1 lg:basis-[24%] lg:overflow-auto lg:overscroll-contain lg:[scrollbar-gutter:stable]';
+
   return (
     <div className="relative min-h-screen w-full bg-black pb-20 lg:pb-[2vw]">
       {isOwnProfile && (
@@ -233,40 +235,40 @@ export default function MemberDashboard() {
 
         {effectiveIsOwnProfile ? (
           <>
-            <div className="px-0 lg:px-[1vw] lg:flex lg:flex-wrap lg:items-start lg:gap-[1vw]">
-              <div className="lg:min-w-[31%] lg:flex-[1_1_48%]">
+            <div className="px-0 lg:px-[1vw] lg:w-full lg:h-screen lg:max-h-screen lg:flex lg:flex-wrap lg:items-stretch lg:content-stretch lg:gap-[0.7vw] lg:overflow-hidden">
+              <div className={ownerPanelClass}>
                 {viewingEmail && <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />}
               </div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="lg:min-w-[31%] lg:flex-[1_1_48%]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className={ownerPanelClass}>
                 <TokensMembershipSection userEmail={viewingEmail} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="lg:min-w-[31%] lg:flex-[1_1_38%]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className={ownerPanelClass}>
                 <MemberEconomicsSection ownerId={user?.id} dossiers={dossiers} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="lg:min-w-[31%] lg:flex-[1_1_58%]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className={ownerPanelClass}>
                 <SponsorsContributorsSection userEmail={viewingEmail} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lg:min-w-[28%] lg:flex-[1_1_28%]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className={ownerPanelClass}>
                 <ProfileLinksSection profile={profile} isOwnProfile={effectiveIsOwnProfile} userEmail={viewingEmail} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="lg:min-w-[48%] lg:flex-[1_1_68%]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className={ownerPanelClass}>
                 <MemberSeriesParticipation userEmail={viewingEmail} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="lg:min-w-[48%] lg:flex-[1_1_58%]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className={ownerPanelClass}>
                 <PublishStorySection userEmail={viewingEmail} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className="lg:min-w-[28%] lg:flex-[1_1_38%]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className={ownerPanelClass}>
                 <CampaignManager userEmail={viewingEmail} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }} className="lg:min-w-[31%] lg:flex-[1_1_48%]">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }} className={ownerPanelClass}>
                 <MemberInboxSection userEmail={viewingEmail} />
               </motion.div>
             </div>
