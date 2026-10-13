@@ -21,7 +21,6 @@ const statusConfig = {
 export default function TokensMembershipSection({ userEmail }) {
   const [purchasingId, setPurchasingId] = useState(null);
 
-  // Fetch token balance + packages via backend function
   const { data: balanceData, isLoading: balanceLoading } = useQuery({
     queryKey: ['userBalance', userEmail],
     queryFn: async () => {
@@ -31,7 +30,6 @@ export default function TokensMembershipSection({ userEmail }) {
     enabled: !!userEmail,
   });
 
-  // Fetch membership
   const { data: membership, isLoading: membershipLoading } = useQuery({
     queryKey: ['userMembership', userEmail],
     queryFn: async () => {
@@ -41,7 +39,6 @@ export default function TokensMembershipSection({ userEmail }) {
     enabled: !!userEmail,
   });
 
-  // Fetch transaction history
   const { data: transactions = [] } = useQuery({
     queryKey: ['tokenTransactions', userEmail],
     queryFn: async () => {
@@ -59,11 +56,8 @@ export default function TokensMembershipSection({ userEmail }) {
     setPurchasingId(pkg.id);
     try {
       const res = await base44.functions.invoke('purchaseTokens', { package_id: pkg.id });
-      if (res.data?.url) {
-        window.location.href = res.data.url;
-      }
+      if (res.data?.url) window.location.href = res.data.url;
     } catch {
-      // error handled silently
     } finally {
       setPurchasingId(null);
     }
@@ -78,78 +72,70 @@ export default function TokensMembershipSection({ userEmail }) {
   const statusInfo = statusConfig[membershipStatus] || statusConfig.pending;
 
   return (
-    <div className="bg-black border border-white/10 rounded-3xl p-6 space-y-5 shadow-2xl">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center">
-          <Coins size={20} className="text-black" />
+    <div className="bg-black border border-white/10 rounded-3xl p-6 space-y-5 shadow-2xl lg:rounded-xl lg:p-4 lg:space-y-3">
+      <div className="flex items-center gap-3 lg:gap-2">
+        <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center lg:w-8 lg:h-8 lg:rounded-lg">
+          <Coins size={20} className="text-black lg:w-4 lg:h-4" />
         </div>
         <div>
-          <p className="text-white text-xl font-bold uppercase tracking-wider">Tokens & Membership</p>
+          <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-base">Tokens & Membership</p>
           <p className="text-white/50 text-xs font-medium">Private — only you can see this</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {/* Token Balance Card */}
-        <div className="bg-white/5 rounded-2xl p-5 border border-white/10 flex flex-col items-center justify-center">
-          <Coins size={22} className="text-yellow-400 mb-2" />
-          <p className="text-yellow-400 text-3xl font-bold">{balance}</p>
-          <p className="text-white/50 text-xs font-bold uppercase tracking-wide mt-1">Tokens</p>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[180px_220px_1fr] lg:items-stretch">
+        <div className="bg-white/5 rounded-2xl p-5 border border-white/10 flex flex-col items-center justify-center lg:rounded-lg lg:p-3 lg:flex-row lg:justify-start lg:gap-3">
+          <Coins size={22} className="text-yellow-400 mb-2 lg:mb-0 lg:w-4 lg:h-4" />
+          <div className="lg:flex lg:items-baseline lg:gap-2">
+            <p className="text-yellow-400 text-3xl font-bold lg:text-xl">{balance}</p>
+            <p className="text-white/50 text-xs font-bold uppercase tracking-wide mt-1 lg:mt-0">Tokens</p>
+          </div>
         </div>
 
-        {/* Membership Status Card */}
-        <div className="bg-white/5 rounded-2xl p-5 border border-white/10 flex flex-col items-center justify-center">
-          <BadgeCheck size={22} className="text-blue-400 mb-2" />
-          <p className="text-white text-lg font-bold text-center">{membershipType ? MEMBERSHIP_LABELS[membershipType] || membershipType : 'None'}</p>
-          <span className={`text-xs px-2 py-0.5 rounded-md border font-bold uppercase mt-1 ${statusInfo.bg} ${statusInfo.border}`} style={{ color: '#1a1a1a' }}>
-            {statusInfo.label}
-          </span>
+        <div className="bg-white/5 rounded-2xl p-5 border border-white/10 flex flex-col items-center justify-center lg:rounded-lg lg:p-3 lg:flex-row lg:justify-start lg:gap-3">
+          <BadgeCheck size={22} className="text-blue-400 mb-2 lg:mb-0 lg:w-4 lg:h-4" />
+          <div className="lg:flex lg:items-center lg:gap-2">
+            <p className="text-white text-lg font-bold text-center lg:text-sm lg:text-left">{membershipType ? MEMBERSHIP_LABELS[membershipType] || membershipType : 'None'}</p>
+            <span className={`text-xs px-2 py-0.5 rounded-md border font-bold uppercase mt-1 lg:mt-0 ${statusInfo.bg} ${statusInfo.border}`} style={{ color: '#1a1a1a' }}>
+              {statusInfo.label}
+            </span>
+          </div>
         </div>
+
+        <Link
+          to="/Membership"
+          className="col-span-2 w-full flex items-center justify-between px-5 py-3 bg-white text-black rounded-2xl font-bold text-sm uppercase tracking-wide hover:bg-white/90 transition-colors lg:col-span-1 lg:rounded-lg lg:py-2 lg:px-4"
+        >
+          <span className="flex items-center gap-2">
+            <BadgeCheck size={16} />
+            {membership ? 'Change Membership' : 'Apply for Membership'}
+          </span>
+          <ArrowRight size={16} />
+        </Link>
       </div>
 
-      {/* Change Membership Button */}
-      <Link
-        to="/Membership"
-        className="w-full flex items-center justify-between px-5 py-3 bg-white text-black rounded-2xl font-bold text-sm uppercase tracking-wide hover:bg-white/90 transition-colors"
-      >
-        <span className="flex items-center gap-2">
-          <BadgeCheck size={16} />
-          {membership ? 'Change Membership' : 'Apply for Membership'}
-        </span>
-        <ArrowRight size={16} />
-      </Link>
-
-      {/* Token Packages */}
       {packages.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-3 lg:space-y-2">
           <div className="flex items-center gap-2">
             <ShoppingCart size={16} className="text-white/60" />
             <p className="text-white/60 text-xs font-bold uppercase tracking-wider">Buy Tokens</p>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
             {packages.map((pkg) => {
               const totalTokens = pkg.token_amount + Math.round(pkg.token_amount * (pkg.bonus_percentage || 0) / 100);
               const isPurchasing = purchasingId === pkg.id;
               return (
-                <div key={pkg.id} className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-2xl border border-white/10">
+                <div key={pkg.id} className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-2xl border border-white/10 lg:rounded-lg lg:py-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-white text-sm font-bold">{pkg.name}</p>
-                      {pkg.bonus_percentage > 0 && (
-                        <span className="text-xs px-1.5 py-0.5 bg-yellow-400/20 text-yellow-400 rounded-md font-bold">+{pkg.bonus_percentage}%</span>
-                      )}
+                      {pkg.bonus_percentage > 0 && <span className="text-xs px-1.5 py-0.5 bg-yellow-400/20 text-yellow-400 rounded-md font-bold">+{pkg.bonus_percentage}%</span>}
                     </div>
                     <p className="text-white/50 text-xs mt-0.5">{totalTokens} tokens</p>
                   </div>
                   <p className="text-green-400 text-sm font-bold flex-shrink-0">${pkg.price}</p>
-                  <button
-                    onClick={() => handlePurchase(pkg)}
-                    disabled={isPurchasing}
-                    className="px-4 py-2 bg-yellow-400 text-black text-xs font-bold rounded-xl hover:bg-yellow-500 disabled:opacity-50 transition-colors flex items-center gap-1.5 flex-shrink-0"
-                  >
-                    {isPurchasing ? <Loader2 size={12} className="animate-spin" /> : <Coins size={12} />}
-                    Buy
+                  <button onClick={() => handlePurchase(pkg)} disabled={isPurchasing} className="px-4 py-2 bg-yellow-400 text-black text-xs font-bold rounded-xl hover:bg-yellow-500 disabled:opacity-50 transition-colors flex items-center gap-1.5 flex-shrink-0 lg:rounded-lg">
+                    {isPurchasing ? <Loader2 size={12} className="animate-spin" /> : <Coins size={12} />}Buy
                   </button>
                 </div>
               );
@@ -158,53 +144,33 @@ export default function TokensMembershipSection({ userEmail }) {
         </div>
       )}
 
-      {/* Transaction History */}
       {transactions.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-3 lg:space-y-2">
           <div className="flex items-center gap-2">
             <History size={16} className="text-white/60" />
             <p className="text-white/60 text-xs font-bold uppercase tracking-wider">Credit History</p>
           </div>
-          <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+          <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 lg:max-h-44 lg:grid lg:grid-cols-2 lg:gap-1.5 lg:space-y-0">
             {transactions.map((tx, idx) => {
               const isPositive = tx.token_amount >= 0;
-              const typeLabels = {
-                purchase: 'Token Purchase',
-                usage: 'Token Usage',
-                refund: 'Refund',
-                membership_grant: 'Membership Grant',
-              };
+              const typeLabels = { purchase: 'Token Purchase', usage: 'Token Usage', refund: 'Refund', membership_grant: 'Membership Grant' };
               const typeLabel = typeLabels[tx.transaction_type] || tx.transaction_type;
               const txDate = tx.created_at || tx.created_date;
               const Icon = isPositive ? (tx.transaction_type === 'refund' ? Gift : TrendingUp) : TrendingDown;
 
               return (
-                <div key={tx.id || idx} className="flex items-center gap-3 px-3 py-2.5 bg-white/5 rounded-xl border border-white/5">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    isPositive ? 'bg-green-400/15' : 'bg-red-400/15'
-                  }`}>
+                <div key={tx.id || idx} className="flex items-center gap-3 px-3 py-2.5 bg-white/5 rounded-xl border border-white/5 lg:rounded-lg lg:py-2">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isPositive ? 'bg-green-400/15' : 'bg-red-400/15'}`}>
                     <Icon size={14} className={isPositive ? 'text-green-400' : 'text-red-400'} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-semibold truncate">{typeLabel}</p>
-                    {tx.related_entity && (
-                      <p className="text-white/40 text-xs truncate">{tx.related_entity}</p>
-                    )}
-                    {txDate && (
-                      <p className="text-white/30 text-xs">
-                        {new Date(txDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        {' · '}
-                        {new Date(txDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                      </p>
-                    )}
+                    {tx.related_entity && <p className="text-white/40 text-xs truncate">{tx.related_entity}</p>}
+                    {txDate && <p className="text-white/30 text-xs">{new Date(txDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {new Date(txDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</p>}
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className={`text-sm font-bold font-mono ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                      {isPositive ? '+' : ''}{tx.token_amount}
-                    </p>
-                    {tx.balance_after !== undefined && tx.balance_after !== null && (
-                      <p className="text-white/30 text-xs">Bal: {tx.balance_after}</p>
-                    )}
+                    <p className={`text-sm font-bold font-mono ${isPositive ? 'text-green-400' : 'text-red-400'}`}>{isPositive ? '+' : ''}{tx.token_amount}</p>
+                    {tx.balance_after !== undefined && tx.balance_after !== null && <p className="text-white/30 text-xs">Bal: {tx.balance_after}</p>}
                   </div>
                 </div>
               );
@@ -213,9 +179,7 @@ export default function TokensMembershipSection({ userEmail }) {
         </div>
       )}
 
-      {!membership && packages.length === 0 && transactions.length === 0 && (
-        <p className="text-white/40 text-sm text-center py-2">No membership or token packages available yet</p>
-      )}
+      {!membership && packages.length === 0 && transactions.length === 0 && <p className="text-white/40 text-sm text-center py-2">No membership or token packages available yet</p>}
     </div>
   );
 }
