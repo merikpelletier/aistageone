@@ -17,8 +17,10 @@ import '@/styles/studio-selects.css'
 import '@/styles/dossier-media-ratios.css'
 import '@/styles/dossier-upload-icons.css'
 import { registerServiceWorker } from '@/lib/registerServiceWorker'
+import { installIPadMediaGuard } from '@/lib/ipadMediaGuard'
 
 registerServiceWorker()
+installIPadMediaGuard()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <>
