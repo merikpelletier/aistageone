@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Film, Trash2, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,10 +9,12 @@ import KitProductionRoom from '@/components/KitProductionRoom';
 
 export default function MyProjects() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const qc = useQueryClient();
   const [deletingId, setDeletingId] = useState(null);
   const [openProject, setOpenProject] = useState(null); // { project, kitPage, dossier }
   const [loadingProjectId, setLoadingProjectId] = useState(null);
+  const requestedProjectId = searchParams.get('project');
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['myProjects'],
@@ -62,7 +64,12 @@ export default function MyProjects() {
     }
   };
 
-  // If a project is open, render KitProductionRoom as full overlay
+  useEffect(() => {
+    if (!requestedProjectId || isLoading || openProject || loadingProjectId) return;
+    const requestedProject = projects.find(project => String(project.id) === String(requestedProjectId));
+    if (requestedProject) handleOpenProject(requestedProject);
+  }, [requestedProjectId, isLoading, projects, openProject, loadingProjectId]);
+
   if (openProject) {
     return (
       <KitProductionRoom
@@ -90,7 +97,6 @@ export default function MyProjects() {
 
   return (
     <div className="min-h-screen bg-yellow-400 pb-20">
-      {/* Header */}
       <div className="px-5 pt-12 pb-6">
         <button onClick={() => navigate('/Studio')} className="flex items-center gap-2 text-black hover:text-black mb-6">
           <ChevronLeft size={20} />
@@ -107,7 +113,6 @@ export default function MyProjects() {
         </div>
       </div>
 
-      {/* Projects List */}
       <div className="px-5 space-y-3">
         {projects.length === 0 ? (
           <div className="bg-yellow-300/40 rounded-3xl p-10 text-center border-2 border-black/10 shadow-lg">
