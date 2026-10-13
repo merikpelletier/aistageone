@@ -313,25 +313,29 @@ function GalleryRow({ title, dossiers }) {
 }
 
 function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) {
-  const [panelWidth, setPanelWidth] = useState(() => {
-    const saved = Number(window.localStorage.getItem('aistage:index-browser-width'));
-    return Number.isFinite(saved) && saved >= PANEL_MIN_PERCENT && saved <= PANEL_MAX_PERCENT ? saved : PANEL_DEFAULT_PERCENT;
+  const [panelHeight, setPanelHeight] = useState(() => {
+    const saved = Number(window.localStorage.getItem('aistage:index-browser-height'));
+    return Number.isFinite(saved) && saved >= 28 && saved <= 100 ? saved : 28;
   });
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('All');
   const draggingRef = useRef(false);
 
   useEffect(() => {
-    window.localStorage.setItem('aistage:index-browser-width', String(Math.round(panelWidth)));
-  }, [panelWidth]);
+    window.localStorage.setItem('aistage:index-browser-height', String(Math.round(panelHeight)));
+  }, [panelHeight]);
 
   useEffect(() => {
     const onMove = (event) => {
       if (!draggingRef.current) return;
-      const width = ((window.innerWidth - event.clientX) / window.innerWidth) * 100;
-      setPanelWidth(Math.min(PANEL_MAX_PERCENT, Math.max(PANEL_MIN_PERCENT, width)));
+      const height = ((window.innerHeight - event.clientY) / window.innerHeight) * 100;
+      setPanelHeight(Math.min(100, Math.max(28, height)));
     };
-    const onUp = () => { draggingRef.current = false; document.body.style.cursor = ''; document.body.style.userSelect = ''; };
+    const onUp = () => {
+      draggingRef.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     return () => {
@@ -367,10 +371,7 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
 
   const rows = useMemo(() => {
     if (query.trim()) return [{ title: 'Search results', dossiers: rankRow(visible, 'search') }];
-
-    if (selected !== 'All') {
-      return [{ title: selected, dossiers: rankRow(visible, selected) }];
-    }
+    if (selected !== 'All') return [{ title: selected, dossiers: rankRow(visible, selected) }];
 
     const result = [];
     CLASS_ORDER.forEach((classLabel) => {
@@ -390,66 +391,68 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
   const startDrag = (event) => {
     event.preventDefault();
     draggingRef.current = true;
-    document.body.style.cursor = 'ew-resize';
+    document.body.style.cursor = 'ns-resize';
     document.body.style.userSelect = 'none';
   };
 
   return (
     <aside
-      className="fixed bottom-0 right-0 top-0 z-40 hidden border-l border-white/15 bg-black/96 shadow-[-30px_0_70px_rgba(0,0,0,.55)] backdrop-blur-xl lg:flex lg:flex-col"
-      style={{ width: `${panelWidth}%`, minWidth: '320px' }}
+      className="fixed bottom-0 left-0 right-0 z-40 hidden border-t border-white/15 bg-black/96 shadow-[0_-30px_70px_rgba(0,0,0,.55)] backdrop-blur-xl lg:flex lg:flex-col"
+      style={{ height: `${panelHeight}vh` }}
     >
       <button
         type="button"
         onPointerDown={startDrag}
-        onDoubleClick={() => setPanelWidth(panelWidth >= 90 ? 25 : 100)}
+        onDoubleClick={() => setPanelHeight(panelHeight >= 90 ? 28 : 100)}
         aria-label="Resize classical browser"
-        title="Drag to resize. Double-click to open or close."
-        className="absolute -left-3 top-1/2 z-50 flex h-20 w-6 -translate-y-1/2 items-center justify-center border border-white/20 bg-neutral-950 text-white/70 shadow-xl hover:text-white"
+        title="Drag up or down to resize. Double-click to open or close."
+        className="absolute -top-3 left-1/2 z-50 flex h-6 w-24 -translate-x-1/2 items-center justify-center border border-white/20 bg-neutral-950 text-white/70 shadow-xl hover:text-white"
       >
-        <GripVertical size={16} />
+        <GripVertical size={16} className="rotate-90" />
       </button>
 
-      <div className="border-b border-white/10 px-4 pb-3 pt-4 xl:px-5">
-        <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="border-b border-white/10 px-5 pb-3 pt-4 xl:px-7">
+        <div className="mb-3 flex items-center justify-between gap-4">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/35">Browse</p>
             <h2 className="text-lg font-black text-white">Content Library</h2>
           </div>
           <div className="flex gap-1">
-            {[25, 50, 100].map(value => (
-              <button key={value} onClick={() => setPanelWidth(value)} className={`border px-2 py-1 text-[10px] font-black transition ${Math.round(panelWidth) === value ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}>{value}%</button>
+            {[28, 60, 100].map(value => (
+              <button key={value} onClick={() => setPanelHeight(value)} className={`border px-2.5 py-1 text-[10px] font-black transition ${Math.round(panelHeight) === value ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}>{value}%</button>
             ))}
           </div>
         </div>
 
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35" />
-          <input
-            type="search"
-            value={query}
-            onChange={event => setQuery(event.target.value)}
-            placeholder="Search titles, creators, categories..."
-            className="w-full border border-white/15 bg-white/[0.04] py-2.5 pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/40"
-          />
-        </div>
+        <div className="grid grid-cols-[minmax(280px,420px)_1fr] gap-3">
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35" />
+            <input
+              type="search"
+              value={query}
+              onChange={event => setQuery(event.target.value)}
+              placeholder="Search titles, creators, categories..."
+              className="w-full border border-white/15 bg-white/[0.04] py-2.5 pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/40"
+            />
+          </div>
 
-        <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {selectorOptions.map(option => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => setSelected(option)}
-              className={`whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
-            >
-              {option}
-            </button>
-          ))}
+          <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {selectorOptions.map(option => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setSelected(option)}
+                className={`whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 xl:px-5">
-        {rows.length ? rows.map(row => <GalleryRow key={row.title} title={row.title} dossiers={row.dossiers} />) : <div className="flex min-h-[240px] items-center justify-center text-sm text-white/35">No content found.</div>}
+      <div className="flex-1 overflow-y-auto px-5 py-4 xl:px-7">
+        {rows.length ? rows.map(row => <GalleryRow key={row.title} title={row.title} dossiers={row.dossiers} />) : <div className="flex min-h-[180px] items-center justify-center text-sm text-white/35">No content found.</div>}
       </div>
     </aside>
   );
