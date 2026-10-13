@@ -203,7 +203,7 @@ export default function MemberDashboard() {
               user={{ email: viewingEmail, full_name: profile?.display_name || user?.full_name || viewingEmail }}
               isOwnProfile={effectiveIsOwnProfile}
               onEdit={() => isOwnProfile && setShowProfileEditor(true)}
-              topAside={<TokensMembershipSection userEmail={viewingEmail} />}
+              topAside={<TokensMembershipSection userEmail={viewingEmail} variant="summary" />}
             />
           </motion.div>
         )}
@@ -240,6 +240,10 @@ export default function MemberDashboard() {
               <div className={ownerPanelClass}>
                 {viewingEmail && <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />}
               </div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className={ownerPanelClass}>
+                <TokensMembershipSection userEmail={viewingEmail} variant="details" />
+              </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className={ownerPanelClass}>
                 <MemberEconomicsSection ownerId={user?.id} dossiers={dossiers} />
