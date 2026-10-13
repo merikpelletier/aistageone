@@ -10,6 +10,7 @@ import MemberContactForm from '@/components/MemberContactForm';
 import MemberSeriesParticipation from '@/components/MemberSeriesParticipation';
 import SponsorsContributorsSection from '@/components/SponsorsContributorsSection';
 import TokensMembershipSection from '@/components/TokensMembershipSection';
+import MemberEconomicsSection from '@/components/MemberEconomicsSection';
 import ProfileLinksSection from '@/components/ProfileLinksSection';
 import PublishStorySection from '@/components/PublishStorySection';
 import CampaignManager from '@/components/CampaignManager';
@@ -270,6 +271,7 @@ export default function MemberDashboard() {
 
         {viewingEmail && <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />}
         {effectiveIsOwnProfile && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}><TokensMembershipSection userEmail={viewingEmail} /></motion.div>}
+        {effectiveIsOwnProfile && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}><MemberEconomicsSection ownerId={user?.id} dossiers={dossiers} /></motion.div>}
         {effectiveIsOwnProfile && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}><SponsorsContributorsSection userEmail={viewingEmail} /></motion.div>}
         {effectiveIsOwnProfile && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}><ProfileLinksSection profile={profile} isOwnProfile={effectiveIsOwnProfile} userEmail={viewingEmail} /></motion.div>}
         {effectiveIsOwnProfile && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}><PublishStorySection userEmail={viewingEmail} /></motion.div>}
