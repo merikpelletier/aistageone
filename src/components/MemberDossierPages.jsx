@@ -5,7 +5,6 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import SeriesPageEditor from '@/components/admin/SeriesPageEditor';
 import { toast } from 'sonner';
 
 const PAGE_TYPES = [
@@ -83,8 +82,8 @@ export default function MemberDossierPages({ dossier, onClose }) {
   const update = (key, value) => setEditingPage(prev => ({ ...prev, [key]: value }));
 
   return (
-    <div className="fixed inset-0 z-40 overflow-y-auto bg-black text-white">
-      <div className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-white/10 bg-black px-5">
+    <div className="fixed inset-0 z-40 flex h-screen flex-col overflow-hidden bg-black text-white">
+      <div className="z-30 flex h-14 flex-none items-center justify-between border-b border-white/10 bg-black px-5">
         <div className="min-w-0">
           <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">Manage dossier</p>
           <h2 className="truncate text-lg font-light">{dossier.title}</h2>
@@ -92,13 +91,13 @@ export default function MemberDossierPages({ dossier, onClose }) {
         <button onClick={onClose} className="flex h-9 w-9 items-center justify-center border border-white/15" aria-label="Close dossier manager"><X size={18} /></button>
       </div>
 
-      <div className="mx-auto grid max-w-[1500px] grid-cols-[340px_minmax(0,1fr)] gap-5 p-5">
-        <aside className="self-start border border-white/10 bg-neutral-950">
-          <div className="flex items-center justify-between border-b border-white/10 p-4">
+      <div className="mx-auto grid min-h-0 w-full max-w-[1500px] flex-1 grid-cols-[340px_minmax(0,1fr)] gap-5 overflow-hidden p-5">
+        <aside className="flex min-h-0 flex-col overflow-hidden border border-white/10 bg-neutral-950">
+          <div className="flex flex-none items-center justify-between border-b border-white/10 p-4">
             <div><p className="font-semibold">Pages</p><p className="text-xs text-white/40">{sorted.length} page{sorted.length === 1 ? '' : 's'}</p></div>
             <Button onClick={newPage} className="bg-white text-black hover:bg-white/90"><Plus size={14} className="mr-1" /> Add</Button>
           </div>
-          <div className="max-h-[calc(100vh-150px)] overflow-y-auto p-2">
+          <div className="min-h-0 flex-1 overflow-y-auto p-2">
             {isLoading ? (
               <div className="flex justify-center py-10"><Loader2 className="animate-spin" /></div>
             ) : sorted.length === 0 ? (
@@ -108,7 +107,7 @@ export default function MemberDossierPages({ dossier, onClose }) {
                 <div className="w-7 text-center text-xs text-white/35">{page.order}</div>
                 {page.media_url ? <img src={page.media_url} alt="" className="h-12 w-10 object-cover" /> : <div className="h-12 w-10 bg-neutral-900" />}
                 <button onClick={() => setEditingPage({ ...page })} className="min-w-0 flex-1 text-left">
-                  <p className="truncate text-sm">{page.title || page.episode_title || page.page_type}</p>
+                  <p className="truncate text-sm">{page.title || page.page_type}</p>
                   <p className="text-[10px] uppercase tracking-wider text-white/35">{page.page_type}</p>
                 </button>
                 <button onClick={() => { if (window.confirm('Delete this page?')) deleteMutation.mutate(page.id); }} className="p-2 text-white/45 hover:text-red-400" aria-label="Delete page"><Trash2 size={14} /></button>
@@ -117,14 +116,14 @@ export default function MemberDossierPages({ dossier, onClose }) {
           </div>
         </aside>
 
-        <main className="min-w-0">
+        <main className="min-h-0 min-w-0 overflow-y-auto overscroll-contain pr-1">
           {!editingPage ? (
             <div className="flex min-h-[360px] items-center justify-center border border-dashed border-white/10 bg-neutral-950 text-center">
               <div><p className="text-lg font-light">Select a page</p><p className="mt-1 text-sm text-white/40">or add a new one.</p><Button onClick={newPage} className="mt-5 bg-white text-black hover:bg-white/90"><Plus size={14} className="mr-2" />Add page</Button></div>
             </div>
           ) : (
             <div className="border border-white/10 bg-neutral-950">
-              <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+              <div className="sticky top-0 z-20 flex items-center justify-between border-b border-white/10 bg-neutral-950 px-5 py-4">
                 <h3 className="text-lg font-light">{editingPage.id ? 'Edit page' : 'New page'}</h3>
                 <div className="flex gap-2">
                   <Button variant="ghost" onClick={() => setEditingPage(null)} className="text-white">Cancel</Button>
@@ -134,7 +133,7 @@ export default function MemberDossierPages({ dossier, onClose }) {
                 </div>
               </div>
 
-              <div className="space-y-5 p-5">
+              <div className="space-y-5 p-5 pb-10">
                 <div className="grid grid-cols-3 gap-3">
                   <select value={editingPage.page_type || 'text'} onChange={e => update('page_type', e.target.value)} className="h-10 w-full border border-white/10 bg-neutral-900 px-3 text-sm text-white outline-none">
                     {PAGE_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -146,19 +145,7 @@ export default function MemberDossierPages({ dossier, onClose }) {
                 <div className="flex gap-6 border border-white/10 bg-black/30 p-3 text-sm">
                   <label className="flex items-center gap-2"><input type="checkbox" checked={!!editingPage.is_hidden_from_public} onChange={e => update('is_hidden_from_public', e.target.checked)} /> Hidden from public</label>
                   <label className="flex items-center gap-2"><input type="checkbox" checked={!!editingPage.hide_title} onChange={e => update('hide_title', e.target.checked)} /> Hide page title</label>
-                  {editingPage.page_type === 'episode' && <label className="flex items-center gap-2"><input type="checkbox" checked={!!editingPage.is_locked} onChange={e => update('is_locked', e.target.checked)} /> Lock episode</label>}
                 </div>
-
-                {editingPage.page_type === 'series' && <SeriesPageEditor page={editingPage} onChange={setEditingPage} />}
-
-                {editingPage.page_type === 'episode' && (
-                  <div className="grid grid-cols-2 gap-3 border border-white/10 bg-black/30 p-4">
-                    <Input value={editingPage.episode_title || ''} onChange={e => update('episode_title', e.target.value)} placeholder="Episode title" className="bg-neutral-900 border-white/10 text-white" />
-                    <Input value={editingPage.episode_role || ''} onChange={e => update('episode_role', e.target.value)} placeholder="Role / character available" className="bg-neutral-900 border-white/10 text-white" />
-                    <Textarea value={editingPage.episode_description || ''} onChange={e => update('episode_description', e.target.value)} placeholder="Episode description / brief" rows={3} className="col-span-2 bg-neutral-900 border-white/10 text-white" />
-                    <Input value={editingPage.episode_tools_hint || ''} onChange={e => update('episode_tools_hint', e.target.value)} placeholder="Suggested AI tools" className="col-span-2 bg-neutral-900 border-white/10 text-white" />
-                  </div>
-                )}
 
                 {editingPage.page_type === 'contest' && (
                   <div className="grid grid-cols-2 gap-3 border border-white/10 bg-black/30 p-4">
@@ -174,7 +161,7 @@ export default function MemberDossierPages({ dossier, onClose }) {
                     <p className="mb-3 text-sm text-white/60">Credits page content</p>
                     <Textarea value={editingPage.content || ''} onChange={e => update('content', e.target.value)} placeholder="Credits text or notes" rows={8} className="bg-neutral-900 border-white/10 text-white" />
                   </div>
-                ) : !['series','episode'].includes(editingPage.page_type) && (
+                ) : (
                   <Textarea value={editingPage.content || ''} onChange={e => update('content', e.target.value)} placeholder="Page text content" rows={8} className="bg-neutral-900 border-white/10 text-white" />
                 )}
 
