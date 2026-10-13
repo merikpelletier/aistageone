@@ -17,7 +17,7 @@ const statusConfig = {
   rejected: { label: 'Rejected', color: 'text-red-400', bg: 'bg-red-400/20', border: 'border-red-400/40' },
 };
 
-export default function TokensMembershipSection({ userEmail, variant = 'full' }) {
+export default function TokensMembershipSection({ userEmail, variant = 'full', desktopStacked = false }) {
   const [purchasingId, setPurchasingId] = useState(null);
 
   const { data: balanceData, isLoading: balanceLoading } = useQuery({
@@ -70,41 +70,46 @@ export default function TokensMembershipSection({ userEmail, variant = 'full' })
   const membershipStatus = membership?.status || 'pending';
   const statusInfo = statusConfig[membershipStatus] || statusConfig.pending;
 
+  const summaryGridClass = desktopStacked
+    ? 'grid grid-cols-2 gap-3 lg:grid-cols-2 lg:items-stretch'
+    : 'grid grid-cols-2 gap-3 lg:grid-cols-[180px_220px_1fr] lg:items-stretch';
+
+  const summaryLinkClass = desktopStacked
+    ? 'col-span-2 w-full flex items-center justify-between px-5 py-3 bg-white text-black rounded-2xl font-bold text-sm uppercase tracking-wide hover:bg-white/90 transition-colors lg:rounded-lg lg:py-2 lg:px-3 lg:text-xs lg:tracking-normal lg:justify-center lg:gap-2'
+    : 'col-span-2 w-full flex items-center justify-between px-5 py-3 bg-white text-black rounded-2xl font-bold text-sm uppercase tracking-wide hover:bg-white/90 transition-colors lg:col-span-1 lg:w-auto lg:justify-self-start lg:justify-center lg:rounded-lg lg:py-1.5 lg:px-3 lg:text-xs lg:tracking-normal';
+
   const summary = (
     <>
       <div className="flex items-center gap-3 lg:gap-2">
         <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center lg:w-8 lg:h-8 lg:rounded-lg">
           <Coins size={20} className="text-black lg:w-4 lg:h-4" />
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-base">Tokens & Membership</p>
           <p className="text-white/50 text-xs font-medium">Private — only you can see this</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[180px_220px_1fr] lg:items-stretch">
-        <div className="bg-white/5 rounded-2xl p-5 border border-white/10 flex flex-col items-center justify-center lg:rounded-lg lg:p-3 lg:flex-row lg:justify-start lg:gap-3">
-          <Coins size={22} className="text-yellow-400 mb-2 lg:mb-0 lg:w-4 lg:h-4" />
-          <div className="lg:flex lg:items-baseline lg:gap-2">
+      <div className={summaryGridClass}>
+        <div className="bg-white/5 rounded-2xl p-5 border border-white/10 flex flex-col items-center justify-center lg:rounded-lg lg:p-3 lg:flex-row lg:justify-start lg:gap-3 min-w-0">
+          <Coins size={22} className="text-yellow-400 mb-2 lg:mb-0 lg:w-4 lg:h-4 flex-shrink-0" />
+          <div className="lg:flex lg:items-baseline lg:gap-2 min-w-0">
             <p className="text-yellow-400 text-3xl font-bold lg:text-xl">{balance}</p>
             <p className="text-white/50 text-xs font-bold uppercase tracking-wide mt-1 lg:mt-0">Tokens</p>
           </div>
         </div>
 
-        <div className="bg-white/5 rounded-2xl p-5 border border-white/10 flex flex-col items-center justify-center lg:rounded-lg lg:p-3 lg:flex-row lg:justify-start lg:gap-3">
-          <BadgeCheck size={22} className="text-blue-400 mb-2 lg:mb-0 lg:w-4 lg:h-4" />
-          <div className="lg:flex lg:items-center lg:gap-2">
+        <div className="bg-white/5 rounded-2xl p-5 border border-white/10 flex flex-col items-center justify-center lg:rounded-lg lg:p-3 lg:flex-row lg:justify-start lg:gap-3 min-w-0">
+          <BadgeCheck size={22} className="text-blue-400 mb-2 lg:mb-0 lg:w-4 lg:h-4 flex-shrink-0" />
+          <div className="lg:flex lg:items-center lg:gap-2 min-w-0 lg:flex-wrap">
             <p className="text-white text-lg font-bold text-center lg:text-sm lg:text-left">{membershipType ? MEMBERSHIP_LABELS[membershipType] || membershipType : 'None'}</p>
-            <span className={`text-xs px-2 py-0.5 rounded-md border font-bold uppercase mt-1 lg:mt-0 ${statusInfo.bg} ${statusInfo.border}`} style={{ color: '#1a1a1a' }}>
+            <span className={`text-xs px-2 py-0.5 rounded-md border font-bold uppercase mt-1 lg:mt-0 whitespace-nowrap ${statusInfo.bg} ${statusInfo.border}`} style={{ color: '#1a1a1a' }}>
               {statusInfo.label}
             </span>
           </div>
         </div>
 
-        <Link
-          to="/Membership"
-          className="col-span-2 w-full flex items-center justify-between px-5 py-3 bg-white text-black rounded-2xl font-bold text-sm uppercase tracking-wide hover:bg-white/90 transition-colors lg:col-span-1 lg:w-auto lg:justify-self-start lg:justify-center lg:rounded-lg lg:py-1.5 lg:px-3 lg:text-xs lg:tracking-normal"
-        >
+        <Link to="/Membership" className={summaryLinkClass}>
           <span className="flex items-center gap-2 lg:gap-1.5">
             <BadgeCheck size={16} className="lg:w-3 lg:h-3" />
             {membership ? 'Change Membership' : 'Apply for Membership'}
