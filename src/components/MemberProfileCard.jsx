@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import FanSubscribeButton from '@/components/FanSubscribeButton';
 
-export default function MemberProfileCard({ profile, user, isOwnProfile, onEdit }) {
+export default function MemberProfileCard({ profile, user, isOwnProfile, onEdit, topAside }) {
   const [sponsor, setSponsor] = useState(null);
   const [sponsorLoaded, setSponsorLoaded] = useState(false);
 
@@ -97,6 +97,12 @@ export default function MemberProfileCard({ profile, user, isOwnProfile, onEdit 
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {topAside && (
+          <div className="px-8 pb-8 lg:px-0 lg:pt-[1.2%] lg:pb-0 lg:flex-1 lg:min-w-0">
+            {topAside}
           </div>
         )}
       </div>
