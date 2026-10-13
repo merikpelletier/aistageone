@@ -36,6 +36,7 @@ import { Button } from '@/components/ui/button';
 import AdminModels from '@/components/admin/AdminModels';
 import AdminFinance from '@/components/admin/AdminFinance';
 import AdminVideoBilling from '@/components/admin/AdminVideoBilling';
+import AdminPublicationEconomics from '@/components/admin/AdminPublicationEconomics';
 import AdminOloInventory from '@/components/admin/AdminOloInventory';
 import AdminPagesTools from '@/components/admin/AdminPagesTools';
 import AdminDossiers from '@/components/admin/AdminDossiers';
@@ -131,6 +132,7 @@ const groups = [
       ['finance-transactions', 'Transactions', WalletCards, <AdminFinance section="transactions" />],
       ['finance-costs', 'AI Costs', WalletCards, <AdminFinance section="costs" />],
       ['video-billing', 'Video Billing', WalletCards, <AdminVideoBilling />],
+      ['publication-economics', 'Publication Economics', BarChart3, <AdminPublicationEconomics />],
     ],
   },
   {
