@@ -6,6 +6,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import LegacyMemberDashboard from './MemberDashboard';
 import DesktopAccountDashboard from '@/components/DesktopAccountDashboard';
+import MobileDossierPublishing from '@/components/MobileDossierPublishing';
 import MemberProfileEditor from '@/components/MemberProfileEditor';
 
 export default function MemberDashboardResponsive() {
@@ -95,7 +96,14 @@ export default function MemberDashboardResponsive() {
   });
 
   if (!isDesktop || !isOwnProfile || previewAsGuest) {
-    return <LegacyMemberDashboard />;
+    return (
+      <>
+        <LegacyMemberDashboard />
+        {!isDesktop && isOwnProfile && !previewAsGuest && viewingEmail && (
+          <MobileDossierPublishing userEmail={viewingEmail} />
+        )}
+      </>
+    );
   }
 
   if (!user && !isLoadingAuth) {
