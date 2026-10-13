@@ -189,7 +189,7 @@ export default function MemberDashboard() {
         </div>
       )}
 
-      <div className="w-full">
+      <div className={effectiveIsOwnProfile ? 'w-full lg:[zoom:0.78] lg:w-[128.205%]' : 'w-full'}>
         {bannerInner && (
           <div className="px-4 pt-4 lg:px-[1vw] lg:pt-[1vw]">
             {bannerLink ? <a href={bannerLink} target="_blank" rel="noreferrer" className="block">{bannerInner}</a> : bannerInner}
