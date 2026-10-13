@@ -34,8 +34,10 @@ function VideoBillingForm({initial,economy,mutation,notice}){
   const fx=Number(economy?.usd_to_cad_rate||1.43);
   const providerStorageCad=Number(s.provider_storage_usd_per_1000_minutes||0)*fx;
   const providerDeliveryCad=Number(s.provider_delivery_usd_per_1000_minutes||0)*fx;
-  const storageRevenueCad=1000*Number(s.storage_credits_per_minute_month||0)*creditValue;
+  const creatorAccessCredits=creditValue>0?Number(s.creator_access_monthly_cad||0)/creditValue:0;
+  const storageCreditsPer1000=1000*Number(s.storage_credits_per_minute_month||0);
   const viewingCreditsPer1000=1000/Number(s.viewing_minutes_per_credit||1);
+  const storageRevenueCad=storageCreditsPer1000*creditValue;
   const viewingRevenueCad=viewingCreditsPer1000*creditValue;
   const storageMargin=storageRevenueCad-providerStorageCad;
   const viewingMargin=viewingRevenueCad-providerDeliveryCad;
@@ -54,6 +56,7 @@ function VideoBillingForm({initial,economy,mutation,notice}){
   };
 
   const cad=(n)=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD',maximumFractionDigits:2}).format(Number(n||0));
+  const credits=(n)=>new Intl.NumberFormat('fr-CA',{maximumFractionDigits:0}).format(Number(n||0));
 
   return <div className="space-y-5">
     <div>
@@ -75,9 +78,9 @@ function VideoBillingForm({initial,economy,mutation,notice}){
     </form>
 
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <div className={cardClass}><p className="text-xs uppercase tracking-widest text-white/40">Accès mensuel</p><p className="mt-2 text-2xl">{cad(s.creator_access_monthly_cad)}</p></div>
-      <div className={cardClass}><p className="text-xs uppercase tracking-widest text-white/40">Stockage vendu / 1000 min</p><p className="mt-2 text-2xl">{cad(storageRevenueCad)}</p><p className="mt-1 text-xs text-white/45">Coût estimé {cad(providerStorageCad)} · marge {cad(storageMargin)}</p></div>
-      <div className={cardClass}><p className="text-xs uppercase tracking-widest text-white/40">Visionnement vendu / 1000 min</p><p className="mt-2 text-2xl">{cad(viewingRevenueCad)}</p><p className="mt-1 text-xs text-white/45">Coût estimé {cad(providerDeliveryCad)} · marge {cad(viewingMargin)}</p></div>
+      <div className={cardClass}><p className="text-xs uppercase tracking-widest text-white/40">Accès mensuel</p><p className="mt-2 text-2xl">{credits(creatorAccessCredits)} crédits</p><p className="mt-1 text-xs text-white/45">Référence interne : {cad(s.creator_access_monthly_cad)}</p></div>
+      <div className={cardClass}><p className="text-xs uppercase tracking-widest text-white/40">Stockage / 1000 min / mois</p><p className="mt-2 text-2xl">{credits(storageCreditsPer1000)} crédits</p><p className="mt-1 text-xs text-white/45">Coût estimé {cad(providerStorageCad)} · marge {cad(storageMargin)}</p></div>
+      <div className={cardClass}><p className="text-xs uppercase tracking-widest text-white/40">Visionnement / 1000 min</p><p className="mt-2 text-2xl">{credits(viewingCreditsPer1000)} crédits</p><p className="mt-1 text-xs text-white/45">Coût estimé {cad(providerDeliveryCad)} · marge {cad(viewingMargin)}</p></div>
       <div className={cardClass}><p className="text-xs uppercase tracking-widest text-white/40">Règle utilisateur</p><p className="mt-2 text-lg">1 crédit = {Number(s.viewing_minutes_per_credit||0)} min vues</p><p className="mt-1 text-xs text-white/45">Stockage : {Number(s.storage_credits_per_minute_month||0)} crédit/min/mois</p></div>
     </div>
 
