@@ -232,47 +232,49 @@ export default function MemberDashboard() {
         )}
 
         {effectiveIsOwnProfile ? (
-          <div className="px-0 lg:px-[1vw] lg:grid lg:grid-cols-2 lg:gap-[1vw] lg:items-start">
-            <div className="lg:min-w-0">
-              {viewingEmail && <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />}
+          <>
+            <div className="px-0 lg:px-[1vw] lg:[column-width:46vw] lg:[column-gap:1vw]">
+              <div className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+                {viewingEmail && <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />}
+              </div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+                <TokensMembershipSection userEmail={viewingEmail} />
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+                <MemberEconomicsSection ownerId={user?.id} dossiers={dossiers} />
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+                <SponsorsContributorsSection userEmail={viewingEmail} />
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+                <ProfileLinksSection profile={profile} isOwnProfile={effectiveIsOwnProfile} userEmail={viewingEmail} />
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+                <MemberSeriesParticipation userEmail={viewingEmail} />
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+                <PublishStorySection userEmail={viewingEmail} />
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+                <CampaignManager userEmail={viewingEmail} />
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }} className="lg:inline-block lg:w-full lg:break-inside-avoid lg:mb-[1vw]">
+                <MemberInboxSection userEmail={viewingEmail} />
+              </motion.div>
             </div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="lg:min-w-0 lg:pt-5">
-              <TokensMembershipSection userEmail={viewingEmail} />
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="lg:min-w-0">
-              <MemberEconomicsSection ownerId={user?.id} dossiers={dossiers} />
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="lg:min-w-0">
-              <SponsorsContributorsSection userEmail={viewingEmail} />
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lg:min-w-0">
-              <ProfileLinksSection profile={profile} isOwnProfile={effectiveIsOwnProfile} userEmail={viewingEmail} />
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="lg:min-w-0">
-              <MemberSeriesParticipation userEmail={viewingEmail} />
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="lg:min-w-0">
-              <PublishStorySection userEmail={viewingEmail} />
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className="lg:min-w-0">
-              <CampaignManager userEmail={viewingEmail} />
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }} className="lg:min-w-0">
-              <MemberInboxSection userEmail={viewingEmail} />
-            </motion.div>
-
             {!dossiersLoading && dossiers.length > 0 && (
-              <div className="lg:col-span-2 lg:min-w-0"><DossierGallery dossiers={dossiers} ratingsMap={ratingsMap} commentsMap={commentsMap} campaignsMap={campaignsMap} label="Published Work" /></div>
+              <div className="w-full lg:px-[1vw]"><DossierGallery dossiers={dossiers} ratingsMap={ratingsMap} commentsMap={commentsMap} campaignsMap={campaignsMap} label="Published Work" /></div>
             )}
-          </div>
+          </>
         ) : (
           viewingEmail && <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />
         )}
