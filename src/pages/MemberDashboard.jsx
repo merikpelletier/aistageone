@@ -189,7 +189,7 @@ export default function MemberDashboard() {
         </div>
       )}
 
-      <div className={effectiveIsOwnProfile ? 'w-full lg:[zoom:0.78] lg:w-[128.205%]' : 'w-full'}>
+      <div className="w-full">
         {bannerInner && (
           <div className="px-4 pt-4 lg:px-[1vw] lg:pt-[1vw]">
             {bannerLink ? <a href={bannerLink} target="_blank" rel="noreferrer" className="block">{bannerInner}</a> : bannerInner}
@@ -236,7 +236,7 @@ export default function MemberDashboard() {
 
         {effectiveIsOwnProfile ? (
           <>
-            <div className="px-0 lg:px-[1vw] lg:w-full lg:h-screen lg:max-h-screen lg:flex lg:flex-wrap lg:items-stretch lg:content-stretch lg:gap-[0.7vw] lg:overflow-hidden">
+            <div className="px-0 lg:px-[1vw] lg:w-full lg:flex lg:flex-wrap lg:items-start lg:gap-[0.7vw]">
               <div className={ownerPanelClass}>
                 {viewingEmail && <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />}
               </div>
