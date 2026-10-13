@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 const PAGE_TYPES = [
   ['cover', 'Cover'], ['index', 'Visual Index'], ['contest', 'Contest / Open Call'], ['credits', 'Credits'],
   ['text', 'Text only'], ['image', 'Image only'], ['video', 'Video only'], ['mixed', 'Text + Image/Video'],
-  ['join_cast', 'Join the Cast'], ['episode', 'Episode'], ['series', 'Series'], ['member_episodes', 'Member Episodes'], ['block_player', 'Block Player'],
+  ['block_player', 'Block Player'],
 ];
 
 export default function MemberDossierPages({ dossier, onClose }) {
