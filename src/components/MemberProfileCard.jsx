@@ -31,9 +31,9 @@ export default function MemberProfileCard({ profile, user, isOwnProfile, onEdit,
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full bg-black lg:mx-auto lg:max-w-[1500px]"
+      className="w-full bg-black lg:mx-auto lg:max-w-[1760px]"
     >
-      <div className="w-full lg:grid lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,2.15fr)] lg:items-start lg:gap-6 lg:py-4">
+      <div className="w-full lg:grid lg:grid-cols-[minmax(300px,1fr)_minmax(520px,2fr)_minmax(300px,1fr)] lg:items-start lg:gap-5 lg:py-4">
         <div className="lg:min-w-0">
           <div className="px-8 pt-8 pb-2 lg:px-0 lg:pt-0 lg:pb-2">
             <div className="w-16 h-16 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center overflow-hidden lg:w-16 lg:h-16">
@@ -45,10 +45,10 @@ export default function MemberProfileCard({ profile, user, isOwnProfile, onEdit,
             </div>
           </div>
 
-          <div className="px-8 pt-4 pb-6 lg:px-0 lg:pt-2 lg:pb-3">
-            <div className="flex items-start justify-between mb-2 lg:mb-2">
+          <div className="px-8 pt-4 pb-6 lg:px-0 lg:pt-2 lg:pb-2">
+            <div className="flex items-start justify-between mb-2">
               <div className="flex-1 min-w-0">
-                <h2 className="text-white text-4xl md:text-5xl lg:text-[32px] lg:leading-[1.05] font-light tracking-tight mb-2 lg:mb-2">{displayName}</h2>
+                <h2 className="text-white text-4xl md:text-5xl lg:text-[30px] lg:leading-[1.05] font-light tracking-tight mb-2">{displayName}</h2>
                 {profile?.title && (
                   <p className="text-red-500 text-xs font-bold tracking-widest uppercase lg:text-[11px]">{profile.title}</p>
                 )}
@@ -62,8 +62,8 @@ export default function MemberProfileCard({ profile, user, isOwnProfile, onEdit,
           </div>
 
           {profile?.bio && (
-            <div className="px-8 pb-8 lg:px-0 lg:pb-0 lg:max-w-[520px]">
-              <p className="text-white text-base leading-relaxed lg:text-sm lg:leading-6">{profile.bio}</p>
+            <div className="px-8 pb-8 lg:px-0 lg:pb-0 lg:max-w-[430px]">
+              <p className="text-white text-base leading-relaxed lg:text-[13px] lg:leading-5">{profile.bio}</p>
             </div>
           )}
 
@@ -86,20 +86,25 @@ export default function MemberProfileCard({ profile, user, isOwnProfile, onEdit,
           )}
         </div>
 
-        {profile?.images && profile.images.length > 0 && (
-          <div className="px-8 pb-8 lg:px-0 lg:pt-0 lg:pb-0 lg:min-w-0">
-            <p className="text-white text-xs font-bold uppercase tracking-widest mb-5 lg:mb-2 lg:text-[11px]">Gallery</p>
-            <div className="lg:flex lg:items-start lg:justify-between lg:gap-4">
-              <div className="grid grid-cols-3 gap-4 lg:flex lg:flex-1 lg:min-w-0 lg:gap-3 lg:overflow-x-auto lg:overflow-y-hidden lg:pb-1">
+        <div className="px-8 pb-8 lg:px-0 lg:pt-0 lg:pb-0 lg:min-w-0">
+          {profile?.images && profile.images.length > 0 && (
+            <>
+              <p className="text-white text-xs font-bold uppercase tracking-widest mb-5 lg:mb-2 lg:text-[11px]">Gallery</p>
+              <div className="grid grid-cols-3 gap-4 lg:flex lg:min-w-0 lg:gap-3 lg:overflow-x-auto lg:overflow-y-hidden lg:pb-1">
                 {profile.images.map((img, idx) => (
-                  <div key={idx} className="relative aspect-[3/4] group cursor-pointer overflow-hidden rounded-md lg:aspect-auto lg:h-36 lg:w-[108px] lg:flex-[0_0_108px]">
+                  <div key={idx} className="relative aspect-[3/4] group cursor-pointer overflow-hidden rounded-md lg:aspect-auto lg:h-[170px] lg:w-[128px] lg:flex-[0_0_128px]">
                     <img src={img} alt={`gallery-${idx}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                   </div>
                 ))}
               </div>
-              {topAside && <div className="mt-4 lg:mt-0 lg:w-[280px] lg:flex-none">{topAside}</div>}
-            </div>
+            </>
+          )}
+        </div>
+
+        {topAside && (
+          <div className="px-8 pb-8 lg:px-0 lg:pb-0 lg:min-w-0">
+            {topAside}
           </div>
         )}
       </div>
