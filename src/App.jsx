@@ -10,7 +10,7 @@ import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'r
 import PageNotFound from './lib/PageNotFound';
 import MembershipPage from './pages/Membership';
 import SoumettreePage from './pages/Soumettre';
-import MemberDashboardPage from './pages/MemberDashboard';
+import MemberDashboardPage from './pages/MemberDashboardResponsive';
 import SponsorRequestPage from './pages/SponsorRequest';
 import MemberListingPage from './pages/MemberListing';
 import StudioPage from './pages/Studio';
