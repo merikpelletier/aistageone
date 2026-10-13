@@ -4,12 +4,13 @@ function isIPadDevice() {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
-function pauseAllMedia() {
+function stopAllMedia() {
   document.querySelectorAll('video, audio').forEach((media) => {
     try {
-      if (!media.paused) media.pause();
+      media.pause();
+      media.currentTime = 0;
     } catch (error) {
-      console.warn('Unable to pause background media', error);
+      console.warn('Unable to stop background media', error);
     }
   });
 }
@@ -18,10 +19,10 @@ export function installIPadMediaGuard() {
   if (typeof window === 'undefined' || typeof document === 'undefined' || !isIPadDevice()) return;
 
   const handleVisibilityChange = () => {
-    if (document.hidden) pauseAllMedia();
+    if (document.hidden) stopAllMedia();
   };
 
-  const handlePageHide = () => pauseAllMedia();
+  const handlePageHide = () => stopAllMedia();
 
   document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true });
   window.addEventListener('pagehide', handlePageHide, { passive: true });
