@@ -154,11 +154,11 @@ export default function MemberDashboard() {
   const bannerUrl = profile?.custom_banner_url || profile?.banner_url || profile?.cover_url || null;
   const bannerLink = profile?.custom_banner_link || null;
   const bannerInner = bannerUrl ? (
-    <div className="relative h-[180px] sm:h-[220px] lg:h-[18vw] lg:max-h-[260px] overflow-hidden border border-white/10 bg-neutral-950">
+    <div className="relative h-[180px] sm:h-[220px] lg:h-[220px] overflow-hidden border border-white/10 bg-neutral-950">
       <img src={bannerUrl} alt={`${profile?.display_name || 'Member'} banner`} className="absolute inset-0 h-full w-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 flex items-end gap-4 p-5 sm:p-6 lg:p-[1.5vw]">
-        <div className="h-16 w-16 sm:h-20 sm:w-20 lg:h-[5vw] lg:w-[5vw] flex-shrink-0 overflow-hidden border border-white/30 bg-black">
+      <div className="absolute inset-x-0 bottom-0 flex items-end gap-4 p-5 sm:p-6 lg:p-5">
+        <div className="h-16 w-16 sm:h-20 sm:w-20 lg:h-20 lg:w-20 flex-shrink-0 overflow-hidden border border-white/30 bg-black">
           {profile?.avatar_url ? (
             <img src={profile.avatar_url} alt={profile?.display_name || 'Member'} className="h-full w-full object-cover" />
           ) : (
@@ -166,8 +166,8 @@ export default function MemberDashboard() {
           )}
         </div>
         <div className="min-w-0 pb-1">
-          <h1 className="text-2xl sm:text-3xl lg:text-[2vw] font-light text-white drop-shadow-lg">{profile?.display_name}</h1>
-          {profile?.title && <p className="mt-1 text-[10px] sm:text-xs lg:text-[0.75vw] font-semibold uppercase tracking-[0.14em] text-white/75">{profile.title}</p>}
+          <h1 className="text-2xl sm:text-3xl lg:text-3xl font-light text-white drop-shadow-lg">{profile?.display_name}</h1>
+          {profile?.title && <p className="mt-1 text-[10px] sm:text-xs lg:text-xs font-semibold uppercase tracking-[0.14em] text-white/75">{profile.title}</p>}
           <div className="mt-2 flex items-center gap-2">
             {isMerchant && <span className="inline-block border border-white/40 bg-black/50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">MERCHANT</span>}
             {isAIProfile && <span className="inline-block border border-teal-300/60 bg-black/50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-teal-200">AI</span>}
@@ -177,10 +177,10 @@ export default function MemberDashboard() {
     </div>
   ) : null;
 
-  const ownerPanelClass = 'lg:min-w-0 lg:min-h-0 lg:flex-1 lg:basis-[24%] lg:overflow-auto lg:overscroll-contain lg:[scrollbar-gutter:stable]';
+  const ownerPanelClass = 'lg:min-w-0';
 
   return (
-    <div className="relative min-h-screen w-full bg-black pb-20 lg:pb-[2vw]">
+    <div className="relative min-h-screen w-full bg-black pb-20 lg:pb-8">
       {isOwnProfile && (
         <div className="w-full bg-yellow-400 text-right px-4 hover:bg-red-600 transition-colors" style={{ height: '20px', overflow: 'hidden' }}>
           <button onClick={() => setPreviewAsGuest(v => !v)} className="text-black font-extrabold text-lg uppercase tracking-widest" style={{ lineHeight: '20px', height: '20px', padding: 0, margin: 0, border: 'none', background: 'transparent', display: 'inline-block' }}>
@@ -191,13 +191,13 @@ export default function MemberDashboard() {
 
       <div className="w-full">
         {bannerInner && (
-          <div className="px-4 pt-4 lg:px-[1vw] lg:pt-[1vw]">
+          <div className="px-4 pt-4 lg:mx-auto lg:max-w-[1500px] lg:px-6 lg:pt-5">
             {bannerLink ? <a href={bannerLink} target="_blank" rel="noreferrer" className="block">{bannerInner}</a> : bannerInner}
           </div>
         )}
 
         {effectiveIsOwnProfile && viewingEmail && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:px-[1vw]">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:px-6">
             <MemberProfileCard
               profile={profile}
               user={{ email: viewingEmail, full_name: profile?.display_name || user?.full_name || viewingEmail }}
@@ -212,7 +212,7 @@ export default function MemberDashboard() {
 
         {!effectiveIsOwnProfile && viewingEmail && (
           <>
-            <div className="px-4 pt-4 lg:px-[1vw] lg:pt-[1vw]">
+            <div className="px-4 pt-4 lg:mx-auto lg:max-w-[1500px] lg:px-6 lg:pt-5">
               <CollapsibleSection label="Published Work" accent="work" defaultOpen>
                 {!dossiersLoading && dossiers.length > 0 ? (
                   <DossierGallery dossiers={dossiers} ratingsMap={ratingsMap} commentsMap={commentsMap} campaignsMap={campaignsMap} />
@@ -222,7 +222,7 @@ export default function MemberDashboard() {
               </CollapsibleSection>
             </div>
 
-            <div className="px-4 pt-2 columns-1 sm:columns-2 lg:columns-3 gap-4 lg:px-[1vw] lg:gap-[1vw]">
+            <div className="px-4 pt-2 columns-1 sm:columns-2 lg:mx-auto lg:max-w-[1500px] lg:columns-3 gap-4 lg:px-6 lg:gap-4">
               <CollapsibleSection label="Presentation" accent="presentation" defaultOpen><ProfilePresentation profile={profile} user={presentationUser} /></CollapsibleSection>
               {profile?.images && profile.images.length > 0 && <CollapsibleSection label="Gallery" accent="gallery" defaultOpen><ProfileGallery profile={profile} /></CollapsibleSection>}
               <CollapsibleSection label="Fans & Sponsors" accent="fans" defaultOpen><ProfileFansSponsors profile={profile} user={presentationUser} /></CollapsibleSection>
@@ -236,7 +236,7 @@ export default function MemberDashboard() {
 
         {effectiveIsOwnProfile ? (
           <>
-            <div className="px-0 lg:px-[1vw] lg:w-full lg:flex lg:flex-wrap lg:items-start lg:gap-[0.7vw]">
+            <div className="px-0 lg:mx-auto lg:grid lg:max-w-[1500px] lg:grid-cols-2 xl:grid-cols-3 lg:items-start lg:gap-4 lg:px-6">
               <div className={ownerPanelClass}>
                 {viewingEmail && <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />}
               </div>
@@ -267,7 +267,7 @@ export default function MemberDashboard() {
             </div>
 
             {!dossiersLoading && dossiers.length > 0 && (
-              <div className="w-full lg:px-[1vw]"><DossierGallery dossiers={dossiers} ratingsMap={ratingsMap} commentsMap={commentsMap} campaignsMap={campaignsMap} label="Published Work" /></div>
+              <div className="w-full lg:mx-auto lg:max-w-[1500px] lg:px-6"><DossierGallery dossiers={dossiers} ratingsMap={ratingsMap} commentsMap={commentsMap} campaignsMap={campaignsMap} label="Published Work" /></div>
             )}
           </>
         ) : (
@@ -275,8 +275,8 @@ export default function MemberDashboard() {
         )}
 
         {isOwnProfile && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="px-4 pt-4 lg:px-[1vw] lg:flex lg:justify-end">
-            <button onClick={() => base44.auth.logout('/')} className="w-full flex items-center justify-center gap-3 py-4 border border-white/60 text-white hover:text-white hover:border-white rounded-2xl font-bold tracking-widest text-sm transition-colors lg:w-auto lg:px-[2vw] lg:py-[0.6vw] lg:rounded-lg">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="px-4 pt-4 lg:mx-auto lg:flex lg:max-w-[1500px] lg:justify-end lg:px-6">
+            <button onClick={() => base44.auth.logout('/')} className="w-full flex items-center justify-center gap-3 py-4 border border-white/60 text-white hover:text-white hover:border-white rounded-2xl font-bold tracking-widest text-sm transition-colors lg:w-auto lg:px-7 lg:py-2.5 lg:rounded-lg">
               <LogOut size={16} />
               LOG OUT
             </button>
