@@ -6,7 +6,7 @@ function DossierCard({ dossier, ratingsMap, commentsMap, campaignsMap }) {
   const campaign = campaignsMap?.[dossier.id];
 
   return (
-    <Link to={`/Magazine?dossier=${dossier.id}`} className="group block min-w-0">
+    <Link to={`/Magazine?dossier=${dossier.id}`} className="group block min-w-0 flex-1 basis-[46%] sm:basis-[30%] md:basis-[22%] lg:basis-[13%]">
       <div className="relative aspect-[2/3] overflow-hidden bg-neutral-950 border border-white/10 lg:aspect-[4/5]">
         {dossier.cover_image ? (
           <img src={dossier.cover_image} alt={dossier.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
@@ -33,9 +33,9 @@ export default function DossierGallery({ dossiers, ratingsMap = {}, commentsMap 
   if (!dossiers || dossiers.length === 0) return null;
 
   return (
-    <div className="mb-4 lg:mb-[1vw]">
+    <div className="mb-4 lg:mb-[1vw] w-full">
       {label && <h2 className="mb-3 text-white text-lg font-bold lg:mb-[0.7%] lg:text-[1vw]">{label}</h2>}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 lg:gap-[0.8vw]">
+      <div className="flex flex-wrap w-full gap-3 lg:gap-[0.8vw]">
         {dossiers.map(dossier => (
           <DossierCard key={dossier.id} dossier={dossier} ratingsMap={ratingsMap} commentsMap={commentsMap} campaignsMap={campaignsMap} />
         ))}
