@@ -257,14 +257,6 @@ export default function MemberDashboard() {
                 <ProfileLinksSection profile={profile} isOwnProfile={effectiveIsOwnProfile} userEmail={viewingEmail} />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className={ownerPanelClass}>
-                <MemberSeriesParticipation userEmail={viewingEmail} />
-              </motion.div>
-
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className={ownerPanelClass}>
-                <PublishStorySection userEmail={viewingEmail} />
-              </motion.div>
-
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className={ownerPanelClass}>
                 <CampaignManager userEmail={viewingEmail} />
               </motion.div>
