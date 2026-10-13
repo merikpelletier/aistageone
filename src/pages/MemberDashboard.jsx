@@ -182,8 +182,19 @@ export default function MemberDashboard() {
   return (
     <div className="relative min-h-screen w-full bg-black pb-20 lg:pb-8">
       {isOwnProfile && (
-        <div className="w-full bg-yellow-400 text-right px-4 hover:bg-red-600 transition-colors" style={{ height: '20px', overflow: 'hidden' }}>
-          <button onClick={() => setPreviewAsGuest(v => !v)} className="text-black font-extrabold text-lg uppercase tracking-widest" style={{ lineHeight: '20px', height: '20px', padding: 0, margin: 0, border: 'none', background: 'transparent', display: 'inline-block' }}>
+        <div className="flex h-7 w-full items-center justify-between bg-yellow-400 px-3 text-black">
+          <button
+            type="button"
+            onClick={() => base44.auth.logout('/')}
+            className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.08em]"
+          >
+            <LogOut size={11} /> Log out
+          </button>
+          <button
+            type="button"
+            onClick={() => setPreviewAsGuest(v => !v)}
+            className="text-xs font-extrabold uppercase tracking-[0.14em]"
+          >
             {previewAsGuest ? 'Exit Stage' : 'Your Stage'}
           </button>
         </div>
@@ -268,15 +279,6 @@ export default function MemberDashboard() {
           </>
         ) : (
           viewingEmail && <CreatorSubscriptionSection creatorEmail={viewingEmail} isOwnProfile={effectiveIsOwnProfile} />
-        )}
-
-        {isOwnProfile && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="px-4 pt-4 lg:mx-auto lg:flex lg:max-w-[1500px] lg:justify-end lg:px-6">
-            <button onClick={() => base44.auth.logout('/')} className="w-full flex items-center justify-center gap-3 py-4 border border-white/60 text-white hover:text-white hover:border-white rounded-2xl font-bold tracking-widest text-sm transition-colors lg:w-auto lg:px-7 lg:py-2.5 lg:rounded-lg">
-              <LogOut size={16} />
-              LOG OUT
-            </button>
-          </motion.div>
         )}
       </div>
 
