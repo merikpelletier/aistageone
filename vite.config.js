@@ -50,12 +50,12 @@ const fotoPlayPageWorkspace = {
       'style={{ objectPosition: `${panel.position_x ?? 50}% ${panel.position_y ?? 50}%`, transform: `scale(${Math.max(1, Number(panel.scale) || 1)})`, transformOrigin: `${panel.position_x ?? 50}% ${panel.position_y ?? 50}%` }}'
     )
 
-    // Text/dialogue box resizing: the former 18% x 8% minimum made the resize
-    // handle appear to freeze. Keep the same page bounds, but allow much finer
-    // resizing so the handle follows the pointer instead of hitting a large clamp.
+    // Text/dialogue box resizing: use only a tiny safety minimum so very short
+    // dialogue boxes can be tightened closely around their text without the
+    // resize handle feeling blocked.
     next = next.replace(
       "width: Math.max(18, Math.min(100 - state.box.x, state.box.width + dx)), height: Math.max(8, Math.min(100 - state.box.y, state.box.height + dy))",
-      "width: Math.max(6, Math.min(100 - state.box.x, state.box.width + dx)), height: Math.max(4, Math.min(100 - state.box.y, state.box.height + dy))"
+      "width: Math.max(2, Math.min(100 - state.box.x, state.box.width + dx)), height: Math.max(2, Math.min(100 - state.box.y, state.box.height + dy))"
     )
 
     const marker = '<textarea value={selected.prompt || \'\'} onChange={(e) => updatePanel(selectedPanel, { prompt: e.target.value })} rows={8} className={dark} placeholder="Action and composition for this frame" />'
