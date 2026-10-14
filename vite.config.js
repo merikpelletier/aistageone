@@ -13,7 +13,7 @@ const fotoPlayPageWorkspace = {
       source === './AuthorProductionWorkspace' &&
       importer?.replace(/\\/g, '/').endsWith('/src/components/studio/AuthorStoryBlocks.jsx')
     ) {
-      return fileURLToPath(new URL('./src/components/studio/AuthorProductionWorkspacePage.jsx', import.meta.url))
+      return fileURLToPath(new URL('./src/components/studio/AuthorProductionWorkspaceZoom.jsx', import.meta.url))
     }
     return null
   },
