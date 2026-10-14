@@ -59,9 +59,6 @@ const fotoPlayPageWorkspace = {
     const controls = `${marker}<div className="space-y-3 border border-white/10 bg-[#181c21] p-3"><div className="flex items-center justify-between"><p className="text-xs font-black uppercase text-[#23c7be]">Image framing</p><button type="button" onClick={() => updatePanel(selectedPanel, { scale: 1, position_x: 50, position_y: 50 })} className="border border-white/10 bg-[#242930] px-2 py-1 text-[10px] font-black text-white">Reset</button></div><label className="block text-[10px] font-black uppercase text-white/55">Zoom · {Math.round((Number(selected.scale) || 1) * 100)}%<input type="range" min="100" max="300" step="5" value={Math.round((Number(selected.scale) || 1) * 100)} onChange={(e) => updatePanel(selectedPanel, { scale: Number(e.target.value) / 100 })} className="mt-2 w-full accent-[#23c7be]" /></label><label className="block text-[10px] font-black uppercase text-white/55">Horizontal position · {Math.round(Number(selected.position_x ?? 50))}%<input type="range" min="0" max="100" step="1" value={Number(selected.position_x ?? 50)} onChange={(e) => updatePanel(selectedPanel, { position_x: Number(e.target.value) })} className="mt-2 w-full accent-[#23c7be]" /></label><label className="block text-[10px] font-black uppercase text-white/55">Vertical position · {Math.round(Number(selected.position_y ?? 50))}%<input type="range" min="0" max="100" step="1" value={Number(selected.position_y ?? 50)} onChange={(e) => updatePanel(selectedPanel, { position_y: Number(e.target.value) })} className="mt-2 w-full accent-[#23c7be]" /></label><p className="text-[10px] leading-4 text-white/40">Crop the image inside this frame without regenerating it. These values are saved with the frame and used in the final page.</p></div>`
     if (next.includes(marker)) next = next.replace(marker, controls)
 
-    // All desktop FotoPlay segments use the page editor. Legacy `single`
-    // segments are represented as a genuine one-frame page instead of being
-    // sent back to the old production form.
     next = next.replace(
       "if (!desktop || classic || !current || current.visual_format !== 'comic') return <div className=\"relative\">{classic && desktop && <button type=\"button\" onClick={() => setClassic(false)} className=\"fixed right-5 top-20 z-[180] border border-[#23c7be] bg-[#23c7be] px-4 py-2 text-xs font-black text-black\">Return to page editor</button>}<LegacyAuthorProductionWorkspace {...props} /></div>;\n  return <ComicPageWorkspace {...props} onClassic={() => setClassic(true)} />;",
       "if (!desktop || !current) return <LegacyAuthorProductionWorkspace {...props} />;\n  return <ComicPageWorkspace {...props} />;"
@@ -72,12 +69,16 @@ const fotoPlayPageWorkspace = {
       "const [showMasterVault, setShowMasterVault] = useState(false); const [showMasterShop, setShowMasterShop] = useState(false); const masterUploadRef = useRef(null);\n  const [showPreview, setShowPreview] = useState(false); const [showExport, setShowExport] = useState(false); const [showPublish, setShowPublish] = useState(false); const [publishing, setPublishing] = useState(false);"
     )
 
-    // A legacy single-image segment becomes Frame 1 using its existing source
-    // image. Prefer the clean pre-overlay source when available so dialogues are
-    // not burned in twice; otherwise fall back to the segment final image.
     next = next.replace(
       "const panelCount = Number(segment.comic_panel_count || 3); const panels = Array.from({ length: panelCount }, (_, index) => ({ id: `panel-${index + 1}`, beat: '', shot: IMAGE_TYPES[Math.min(index, IMAGE_TYPES.length - 1)], prompt: '', image_url: '', source_prompt: '', ...(segment.comic_panels?.[index] || {}) }));",
       "const panelCount = segment.visual_format === 'single' ? 1 : Number(segment.comic_panel_count || 3); const legacySingleImage = segment.text_overlay_source_url || segment.image_url || segment.image_versions?.at?.(-1)?.value || ''; const panels = Array.from({ length: panelCount }, (_, index) => ({ id: `panel-${index + 1}`, beat: '', shot: IMAGE_TYPES[Math.min(index, IMAGE_TYPES.length - 1)], prompt: '', image_url: segment.visual_format === 'single' && index === 0 ? legacySingleImage : '', source_prompt: segment.visual_format === 'single' && index === 0 ? (segment.image_source_instruction || segment.image_instruction || '') : '', ...(segment.comic_panels?.[index] || {}) }));"
+    )
+
+    // Give sequence-master actions explicit visual feedback and preserve the
+    // selected master at chapter level for following segments.
+    next = next.replace(
+      "const selectMaster = async (url, source, label) => { if (!url) return; await persist({}, { master_reference_url: url, master_reference_source: source, master_reference_label: label }); setShowMasterVault(false); setShowMasterShop(false); };",
+      "const selectMaster = async (url, source, label) => { if (!url) return; await persist({}, { master_reference_url: url, master_reference_source: source, master_reference_label: label }); setShowMasterVault(false); setShowMasterShop(false); setNotice(`Sequence master active: ${label}`); toast.success(`Sequence master selected · ${label}`); };"
     )
 
     next = next.replace(
@@ -100,12 +101,21 @@ const fotoPlayPageWorkspace = {
       "{[1,2,3,4].map((count) => <option key={count} className=\"text-black\" value={count}>{count}</option>)}"
     )
 
-    // When the user chooses one frame, keep the segment explicitly single;
-    // choosing 2-4 frames switches it to comic. Preserve Frame 1 image when
-    // moving between layouts whenever possible.
     next = next.replace(
       "onChange={(event) => change({ comic_panel_count: Number(event.target.value), comic_page_source: '' })}",
       "onChange={(event) => { const count = Number(event.target.value); change({ visual_format: count === 1 ? 'single' : 'comic', comic_panel_count: count, comic_panels: count === 1 && !segment.comic_panels?.length ? [{ id: 'panel-1', beat: '', shot: segment.image_type || 'Wide shot', prompt: segment.image_source_instruction || segment.image_instruction || '', image_url: segment.text_overlay_source_url || segment.image_url || '', source_prompt: segment.image_source_instruction || '' }] : segment.comic_panels, comic_page_source: '' }); }}"
+    )
+
+    // Show which sequence master is active directly in the selected-frame tool,
+    // including clear/replace controls instead of making the user guess.
+    next = next.replace(
+      "{tool === 'panel' && selected && <><div className=\"flex items-center justify-between\"><p className=\"font-black text-[#23c7be]\">Frame {selectedPanel + 1}</p>",
+      "{tool === 'panel' && selected && <>{active.master_reference_url && <div className=\"flex items-center gap-3 border border-[#23c7be]/50 bg-[#23c7be]/10 p-3\"><img src={active.master_reference_url} alt=\"Sequence master\" className=\"h-14 w-14 shrink-0 object-cover\" /><div className=\"min-w-0 flex-1\"><p className=\"text-[10px] font-black uppercase tracking-[.14em] text-[#23c7be]\">Sequence master active</p><p className=\"truncate text-xs font-bold text-white\">{active.master_reference_label || 'Current chapter master'}</p></div><button type=\"button\" onClick={() => persist({}, { master_reference_url: '', master_reference_source: '', master_reference_label: '' }).then(() => { setNotice('Sequence master cleared.'); toast.success('Sequence master cleared'); })} className=\"border border-white/10 bg-[#242930] px-2 py-1 text-[10px] font-black text-white\">Clear</button></div>}<div className=\"flex items-center justify-between\"><p className=\"font-black text-[#23c7be]\">Frame {selectedPanel + 1}</p>"
+    )
+
+    next = next.replace(
+      "{selected.image_url && <button onClick={() => selectMaster(selected.image_url, 'panel', `Segment ${segment.number} · frame ${selectedPanel + 1}`)} className={`${action} w-full bg-[#1b1f24]`}>Use selected frame as sequence master</button>}",
+      "{selected.image_url && <button onClick={() => selectMaster(selected.image_url, 'panel', `Segment ${segment.number} · frame ${selectedPanel + 1}`)} className={`${action} w-full ${active.master_reference_url === selected.image_url ? 'border-[#23c7be] bg-[#23c7be]/15 text-[#23c7be]' : 'bg-[#1b1f24]'}`}>{active.master_reference_url === selected.image_url ? '✓ Sequence master selected' : active.master_reference_url ? 'Replace sequence master with this frame' : 'Use selected frame as sequence master'}</button>}"
     )
 
     next = next.replace(
