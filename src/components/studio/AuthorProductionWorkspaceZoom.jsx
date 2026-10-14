@@ -45,55 +45,10 @@ function integrateDialogueTails(canvas) {
   });
 }
 
-const OTHER_STUDIO_TITLES = [
-  'Free Timeline', 'Timeline', 'Lip Sync', 'Dubbing Studio', 'Text-to-Speech',
-  'Music', 'Sound FX', 'New Set', 'Compose a Scene', 'Layout', 'Pitch Deck',
-  'Images generation', 'AI Video', 'Original AI TOOLS', 'Assets Shop', 'The Dashboard'
-];
-
-function isVisible(node) {
-  if (!node) return false;
-  const style = window.getComputedStyle(node);
-  const rect = node.getBoundingClientRect();
-  return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 2 && rect.height > 2;
-}
-
-function anotherStudioSurfaceIsActive(root) {
-  const candidates = [...document.querySelectorAll('h1,h2,h3,[role="heading"]')];
-  return candidates.some((node) => {
-    if (root.contains(node) || !isVisible(node)) return false;
-    const text = node.textContent?.trim() || '';
-    return OTHER_STUDIO_TITLES.some((title) => text === title || text.startsWith(`${title} `));
-  });
-}
-
-function isFotoPlayForeground(root) {
-  if (!root || !document.body.contains(root)) return false;
-  const rect = root.getBoundingClientRect();
-  if (rect.width < 20 || rect.height < 20) return false;
-  if (anotherStudioSurfaceIsActive(root)) return false;
-
-  const x = clamp(rect.left + rect.width * 0.5, 20, window.innerWidth - 20);
-  const y = clamp(rect.top + Math.min(rect.height * 0.35, 320), 20, window.innerHeight - 20);
-  const top = document.elementFromPoint(x, y);
-  return Boolean(top && root.contains(top));
-}
-
-function setFotoPlayChromeVisible(root, visible) {
-  if (!root) return;
-  const pageCanvas = findPageCanvas(root);
-  const workspace = pageCanvas?.closest('div.relative') || root;
-  const rails = workspace ? [...workspace.querySelectorAll('aside')] : [];
-  rails.forEach((node) => { node.style.display = visible ? '' : 'none'; });
-  const drawers = workspace ? [...workspace.querySelectorAll('div.absolute.z-40')] : [];
-  drawers.forEach((node) => { node.style.display = visible ? '' : 'none'; });
-}
-
 export default function AuthorProductionWorkspaceZoom(props) {
   const rootRef = useRef(null);
   const [zoom, setZoom] = useState(80);
   const [fitActive, setFitActive] = useState(false);
-  const [foreground, setForeground] = useState(true);
 
   const applyZoom = useCallback((value = zoom) => {
     const root = rootRef.current;
@@ -151,47 +106,28 @@ export default function AuthorProductionWorkspaceZoom(props) {
     const root = rootRef.current;
     if (!root) return undefined;
 
-    const refreshForeground = () => {
-      const canvas = findPageCanvas(root);
-      if (!canvas) {
-        setForeground(false);
-        setFotoPlayChromeVisible(root, false);
-        return;
-      }
-      const next = isFotoPlayForeground(root);
-      setForeground(next);
-      setFotoPlayChromeVisible(root, next);
-    };
+    const observer = new MutationObserver(() => requestAnimationFrame(() => applyZoom(zoom)));
+    observer.observe(root, { childList: true, subtree: true });
 
-    const observer = new MutationObserver(() => requestAnimationFrame(() => {
-      applyZoom(zoom);
-      refreshForeground();
-    }));
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
-
-    const timer = window.setInterval(refreshForeground, 250);
     const onResize = () => {
-      if (fitActive) fitPage(); else applyZoom(zoom);
-      refreshForeground();
+      if (fitActive) fitPage();
+      else applyZoom(zoom);
     };
     window.addEventListener('resize', onResize);
-    requestAnimationFrame(refreshForeground);
 
     return () => {
       observer.disconnect();
-      window.clearInterval(timer);
       window.removeEventListener('resize', onResize);
-      setFotoPlayChromeVisible(root, true);
     };
   }, [applyZoom, fitActive, fitPage, zoom]);
 
   return <div ref={rootRef} className="relative" data-fotoplay-workspace="true">
     <AuthorProductionWorkspacePage {...props} />
-    {foreground && <div className="pointer-events-auto fixed right-[92px] top-[164px] z-[190] flex items-center gap-1 border border-white/15 bg-[#111418] p-1 text-white shadow-2xl" data-fotoplay-zoom-controls="true">
+    <div className="pointer-events-auto fixed right-[92px] top-[164px] z-[190] flex items-center gap-1 border border-white/15 bg-[#111418] p-1 text-white shadow-2xl" data-fotoplay-zoom-controls="true">
       <button type="button" onClick={() => setManualZoom(zoom - 10)} title="Zoom out" className="flex h-9 w-9 items-center justify-center border border-white/10 bg-[#1c2025] hover:border-[#23c7be]"><Minus size={16} /></button>
       <button type="button" onClick={() => setManualZoom(100)} title="100%" className="h-9 min-w-[58px] border border-white/10 bg-[#1c2025] px-2 text-xs font-black hover:border-[#23c7be]">{zoom}%</button>
       <button type="button" onClick={() => setManualZoom(zoom + 10)} title="Zoom in" className="flex h-9 w-9 items-center justify-center border border-white/10 bg-[#1c2025] hover:border-[#23c7be]"><Plus size={16} /></button>
       <button type="button" onClick={fitPage} title="Fit whole page" className={`flex h-9 items-center gap-2 border px-3 text-xs font-black ${fitActive ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'border-white/10 bg-[#1c2025] text-white hover:border-[#23c7be]'}`}><Maximize2 size={15} /> Fit page</button>
-    </div>}
+    </div>
   </div>;
 }
