@@ -22,6 +22,32 @@ function pageBaseWidth(canvas) {
   return 1120;
 }
 
+function integrateDialogueTails(canvas) {
+  if (!canvas) return;
+  const svgs = [...canvas.querySelectorAll('svg')].filter((svg) => svg.querySelector('polygon') && svg.querySelector('polyline'));
+  svgs.forEach((svg) => {
+    // The dialogue pointer must visually be one continuous shape with its box.
+    svg.style.zIndex = '25';
+    svg.style.pointerEvents = 'none';
+
+    if (svg.style.top?.includes('100%')) svg.style.top = 'calc(100% - 2px)';
+    if (svg.style.bottom?.includes('100%')) svg.style.bottom = 'calc(100% - 2px)';
+    if (svg.style.left?.includes('100%')) svg.style.left = 'calc(100% - 2px)';
+    if (svg.style.right?.includes('100%')) svg.style.right = 'calc(100% - 2px)';
+
+    const polygon = svg.querySelector('polygon');
+    const edge = svg.querySelector('polyline');
+    if (polygon) polygon.setAttribute('fill', '#fff');
+    if (edge) {
+      edge.setAttribute('stroke', '#111');
+      edge.setAttribute('stroke-width', '1');
+      edge.setAttribute('stroke-linejoin', 'miter');
+      edge.setAttribute('stroke-linecap', 'square');
+      edge.setAttribute('vector-effect', 'non-scaling-stroke');
+    }
+  });
+}
+
 export default function AuthorProductionWorkspaceZoom(props) {
   const rootRef = useRef(null);
   const [zoom, setZoom] = useState(80);
@@ -43,6 +69,8 @@ export default function AuthorProductionWorkspaceZoom(props) {
     canvas.style.zoom = String(value / 100);
     canvas.style.transform = 'none';
     canvas.style.transformOrigin = 'top center';
+
+    integrateDialogueTails(canvas);
 
     if (main) {
       main.style.overflow = 'auto';
@@ -87,7 +115,7 @@ export default function AuthorProductionWorkspaceZoom(props) {
     if (!root) return undefined;
 
     const observer = new MutationObserver(() => requestAnimationFrame(() => applyZoom(zoom)));
-    observer.observe(root, { childList: true, subtree: true });
+    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
     const onResize = () => fitActive ? fitPage() : applyZoom(zoom);
     window.addEventListener('resize', onResize);
 
