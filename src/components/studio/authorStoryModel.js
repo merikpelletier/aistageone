@@ -47,7 +47,7 @@ export const newSegment = (number) => ({
   comic_panels: [],
   comic_page_source: '',
   visual_format: 'single',
-  comic_panel_count: 3,
+  comic_panel_count: 1,
   narration_url: '',
   audio_versions: [],
   audio_source_text: '',
@@ -81,7 +81,9 @@ export const normalizeSegment = (segment, index) => ({
     : {},
   comic_panels: Array.isArray(segment?.comic_panels) ? segment.comic_panels : [],
   visual_format: segment?.visual_format === 'comic' ? 'comic' : 'single',
-  comic_panel_count: [2, 3, 4].includes(Number(segment?.comic_panel_count)) ? Number(segment.comic_panel_count) : 3,
+  comic_panel_count: segment?.visual_format === 'single'
+    ? 1
+    : ([1, 2, 3, 4].includes(Number(segment?.comic_panel_count)) ? Number(segment.comic_panel_count) : 3),
 });
 
 export const normalizeChapter = (chapter, index) => {
