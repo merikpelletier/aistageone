@@ -45,13 +45,34 @@ function integrateDialogueTails(canvas) {
   });
 }
 
+const OTHER_STUDIO_TITLES = [
+  'Free Timeline', 'Timeline', 'Lip Sync', 'Dubbing Studio', 'Text-to-Speech',
+  'Music', 'Sound FX', 'New Set', 'Compose a Scene', 'Layout', 'Pitch Deck',
+  'Images generation', 'AI Video', 'Original AI TOOLS', 'Assets Shop', 'The Dashboard'
+];
+
+function isVisible(node) {
+  if (!node) return false;
+  const style = window.getComputedStyle(node);
+  const rect = node.getBoundingClientRect();
+  return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 2 && rect.height > 2;
+}
+
+function anotherStudioSurfaceIsActive(root) {
+  const candidates = [...document.querySelectorAll('h1,h2,h3,[role="heading"]')];
+  return candidates.some((node) => {
+    if (root.contains(node) || !isVisible(node)) return false;
+    const text = node.textContent?.trim() || '';
+    return OTHER_STUDIO_TITLES.some((title) => text === title || text.startsWith(`${title} `));
+  });
+}
+
 function isFotoPlayForeground(root) {
   if (!root || !document.body.contains(root)) return false;
   const rect = root.getBoundingClientRect();
   if (rect.width < 20 || rect.height < 20) return false;
+  if (anotherStudioSurfaceIsActive(root)) return false;
 
-  // Probe the center work area. When another Studio screen (Timeline, etc.) is
-  // placed over FotoPlay, elementFromPoint belongs to that screen instead.
   const x = clamp(rect.left + rect.width * 0.5, 20, window.innerWidth - 20);
   const y = clamp(rect.top + Math.min(rect.height * 0.35, 320), 20, window.innerHeight - 20);
   const top = document.elementFromPoint(x, y);
@@ -62,12 +83,8 @@ function setFotoPlayChromeVisible(root, visible) {
   if (!root) return;
   const pageCanvas = findPageCanvas(root);
   const workspace = pageCanvas?.closest('div.relative') || root;
-
-  // The two icon rails and an open tool drawer are FotoPlay chrome. Hide only
-  // that chrome when another Studio experience is in front, never the other tool.
   const rails = workspace ? [...workspace.querySelectorAll('aside')] : [];
   rails.forEach((node) => { node.style.display = visible ? '' : 'none'; });
-
   const drawers = workspace ? [...workspace.querySelectorAll('div.absolute.z-40')] : [];
   drawers.forEach((node) => { node.style.display = visible ? '' : 'none'; });
 }
@@ -82,7 +99,6 @@ export default function AuthorProductionWorkspaceZoom(props) {
     const root = rootRef.current;
     const canvas = findPageCanvas(root);
     if (!root || !canvas) return;
-
     const main = canvas.closest('main');
     const baseWidth = pageBaseWidth(canvas);
     canvas.dataset.fotoplayPageCanvas = 'true';
@@ -94,7 +110,6 @@ export default function AuthorProductionWorkspaceZoom(props) {
     canvas.style.transform = 'none';
     canvas.style.transformOrigin = 'top center';
     integrateDialogueTails(canvas);
-
     if (main) {
       main.style.overflow = 'auto';
       main.style.justifyContent = 'flex-start';
@@ -154,7 +169,7 @@ export default function AuthorProductionWorkspaceZoom(props) {
     }));
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
 
-    const timer = window.setInterval(refreshForeground, 350);
+    const timer = window.setInterval(refreshForeground, 250);
     const onResize = () => {
       if (fitActive) fitPage(); else applyZoom(zoom);
       refreshForeground();
