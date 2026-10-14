@@ -3,6 +3,7 @@ import { Maximize2, Minus, Plus } from 'lucide-react';
 import AuthorProductionWorkspacePage from './AuthorProductionWorkspacePage';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const TOOL_WIDTH = 430;
 
 function findPageCanvas(root) {
   if (!root) return null;
@@ -11,6 +12,22 @@ function findPageCanvas(root) {
     if (!ratio) return false;
     return [...node.querySelectorAll('span')].some((span) => span.textContent?.trim() === 'FRAME 1');
   }) || null;
+}
+
+function findToolDrawer(root) {
+  if (!root) return null;
+  return [...root.querySelectorAll('div')].find((node) => {
+    const className = typeof node.className === 'string' ? node.className : '';
+    return className.includes('absolute') && className.includes('z-40') && className.includes('w-[430px]');
+  }) || null;
+}
+
+function drawerSide(drawer) {
+  if (!drawer) return '';
+  const className = typeof drawer.className === 'string' ? drawer.className : '';
+  if (className.includes('left-[62px]')) return 'left';
+  if (className.includes('right-[62px]')) return 'right';
+  return '';
 }
 
 function pageBaseWidth(canvas) {
@@ -49,6 +66,29 @@ export default function AuthorProductionWorkspaceZoom(props) {
   const rootRef = useRef(null);
   const [zoom, setZoom] = useState(80);
   const [fitActive, setFitActive] = useState(false);
+  const [toolSide, setToolSide] = useState('');
+
+  const applyWorkspaceLayout = useCallback(() => {
+    const root = rootRef.current;
+    const canvas = findPageCanvas(root);
+    if (!root || !canvas) return;
+    const main = canvas.closest('main');
+    if (!main) return;
+
+    const drawer = findToolDrawer(root);
+    const side = drawerSide(drawer);
+    setToolSide(side);
+
+    main.style.boxSizing = 'border-box';
+    main.style.paddingLeft = side === 'left' ? `${TOOL_WIDTH + 24}px` : '16px';
+    main.style.paddingRight = side === 'right' ? `${TOOL_WIDTH + 24}px` : '16px';
+    main.style.transition = 'padding 160ms ease';
+
+    if (drawer) {
+      drawer.style.boxShadow = 'none';
+      drawer.style.borderColor = 'rgba(255,255,255,.1)';
+    }
+  }, []);
 
   const applyZoom = useCallback((value = zoom) => {
     const root = rootRef.current;
@@ -65,6 +105,7 @@ export default function AuthorProductionWorkspaceZoom(props) {
     canvas.style.transform = 'none';
     canvas.style.transformOrigin = 'top center';
     integrateDialogueTails(canvas);
+    applyWorkspaceLayout();
     if (main) {
       main.style.overflow = 'auto';
       main.style.justifyContent = 'flex-start';
@@ -73,7 +114,7 @@ export default function AuthorProductionWorkspaceZoom(props) {
       main.style.paddingTop = '18px';
       main.style.paddingBottom = '50px';
     }
-  }, [zoom]);
+  }, [applyWorkspaceLayout, zoom]);
 
   const fitPage = useCallback(() => {
     const root = rootRef.current;
@@ -81,12 +122,15 @@ export default function AuthorProductionWorkspaceZoom(props) {
     if (!root || !canvas) return;
     const main = canvas.closest('main');
     if (!main) return;
+
+    const drawer = findToolDrawer(root);
+    const reserved = drawer ? TOOL_WIDTH + 48 : 32;
     const baseWidth = pageBaseWidth(canvas);
     const ratio = String(canvas.style.aspectRatio || '16 / 9').split('/').map((part) => Number(part.trim()));
     const rw = ratio[0] || 16;
     const rh = ratio[1] || 9;
     const baseHeight = baseWidth * rh / rw;
-    const availableWidth = Math.max(240, main.clientWidth - 80);
+    const availableWidth = Math.max(240, main.clientWidth - reserved - 48);
     const availableHeight = Math.max(260, main.clientHeight - 95);
     const percent = clamp(Math.floor(Math.min(availableWidth / baseWidth, availableHeight / baseHeight) * 100), 25, 100);
     setFitActive(true);
@@ -106,10 +150,15 @@ export default function AuthorProductionWorkspaceZoom(props) {
     const root = rootRef.current;
     if (!root) return undefined;
 
-    const observer = new MutationObserver(() => requestAnimationFrame(() => applyZoom(zoom)));
+    const observer = new MutationObserver(() => requestAnimationFrame(() => {
+      applyWorkspaceLayout();
+      applyZoom(zoom);
+      if (fitActive) fitPage();
+    }));
     observer.observe(root, { childList: true, subtree: true });
 
     const onResize = () => {
+      applyWorkspaceLayout();
       if (fitActive) fitPage();
       else applyZoom(zoom);
     };
@@ -119,11 +168,13 @@ export default function AuthorProductionWorkspaceZoom(props) {
       observer.disconnect();
       window.removeEventListener('resize', onResize);
     };
-  }, [applyZoom, fitActive, fitPage, zoom]);
+  }, [applyWorkspaceLayout, applyZoom, fitActive, fitPage, zoom]);
+
+  const controlsRight = toolSide === 'right' ? TOOL_WIDTH + 92 : 92;
 
   return <div ref={rootRef} className="relative" data-fotoplay-workspace="true">
     <AuthorProductionWorkspacePage {...props} />
-    <div className="pointer-events-auto fixed right-[92px] top-[164px] z-[190] flex items-center gap-1 border border-white/15 bg-[#111418] p-1 text-white shadow-2xl" data-fotoplay-zoom-controls="true">
+    <div className="pointer-events-auto fixed top-[164px] z-[190] flex items-center gap-1 border border-white/15 bg-[#111418] p-1 text-white shadow-2xl" style={{ right: `${controlsRight}px` }} data-fotoplay-zoom-controls="true">
       <button type="button" onClick={() => setManualZoom(zoom - 10)} title="Zoom out" className="flex h-9 w-9 items-center justify-center border border-white/10 bg-[#1c2025] hover:border-[#23c7be]"><Minus size={16} /></button>
       <button type="button" onClick={() => setManualZoom(100)} title="100%" className="h-9 min-w-[58px] border border-white/10 bg-[#1c2025] px-2 text-xs font-black hover:border-[#23c7be]">{zoom}%</button>
       <button type="button" onClick={() => setManualZoom(zoom + 10)} title="Zoom in" className="flex h-9 w-9 items-center justify-center border border-white/10 bg-[#1c2025] hover:border-[#23c7be]"><Plus size={16} /></button>
