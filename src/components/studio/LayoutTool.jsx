@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowLeft, Check, Download, Image as ImageIcon, LayoutTemplate, Loader2, Save, Sparkles } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Check, Download, Image as ImageIcon, LayoutTemplate, Loader2, Save, Sparkles, Store, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import AtelierAssetPicker from '@/components/atelier/AtelierAssetPicker';
@@ -68,9 +68,12 @@ export default function LayoutTool({ user, onClose }) {
   const [versions, setVersions] = useState([]);
   const [selectedUrl, setSelectedUrl] = useState('');
   const [showVault, setShowVault] = useState(false);
+  const [uploadTarget, setUploadTarget] = useState('source');
+  const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
+  const fileInputRef = useRef(null);
   const prompt = useMemo(() => buildPrompt({
     purpose, format, exactText, direction, hasSource: sourceUrls.length > 0,
     imageMode, imageCount: imageSources.length, revision,
@@ -88,6 +91,53 @@ export default function LayoutTool({ user, onClose }) {
     input: pricingInput,
     modelKey: effectiveModel,
   });
+
+  const startUpload = (target) => {
+    setUploadTarget(target);
+    fileInputRef.current?.click();
+  };
+
+  const handleUploadFiles = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length) return;
+
+    const maxCount = uploadTarget === 'combine' ? 3 : 4;
+    const currentCount = uploadTarget === 'combine' ? imageSources.length : sourceUrls.length;
+    const available = Math.max(0, maxCount - currentCount);
+    if (!available) {
+      toast.error(`Maximum ${maxCount} source images`);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const uploadedUrls = [];
+      for (const file of files.slice(0, available)) {
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+          throw new Error('Choose JPG, PNG or WEBP images');
+        }
+        const result = await base44.integrations.Core.UploadFile({ file, saveToVault: false });
+        if (result?.file_url) uploadedUrls.push(result.file_url);
+      }
+      if (!uploadedUrls.length) throw new Error('Upload did not return an image URL');
+      if (uploadTarget === 'combine') {
+        setImageSources((current) => [...new Set([...current, ...uploadedUrls])].slice(0, 3));
+      } else {
+        setSourceUrls((current) => [...new Set([...current, ...uploadedUrls])].slice(0, 4));
+      }
+      toast.success(uploadedUrls.length === 1 ? 'Image uploaded' : `${uploadedUrls.length} images uploaded`);
+    } catch (error) {
+      toast.error(error?.message || 'Unable to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const openAssetsShop = () => {
+    const shop = window.open('/Catalog', '_blank', 'noopener,noreferrer');
+    if (!shop) window.location.assign('/Catalog');
+  };
 
   const generate = async () => {
     if (purpose === 'image' && imageMode === 'prompt' && !direction.trim()) { toast.error('Describe the image to create'); return; }
@@ -140,6 +190,7 @@ export default function LayoutTool({ user, onClose }) {
   };
 
   return <div className="min-h-screen bg-[#202328] px-5 pb-24 pt-6 text-white lg:h-[calc(100vh-3.5rem)] lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-8">
+    <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleUploadFiles} />
     <header className="mx-auto mb-5 flex max-w-[1500px] items-center gap-3 border-b border-white/10 pb-5">
       <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/65 transition hover:bg-white/10 hover:text-white"><ArrowLeft size={19} /></button>
       <div>
@@ -164,8 +215,8 @@ export default function LayoutTool({ user, onClose }) {
 
         {purpose === 'image' ? <>
           <Picker title="Image creation" items={IMAGE_MODES} value={imageMode} onChange={setImageMode} columns="grid-cols-2" />
-          {imageMode === 'combine' && <div><Label>Images to combine · 2 to 3</Label><div className="grid grid-cols-3 gap-2">{imageSources.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setImageSources((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}{imageSources.length < 3 && <button onClick={() => setShowVault(true)} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button>}</div></div>}
-        </> : <div><Label>Source images</Label><div className="grid grid-cols-3 gap-2">{sourceUrls.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setSourceUrls((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}<button onClick={() => setShowVault(true)} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button></div></div>}
+          {imageMode === 'combine' && <div><Label>Images to combine · 2 to 3</Label><div className="grid grid-cols-3 gap-2">{imageSources.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setImageSources((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}{imageSources.length < 3 && <button onClick={() => setShowVault(true)} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button>}</div><div className="mt-2 grid grid-cols-2 gap-2"><button onClick={() => startUpload('combine')} disabled={uploading} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10 disabled:opacity-50"><Upload size={15} />{uploading && uploadTarget === 'combine' ? 'Uploading…' : 'Upload'}</button><button onClick={openAssetsShop} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10"><Store size={15} />Assets Shop</button></div></div>}
+        </> : <div><Label>Source images</Label><div className="grid grid-cols-3 gap-2">{sourceUrls.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setSourceUrls((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}<button onClick={() => setShowVault(true)} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button></div><div className="mt-2 grid grid-cols-2 gap-2"><button onClick={() => startUpload('source')} disabled={uploading} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10 disabled:opacity-50"><Upload size={15} />{uploading && uploadTarget === 'source' ? 'Uploading…' : 'Upload'}</button><button onClick={openAssetsShop} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10"><Store size={15} />Assets Shop</button></div></div>}
 
         {purpose !== 'image' && <div><Label>Exact text</Label><textarea value={exactText} onChange={(event) => setExactText(event.target.value)} rows={3} placeholder="Write the exact words and line breaks" className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60" /></div>}
         <div><Label>{purpose === 'image' ? 'Image prompt' : 'Art direction'}</Label><textarea value={direction} onChange={(event) => setDirection(event.target.value)} rows={5} placeholder={purpose === 'image' ? 'Describe the image to create, its subjects, setting, style, light and composition' : 'Describe the visual world, materials, lettering character, light and composition'} className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60" /></div>
