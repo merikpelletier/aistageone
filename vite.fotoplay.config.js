@@ -70,7 +70,20 @@ const textReadingOrderControls = {
   },
 }
 
+const finalAudioTerminology = {
+  name: 'fotoplay-final-audio-terminology',
+  enforce: 'post',
+  transform(code, id) {
+    const normalizedId = id?.replace(/\\/g, '/') || ''
+    if (!normalizedId.endsWith('/src/components/studio/AuthorProductionWorkspacePage.jsx')) return null
+    const next = code
+      .replaceAll('Generate the ordered audio sequence first', 'Build final audio first')
+      .replaceAll('Generate the ordered audio sequence', 'Build final audio')
+    return next === code ? null : { code: next, map: null }
+  },
+}
+
 export default defineConfig({
   ...baseConfig,
-  plugins: [preserveFotoPlayTextMetadata, ...(baseConfig.plugins || []), narratorVoiceInTextTool, textReadingOrderControls],
+  plugins: [preserveFotoPlayTextMetadata, ...(baseConfig.plugins || []), narratorVoiceInTextTool, textReadingOrderControls, finalAudioTerminology],
 })
