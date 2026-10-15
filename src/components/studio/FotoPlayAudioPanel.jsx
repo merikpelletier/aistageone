@@ -190,7 +190,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
       const signature = JSON.stringify(next.map((box) => ({ id: box.id, order: box.order, text: box.text, voice: resolveVoice(box), language: resolveLanguage(box), pause: box.pause_after ?? 0.35 })));
       await onPersist({ text_boxes: next, narration_url: uploaded.file_url, audio_sequence: timeline, audio_source_text: signature, audio_voice: 'multi', audio_stale: false, status: 'draft' });
       onBoxesChange(next);
-      toast.success(totalCharged > 0 ? `FotoPlay audio sequence generated · ${totalCharged} credits charged` : 'FotoPlay audio sequence assembled · no new credits charged');
+      toast.success(totalCharged > 0 ? `FotoPlay final audio generated · ${totalCharged} credits charged` : 'FotoPlay final audio assembled · no new credits charged');
     } finally {
       setBusy?.('');
     }
@@ -202,7 +202,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
       return;
     }
     const playable = ordered.filter((box) => box.text?.trim() && box.audio_url);
-    if (!playable.length) return toast.error('Generate the audio sequence first');
+    if (!playable.length) return toast.error('Generate the audio lines first');
     stopRef.current = false;
     setPlaying(true);
     try {
@@ -294,10 +294,10 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
 
     <div className="grid grid-cols-2 gap-2">
       <button type="button" onClick={playSequence} disabled={!ordered.some((box) => box.audio_url)} className={`${action} bg-white text-black`}><Play size={14} /> {playing ? 'Stop playback' : 'Play sequence'}</button>
-      <button type="button" onClick={() => buildSegmentAudio(ordered, false).catch((error) => toast.error(error.message || 'Audio generation failed'))} disabled={busy === 'audio-sequence' || !ordered.length} className={`${action} bg-[#23c7be] text-black`}>{busy === 'audio-sequence' ? <Loader2 size={14} className="animate-spin" /> : <Volume2 size={14} />} Generate sequence · {pricing?.tts ?? '—'}</button>
+      <button type="button" onClick={() => buildSegmentAudio(ordered, false).catch((error) => toast.error(error.message || 'Audio generation failed'))} disabled={busy === 'audio-sequence' || !ordered.length} className={`${action} bg-[#23c7be] text-black`}>{busy === 'audio-sequence' ? <Loader2 size={14} className="animate-spin" /> : <Volume2 size={14} />} Build final audio</button>
     </div>
 
-    {segment.narration_url && <audio controls src={segment.narration_url} className="w-full" />}
-    {segment.narration_url && <p className="text-[10px] text-white/40">The combined file is used for publication. Individual line clips remain editable and can be regenerated separately.</p>}
+    {segment.narration_url && !segment.audio_stale && <div className="border border-[#23c7be]/25 bg-[#23c7be]/10 px-3 py-2 text-[10px] font-black uppercase tracking-[.08em] text-[#23c7be]">✓ Final publication audio ready</div>}
+    <p className="text-[10px] text-white/40">Play sequence is the editing preview. Build final audio creates the combined publication track in the background.</p>
   </div>;
 }
