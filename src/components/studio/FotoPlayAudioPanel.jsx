@@ -189,7 +189,6 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
       const uploaded = await base44.integrations.Core.UploadFile({ file });
       const signature = JSON.stringify(next.map((box) => ({ id: box.id, order: box.order, text: box.text, voice: resolveVoice(box), language: resolveLanguage(box), pause: box.pause_after ?? 0.35 })));
       await onPersist({ text_boxes: next, narration_url: uploaded.file_url, audio_sequence: timeline, audio_source_text: signature, audio_voice: 'multi', audio_stale: false, status: 'draft' });
-      onBoxesChange(next);
       toast.success(totalCharged > 0 ? `FotoPlay final audio generated · ${totalCharged} credits charged` : 'FotoPlay final audio assembled · no new credits charged');
     } finally {
       setBusy?.('');
