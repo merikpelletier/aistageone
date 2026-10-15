@@ -70,6 +70,34 @@ const textReadingOrderControls = {
   },
 }
 
+const approvalAndPublishIntegrity = {
+  name: 'fotoplay-approval-and-publish-integrity',
+  enforce: 'post',
+  transform(code, id) {
+    const normalizedId = id?.replace(/\\/g, '/') || ''
+    let next = code
+
+    if (normalizedId.endsWith('/src/components/studio/AuthorProductionWorkspacePage.jsx')) {
+      const currentApprove = "const approve = async () => { if (boxes.length ? !segment.narration_url || segment.audio_stale : !segment.narrator_voice) return toast.error(boxes.length ? 'Generate the ordered audio sequence first' : 'Choose a voice first'); if (!allLeavesReady) return toast.error('Every frame needs an image'); setBusy('approve'); try { await syncPage(); if (!boxes.length && (!segment.narration_url || segment.audio_stale || segment.audio_source_text !== segment.narration_text || segment.audio_voice !== segment.narrator_voice)) await generateAudio(); const continuity = { ...(active.appearance_continuity || {}) }; for (const id of segment.character_ids) { const value = segment.character_directions?.[id] || {}; if (value.continuity_scope === 'carry') continuity[id] = value; } await persist({ status: 'approved' }, { appearance_continuity: continuity }); if (segment.number < 9) setSelectedId(active.segments[segment.number].id); setNotice(`Segment ${segment.number} approved.`); } catch (error) { toast.error(error.message || 'Approval failed'); } finally { setBusy(''); } };"
+      const fixedApprove = "const approve = async () => { if (boxes.length ? !segment.narration_url || segment.audio_stale : !segment.narrator_voice) return toast.error(boxes.length ? 'Build final audio first' : 'Choose a voice first'); if (!allLeavesReady) return toast.error('Every frame needs an image'); setBusy('approve'); try { let file = await assembleComicPage(panels, active.image_aspect_ratio || '16:9'); file = await addTextBoxesToFile(file, boxes); const uploaded = await base44.integrations.Core.UploadFile({ file }); if (!uploaded?.file_url) throw new Error('Unable to save the synchronized page'); const audioValues = {}; if (!boxes.length && (!segment.narration_url || segment.audio_stale || segment.audio_source_text !== segment.narration_text || segment.audio_voice !== segment.narrator_voice)) { const response = await base44.functions.invoke('generateSpeech', { text: segment.narration_text, voice: segment.narrator_voice, language_code: segment.narrator_language || project.production_settings?.narrator_language || 'en' }); if (!response?.data?.file_url) throw new Error('No audio returned'); audioValues.narration_url = response.data.file_url; audioValues.audio_source_text = segment.narration_text; audioValues.audio_voice = segment.narrator_voice; audioValues.audio_language = segment.narrator_language || project.production_settings?.narrator_language || 'en'; audioValues.audio_stale = false; } const continuity = { ...(active.appearance_continuity || {}) }; for (const id of segment.character_ids) { const value = segment.character_directions?.[id] || {}; if (value.continuity_scope === 'carry') continuity[id] = value; } await persist({ image_url: uploaded.file_url, comic_page_source: comicPageSignature(active, panels), image_source_aspect_ratio: active.image_aspect_ratio || '16:9', text_overlay_source_url: '', text_overlay_applied_signature: JSON.stringify(boxes), ...audioValues, status: 'approved' }, { appearance_continuity: continuity }); if (segment.number < 9) setSelectedId(active.segments[segment.number].id); setNotice(`Segment ${segment.number} approved.`); } catch (error) { toast.error(error.message || 'Approval failed'); } finally { setBusy(''); } };"
+      next = next.replace(currentApprove, fixedApprove)
+    }
+
+    if (normalizedId.endsWith('/src/components/studio/AuthorProductionWorkspace.jsx')) {
+      next = next.replace(
+        "const response = await base44.functions.invoke('publishAuthorStory', { project_id: project.id, ...publication });",
+        "const savedBeforePublish = await onSave(project, { silent: true }); if (!savedBeforePublish) throw new Error('Unable to synchronize the project before publishing'); const response = await base44.functions.invoke('publishAuthorStory', { project_id: project.id, ...publication });"
+      )
+      next = next.replace(
+        "      window.open(`/Magazine?dossier=${encodeURIComponent(response.data.dossier_id)}`, '_blank', 'noopener,noreferrer');\n",
+        ''
+      )
+    }
+
+    return next === code ? null : { code: next, map: null }
+  },
+}
+
 const finalAudioTerminology = {
   name: 'fotoplay-final-audio-terminology',
   enforce: 'post',
@@ -85,5 +113,5 @@ const finalAudioTerminology = {
 
 export default defineConfig({
   ...baseConfig,
-  plugins: [preserveFotoPlayTextMetadata, ...(baseConfig.plugins || []), narratorVoiceInTextTool, textReadingOrderControls, finalAudioTerminology],
+  plugins: [preserveFotoPlayTextMetadata, ...(baseConfig.plugins || []), narratorVoiceInTextTool, textReadingOrderControls, approvalAndPublishIntegrity, finalAudioTerminology],
 })
