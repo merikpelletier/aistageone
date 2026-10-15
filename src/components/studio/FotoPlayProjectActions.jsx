@@ -47,7 +47,7 @@ export function FotoPlayExportModal({ project, activeChapterId, onClose }) {
 }
 
 export function FotoPlayPublishModal({ user, project, publishing, onClose, onPublish }) {
-  const readyChapters = useMemo(() => (project.chapters || []).filter((chapter) => chapter.segments?.length === 9 && chapter.segments.every((segment) => segment.status === 'approved' && segment.image_url && segment.narration_url)), [project.chapters]);
+  const readyChapters = useMemo(() => (project.chapters || []).filter((chapter) => chapter.segments?.length === 9 && chapter.segments.every((segment) => segment.status === 'approved' && segment.image_url)), [project.chapters]);
   const [selectedIds, setSelectedIds] = useState(() => readyChapters.map((chapter) => chapter.id));
   const [title, setTitle] = useState(project.title || '');
   const [description, setDescription] = useState(project.story_description || '');
