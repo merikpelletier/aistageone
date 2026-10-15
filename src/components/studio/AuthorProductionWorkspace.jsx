@@ -336,8 +336,8 @@ export default function AuthorProductionWorkspace({ user, project, setProject, a
 
   const publishProject = async (publication) => {
     if (!project.id) return toast.error('Save the project before publishing');
-    const readyChapters = project.chapters.filter((chapter) => chapter.segments.length === 9 && chapter.segments.every((item) => item.status === 'approved' && item.image_url && item.narration_url));
-    if (!readyChapters.length) return toast.error('Complete and approve all 9 segments of at least one chapter first');
+    const readyChapters = project.chapters.filter((chapter) => chapter.segments.length === 9);
+    if (!readyChapters.length) return toast.error('Complete all 9 segments of at least one chapter first');
     setPublishing(true);
     try {
       const response = await base44.functions.invoke('publishAuthorStory', { project_id: project.id, ...publication });
@@ -364,7 +364,7 @@ export default function AuthorProductionWorkspace({ user, project, setProject, a
 }
 
 function AuthorPublishModal({ user, project, publishing, onClose, onPublish }) {
-  const readyChapters = useMemo(() => project.chapters.filter((chapter) => chapter.segments.length === 9 && chapter.segments.every((segment) => segment.status === 'approved' && segment.image_url && segment.narration_url)), [project.chapters]);
+  const readyChapters = useMemo(() => project.chapters.filter((chapter) => chapter.segments.length === 9), [project.chapters]);
   const [selectedIds, setSelectedIds] = useState(() => readyChapters.map((chapter) => chapter.id));
   const [title, setTitle] = useState(project.title || '');
   const [description, setDescription] = useState(project.story_description || '');
@@ -386,7 +386,7 @@ function AuthorPublishModal({ user, project, publishing, onClose, onPublish }) {
   const canPublish = selectedIds.length > 0 && title.trim() && authorName.trim() && dossierClass && contentRating && originalLanguage && confirmed;
   const submit = () => onPublish({ chapter_ids: selectedIds, title: title.trim(), description: description.trim(), author_name: authorName.trim(), contributors: Array.isArray(project.contributors) ? project.contributors : [], dossier_class: dossierClass, category: category.trim(), cover_image: coverImage, content_rating: contentRating, original_language: originalLanguage, public_promo_confirmed: confirmed });
   return <div className="fixed inset-0 z-[110] flex items-start justify-center overflow-y-auto bg-black/80 p-3 py-6"><div className="max-h-[calc(100dvh-3rem)] w-full max-w-2xl overflow-y-auto rounded-3xl bg-yellow-400 p-5 text-black shadow-2xl" style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom) + 72px)' }}><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-widest">Publish to Magazine</p><h3 className="mt-1 text-2xl font-black">Story details</h3></div><button onClick={onClose} className="rounded-full bg-black p-2 text-yellow-400"><X size={19} /></button></div>
-    <div className="mt-5 space-y-4"><div><p className="mb-2 text-xs font-black uppercase">Chapters to publish *</p><div className="space-y-2">{readyChapters.map((chapter) => <button key={chapter.id} onClick={() => toggleChapter(chapter.id)} className={`flex w-full items-center gap-3 rounded-xl p-3 text-left font-black ${selectedIds.includes(chapter.id) ? 'bg-black text-yellow-400' : 'bg-white'}`}><span className="flex h-5 w-5 items-center justify-center rounded border">{selectedIds.includes(chapter.id) && <Check size={14} />}</span><span className="flex-1">Chapter {chapter.number} · {chapter.title}</span><span className="text-xs">9 segments</span></button>)}</div>{!readyChapters.length && <p className="rounded-xl bg-red-100 p-3 text-sm font-black text-red-700">Complete and approve all 9 segments of at least one chapter.</p>}</div>
+    <div className="mt-5 space-y-4"><div><p className="mb-2 text-xs font-black uppercase">Chapters to publish *</p><div className="space-y-2">{readyChapters.map((chapter) => <button key={chapter.id} onClick={() => toggleChapter(chapter.id)} className={`flex w-full items-center gap-3 rounded-xl p-3 text-left font-black ${selectedIds.includes(chapter.id) ? 'bg-black text-yellow-400' : 'bg-white'}`}><span className="flex h-5 w-5 items-center justify-center rounded border">{selectedIds.includes(chapter.id) && <Check size={14} />}</span><span className="flex-1">Chapter {chapter.number} · {chapter.title}</span><span className="text-xs">9 segments</span></button>)}</div>{!readyChapters.length && <p className="rounded-xl bg-red-100 p-3 text-sm font-black text-red-700">Complete all 9 segments of at least one chapter.</p>}</div>
       <label><span className="mb-1 block text-xs font-black uppercase">Public title *</span><input value={title} onChange={(event) => setTitle(event.target.value)} className={input} /></label>
       <label><span className="mb-1 block text-xs font-black uppercase">Public author name *</span><input value={authorName} onChange={(event) => setAuthorName(event.target.value)} className={input} /></label>
       <div className="grid gap-3 sm:grid-cols-2"><label><span className="mb-1 block text-xs font-black uppercase">Class *</span><select value={dossierClass} onChange={(event) => setDossierClass(event.target.value)} className={input}>{['Story', 'Videos', 'Assets', 'Kits', 'Merchandise'].map((value) => <option key={value}>{value}</option>)}</select></label><label><span className="mb-1 block text-xs font-black uppercase">Category</span><select value={category} onChange={(event) => setCategory(event.target.value)} className={input}><option value="">Select category</option>{categories.map((value) => <option key={value}>{value}</option>)}</select></label></div>
