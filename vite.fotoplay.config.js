@@ -48,7 +48,29 @@ const narratorVoiceInTextTool = {
   },
 }
 
+const textReadingOrderControls = {
+  name: 'fotoplay-text-reading-order-controls',
+  enforce: 'post',
+  transform(code, id) {
+    const normalizedId = id?.replace(/\\/g, '/') || ''
+    if (!normalizedId.endsWith('/src/components/studio/AuthorProductionWorkspacePage.jsx')) return null
+    let next = code
+
+    next = next.replace(
+      "const deleteTextBox = (id) => change({ text_boxes: boxes.filter((box) => box.id !== id) });",
+      "const deleteTextBox = (id) => change({ text_boxes: boxes.filter((box) => box.id !== id).map((item, index) => ({ ...item, order: index + 1 })) });\n  const moveTextBoxOrder = (id, delta) => { const ordered = [...boxes].sort((a, b) => (Number(a.order) || boxes.indexOf(a) + 1) - (Number(b.order) || boxes.indexOf(b) + 1)); const index = ordered.findIndex((item) => item.id === id); const target = index + delta; if (index < 0 || target < 0 || target >= ordered.length) return; [ordered[index], ordered[target]] = [ordered[target], ordered[index]]; change({ text_boxes: ordered.map((item, orderIndex) => ({ ...item, order: orderIndex + 1 })), audio_stale: true, status: 'draft' }); };"
+    )
+
+    next = next.replace(
+      "<div className=\"flex items-center justify-between gap-2\"><p className=\"text-xs font-black uppercase text-[#23c7be]\">{box.type === 'dialogue' ? 'Dialogue' : 'Narration'} {index + 1}</p><button onClick={() => deleteTextBox(box.id)} className=\"flex items-center gap-1 bg-red-500/20 px-2 py-1 text-[10px] font-black text-red-200\"><Trash2 size={12} /> Delete block</button></div>",
+      "<div className=\"flex items-center justify-between gap-2\"><div className=\"flex items-center gap-2\"><span className=\"flex h-7 w-7 items-center justify-center bg-[#23c7be] text-[11px] font-black text-black\">{Number(box.order) || index + 1}</span><p className=\"text-xs font-black uppercase text-[#23c7be]\">{box.type === 'dialogue' ? 'Dialogue' : 'Narration'} {index + 1}</p></div><div className=\"flex items-center gap-1\"><button type=\"button\" title=\"Move earlier in reading order\" disabled={index === 0} onClick={() => moveTextBoxOrder(box.id, -1)} className=\"flex h-7 w-7 items-center justify-center border border-white/10 bg-[#242930] text-sm font-black text-white disabled:opacity-25\">↑</button><button type=\"button\" title=\"Move later in reading order\" disabled={index === boxes.length - 1} onClick={() => moveTextBoxOrder(box.id, 1)} className=\"flex h-7 w-7 items-center justify-center border border-white/10 bg-[#242930] text-sm font-black text-white disabled:opacity-25\">↓</button><button onClick={() => deleteTextBox(box.id)} className=\"ml-1 flex items-center gap-1 bg-red-500/20 px-2 py-1 text-[10px] font-black text-red-200\"><Trash2 size={12} /> Delete block</button></div></div>"
+    )
+
+    return next === code ? null : { code: next, map: null }
+  },
+}
+
 export default defineConfig({
   ...baseConfig,
-  plugins: [preserveFotoPlayTextMetadata, ...(baseConfig.plugins || []), narratorVoiceInTextTool],
+  plugins: [preserveFotoPlayTextMetadata, ...(baseConfig.plugins || []), narratorVoiceInTextTool, textReadingOrderControls],
 })
