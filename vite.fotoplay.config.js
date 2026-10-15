@@ -50,7 +50,7 @@ const narratorVoiceInTextTool = {
 
 const textReadingOrderControls = {
   name: 'fotoplay-text-reading-order-controls',
-  enforce: 'post',
+  enforce: 'pre',
   transform(code, id) {
     const normalizedId = id?.replace(/\\/g, '/') || ''
     if (!normalizedId.endsWith('/src/components/studio/AuthorProductionWorkspacePage.jsx')) return null
