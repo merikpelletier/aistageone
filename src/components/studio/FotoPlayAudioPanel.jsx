@@ -151,9 +151,23 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
     const voice = resolveVoice(box);
     if (!voice) throw new Error(`Choose a voice for line ${box.order}`);
     const response = await base44.functions.invoke('generateSpeech', { text: box.text, voice, language_code: resolveLanguage(box) });
-    const url = response?.data?.file_url;
+    const data = response?.data || {};
+    const url = data.file_url;
     if (!url) throw new Error(`No audio returned for line ${box.order}`);
-    return currentBoxes.map((item) => item.id === box.id ? { ...item, voice, audio_url: url, audio_source_text: item.text, audio_voice: voice, audio_language: resolveLanguage(item) } : item);
+    const creditCost = Number(data.credit_cost ?? 0);
+    const balanceAfter = Number(data.balance_after);
+    const nextBoxes = currentBoxes.map((item) => item.id === box.id ? {
+      ...item,
+      voice,
+      audio_url: url,
+      audio_source_text: item.text,
+      audio_voice: voice,
+      audio_language: resolveLanguage(item),
+      audio_credit_cost: Number.isFinite(creditCost) ? creditCost : 0,
+      audio_balance_after: Number.isFinite(balanceAfter) ? balanceAfter : null,
+      audio_generated_at: new Date().toISOString(),
+    } : item);
+    return { boxes: nextBoxes, creditCost: Number.isFinite(creditCost) ? creditCost : 0, balanceAfter: Number.isFinite(balanceAfter) ? balanceAfter : null };
   };
 
   const buildSegmentAudio = async (sourceBoxes, forceAll = false) => {
@@ -161,9 +175,14 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
     setBusy?.('audio-sequence');
     try {
       let next = orderBoxes(sourceBoxes);
+      let totalCharged = 0;
       for (const box of next) {
         const current = next.find((item) => item.id === box.id);
-        if (forceAll || lineNeedsGeneration(current)) next = await generateLine(current, next);
+        if (forceAll || lineNeedsGeneration(current)) {
+          const generated = await generateLine(current, next);
+          next = generated.boxes;
+          totalCharged += generated.creditCost;
+        }
       }
       const playable = next.filter((box) => box.text?.trim() && box.audio_url);
       const { file, timeline } = await combineToWav(playable);
@@ -171,7 +190,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
       const signature = JSON.stringify(next.map((box) => ({ id: box.id, order: box.order, text: box.text, voice: resolveVoice(box), language: resolveLanguage(box), pause: box.pause_after ?? 0.35 })));
       await onPersist({ text_boxes: next, narration_url: uploaded.file_url, audio_sequence: timeline, audio_source_text: signature, audio_voice: 'multi', audio_stale: false, status: 'draft' });
       onBoxesChange(next);
-      toast.success('FotoPlay audio sequence generated');
+      toast.success(totalCharged > 0 ? `FotoPlay audio sequence generated · ${totalCharged} credits charged` : 'FotoPlay audio sequence assembled · no new credits charged');
     } finally {
       setBusy?.('');
     }
@@ -213,6 +232,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
       const character = characters.find((item) => item.id === box.speaker_id);
       const voice = resolveVoice(box);
       const stale = lineNeedsGeneration(box);
+      const lineCost = Number(box.audio_credit_cost ?? 0);
       return <div key={box.id} className="space-y-3 border border-white/10 bg-[#181c21] p-3">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center bg-[#23c7be] text-xs font-black text-black">{index + 1}</div>
@@ -245,9 +265,27 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
           <input type="range" min="0" max="3" step="0.05" value={Number(box.pause_after ?? 0.35)} onChange={(e) => patchBox(box.id, { pause_after: Number(e.target.value) })} className="mt-2 w-full accent-[#23c7be]" />
         </label>
 
+        {box.audio_url && !stale && <div className="flex items-center justify-between border border-[#23c7be]/35 bg-[#23c7be]/10 px-3 py-2">
+          <span className="text-[11px] font-black text-[#23c7be]">✓ Generated · {lineCost} credit{lineCost === 1 ? '' : 's'}</span>
+          <button type="button" onClick={() => { dispatchActive(box.id); playUrl(box.audio_url).finally(() => dispatchActive('')); }} className="inline-flex items-center gap-1 text-[11px] font-black text-white"><Play size={12} /> Listen</button>
+        </div>}
+        {box.audio_url && stale && <div className="border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] font-black text-amber-200">Audio exists, but this line changed and needs regeneration.</div>}
+
         <div className="flex gap-2">
           {box.audio_url && <button type="button" onClick={() => { dispatchActive(box.id); playUrl(box.audio_url).finally(() => dispatchActive('')); }} className={`${action} flex-1 bg-[#242930]`}><Play size={13} /> Listen</button>}
-          <button type="button" disabled={busy === 'audio-sequence'} onClick={async () => { try { setBusy?.('audio-sequence'); const next = await generateLine(box, ordered); onBoxesChange(next); await onPersist({ text_boxes: next, audio_stale: true, status: 'draft' }); toast.success(`Line ${box.order} generated`); } catch (error) { toast.error(error.message || 'Line generation failed'); } finally { setBusy?.(''); } }} className={`${action} flex-1 bg-[#242930]`}>{stale ? <Volume2 size={13} /> : <RotateCcw size={13} />} {stale ? 'Generate line' : 'Regenerate line'}</button>
+          <button type="button" disabled={busy === 'audio-sequence'} onClick={async () => {
+            try {
+              setBusy?.('audio-sequence');
+              const generated = await generateLine(box, ordered);
+              onBoxesChange(generated.boxes);
+              await onPersist({ text_boxes: generated.boxes, audio_stale: true, status: 'draft' });
+              toast.success(`Line ${box.order} generated · ${generated.creditCost} credit${generated.creditCost === 1 ? '' : 's'} charged`);
+            } catch (error) {
+              toast.error(error.message || 'Line generation failed');
+            } finally {
+              setBusy?.('');
+            }
+          }} className={`${action} flex-1 bg-[#242930]`}>{stale ? <Volume2 size={13} /> : <RotateCcw size={13} />} {stale ? 'Generate line' : 'Regenerate line'}</button>
         </div>
       </div>;
     })}
