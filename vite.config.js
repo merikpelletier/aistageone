@@ -18,6 +18,49 @@ const fotoPlayPageWorkspace = {
   },
   transform(code, id) {
     const normalizedId = id?.replace(/\\/g, '/') || ''
+
+    // Story / cast setup: a character owns a persistent default voice.
+    if (normalizedId.endsWith('/src/components/studio/AuthorStoryBlocks.jsx')) {
+      let next = code
+      next = next.replace(
+        "import ProjectCreditsFields from './ProjectCreditsFields';",
+        "import ProjectCreditsFields from './ProjectCreditsFields';\nimport { VOICE_NAMES } from '@/lib/voiceCatalog';"
+      )
+      next = next.replace(
+        "useState({ name: '', description: '', image_url: '', image_source: '', image_source_id: null, reference_images: [] })",
+        "useState({ name: '', description: '', image_url: '', image_source: '', image_source_id: null, reference_images: [], voice: '' })"
+      )
+      next = next.replace(
+        "const emptyAssetDraft = () => ({ name: '', description: '', image_url: '', image_source: '', image_source_id: null, reference_images: [] });",
+        "const emptyAssetDraft = () => ({ name: '', description: '', image_url: '', image_source: '', image_source_id: null, reference_images: [], voice: '' });"
+      )
+      next = next.replace(
+        "const values = { name: draft.name.trim(), description: draft.description.trim(), image_url: draft.image_url, image_source: draft.image_source || null, image_source_id: draft.image_source_id || null, reference_images: Array.isArray(draft.reference_images) ? draft.reference_images : [] };",
+        "const values = { name: draft.name.trim(), description: draft.description.trim(), image_url: draft.image_url, image_source: draft.image_source || null, image_source_id: draft.image_source_id || null, reference_images: Array.isArray(draft.reference_images) ? draft.reference_images : [], ...(kind === 'character' ? { voice: draft.voice || '' } : {}) };"
+      )
+      next = next.replace(
+        "const draft = { name: item.name || '', description: item.description || '', image_url: item.image_url || '', image_source: item.image_source || '', image_source_id: item.image_source_id || null, reference_images: Array.isArray(item.reference_images) ? item.reference_images : [] };",
+        "const draft = { name: item.name || '', description: item.description || '', image_url: item.image_url || '', image_source: item.image_source || '', image_source_id: item.image_source_id || null, reference_images: Array.isArray(item.reference_images) ? item.reference_images : [], voice: item.voice || item.voice_id || item.tts_voice || '' };"
+      )
+      next = next.replace(
+        '<AssetBuilder title="Characters" icon={UserRound}',
+        '<AssetBuilder title="Characters" icon={UserRound} supportsVoice'
+      )
+      next = next.replace(
+        "function AssetBuilder({ title, icon: Icon, items, draft, setDraft, editingId, onAdd, onEdit, onCancelEdit, onRemove, onVault, library, onSelectImage, selected }) {",
+        "function AssetBuilder({ title, icon: Icon, items, draft, setDraft, editingId, onAdd, onEdit, onCancelEdit, onRemove, onVault, library, onSelectImage, selected, supportsVoice = false }) {"
+      )
+      next = next.replace(
+        "<p className=\"text-xs font-semibold text-white/50\">{item.source === 'olo_shop' ? 'OLO Shop selection' : item.source === 'story_pack' ? `Story Pack · ${item.source_pack_title || 'Imported'}` : 'Author asset'}</p>",
+        "<p className=\"text-xs font-semibold text-white/50\">{item.source === 'olo_shop' ? 'OLO Shop selection' : item.source === 'story_pack' ? `Story Pack · ${item.source_pack_title || 'Imported'}` : 'Author asset'}{supportsVoice && item.voice ? ` · Voice: ${item.voice}` : ''}</p>"
+      )
+      next = next.replace(
+        '<textarea className="w-full rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-black" rows={2} placeholder="Description" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />',
+        '<textarea className="w-full rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-black" rows={2} placeholder="Description" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />{supportsVoice && <div className="grid grid-cols-[1fr_auto] gap-2"><select value={draft.voice || \'\'} onChange={(e) => setDraft({ ...draft, voice: e.target.value })} className="w-full rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-black"><option value="">Choose character voice</option>{VOICE_NAMES.map((voice) => <option key={voice} value={voice}>{voice}</option>)}</select><button type="button" disabled={!draft.voice} onClick={async () => { try { const response = await base44.functions.invoke(\'generateSpeech\', { voice: draft.voice, preview: true }); const url = response?.data?.file_url; if (!url) throw new Error(\'Voice preview unavailable\'); await new Audio(url).play(); } catch (error) { toast.error(error.message || \'Unable to preview voice\'); } }} className="rounded-xl border border-yellow-400/40 bg-yellow-400 px-3 py-2.5 text-xs font-black text-black disabled:opacity-35">Listen</button></div>}'
+      )
+      return next === code ? null : { code: next, map: null }
+    }
+
     if (!normalizedId.endsWith('/src/components/studio/AuthorProductionWorkspacePage.jsx')) return null
 
     let next = code
@@ -125,6 +168,13 @@ const fotoPlayPageWorkspace = {
       "onChange={(event) => { const count = Number(event.target.value); change({ visual_format: count === 1 ? 'single' : 'comic', comic_panel_count: count, comic_panels: count === 1 && !segment.comic_panels?.length ? [{ id: 'panel-1', beat: '', shot: segment.image_type || 'Wide shot', prompt: segment.image_source_instruction || segment.image_instruction || '', image_url: segment.text_overlay_source_url || segment.image_url || '', source_prompt: segment.image_source_instruction || '' }] : segment.comic_panels, comic_page_source: '' }); }}"
     )
 
+    // Speaker is chosen while editing the text block; Voice & Audio then inherits
+    // the permanent voice assigned to that character in Story / cast.
+    next = next.replace(
+      "{box.type === 'dialogue' && <div className=\"space-y-3 border-t border-white/10 pt-3\"><div><p className=\"mb-2 text-[10px] font-black uppercase text-white/50\">Pointer side</p>",
+      "{box.type === 'dialogue' && <div className=\"space-y-3 border-t border-white/10 pt-3\"><label className=\"block text-[10px] font-black uppercase text-white/50\">Character / speaker<select value={box.speaker_id || ''} onChange={(e) => updateTextBox(box.id, { speaker_id: e.target.value, voice: '' })} className={`${dark} mt-1`}><option className=\"text-black\" value=\"\">Choose character</option>{project.characters.map((character) => <option key={character.id} value={character.id} className=\"text-black\">{character.name}{character.voice ? ` · ${character.voice}` : ' · no voice assigned'}</option>)}</select></label>{box.speaker_id && <p className=\"text-[10px] font-semibold text-[#23c7be]\">Voice inherited: {project.characters.find((character) => character.id === box.speaker_id)?.voice || 'No character voice assigned yet'}</p>}<div><p className=\"mb-2 text-[10px] font-black uppercase text-white/50\">Pointer side</p>"
+    )
+
     // Show which sequence master is active directly in the selected-frame tool,
     // including clear/replace controls instead of making the user guess.
     next = next.replace(
@@ -141,7 +191,7 @@ const fotoPlayPageWorkspace = {
     // reading order, per-line speaker/voice, pauses and synchronized playback.
     next = next.replace(
       "{tool === 'voice' && <><VoicePicker value={segment.narrator_voice || ''} onChange={(value) => change({ narrator_voice: value, audio_stale: Boolean(segment.narration_url) })} language={segment.narrator_language || project.production_settings?.narrator_language || 'en'} onLanguageChange={(value) => change({ narrator_language: value, audio_stale: Boolean(segment.narration_url) })} disabled={Boolean(busy)} />{segment.narration_url && <audio controls src={segment.narration_url} className=\"w-full\" />}<button onClick={generateAudio} disabled={busy === 'audio'} className={`${action} w-full bg-[#23c7be] text-black`}><Volume2 size={14} /> {segment.narration_url ? 'Regenerate' : 'Generate'} audio · {pricing.tts ?? '—'}</button></>}",
-      "{tool === 'voice' && <FotoPlayAudioPanel boxes={boxes} characters={characters} segment={segment} project={project} pricing={pricing} busy={busy} setBusy={setBusy} onBoxesChange={(nextBoxes) => change({ text_boxes: nextBoxes, audio_stale: true, status: 'draft' })} onPersist={persist} />}"
+      "{tool === 'voice' && <FotoPlayAudioPanel boxes={boxes} characters={project.characters} segment={segment} project={project} pricing={pricing} busy={busy} setBusy={setBusy} onBoxesChange={(nextBoxes) => change({ text_boxes: nextBoxes, audio_stale: true, status: 'draft' })} onPersist={persist} />}"
     )
 
     next = next.replace(
