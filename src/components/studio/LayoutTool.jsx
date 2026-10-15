@@ -3,6 +3,8 @@ import { ArrowLeft, Check, Download, Image as ImageIcon, LayoutTemplate, Loader2
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import AtelierAssetPicker from '@/components/atelier/AtelierAssetPicker';
+import Catalog from '@/pages/Catalog';
+import AssetDetail from '@/pages/AssetDetail';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
@@ -99,6 +101,8 @@ export default function LayoutTool({ user, onClose }) {
   const [selectedUrl, setSelectedUrl] = useState('');
   const [showVault, setShowVault] = useState(false);
   const [pickerTarget, setPickerTarget] = useState('source');
+  const [showAssetsShop, setShowAssetsShop] = useState(false);
+  const [shopAssetId, setShopAssetId] = useState(null);
   const [uploadTarget, setUploadTarget] = useState('source');
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -174,8 +178,8 @@ export default function LayoutTool({ user, onClose }) {
   };
 
   const openAssetsShop = () => {
-    const shop = window.open('/Catalog', '_blank', 'noopener,noreferrer');
-    if (!shop) window.location.assign('/Catalog');
+    setShopAssetId(null);
+    setShowAssetsShop(true);
   };
 
   const generate = async () => {
@@ -230,6 +234,21 @@ export default function LayoutTool({ user, onClose }) {
       link.href = href; link.download = `${fileName}.png`; link.click(); URL.revokeObjectURL(href);
     } catch { window.open(selectedUrl, '_blank', 'noopener,noreferrer'); toast.info('Open the image to save it'); }
   };
+
+  if (showAssetsShop) {
+    return <div className="min-h-screen bg-[#202328] text-white lg:h-[calc(100vh-3.5rem)] lg:min-h-0 lg:overflow-hidden">
+      <header className="flex items-center gap-3 border-b border-white/10 bg-[#16181b] px-5 py-4 lg:px-8">
+        <button type="button" onClick={() => { setShopAssetId(null); setShowAssetsShop(false); }} className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/65 transition hover:bg-white/10 hover:text-white"><ArrowLeft size={19} /></button>
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[.24em] text-[#23c7be]">Layout</p>
+          <h1 className="text-2xl font-black tracking-tight">Assets Shop</h1>
+        </div>
+      </header>
+      {shopAssetId
+        ? <AssetDetail assetId={shopAssetId} embedded onBack={() => setShopAssetId(null)} />
+        : <Catalog embedded onOpenAsset={setShopAssetId} />}
+    </div>;
+  }
 
   return <div className="min-h-screen bg-[#202328] px-5 pb-24 pt-6 text-white lg:h-[calc(100vh-3.5rem)] lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-8">
     <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleUploadFiles} />
