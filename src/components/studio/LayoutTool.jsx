@@ -1,5 +1,16 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowLeft, Check, Download, Image as ImageIcon, LayoutTemplate, Loader2, Save, Sparkles } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  ArrowLeft,
+  Check,
+  Download,
+  Image as ImageIcon,
+  LayoutTemplate,
+  Loader2,
+  Save,
+  Sparkles,
+  Store,
+  Upload,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import AtelierAssetPicker from '@/components/atelier/AtelierAssetPicker';
@@ -12,15 +23,21 @@ const PURPOSES = [
   { id: 'spread', label: 'Double page' },
   { id: 'image', label: 'Image' },
 ];
+
 const IMAGE_MODES = [
   { id: 'prompt', label: 'Prompt only' },
   { id: 'combine', label: 'Combine images' },
 ];
+
 const FORMATS = [
-  { id: '2:3', label: '2:3' }, { id: '3:4', label: '3:4' },
-  { id: '9:16', label: '9:16' }, { id: '16:9', label: '16:9' },
+  { id: '2:3', label: '2:3' },
+  { id: '3:4', label: '3:4' },
+  { id: '9:16', label: '9:16' },
+  { id: '16:9', label: '16:9' },
   { id: '1:1', label: '1:1' },
 ];
+
+const ALLOWED_UPLOAD_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 function buildPrompt({ purpose, format, exactText, direction, hasSource, imageMode, imageCount, revision }) {
   if (purpose === 'image') {
@@ -67,21 +84,32 @@ export default function LayoutTool({ user, onClose }) {
   const [revision, setRevision] = useState('');
   const [versions, setVersions] = useState([]);
   const [selectedUrl, setSelectedUrl] = useState('');
-  const [showVault, setShowVault] = useState(false);
+  const [vaultTarget, setVaultTarget] = useState(null);
+  const [uploadTarget, setUploadTarget] = useState('source');
+  const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
+  const fileInputRef = useRef(null);
+
   const prompt = useMemo(() => buildPrompt({
-    purpose, format, exactText, direction, hasSource: sourceUrls.length > 0,
-    imageMode, imageCount: imageSources.length, revision,
+    purpose,
+    format,
+    exactText,
+    direction,
+    hasSource: sourceUrls.length > 0,
+    imageMode,
+    imageCount: imageSources.length,
+    revision,
   }), [purpose, format, exactText, direction, sourceUrls.length, imageMode, imageSources.length, revision]);
+
   const pricingInput = { aspect_ratio: format, prompt };
   const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
     service: 'replicateGenerate:compose_scene',
     kind: 'image',
     input: pricingInput,
   });
-  const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const effectiveModel = selectedModel || modelOptions.find((model) => model.recommended)?.model_key || modelOptions[0]?.model_key || null;
   const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({
     service: 'replicateGenerate:compose_scene',
     kind: 'image',
@@ -89,10 +117,80 @@ export default function LayoutTool({ user, onClose }) {
     modelKey: effectiveModel,
   });
 
+  const addSourceUrl = (url, target = 'source') => {
+    if (!url) return;
+    if (target === 'combine') {
+      setImageSources((current) => [...new Set([...current, url])].slice(0, 3));
+      return;
+    }
+    setSourceUrls((current) => [...new Set([...current, url])].slice(0, 4));
+  };
+
+  const startUpload = (target) => {
+    setUploadTarget(target);
+    fileInputRef.current?.click();
+  };
+
+  const handleUploadFiles = async (event) => {
+    const picked = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!picked.length) return;
+
+    const invalid = picked.find((file) => !ALLOWED_UPLOAD_TYPES.includes(file.type));
+    if (invalid) {
+      toast.error('Choose JPG, PNG or WEBP images');
+      return;
+    }
+
+    const currentCount = uploadTarget === 'combine' ? imageSources.length : sourceUrls.length;
+    const maxCount = uploadTarget === 'combine' ? 3 : 4;
+    const available = Math.max(0, maxCount - currentCount);
+    if (!available) {
+      toast.error(`Maximum ${maxCount} source images`);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const selected = picked.slice(0, available);
+      const uploaded = [];
+      for (const file of selected) {
+        const result = await base44.integrations.Core.UploadFile({ file, saveToVault: false });
+        if (result?.file_url) uploaded.push(result.file_url);
+      }
+      if (!uploaded.length) throw new Error('Upload did not return an image URL');
+      if (uploadTarget === 'combine') {
+        setImageSources((current) => [...new Set([...current, ...uploaded])].slice(0, 3));
+      } else {
+        setSourceUrls((current) => [...new Set([...current, ...uploaded])].slice(0, 4));
+      }
+      toast.success(uploaded.length === 1 ? 'Image uploaded' : `${uploaded.length} images uploaded`);
+    } catch (error) {
+      toast.error(error?.message || 'Unable to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const openAssetsShop = () => {
+    const shop = window.open('/Catalog', '_blank', 'noopener,noreferrer');
+    if (!shop) window.location.assign('/Catalog');
+  };
+
   const generate = async () => {
-    if (purpose === 'image' && imageMode === 'prompt' && !direction.trim()) { toast.error('Describe the image to create'); return; }
-    if (purpose === 'image' && imageMode === 'combine' && imageSources.length < 2) { toast.error('Choose at least 2 images to combine'); return; }
-    if (purpose !== 'image' && sourceUrls.length === 0 && !direction.trim()) { toast.error('Choose an image or describe the art direction'); return; }
+    if (purpose === 'image' && imageMode === 'prompt' && !direction.trim()) {
+      toast.error('Describe the image to create');
+      return;
+    }
+    if (purpose === 'image' && imageMode === 'combine' && imageSources.length < 2) {
+      toast.error('Choose at least 2 images to combine');
+      return;
+    }
+    if (purpose !== 'image' && sourceUrls.length === 0 && !direction.trim()) {
+      toast.error('Choose an image or describe the art direction');
+      return;
+    }
+
     setGenerating(true);
     try {
       const references = purpose === 'image'
@@ -100,95 +198,308 @@ export default function LayoutTool({ user, onClose }) {
           ? [...new Set([...(revision.trim() ? [selectedUrl] : []), ...imageSources].filter(Boolean))].slice(0, 3)
           : [...new Set(revision.trim() ? [selectedUrl].filter(Boolean) : [])]
         : [...new Set([selectedUrl, ...sourceUrls].filter(Boolean))].slice(0, 4);
+
       const response = await base44.functions.invoke('replicateGenerate', {
-        method: 'compose_scene', prompt,
+        method: 'compose_scene',
+        prompt,
         reference_image_urls: references.length ? references : undefined,
         aspect_ratio: format,
         model_key: effectiveModel || undefined,
       });
       const url = response?.data?.file_url;
       if (!url) throw new Error(response?.data?.error || response?.data?.message || 'Generation failed');
+
       const version = { id: crypto.randomUUID(), url, prompt };
       setVersions((current) => [version, ...current]);
-      setSelectedUrl(url); setRevision(''); toast.success(purpose === 'image' ? 'Image generated' : 'Layout generated');
-    } catch (error) { toast.error(error?.message || 'Generation failed'); }
-    finally { setGenerating(false); }
+      setSelectedUrl(url);
+      setRevision('');
+      toast.success(purpose === 'image' ? 'Image generated' : 'Layout generated');
+    } catch (error) {
+      toast.error(error?.message || 'Generation failed');
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const saveToVault = async () => {
-    if (!selectedUrl) return; setSaving(true);
+    if (!selectedUrl) return;
+    setSaving(true);
     try {
       await base44.entities.VaultAsset.create({
-        user_email: user?.email || '', url: selectedUrl, media_type: 'image',
-        name: purpose === 'image' ? (direction.trim().slice(0, 60) || 'Generated image') : (exactText.trim().split('\n')[0]?.slice(0, 60) || `Layout ${purpose}`),
-        tags: ['ai-generated', purpose === 'image' ? 'image' : 'layout', purpose], asset_category: 'reference',
+        user_email: user?.email || '',
+        url: selectedUrl,
+        media_type: 'image',
+        name: purpose === 'image'
+          ? (direction.trim().slice(0, 60) || 'Generated image')
+          : (exactText.trim().split('\n')[0]?.slice(0, 60) || `Layout ${purpose}`),
+        tags: ['ai-generated', purpose === 'image' ? 'image' : 'layout', purpose],
+        asset_category: 'reference',
         aspect_ratio: format.replace(':', ''),
       });
       toast.success('Layout saved to your Vault');
-    } catch (error) { toast.error(error?.message || 'Unable to save to Vault'); }
-    finally { setSaving(false); }
+    } catch (error) {
+      toast.error(error?.message || 'Unable to save to Vault');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const download = async () => {
     if (!selectedUrl) return;
     try {
-      const response = await fetch(selectedUrl); if (!response.ok) throw new Error();
-      const href = URL.createObjectURL(await response.blob()); const link = document.createElement('a');
-      const fileName = purpose === 'image' ? 'image' : (exactText.trim().split('\n')[0]?.replace(/[^a-z0-9]+/gi, '_') || 'layout');
-      link.href = href; link.download = `${fileName}.png`; link.click(); URL.revokeObjectURL(href);
-    } catch { window.open(selectedUrl, '_blank', 'noopener,noreferrer'); toast.info('Open the image to save it'); }
+      const response = await fetch(selectedUrl);
+      if (!response.ok) throw new Error();
+      const href = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      const fileName = purpose === 'image'
+        ? 'image'
+        : (exactText.trim().split('\n')[0]?.replace(/[^a-z0-9]+/gi, '_') || 'layout');
+      link.href = href;
+      link.download = `${fileName}.png`;
+      link.click();
+      URL.revokeObjectURL(href);
+    } catch {
+      window.open(selectedUrl, '_blank', 'noopener,noreferrer');
+      toast.info('Open the image to save it');
+    }
   };
 
-  return <div className="min-h-screen bg-[#202328] px-5 pb-24 pt-6 text-white lg:h-[calc(100vh-3.5rem)] lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-8">
-    <header className="mx-auto mb-5 flex max-w-[1500px] items-center gap-3 border-b border-white/10 pb-5">
-      <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/65 transition hover:bg-white/10 hover:text-white"><ArrowLeft size={19} /></button>
-      <div>
-        <p className="text-[9px] font-black uppercase tracking-[.24em] text-[#23c7be]">AI Production Tool</p>
-        <h1 className="text-3xl font-black tracking-tight lg:text-4xl">Layout</h1>
-      </div>
-    </header>
+  const sourceTarget = purpose === 'image' && imageMode === 'combine' ? 'combine' : 'source';
+  const sourceList = sourceTarget === 'combine' ? imageSources : sourceUrls;
+  const maxSources = sourceTarget === 'combine' ? 3 : 4;
 
-    <div className="mx-auto grid max-w-[1500px] gap-5 xl:grid-cols-[430px_minmax(0,1fr)]">
-      <section className="space-y-5 rounded-[4px] border border-white/10 bg-[#16181b] p-5 lg:p-6">
+  return (
+    <div className="min-h-screen bg-[#202328] px-5 pb-24 pt-6 text-white lg:h-[calc(100vh-3.5rem)] lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-8">
+      <header className="mx-auto mb-5 flex max-w-[1500px] items-center gap-3 border-b border-white/10 pb-5">
+        <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/65 transition hover:bg-white/10 hover:text-white">
+          <ArrowLeft size={19} />
+        </button>
         <div>
-          <Label>AI Model</Label>
-          <select value={effectiveModel || ''} onChange={(e) => setSelectedModel(e.target.value || null)} disabled={modelsLoading || modelOptions.length === 0} className="w-full rounded-[3px] border border-white/10 bg-[#26292d] px-3 py-3 text-sm font-bold text-white outline-none transition focus:border-[#23c7be]/60 disabled:opacity-50">
-            {modelsLoading && <option value="">Loading models…</option>}
-            {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
-            {modelOptions.map((m) => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}
-          </select>
+          <p className="text-[9px] font-black uppercase tracking-[.24em] text-[#23c7be]">AI Production Tool</p>
+          <h1 className="text-3xl font-black tracking-tight lg:text-4xl">Layout</h1>
         </div>
+      </header>
 
-        <Picker title="Usage" items={PURPOSES} value={purpose} onChange={setPurpose} columns="grid-cols-2 sm:grid-cols-4" />
-        <Picker title="Format" items={FORMATS} value={format} onChange={setFormat} columns="grid-cols-5" />
+      <div className="mx-auto grid max-w-[1500px] gap-5 xl:grid-cols-[430px_minmax(0,1fr)]">
+        <section className="space-y-5 rounded-[4px] border border-white/10 bg-[#16181b] p-5 lg:p-6">
+          <div>
+            <Label>AI Model</Label>
+            <select
+              value={effectiveModel || ''}
+              onChange={(event) => setSelectedModel(event.target.value || null)}
+              disabled={modelsLoading || modelOptions.length === 0}
+              className="w-full rounded-[3px] border border-white/10 bg-[#26292d] px-3 py-3 text-sm font-bold text-white outline-none transition focus:border-[#23c7be]/60 disabled:opacity-50"
+            >
+              {modelsLoading && <option value="">Loading models…</option>}
+              {!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}
+              {modelOptions.map((model) => (
+                <option key={model.model_key} value={model.model_key}>
+                  {model.name || model.model_key}{model.recommended ? ' — Recommended' : ''}{model.credits ? ` — ${model.credits} credits` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {purpose === 'image' ? <>
-          <Picker title="Image creation" items={IMAGE_MODES} value={imageMode} onChange={setImageMode} columns="grid-cols-2" />
-          {imageMode === 'combine' && <div><Label>Images to combine · 2 to 3</Label><div className="grid grid-cols-3 gap-2">{imageSources.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setImageSources((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}{imageSources.length < 3 && <button onClick={() => setShowVault(true)} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button>}</div></div>}
-        </> : <div><Label>Source images</Label><div className="grid grid-cols-3 gap-2">{sourceUrls.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setSourceUrls((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}<button onClick={() => setShowVault(true)} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button></div></div>}
+          <Picker title="Usage" items={PURPOSES} value={purpose} onChange={setPurpose} columns="grid-cols-2 sm:grid-cols-4" />
+          <Picker title="Format" items={FORMATS} value={format} onChange={setFormat} columns="grid-cols-5" />
 
-        {purpose !== 'image' && <div><Label>Exact text</Label><textarea value={exactText} onChange={(event) => setExactText(event.target.value)} rows={3} placeholder="Write the exact words and line breaks" className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60" /></div>}
-        <div><Label>{purpose === 'image' ? 'Image prompt' : 'Art direction'}</Label><textarea value={direction} onChange={(event) => setDirection(event.target.value)} rows={5} placeholder={purpose === 'image' ? 'Describe the image to create, its subjects, setting, style, light and composition' : 'Describe the visual world, materials, lettering character, light and composition'} className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60" /></div>
-        {selectedUrl && <div><Label>Change this version</Label><textarea value={revision} onChange={(event) => setRevision(event.target.value)} rows={2} placeholder="Describe only what must change" className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60" /></div>}
+          {purpose === 'image' && (
+            <Picker title="Image creation" items={IMAGE_MODES} value={imageMode} onChange={setImageMode} columns="grid-cols-2" />
+          )}
 
-        <button onClick={generate} disabled={generating} className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:opacity-50">{generating ? <><Loader2 className="animate-spin" size={18} /> Generating…</> : <><Sparkles size={18} /> {selectedUrl ? 'Generate a new version' : purpose === 'image' ? 'Generate image' : 'Generate layout'}{priceLoading ? ' · calculating…' : priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}</>}</button>
-      </section>
+          {(purpose !== 'image' || imageMode === 'combine') && (
+            <div>
+              <Label>{sourceTarget === 'combine' ? 'Images to combine · 2 to 3' : 'Source images'}</Label>
 
-      <section className="min-h-[600px] rounded-[4px] border border-white/10 bg-[#16181b] p-5 lg:p-6">
-        {selectedUrl ? <>
-          <div className="flex min-h-[480px] items-center justify-center rounded-[3px] border border-white/[0.06] bg-[#101214] p-4"><img src={selectedUrl} alt={purpose === 'image' ? 'Selected image' : 'Selected layout'} className="max-h-[760px] max-w-full object-contain shadow-2xl" /></div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={saveToVault} disabled={saving} className="flex items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3 text-sm font-black text-[#071211]">{saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} Save to Vault</button><button onClick={download} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-3 text-sm font-black text-white hover:bg-white/10"><Download size={16} /> Download PNG</button></div>
-        </> : <div className="flex min-h-[560px] flex-col items-center justify-center text-center text-white/30"><div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.03]"><LayoutTemplate size={27} /></div><p className="text-lg font-black text-white/65">Your finished {purpose === 'image' ? 'image' : 'layout'} will appear here</p>{purpose !== 'image' && <p className="mt-2 max-w-sm text-sm font-medium text-white/35">The result is a flattened AI composition, not a conventional text layer.</p>}</div>}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                multiple
+                className="hidden"
+                onChange={handleUploadFiles}
+              />
 
-        {versions.length > 1 && <div className="mt-6"><Label>Versions</Label><div className="grid grid-cols-4 gap-2 sm:grid-cols-6">{versions.map((version) => <button key={version.id} onClick={() => setSelectedUrl(version.url)} className={`relative aspect-square overflow-hidden rounded-[3px] border ${selectedUrl === version.url ? 'border-[#23c7be]' : 'border-white/10'}`}><img src={version.url} alt="" className="h-full w-full object-cover" />{selectedUrl === version.url && <span className="absolute right-1 top-1 rounded-[3px] bg-[#23c7be] p-1 text-[#071211]"><Check size={10} /></span>}</button>)}</div></div>}
-      </section>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => startUpload(sourceTarget)}
+                  disabled={uploading || sourceList.length >= maxSources}
+                  className="flex min-h-14 items-center justify-center gap-2 rounded-[3px] border border-[#23c7be]/45 bg-[#23c7be]/10 px-3 py-3 text-sm font-black text-[#23c7be] transition hover:bg-[#23c7be]/15 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {uploading ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />}
+                  {uploading ? 'Uploading…' : 'Upload'}
+                </button>
+                <button
+                  type="button"
+                  onClick={openAssetsShop}
+                  className="flex min-h-14 items-center justify-center gap-2 rounded-[3px] border border-white/15 bg-white/[0.04] px-3 py-3 text-sm font-black text-white transition hover:border-[#23c7be]/50 hover:text-[#23c7be]"
+                >
+                  <Store size={17} /> Assets Shop
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setVaultTarget(sourceTarget)}
+                disabled={sourceList.length >= maxSources}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.025] px-3 py-2.5 text-xs font-black text-white/65 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
+              >
+                <ImageIcon size={15} /> Pick from Vault
+              </button>
+
+              {sourceList.length > 0 && (
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {sourceList.map((url, index) => (
+                    <div key={`${url}-${index}`} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5">
+                      <img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (sourceTarget === 'combine') setImageSources((current) => current.filter((item) => item !== url));
+                          else setSourceUrls((current) => current.filter((item) => item !== url));
+                        }}
+                        className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {purpose !== 'image' && (
+            <div>
+              <Label>Exact text</Label>
+              <textarea
+                value={exactText}
+                onChange={(event) => setExactText(event.target.value)}
+                rows={3}
+                placeholder="Write the exact words and line breaks"
+                className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60"
+              />
+            </div>
+          )}
+
+          <div>
+            <Label>{purpose === 'image' ? 'Image prompt' : 'Art direction'}</Label>
+            <textarea
+              value={direction}
+              onChange={(event) => setDirection(event.target.value)}
+              rows={5}
+              placeholder={purpose === 'image'
+                ? 'Describe the image to create, its subjects, setting, style, light and composition'
+                : 'Describe the visual world, materials, lettering character, light and composition'}
+              className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60"
+            />
+          </div>
+
+          {selectedUrl && (
+            <div>
+              <Label>Change this version</Label>
+              <textarea
+                value={revision}
+                onChange={(event) => setRevision(event.target.value)}
+                rows={2}
+                placeholder="Describe only what must change"
+                className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60"
+              />
+            </div>
+          )}
+
+          <button
+            onClick={generate}
+            disabled={generating}
+            className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:opacity-50"
+          >
+            {generating ? (
+              <><Loader2 className="animate-spin" size={18} /> Generating…</>
+            ) : (
+              <><Sparkles size={18} /> {selectedUrl ? 'Generate a new version' : purpose === 'image' ? 'Generate image' : 'Generate layout'}{priceLoading ? ' · calculating…' : priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}</>
+            )}
+          </button>
+        </section>
+
+        <section className="min-h-[600px] rounded-[4px] border border-white/10 bg-[#16181b] p-5 lg:p-6">
+          {selectedUrl ? (
+            <>
+              <div className="flex min-h-[480px] items-center justify-center rounded-[3px] border border-white/[0.06] bg-[#101214] p-4">
+                <img src={selectedUrl} alt={purpose === 'image' ? 'Selected image' : 'Selected layout'} className="max-h-[760px] max-w-full object-contain shadow-2xl" />
+              </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <button onClick={saveToVault} disabled={saving} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black transition hover:bg-white/[0.08] disabled:opacity-50">
+                  {saving ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}
+                  Save to Vault
+                </button>
+                <button onClick={download} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black transition hover:bg-white/[0.08]">
+                  <Download size={17} /> Download
+                </button>
+              </div>
+
+              {versions.length > 1 && (
+                <div className="mt-5">
+                  <Label>Versions</Label>
+                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 lg:grid-cols-6">
+                    {versions.map((version) => (
+                      <button
+                        key={version.id}
+                        type="button"
+                        onClick={() => setSelectedUrl(version.url)}
+                        className={`relative aspect-square overflow-hidden rounded-[3px] border-2 bg-black ${selectedUrl === version.url ? 'border-[#23c7be]' : 'border-white/10 hover:border-white/30'}`}
+                      >
+                        <img src={version.url} alt="" className="h-full w-full object-cover" />
+                        {selectedUrl === version.url && <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#23c7be] text-black"><Check size={13} /></span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex min-h-[560px] flex-col items-center justify-center text-center text-white/35">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-[4px] border border-white/10 bg-white/[0.03]">
+                <LayoutTemplate size={28} />
+              </div>
+              <h2 className="text-xl font-black text-white/75">Your finished layout will appear here</h2>
+              <p className="mt-3 max-w-md text-sm font-semibold leading-relaxed">The result is a flattened AI composition, not a conventional text layer.</p>
+            </div>
+          )}
+        </section>
+      </div>
+
+      {vaultTarget && (
+        <AtelierAssetPicker
+          userEmail={user?.email || ''}
+          onSelect={(url) => addSourceUrl(url, vaultTarget)}
+          onClose={() => setVaultTarget(null)}
+        />
+      )}
     </div>
-
-    {showVault && <AtelierAssetPicker userEmail={user?.email} onSelect={(url) => { if (purpose === 'image' && imageMode === 'combine') setImageSources((current) => [...new Set([...current, url])].slice(0, 3)); else setSourceUrls((current) => [...new Set([...current, url])]); setShowVault(false); }} onClose={() => setShowVault(false)} />}
-  </div>;
+  );
 }
 
-function Label({ children }) { return <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/45">{children}</p>; }
+function Label({ children }) {
+  return <div className="mb-2 text-[11px] font-black uppercase tracking-[.15em] text-white/55">{children}</div>;
+}
+
 function Picker({ title, items, value, onChange, columns }) {
-  return <div><Label>{title}</Label><div className={`grid gap-2 ${columns}`}>{items.map((item) => <button key={item.id} onClick={() => onChange(item.id)} className={`rounded-[3px] border px-2 py-3 text-xs font-black transition ${value === item.id ? 'border-[#23c7be] bg-[#23c7be] text-[#071211]' : 'border-white/10 bg-white/[0.04] text-white hover:bg-white/10'}`}>{item.label}</button>)}</div></div>;
+  return (
+    <div>
+      <Label>{title}</Label>
+      <div className={`grid ${columns} gap-2`}>
+        {items.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onChange(item.id)}
+            className={`min-h-12 rounded-[3px] border px-2 py-2.5 text-xs font-black transition ${value === item.id ? 'border-[#23c7be] bg-[#23c7be] text-[#071211]' : 'border-white/10 bg-[#24272b] text-white hover:border-white/25'}`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
