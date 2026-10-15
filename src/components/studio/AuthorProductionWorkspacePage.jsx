@@ -3,16 +3,16 @@ import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import { toast } from 'sonner';
 import {
-  ArrowLeft, Check, Clock3, Eye, Image as ImageIcon, Loader2, MapPin,
-  MessageSquareText, Mic2, PanelLeft, Play, Save, Sparkles, Store, Type, Upload,
-  UserRound, Users, Volume2, Wand2, X, FolderOpen, Settings2,
+  ArrowLeft, Check, Clock3, Download, ExternalLink, Eye, Image as ImageIcon, Loader2, MapPin,
+  MessageSquareText, Mic2, PanelLeft, Play, Rocket, Save, Sparkles, Store, Type, Upload,
+  UserRound, Users, Volume2, Wand2, X, FolderOpen,
   Film, Trash2, RotateCcw,
 } from 'lucide-react';
-import LegacyAuthorProductionWorkspace from './AuthorProductionWorkspace';
 import VoicePicker from './VoicePicker';
 import VaultPickerModal from './VaultPickerModal';
 import StoryImageAdjustment from './StoryImageAdjustment';
 import StoryImageFileActions from './StoryImageFileActions';
+import { FotoPlayExportModal, FotoPlayPreviewModal, FotoPlayPublishModal } from './FotoPlayProjectActions';
 import { IMAGE_RATIOS, IMAGE_TYPES, TIME_OPTIONS, normalizeSegment, selectedItems } from './authorStoryModel';
 import { adjustmentFingerprint, adjustmentRecord } from './storyImageAdjustment';
 
@@ -209,21 +209,14 @@ function OloShopPicker({ onSelect, onClose }) {
 }
 
 export default function AuthorProductionWorkspacePage(props) {
-  const { project } = props;
-  const active = project.chapters.find((chapter) => chapter.id === props.activeChapterId);
-  const currentIndex = active ? Math.max(0, active.segments.findIndex((segment) => segment.status !== 'approved')) : 0;
-  const current = active?.segments[currentIndex < 0 ? 8 : currentIndex];
-  const [desktop, setDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
-  const [classic, setClassic] = useState(false);
-  useEffect(() => { const update = () => setDesktop(window.innerWidth >= 1024); update(); window.addEventListener('resize', update); return () => window.removeEventListener('resize', update); }, []);
-  if (!desktop || classic || !current || current.visual_format !== 'comic') return <div className="relative">{classic && desktop && <button type="button" onClick={() => setClassic(false)} className="fixed right-5 top-20 z-[180] border border-[#23c7be] bg-[#23c7be] px-4 py-2 text-xs font-black text-black">Return to page editor</button>}<LegacyAuthorProductionWorkspace {...props} /></div>;
-  return <ComicPageWorkspace {...props} onClassic={() => setClassic(true)} />;
+  return <ComicPageWorkspace {...props} />;
 }
 
-function ComicPageWorkspace({ user, project, setProject, activeChapterId, setActiveChapterId, saving, onBack, onEditSetup, onSave, onClassic }) {
+function ComicPageWorkspace({ user, project, setProject, activeChapterId, setActiveChapterId, saving, onBack, onEditSetup, onSave }) {
   const [selectedId, setSelectedId] = useState(''); const [tool, setTool] = useState('panel'); const [selectedPanel, setSelectedPanel] = useState(0);
   const [busy, setBusy] = useState(''); const [notice, setNotice] = useState(''); const [pricing, setPricing] = useState({}); const [catalogGalleries, setCatalogGalleries] = useState({});
   const [showMasterVault, setShowMasterVault] = useState(false); const [showMasterShop, setShowMasterShop] = useState(false); const masterUploadRef = useRef(null);
+  const [showPreview, setShowPreview] = useState(false); const [showExport, setShowExport] = useState(false); const [showPublish, setShowPublish] = useState(false); const [publishing, setPublishing] = useState(false);
   const active = useMemo(() => project.chapters.find((chapter) => chapter.id === activeChapterId), [project.chapters, activeChapterId]);
   const firstOpen = active?.segments.findIndex((segment) => segment.status !== 'approved') ?? 0; const currentIndex = firstOpen < 0 ? 8 : firstOpen;
   useEffect(() => { if (!active) return; const selected = active.segments.find((item) => item.id === selectedId); if (!selected || selected.number > currentIndex + 1) setSelectedId(active.segments[currentIndex].id); }, [active, currentIndex, selectedId]);
@@ -256,6 +249,19 @@ function ComicPageWorkspace({ user, project, setProject, activeChapterId, setAct
   const uploadMaster = async (event) => { const file = event.target.files?.[0]; if (!file) return; const result = await base44.integrations.Core.UploadFile({ file }); await selectMaster(result.file_url, 'upload', file.name || 'Uploaded image'); event.target.value = ''; };
   const applyAdjustment = async ({ target, url, instruction, reference, restore, fingerprint }) => { const currentFingerprint = adjustmentFingerprint(segment, active.image_aspect_ratio || '16:9'); if (fingerprint !== currentFingerprint) throw new Error('The image changed while the adjustment was prepared'); const original = segment.image_adjustments?.[target.key]?.original; if (restore && !original) throw new Error('No original is available'); const values = { status: 'draft' }; if (target.panelIndex !== null) { const panel = panels[target.panelIndex]; const next = panels.map((item, index) => index === target.panelIndex ? { ...panel, ...(restore ? { image_url: original.image_url, source_prompt: original.source_prompt } : { image_url: url }) } : item); values.comic_panels = next; values.comic_page_source = ''; } else values.image_url = restore ? original.image_url : url; if (!restore) values.image_adjustments = adjustmentRecord(segment, target, url, instruction, reference); await persist(values); };
   const createLook = async (character) => { const current = { ...(active.appearance_continuity?.[character.id] || {}), ...(segment.character_directions?.[character.id] || {}) }; const description = [current.look, current.costume, current.injuries, current.hair_makeup_accessories, current.physical_state].filter(Boolean).join('; '); if (!description) return toast.error('Describe the look first'); const identity = selectedRefs(character, 'character_reference_images'); if (!identity.length) return toast.error('Choose an identity reference'); setBusy(`look-${character.id}`); try { const response = await base44.integrations.Core.GenerateImage({ prompt: `Preserve exactly the same person in the supplied identity references. Create a clean photorealistic production reference with these look changes only: ${description}. Neutral background, no text.`, reference_image_urls: identity, aspect_ratio: '3:4' }); const next = withSegment({ character_reference_images: { ...segment.character_reference_images, [character.id]: [response.file_url] }, character_generated_reference_images: { ...segment.character_generated_reference_images, [character.id]: uniqueImages([...(segment.character_generated_reference_images?.[character.id] || []), response.file_url]) } }); next.characters = next.characters.map((item) => item.id === character.id ? { ...item, active_look_reference_url: response.file_url, look_reference_images: uniqueImages([...(item.look_reference_images || []), response.file_url]) } : item); setProject(next); await onSave(next, { silent: true }); } catch (error) { toast.error(error.message || 'Unable to create look'); } finally { setBusy(''); } };
+  const publishProject = async (publication) => {
+    if (!project.id) return toast.error('Save the project before publishing');
+    setPublishing(true);
+    try {
+      const response = await base44.functions.invoke('publishAuthorStory', { project_id: project.id, ...publication });
+      const published = { ...project, status: 'published', published_dossier_id: response.data.dossier_id };
+      setProject(published);
+      setShowPublish(false);
+      toast.success(response.data.republished ? 'Story Block republished' : 'Story Block published');
+      window.open(`/Magazine?dossier=${encodeURIComponent(response.data.dossier_id)}`, '_blank', 'noopener,noreferrer');
+    } catch (error) { toast.error(error.message || 'Publication failed'); }
+    finally { setPublishing(false); }
+  };
 
   const leftTools = [{ key: 'story', label: 'Story & narration', icon: Type }, { key: 'cast', label: 'Set & cast', icon: Users }, { key: 'references', label: 'References & looks', icon: UserRound }, { key: 'direction', label: 'Visual direction', icon: Film }, { key: 'adjust', label: 'Adjust image', icon: Wand2 }];
   const rightTools = [{ key: 'panel', label: 'Selected frame', icon: PanelLeft }, { key: 'text', label: 'Text boxes', icon: MessageSquareText }, { key: 'voice', label: 'Voice & audio', icon: Mic2 }, { key: 'master', label: 'Sequence master', icon: Eye }, { key: 'files', label: 'Files', icon: FolderOpen }, { key: 'approve', label: 'Generate & approve', icon: Check }];
@@ -279,7 +285,7 @@ function ComicPageWorkspace({ user, project, setProject, activeChapterId, setAct
   </div></div> : null;
 
   return <div className="mx-auto w-full max-w-[1900px] px-3 pb-6 lg:px-4">
-    <header className="mb-3 flex items-center gap-3 border-b border-black/10 bg-white px-2 py-2 text-black"><button onClick={onBack} className="flex h-10 w-10 items-center justify-center bg-black text-white"><ArrowLeft size={18} /></button><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-[.16em] text-black/45">FotoPlay page editor</p><h2 className="truncate text-lg font-black">{project.title} · Chapter {active.number} · Segment {segment.number}</h2></div><button onClick={onEditSetup} className="border border-black/15 px-3 py-2 text-xs font-black">Story / cast</button><button onClick={onClassic} title="Project preview, export and publishing" className="flex items-center gap-2 border border-black/15 px-3 py-2 text-xs font-black"><Settings2 size={15} /> Project</button><button onClick={() => onSave(project)} disabled={saving} className="flex items-center gap-2 bg-black px-3 py-2 text-xs font-black text-white">{saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Save</button></header>
+    <header className="mb-3 flex flex-wrap items-center gap-3 border-b border-black/10 bg-white px-2 py-2 text-black"><button onClick={onBack} className="flex h-10 w-10 items-center justify-center bg-black text-white"><ArrowLeft size={18} /></button><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-[.16em] text-black/45">FotoPlay page editor</p><h2 className="truncate text-lg font-black">{project.title} · Chapter {active.number} · Segment {segment.number}</h2></div><button onClick={onEditSetup} className="border border-black/15 px-3 py-2 text-xs font-black">Story / cast</button><button onClick={() => setShowPreview(true)} className="flex items-center gap-2 border border-black/15 px-3 py-2 text-xs font-black"><Eye size={15} /> Preview</button><button onClick={() => setShowExport(true)} className="flex items-center gap-2 border border-black/15 px-3 py-2 text-xs font-black"><Download size={15} /> Export</button>{project.published_dossier_id && <a href={`/Magazine?dossier=${encodeURIComponent(project.published_dossier_id)}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 border border-emerald-600 bg-emerald-600 px-3 py-2 text-xs font-black text-white"><ExternalLink size={15} /> Published</a>}<button onClick={() => setShowPublish(true)} disabled={publishing} className="flex items-center gap-2 bg-[#23c7be] px-3 py-2 text-xs font-black text-black">{publishing ? <Loader2 size={15} className="animate-spin" /> : <Rocket size={15} />} {project.published_dossier_id ? 'Republish' : 'Publish'}</button><button onClick={() => onSave(project)} disabled={saving} className="flex items-center gap-2 bg-black px-3 py-2 text-xs font-black text-white">{saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Save</button></header>
     <div className="mb-3 flex gap-2 overflow-x-auto bg-black/5 p-2">{project.chapters.map((chapter) => <button key={chapter.id} onClick={() => setActiveChapterId(chapter.id)} className={`shrink-0 border px-3 py-2 text-xs font-black ${chapter.id === activeChapterId ? 'border-black bg-black text-white' : 'border-black/10 bg-white'}`}>Chapter {chapter.number}</button>)}</div>
     <div className="mb-3 grid grid-cols-9 gap-1 bg-[#111418] p-2">{active.segments.map((item, index) => <button key={item.id} disabled={index > currentIndex} onClick={() => setSelectedId(item.id)} className={`h-8 border text-xs font-black ${item.status === 'approved' ? 'border-emerald-400 bg-emerald-400 text-black' : item.id === segment.id ? 'border-[#23c7be] bg-[#23c7be] text-black' : index > currentIndex ? 'border-white/5 text-white/20' : 'border-white/15 text-white/70'}`}>{item.status === 'approved' ? <Check size={13} className="mx-auto" /> : item.number}</button>)}</div>
     {notice && <div className="mb-3 flex items-center justify-between border border-[#23c7be]/30 bg-[#102826] px-3 py-2 text-xs font-bold text-[#bffaf5]"><span>{notice}</span><button onClick={() => setNotice('')}><X size={14} /></button></div>}
@@ -292,5 +298,8 @@ function ComicPageWorkspace({ user, project, setProject, activeChapterId, setAct
     </div>
     {showMasterVault && <VaultPickerModal userEmail={user?.email || ''} allowUpload onSelect={(url) => selectMaster(url, 'vault', 'Vault image')} onClose={() => setShowMasterVault(false)} />}
     {showMasterShop && <OloShopPicker onSelect={(url, label) => selectMaster(url, 'assets_shop', label)} onClose={() => setShowMasterShop(false)} />}
+    {showPreview && <FotoPlayPreviewModal project={project} activeChapterId={activeChapterId} onClose={() => setShowPreview(false)} />}
+    {showExport && <FotoPlayExportModal project={project} activeChapterId={activeChapterId} onClose={() => setShowExport(false)} />}
+    {showPublish && <FotoPlayPublishModal user={user} project={project} publishing={publishing} onClose={() => setShowPublish(false)} onPublish={publishProject} />}
   </div>;
 }
