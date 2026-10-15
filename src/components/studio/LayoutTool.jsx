@@ -24,7 +24,7 @@ const FORMATS = [
   { id: '1:1', label: '1:1' },
 ];
 
-function buildPrompt({ purpose, format, exactText, direction, hasSource, imageMode, imageCount, revision, coverTitle, coverSubtitle, coverAuthor, logoCount, sourceCount }) {
+function buildPrompt({ purpose, format, exactText, direction, hasSource, imageMode, imageCount, revision, coverTitle, coverSubtitle, coverAuthor, logoCount, sourceCount, hasRevisionReference }) {
   if (purpose === 'image') {
     return [
       imageMode === 'combine'
@@ -41,28 +41,51 @@ function buildPrompt({ purpose, format, exactText, direction, hasSource, imageMo
   }
 
   if (purpose === 'cover') {
+    let refIndex = 1;
+    const referenceRoles = [];
+    if (hasRevisionReference) {
+      referenceRoles.push(`REFERENCE ${refIndex}: previous generated cover. Use it only as the revision base; keep requested changes controlled.`);
+      refIndex += 1;
+    }
+    if (sourceCount > 0) {
+      const start = refIndex;
+      const end = refIndex + sourceCount - 1;
+      referenceRoles.push(sourceCount === 1
+        ? `REFERENCE ${start}: source artwork / subject image. Use it as visual content for the cover.`
+        : `REFERENCES ${start}-${end}: source artwork / subject images. Use them as visual content for the cover.`);
+      refIndex = end + 1;
+    }
+    if (logoCount > 0) {
+      const start = refIndex;
+      const end = refIndex + logoCount - 1;
+      referenceRoles.push(logoCount === 1
+        ? `REFERENCE ${start}: MANDATORY LOGO ARTWORK.`
+        : `REFERENCES ${start}-${end}: MANDATORY LOGO ARTWORK.`);
+    }
+
     const textInstructions = [
-      coverTitle.trim() ? `Main title, exact spelling: <<<${coverTitle.trim()}>>>.` : '',
-      coverSubtitle.trim() ? `Subtitle, exact spelling: <<<${coverSubtitle.trim()}>>>.` : '',
-      coverAuthor.trim() ? `Author credit, exact spelling: <<<${coverAuthor.trim()}>>>.` : '',
+      coverTitle.trim() ? `MAIN TITLE — exact spelling: <<<${coverTitle.trim()}>>>.` : '',
+      coverSubtitle.trim() ? `SUBTITLE — exact spelling: <<<${coverSubtitle.trim()}>>>.` : '',
+      coverAuthor.trim() ? `AUTHOR / CREATOR — exact spelling: <<<${coverAuthor.trim()}>>>.` : '',
     ].filter(Boolean);
 
     return [
-      `Create a finished publication-ready cover in ${format} format.`,
+      `COVER TEMPLATE — Create one finished publication-ready cover in ${format} format.`,
+      ...referenceRoles,
       sourceCount > 0
-        ? `Use the first ${sourceCount} supplied reference image${sourceCount > 1 ? 's' : ''} as visual material for the final composition. Preserve the essential subjects and identity while recomposing them professionally into one coherent cover.`
-        : 'Create the complete primary visual from the art direction.',
+        ? 'SOURCE IMAGE RULE — preserve the recognizable people, objects, products and important visual identity from the supplied source artwork. Recompose them professionally; do not replace them with unrelated subjects.'
+        : 'SOURCE IMAGE RULE — if no source artwork is supplied, create the primary visual from the art direction.',
       logoCount > 0
-        ? `The last ${logoCount} supplied reference image${logoCount > 1 ? 's are' : ' is'} logo artwork. Integrate ${logoCount > 1 ? 'these logos' : 'this logo'} cleanly into the cover, preserving the supplied design, proportions and identity. Do not redesign, reinterpret or replace ${logoCount > 1 ? 'them' : 'it'}.`
-        : '',
+        ? 'LOGO RULE — every supplied logo is mandatory and must appear visibly in the final cover. Reproduce each supplied logo faithfully from its reference: same identity, proportions, symbol/wordmark structure and recognizable design. Do NOT omit it, redesign it, replace it, invent a substitute, convert it into generic text, or use it merely as inspiration. Place it with clear contrast and safe margins so it is visibly incorporated into the final composition.'
+        : 'LOGO RULE — do not invent a logo.',
       ...textInstructions,
       textInstructions.length
-        ? 'Build a strong editorial hierarchy: the main title must be dominant, the subtitle secondary, and the author credit clearly readable but less prominent. Keep all supplied wording exactly spelled and readable.'
-        : 'Do not invent titles, subtitles, author names or other editorial text.',
-      'Treat typography and logos as intentional parts of the cover composition, balanced with the imagery and safe from the edges. The result must read immediately as a designed cover, not as a poster mockup or plain text over an image.',
-      direction.trim() ? `Art direction: ${direction.trim()}` : '',
-      revision.trim() ? `Revision requested from the previous version: ${revision.trim()}` : '',
-      'Deliver one complete publication-ready flattened cover without mockup borders, editor controls, guides or margins.',
+        ? 'TYPOGRAPHY RULE — preserve the exact supplied wording. Main title is dominant, subtitle secondary, author/creator readable but less prominent. Do not misspell, paraphrase or invent additional editorial copy.'
+        : 'TYPOGRAPHY RULE — do not invent titles, subtitles, author names or editorial copy.',
+      direction.trim() ? `ART DIRECTION — ${direction.trim()}` : '',
+      revision.trim() ? `REVISION REQUEST — ${revision.trim()}` : '',
+      'COMPOSITION RULE — integrate source artwork, mandatory logos and typography as one intentional professional cover design. Keep critical text and logos away from crop edges. Do not produce a mockup, device frame, editor UI, guides or margins.',
+      'FINAL OUTPUT — one flattened publication-ready cover only.',
     ].filter(Boolean).join('\n');
   }
 
@@ -104,17 +127,22 @@ export default function LayoutTool({ user, onClose }) {
   const [pickerTarget, setPickerTarget] = useState('source');
   const [showAssetsShop, setShowAssetsShop] = useState(false);
   const [shopTarget, setShopTarget] = useState('source');
+  const [shopAsset, setShopAsset] = useState(null);
   const [uploadTarget, setUploadTarget] = useState('source');
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
   const fileInputRef = useRef(null);
+  const hasRevisionReference = Boolean(revision.trim() && selectedUrl);
+  const coverSourceLimit = Math.max(0, 6 - (hasRevisionReference ? 1 : 0) - logoUrls.length);
+  const coverSourceCount = Math.min(sourceUrls.length, coverSourceLimit);
   const prompt = useMemo(() => buildPrompt({
     purpose, format, exactText, direction, hasSource: sourceUrls.length > 0,
     imageMode, imageCount: imageSources.length, revision,
-    coverTitle, coverSubtitle, coverAuthor, logoCount: logoUrls.length, sourceCount: sourceUrls.length,
-  }), [purpose, format, exactText, direction, sourceUrls.length, imageMode, imageSources.length, revision, coverTitle, coverSubtitle, coverAuthor, logoUrls.length]);
+    coverTitle, coverSubtitle, coverAuthor, logoCount: logoUrls.length, sourceCount: coverSourceCount,
+    hasRevisionReference,
+  }), [purpose, format, exactText, direction, sourceUrls.length, imageMode, imageSources.length, revision, coverTitle, coverSubtitle, coverAuthor, logoUrls.length, coverSourceCount, hasRevisionReference]);
   const pricingInput = { aspect_ratio: format, prompt };
   const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
     service: 'replicateGenerate:compose_scene',
@@ -186,43 +214,59 @@ export default function LayoutTool({ user, onClose }) {
       return;
     }
     setShopTarget(target);
+    setShopAsset(null);
     setShowAssetsShop(true);
   };
 
   const selectAssetFromShop = (assetId) => {
     const assets = queryClient.getQueryData(['olo-catalog-assets']) || [];
     const asset = assets.find((item) => item.id === assetId);
-    const assetUrl = asset?.featured_image;
-    if (!assetUrl) {
-      toast.error('This asset has no usable image');
+    if (!asset) {
+      toast.error('Asset not found');
       return;
     }
-
-    if (shopTarget === 'combine') {
-      if (imageSources.includes(assetUrl)) toast.info('This asset is already in the composition');
-      else setImageSources((current) => [...current, assetUrl].slice(0, 3));
-    } else {
-      if (sourceUrls.includes(assetUrl)) toast.info('This asset is already in the composition');
-      else setSourceUrls((current) => [...current, assetUrl].slice(0, 4));
+    const images = [...new Set([asset.featured_image, ...(Array.isArray(asset.preview_images) ? asset.preview_images : [])].filter(Boolean))];
+    if (!images.length) {
+      toast.error('This asset has no usable images');
+      return;
     }
+    setShopAsset({ ...asset, _layoutImages: images });
+  };
+
+  const addShopImage = (assetUrl) => {
+    if (!assetUrl) return;
+    const current = shopTarget === 'combine' ? imageSources : sourceUrls;
+    const maxCount = shopTarget === 'combine' ? 3 : 4;
+    if (current.includes(assetUrl)) {
+      toast.info('This image is already in the composition');
+      return;
+    }
+    if (current.length >= maxCount) {
+      toast.error(`Maximum ${maxCount} source images`);
+      return;
+    }
+    if (shopTarget === 'combine') setImageSources((items) => [...items, assetUrl].slice(0, 3));
+    else setSourceUrls((items) => [...items, assetUrl].slice(0, 4));
+    toast.success(`${shopAsset?.title || 'Asset image'} added to Layout`);
+    setShopAsset(null);
     setShowAssetsShop(false);
-    if (!(shopTarget === 'combine' ? imageSources : sourceUrls).includes(assetUrl)) toast.success(`${asset?.title || 'Asset'} added to Layout`);
   };
 
   const generate = async () => {
     if (purpose === 'image' && imageMode === 'prompt' && !direction.trim()) { toast.error('Describe the image to create'); return; }
     if (purpose === 'image' && imageMode === 'combine' && imageSources.length < 2) { toast.error('Choose at least 2 images to combine'); return; }
-    if (purpose !== 'image' && sourceUrls.length === 0 && !direction.trim()) { toast.error('Choose an image or describe the art direction'); return; }
-    if (purpose === 'cover' && !coverTitle.trim() && !coverSubtitle.trim() && !coverAuthor.trim() && logoUrls.length === 0 && !direction.trim()) { toast.error('Add cover details or describe the art direction'); return; }
+    if (purpose !== 'image' && sourceUrls.length === 0 && !direction.trim() && purpose !== 'cover') { toast.error('Choose an image or describe the art direction'); return; }
+    if (purpose === 'cover' && sourceUrls.length === 0 && logoUrls.length === 0 && !coverTitle.trim() && !coverSubtitle.trim() && !coverAuthor.trim() && !direction.trim()) { toast.error('Add cover content or describe the art direction'); return; }
     setGenerating(true);
     try {
+      const coverSources = sourceUrls.slice(0, coverSourceLimit);
       const references = purpose === 'image'
         ? imageMode === 'combine'
           ? [...new Set([...(revision.trim() ? [selectedUrl] : []), ...imageSources].filter(Boolean))].slice(0, 3)
           : [...new Set(revision.trim() ? [selectedUrl].filter(Boolean) : [])]
         : purpose === 'cover'
-          ? [...new Set([selectedUrl, ...sourceUrls, ...logoUrls].filter(Boolean))].slice(0, 6)
-          : [...new Set([selectedUrl, ...sourceUrls].filter(Boolean))].slice(0, 4);
+          ? [...new Set([...(hasRevisionReference ? [selectedUrl] : []), ...coverSources, ...logoUrls].filter(Boolean))]
+          : [...new Set([...(revision.trim() ? [selectedUrl] : []), ...sourceUrls].filter(Boolean))].slice(0, 4);
       const response = await base44.functions.invoke('replicateGenerate', {
         method: 'compose_scene', prompt,
         reference_image_urls: references.length ? references : undefined,
@@ -263,16 +307,23 @@ export default function LayoutTool({ user, onClose }) {
   };
 
   if (showAssetsShop) {
-    return <div className="min-h-screen bg-[#202328] text-white lg:h-[calc(100vh-3.5rem)] lg:min-h-0 lg:overflow-hidden">
-      <header className="flex items-center gap-3 border-b border-white/10 bg-[#16181b] px-5 py-4 lg:px-8">
-        <button type="button" onClick={() => setShowAssetsShop(false)} className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/65 transition hover:bg-white/10 hover:text-white"><ArrowLeft size={19} /></button>
+    return <div className="min-h-screen bg-[#202328] text-white lg:h-[calc(100vh-3.5rem)] lg:min-h-0 lg:overflow-y-auto">
+      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-white/10 bg-[#16181b] px-5 py-4 lg:px-8">
+        <button type="button" onClick={() => { if (shopAsset) setShopAsset(null); else setShowAssetsShop(false); }} className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/65 transition hover:bg-white/10 hover:text-white"><ArrowLeft size={19} /></button>
         <div>
           <p className="text-[9px] font-black uppercase tracking-[.24em] text-[#23c7be]">Layout</p>
-          <h1 className="text-2xl font-black tracking-tight">Select an asset</h1>
-          <p className="mt-1 text-xs font-semibold text-white/45">Click an asset to add it to {shopTarget === 'combine' ? 'Images to combine' : 'Source images'} and return to Layout.</p>
+          <h1 className="text-2xl font-black tracking-tight">{shopAsset ? shopAsset.title : 'Select an asset'}</h1>
+          <p className="mt-1 text-xs font-semibold text-white/45">{shopAsset ? 'Choose the exact image from this asset.' : `Open an asset to access all of its images for ${shopTarget === 'combine' ? 'Images to combine' : 'Source images'}.`}</p>
         </div>
       </header>
-      <Catalog embedded onOpenAsset={selectAssetFromShop} />
+      {shopAsset ? <div className="mx-auto max-w-[1500px] p-5 lg:p-8">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {shopAsset._layoutImages.map((url, index) => <div key={url} className="overflow-hidden rounded-[4px] border border-white/10 bg-[#16181b]">
+            <div className="flex aspect-[4/3] items-center justify-center bg-black"><img src={url} alt={`${shopAsset.title} ${index + 1}`} className="h-full w-full object-contain" /></div>
+            <div className="p-3"><button type="button" onClick={() => addShopImage(url)} className="w-full rounded-[3px] bg-[#23c7be] px-4 py-3 text-xs font-black text-[#071211] hover:bg-[#35d8cf]">ADD THIS IMAGE TO LAYOUT</button></div>
+          </div>)}
+        </div>
+      </div> : <Catalog embedded onOpenAsset={selectAssetFromShop} />}
     </div>;
   }
 
@@ -310,6 +361,7 @@ export default function LayoutTool({ user, onClose }) {
           <div><Label>Subtitle</Label><input value={coverSubtitle} onChange={(event) => setCoverSubtitle(event.target.value)} placeholder="Optional subtitle" className="w-full rounded-[3px] border border-white/10 bg-[#26292d] px-3 py-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60" /></div>
           <div><Label>Author</Label><input value={coverAuthor} onChange={(event) => setCoverAuthor(event.target.value)} placeholder="Author or creator" className="w-full rounded-[3px] border border-white/10 bg-[#26292d] px-3 py-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60" /></div>
           <div><Label>Logos · up to 2</Label><div className="grid grid-cols-3 gap-2">{logoUrls.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5 p-2"><img src={url} alt={`Logo ${index + 1}`} className="h-full w-full object-contain" /><button onClick={() => setLogoUrls((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}{logoUrls.length < 2 && <button onClick={() => openVault('logo')} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add logo</span></button>}</div><button onClick={() => startUpload('logo')} disabled={uploading || logoUrls.length >= 2} className="mt-2 flex w-full items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10 disabled:opacity-50"><Upload size={15} />{uploading && uploadTarget === 'logo' ? 'Uploading…' : 'Upload logo'}</button></div>
+          <div className="rounded-[3px] border border-white/10 bg-black/20 p-3 text-[11px] font-semibold leading-relaxed text-white/50">Cover generation uses a fixed prompt template: source images are identified separately from logos, every supplied logo is marked mandatory, and title/subtitle/author are passed as exact text.</div>
         </div>}
 
         {purpose !== 'image' && purpose !== 'cover' && <div><Label>Exact text</Label><textarea value={exactText} onChange={(event) => setExactText(event.target.value)} rows={3} placeholder="Write the exact words and line breaks" className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60" /></div>}
