@@ -19,6 +19,35 @@ const preserveFotoPlayTextMetadata = {
   },
 }
 
+const dedupeFotoPlayWorkspace = {
+  name: 'dedupe-fotoplay-workspace',
+  enforce: 'pre',
+  transform(code, id) {
+    const normalizedId = id?.replace(/\\/g, '/') || ''
+    if (!normalizedId.endsWith('/src/components/studio/AuthorProductionWorkspacePage.jsx')) return null
+    let next = code
+
+    const injectedActionsImport = "import { FotoPlayPreviewModal, FotoPlayExportModal, FotoPlayPublishModal } from './FotoPlayProjectActions';\n"
+    if (next.includes("import { FotoPlayExportModal, FotoPlayPreviewModal, FotoPlayPublishModal } from './FotoPlayProjectActions';")) {
+      next = next.replace(injectedActionsImport, '')
+    }
+
+    const workspaceState = "  const [showPreview, setShowPreview] = useState(false); const [showExport, setShowExport] = useState(false); const [showPublish, setShowPublish] = useState(false); const [publishing, setPublishing] = useState(false);"
+    const doubleWorkspaceState = `${workspaceState}\n${workspaceState}`
+    if (next.includes(doubleWorkspaceState)) next = next.replace(doubleWorkspaceState, workspaceState)
+
+    const injectedPublish = `  const publishProject = async (publication) => {\n    if (!project.id) return toast.error('Save the project before publishing');\n    const readyChapters = project.chapters.filter((chapter) => chapter.segments?.length === 9);\n    if (!readyChapters.length) return toast.error('Complete all 9 segments of at least one chapter first');\n    setPublishing(true);\n    try {\n      const response = await base44.functions.invoke('publishAuthorStory', { project_id: project.id, ...publication });\n      const published = { ...project, status: 'published', published_dossier_id: response.data.dossier_id };\n      setProject(published);\n      setShowPublish(false);\n      await onSave(published, { silent: true });\n      toast.success(response.data.republished ? 'FotoPlay republished' : 'FotoPlay published');\n    } catch (error) { toast.error(error.message || 'Publication failed'); }\n    finally { setPublishing(false); }\n  };\n`
+    if (next.includes(injectedPublish) && (next.match(/const publishProject = async \(publication\) =>/g) || []).length > 1) {
+      next = next.replace(injectedPublish, '')
+    }
+
+    const injectedModals = `{showPreview && <FotoPlayPreviewModal project={project} activeChapterId={activeChapterId} onClose={() => setShowPreview(false)} />}\n    {showExport && <FotoPlayExportModal project={project} activeChapterId={activeChapterId} onClose={() => setShowExport(false)} />}\n    {showPublish && <FotoPlayPublishModal user={user} project={project} publishing={publishing} onClose={() => setShowPublish(false)} onPublish={publishProject} />}\n    `
+    if ((next.match(/<FotoPlayPublishModal/g) || []).length > 1) next = next.replace(injectedModals, '')
+
+    return next === code ? null : { code: next, map: null }
+  },
+}
+
 const narratorVoiceInTextTool = {
   name: 'fotoplay-narrator-voice-in-text-tool',
   enforce: 'pre',
@@ -85,5 +114,5 @@ const finalAudioTerminology = {
 
 export default defineConfig({
   ...baseConfig,
-  plugins: [preserveFotoPlayTextMetadata, ...(baseConfig.plugins || []), narratorVoiceInTextTool, textReadingOrderControls, finalAudioTerminology],
+  plugins: [preserveFotoPlayTextMetadata, ...(baseConfig.plugins || []), dedupeFotoPlayWorkspace, narratorVoiceInTextTool, textReadingOrderControls, finalAudioTerminology],
 })
