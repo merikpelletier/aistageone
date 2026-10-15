@@ -24,7 +24,7 @@ const fotoPlayPageWorkspace = {
 
     next = next.replace(
       "import StoryImageFileActions from './StoryImageFileActions';",
-      "import StoryImageFileActions from './StoryImageFileActions';\nimport { FotoPlayPreviewModal, FotoPlayExportModal, FotoPlayPublishModal } from './FotoPlayProjectActions';"
+      "import StoryImageFileActions from './StoryImageFileActions';\nimport { FotoPlayPreviewModal, FotoPlayExportModal, FotoPlayPublishModal } from './FotoPlayProjectActions';\nimport FotoPlayAudioPanel from './FotoPlayAudioPanel';"
     )
 
     next = next.replace(
@@ -55,6 +55,16 @@ const fotoPlayPageWorkspace = {
       "width: Math.max(2, Math.min(100 - state.box.x, state.box.width + dx)), height: Math.max(2, Math.min(100 - state.box.y, state.box.height + dy))"
     )
 
+    // Playback highlight for the narration/dialogue box currently being spoken.
+    next = next.replace(
+      "const [selectedBox, setSelectedBox] = useState('');\n  const [width, setWidth] = useState(900);",
+      "const [selectedBox, setSelectedBox] = useState('');\n  const [audioActiveBox, setAudioActiveBox] = useState('');\n  const [width, setWidth] = useState(900);\n  useEffect(() => { const handler = (event) => setAudioActiveBox(event.detail?.id || ''); window.addEventListener('fotoplay-audio-active', handler); return () => window.removeEventListener('fotoplay-audio-active', handler); }, []);"
+    )
+    next = next.replace(
+      "className={`absolute z-20 bg-white text-black shadow-lg ${textMode && selectedBox === box.id ? 'ring-3 ring-[#23c7be]' : 'ring-1 ring-black/70'}`}",
+      "className={`absolute z-20 bg-white text-black shadow-lg ${audioActiveBox === box.id ? 'ring-4 ring-[#23c7be] shadow-[0_0_28px_rgba(35,199,190,.55)]' : textMode && selectedBox === box.id ? 'ring-3 ring-[#23c7be]' : 'ring-1 ring-black/70'}`}"
+    )
+
     const marker = '<textarea value={selected.prompt || \'\'} onChange={(e) => updatePanel(selectedPanel, { prompt: e.target.value })} rows={8} className={dark} placeholder="Action and composition for this frame" />'
     const controls = `${marker}<div className="space-y-3 border border-white/10 bg-[#181c21] p-3"><div className="flex items-center justify-between"><p className="text-xs font-black uppercase text-[#23c7be]">Image framing</p><button type="button" onClick={() => updatePanel(selectedPanel, { scale: 1, position_x: 50, position_y: 50 })} className="border border-white/10 bg-[#242930] px-2 py-1 text-[10px] font-black text-white">Reset</button></div><label className="block text-[10px] font-black uppercase text-white/55">Zoom · {Math.round((Number(selected.scale) || 1) * 100)}%<input type="range" min="100" max="300" step="5" value={Math.round((Number(selected.scale) || 1) * 100)} onChange={(e) => updatePanel(selectedPanel, { scale: Number(e.target.value) / 100 })} className="mt-2 w-full accent-[#23c7be]" /></label><label className="block text-[10px] font-black uppercase text-white/55">Horizontal position · {Math.round(Number(selected.position_x ?? 50))}%<input type="range" min="0" max="100" step="1" value={Number(selected.position_x ?? 50)} onChange={(e) => updatePanel(selectedPanel, { position_x: Number(e.target.value) })} className="mt-2 w-full accent-[#23c7be]" /></label><label className="block text-[10px] font-black uppercase text-white/55">Vertical position · {Math.round(Number(selected.position_y ?? 50))}%<input type="range" min="0" max="100" step="1" value={Number(selected.position_y ?? 50)} onChange={(e) => updatePanel(selectedPanel, { position_y: Number(e.target.value) })} className="mt-2 w-full accent-[#23c7be]" /></label><p className="text-[10px] leading-4 text-white/40">Crop the image inside this frame without regenerating it. These values are saved with the frame and used in the final page.</p></div>`
     if (next.includes(marker)) next = next.replace(marker, controls)
@@ -72,6 +82,15 @@ const fotoPlayPageWorkspace = {
     next = next.replace(
       "const panelCount = Number(segment.comic_panel_count || 3); const panels = Array.from({ length: panelCount }, (_, index) => ({ id: `panel-${index + 1}`, beat: '', shot: IMAGE_TYPES[Math.min(index, IMAGE_TYPES.length - 1)], prompt: '', image_url: '', source_prompt: '', ...(segment.comic_panels?.[index] || {}) }));",
       "const panelCount = segment.visual_format === 'single' ? 1 : Number(segment.comic_panel_count || 3); const legacySingleImage = segment.text_overlay_source_url || segment.image_url || segment.image_versions?.at?.(-1)?.value || ''; const panels = Array.from({ length: panelCount }, (_, index) => ({ id: `panel-${index + 1}`, beat: '', shot: IMAGE_TYPES[Math.min(index, IMAGE_TYPES.length - 1)], prompt: '', image_url: segment.visual_format === 'single' && index === 0 ? legacySingleImage : '', source_prompt: segment.visual_format === 'single' && index === 0 ? (segment.image_source_instruction || segment.image_instruction || '') : '', ...(segment.comic_panels?.[index] || {}) }));"
+    )
+
+    next = next.replace(
+      "const generateCurrent = async () => { if (!allLeavesReady) { const missing = panels.findIndex((panel) => !flattenLeaves(panel).every((leaf) => leaf?.image_url)); setSelectedPanel(Math.max(0, missing)); setTool('panel'); return toast.error(`Frame ${missing + 1} still needs an image`); } setBusy('sync'); try { await syncPage(); if (!segment.narration_url || segment.audio_stale || segment.audio_source_text !== segment.narration_text || segment.audio_voice !== segment.narrator_voice) await generateAudio(); setNotice('The current page and audio are synchronized.'); } catch (error) { toast.error(error.message || 'Unable to synchronize the page'); } finally { setBusy(''); } };",
+      "const generateCurrent = async () => { if (!allLeavesReady) { const missing = panels.findIndex((panel) => !flattenLeaves(panel).every((leaf) => leaf?.image_url)); setSelectedPanel(Math.max(0, missing)); setTool('panel'); return toast.error(`Frame ${missing + 1} still needs an image`); } setBusy('sync'); try { await syncPage(); if (boxes.length) { if (!segment.narration_url || segment.audio_stale) { setTool('voice'); throw new Error('Generate the ordered audio sequence first'); } } else if (!segment.narration_url || segment.audio_stale || segment.audio_source_text !== segment.narration_text || segment.audio_voice !== segment.narrator_voice) await generateAudio(); setNotice('The current page and audio are synchronized.'); } catch (error) { toast.error(error.message || 'Unable to synchronize the page'); } finally { setBusy(''); } };"
+    )
+    next = next.replace(
+      "const approve = async () => { if (!segment.narrator_voice) return toast.error('Choose a voice first'); if (!allLeavesReady) return toast.error('Every frame needs an image'); setBusy('approve'); try { await syncPage(); if (!segment.narration_url || segment.audio_stale || segment.audio_source_text !== segment.narration_text || segment.audio_voice !== segment.narrator_voice) await generateAudio(); const continuity = { ...(active.appearance_continuity || {}) };",
+      "const approve = async () => { if (boxes.length ? !segment.narration_url || segment.audio_stale : !segment.narrator_voice) return toast.error(boxes.length ? 'Generate the ordered audio sequence first' : 'Choose a voice first'); if (!allLeavesReady) return toast.error('Every frame needs an image'); setBusy('approve'); try { await syncPage(); if (!boxes.length && (!segment.narration_url || segment.audio_stale || segment.audio_source_text !== segment.narration_text || segment.audio_voice !== segment.narrator_voice)) await generateAudio(); const continuity = { ...(active.appearance_continuity || {}) };"
     )
 
     // Give sequence-master actions explicit visual feedback and preserve the
@@ -116,6 +135,13 @@ const fotoPlayPageWorkspace = {
     next = next.replace(
       "{selected.image_url && <button onClick={() => selectMaster(selected.image_url, 'panel', `Segment ${segment.number} · frame ${selectedPanel + 1}`)} className={`${action} w-full bg-[#1b1f24]`}>Use selected frame as sequence master</button>}",
       "{selected.image_url && <button onClick={() => selectMaster(selected.image_url, 'panel', `Segment ${segment.number} · frame ${selectedPanel + 1}`)} className={`${action} w-full ${active.master_reference_url === selected.image_url ? 'border-[#23c7be] bg-[#23c7be]/15 text-[#23c7be]' : 'bg-[#1b1f24]'}`}>{active.master_reference_url === selected.image_url ? '✓ Sequence master selected' : active.master_reference_url ? 'Replace sequence master with this frame' : 'Use selected frame as sequence master'}</button>}"
+    )
+
+    // New ordered, multi-voice audio panel. Narration/dialogue boxes define the
+    // reading order, per-line speaker/voice, pauses and synchronized playback.
+    next = next.replace(
+      "{tool === 'voice' && <><VoicePicker value={segment.narrator_voice || ''} onChange={(value) => change({ narrator_voice: value, audio_stale: Boolean(segment.narration_url) })} language={segment.narrator_language || project.production_settings?.narrator_language || 'en'} onLanguageChange={(value) => change({ narrator_language: value, audio_stale: Boolean(segment.narration_url) })} disabled={Boolean(busy)} />{segment.narration_url && <audio controls src={segment.narration_url} className=\"w-full\" />}<button onClick={generateAudio} disabled={busy === 'audio'} className={`${action} w-full bg-[#23c7be] text-black`}><Volume2 size={14} /> {segment.narration_url ? 'Regenerate' : 'Generate'} audio · {pricing.tts ?? '—'}</button></>}",
+      "{tool === 'voice' && <FotoPlayAudioPanel boxes={boxes} characters={characters} segment={segment} project={project} pricing={pricing} busy={busy} setBusy={setBusy} onBoxesChange={(nextBoxes) => change({ text_boxes: nextBoxes, audio_stale: true, status: 'draft' })} onPersist={persist} />}"
     )
 
     next = next.replace(
