@@ -16,6 +16,7 @@ const PURPOSES = [
 ];
 const IMAGE_MODES = [
   { id: 'prompt', label: 'Prompt only' },
+  { id: 'edit', label: 'Edit image' },
   { id: 'combine', label: 'Combine images' },
 ];
 const FORMATS = [
@@ -26,16 +27,35 @@ const FORMATS = [
 
 function buildPrompt({ purpose, format, exactText, direction, hasSource, imageMode, imageCount, revision, coverTitle, coverSubtitle, coverAuthor, logoCount, sourceCount, hasRevisionReference }) {
   if (purpose === 'image') {
+    if (imageMode === 'edit') {
+      return [
+        `IMAGE EDIT TEMPLATE — Edit the single supplied source image and deliver one finished image in ${format} format.`,
+        'SOURCE PRESERVATION — keep the recognizable subject, identity, pose, clothing, lighting, camera angle, visual style and overall composition unless the edit instruction explicitly asks to change one of them.',
+        direction.trim() ? `EDIT INSTRUCTION — ${direction.trim()}` : '',
+        revision.trim() ? `REVISION REQUEST — ${revision.trim()}` : '',
+        'LOCAL EDIT RULE — change only what the instruction requests. If something is removed, reconstruct the newly exposed area naturally from the surrounding image so there are no holes, smears, artifacts or obvious patches.',
+        'TEXT REMOVAL RULE — when asked to remove text, lettering, captions, logos or graphic marks, remove them completely and rebuild the underlying image cleanly. Do not replace them with new text or symbols.',
+        'FINAL OUTPUT — preserve the original image as much as possible outside the requested edit. No mockup borders, editor controls, guides or added watermarks.',
+      ].filter(Boolean).join('\n');
+    }
+
+    if (imageMode === 'combine') {
+      return [
+        `Create one coherent standalone image in ${format} format by combining the ${imageCount} supplied reference images.`,
+        'Use the important subjects and visual elements from every supplied reference. Blend them into one natural, unified composition; do not make a collage, contact sheet, split screen or grid unless the image prompt explicitly requests it.',
+        direction.trim() ? `Image prompt: ${direction.trim()}` : '',
+        revision.trim() ? `Revision requested from the previous version: ${revision.trim()}` : '',
+        'Do not add any words, letters, numbers, captions, speech bubbles, signs, logos, watermarks or typographic marks anywhere in the image unless the prompt explicitly asks for them.',
+        'Deliver one complete publication-ready image without mockup borders, editor controls, guides or margins.',
+      ].filter(Boolean).join('\n');
+    }
+
     return [
-      imageMode === 'combine'
-        ? `Create one coherent standalone image in ${format} format by combining the ${imageCount} supplied reference images.`
-        : `Create one finished standalone image in ${format} format entirely from the image prompt.`,
-      imageMode === 'combine'
-        ? 'Use the important subjects and visual elements from every supplied reference. Blend them into one natural, unified composition; do not make a collage, contact sheet, split screen or grid unless the image prompt explicitly requests it.'
-        : 'Do not rely on a source image. Create the complete visual from the image prompt.',
+      `Create one finished standalone image in ${format} format entirely from the image prompt.`,
+      'Do not rely on a source image. Create the complete visual from the image prompt.',
       direction.trim() ? `Image prompt: ${direction.trim()}` : '',
       revision.trim() ? `Revision requested from the previous version: ${revision.trim()}` : '',
-      'Do not add any words, letters, numbers, captions, speech bubbles, signs, logos, watermarks or typographic marks anywhere in the image.',
+      'Do not add any words, letters, numbers, captions, speech bubbles, signs, logos, watermarks or typographic marks anywhere in the image unless the prompt explicitly asks for them.',
       'Deliver one complete publication-ready image without mockup borders, editor controls, guides or margins.',
     ].filter(Boolean).join('\n');
   }
@@ -172,8 +192,8 @@ export default function LayoutTool({ user, onClose }) {
     event.target.value = '';
     if (!files.length) return;
 
-    const maxCount = uploadTarget === 'combine' ? 3 : uploadTarget === 'logo' ? 2 : 4;
-    const currentCount = uploadTarget === 'combine' ? imageSources.length : uploadTarget === 'logo' ? logoUrls.length : sourceUrls.length;
+    const maxCount = uploadTarget === 'edit' ? 1 : uploadTarget === 'combine' ? 3 : uploadTarget === 'logo' ? 2 : 4;
+    const currentCount = uploadTarget === 'edit' || uploadTarget === 'combine' ? imageSources.length : uploadTarget === 'logo' ? logoUrls.length : sourceUrls.length;
     const available = Math.max(0, maxCount - currentCount);
     if (!available) {
       toast.error(`Maximum ${maxCount} ${uploadTarget === 'logo' ? 'logos' : 'source images'}`);
@@ -184,20 +204,15 @@ export default function LayoutTool({ user, onClose }) {
     try {
       const uploadedUrls = [];
       for (const file of files.slice(0, available)) {
-        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-          throw new Error('Choose JPG, PNG or WEBP images');
-        }
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Choose JPG, PNG or WEBP images');
         const result = await base44.integrations.Core.UploadFile({ file, saveToVault: false });
         if (result?.file_url) uploadedUrls.push(result.file_url);
       }
       if (!uploadedUrls.length) throw new Error('Upload did not return an image URL');
-      if (uploadTarget === 'combine') {
-        setImageSources((current) => [...new Set([...current, ...uploadedUrls])].slice(0, 3));
-      } else if (uploadTarget === 'logo') {
-        setLogoUrls((current) => [...new Set([...current, ...uploadedUrls])].slice(0, 2));
-      } else {
-        setSourceUrls((current) => [...new Set([...current, ...uploadedUrls])].slice(0, 4));
-      }
+      if (uploadTarget === 'edit') setImageSources(uploadedUrls.slice(0, 1));
+      else if (uploadTarget === 'combine') setImageSources((current) => [...new Set([...current, ...uploadedUrls])].slice(0, 3));
+      else if (uploadTarget === 'logo') setLogoUrls((current) => [...new Set([...current, ...uploadedUrls])].slice(0, 2));
+      else setSourceUrls((current) => [...new Set([...current, ...uploadedUrls])].slice(0, 4));
       toast.success(uploadedUrls.length === 1 ? 'Image uploaded' : `${uploadedUrls.length} images uploaded`);
     } catch (error) {
       toast.error(error?.message || 'Unable to upload image');
@@ -207,10 +222,10 @@ export default function LayoutTool({ user, onClose }) {
   };
 
   const openAssetsShop = (target) => {
-    const maxCount = target === 'combine' ? 3 : 4;
-    const currentCount = target === 'combine' ? imageSources.length : sourceUrls.length;
+    const maxCount = target === 'edit' ? 1 : target === 'combine' ? 3 : 4;
+    const currentCount = target === 'edit' || target === 'combine' ? imageSources.length : sourceUrls.length;
     if (currentCount >= maxCount) {
-      toast.error(`Maximum ${maxCount} source images`);
+      toast.error(`Maximum ${maxCount} source image${maxCount > 1 ? 's' : ''}`);
       return;
     }
     setShopTarget(target);
@@ -221,31 +236,20 @@ export default function LayoutTool({ user, onClose }) {
   const selectAssetFromShop = (assetId) => {
     const assets = queryClient.getQueryData(['olo-catalog-assets']) || [];
     const asset = assets.find((item) => item.id === assetId);
-    if (!asset) {
-      toast.error('Asset not found');
-      return;
-    }
+    if (!asset) { toast.error('Asset not found'); return; }
     const images = [...new Set([asset.featured_image, ...(Array.isArray(asset.preview_images) ? asset.preview_images : [])].filter(Boolean))];
-    if (!images.length) {
-      toast.error('This asset has no usable images');
-      return;
-    }
+    if (!images.length) { toast.error('This asset has no usable images'); return; }
     setShopAsset({ ...asset, _layoutImages: images });
   };
 
   const addShopImage = (assetUrl) => {
     if (!assetUrl) return;
-    const current = shopTarget === 'combine' ? imageSources : sourceUrls;
-    const maxCount = shopTarget === 'combine' ? 3 : 4;
-    if (current.includes(assetUrl)) {
-      toast.info('This image is already in the composition');
-      return;
-    }
-    if (current.length >= maxCount) {
-      toast.error(`Maximum ${maxCount} source images`);
-      return;
-    }
-    if (shopTarget === 'combine') setImageSources((items) => [...items, assetUrl].slice(0, 3));
+    const current = shopTarget === 'edit' || shopTarget === 'combine' ? imageSources : sourceUrls;
+    const maxCount = shopTarget === 'edit' ? 1 : shopTarget === 'combine' ? 3 : 4;
+    if (current.includes(assetUrl)) { toast.info('This image is already in the composition'); return; }
+    if (current.length >= maxCount) { toast.error(`Maximum ${maxCount} source image${maxCount > 1 ? 's' : ''}`); return; }
+    if (shopTarget === 'edit') setImageSources([assetUrl]);
+    else if (shopTarget === 'combine') setImageSources((items) => [...items, assetUrl].slice(0, 3));
     else setSourceUrls((items) => [...items, assetUrl].slice(0, 4));
     toast.success(`${shopAsset?.title || 'Asset image'} added to Layout`);
     setShopAsset(null);
@@ -254,6 +258,8 @@ export default function LayoutTool({ user, onClose }) {
 
   const generate = async () => {
     if (purpose === 'image' && imageMode === 'prompt' && !direction.trim()) { toast.error('Describe the image to create'); return; }
+    if (purpose === 'image' && imageMode === 'edit' && imageSources.length !== 1) { toast.error('Choose exactly 1 image to edit'); return; }
+    if (purpose === 'image' && imageMode === 'edit' && !direction.trim()) { toast.error('Describe what you want to change'); return; }
     if (purpose === 'image' && imageMode === 'combine' && imageSources.length < 2) { toast.error('Choose at least 2 images to combine'); return; }
     if (purpose !== 'image' && sourceUrls.length === 0 && !direction.trim() && purpose !== 'cover') { toast.error('Choose an image or describe the art direction'); return; }
     if (purpose === 'cover' && sourceUrls.length === 0 && logoUrls.length === 0 && !coverTitle.trim() && !coverSubtitle.trim() && !coverAuthor.trim() && !direction.trim()) { toast.error('Add cover content or describe the art direction'); return; }
@@ -261,9 +267,11 @@ export default function LayoutTool({ user, onClose }) {
     try {
       const coverSources = sourceUrls.slice(0, coverSourceLimit);
       const references = purpose === 'image'
-        ? imageMode === 'combine'
-          ? [...new Set([...(revision.trim() ? [selectedUrl] : []), ...imageSources].filter(Boolean))].slice(0, 3)
-          : [...new Set(revision.trim() ? [selectedUrl].filter(Boolean) : [])]
+        ? imageMode === 'edit'
+          ? [...new Set([imageSources[0], ...(revision.trim() && selectedUrl ? [selectedUrl] : [])].filter(Boolean))].slice(0, 2)
+          : imageMode === 'combine'
+            ? [...new Set([...(revision.trim() ? [selectedUrl] : []), ...imageSources].filter(Boolean))].slice(0, 3)
+            : [...new Set(revision.trim() ? [selectedUrl].filter(Boolean) : [])]
         : purpose === 'cover'
           ? [...new Set([...(hasRevisionReference ? [selectedUrl] : []), ...coverSources, ...logoUrls].filter(Boolean))]
           : [...new Set([...(revision.trim() ? [selectedUrl] : []), ...sourceUrls].filter(Boolean))].slice(0, 4);
@@ -277,13 +285,16 @@ export default function LayoutTool({ user, onClose }) {
       if (!url) throw new Error(response?.data?.error || response?.data?.message || 'Generation failed');
       const version = { id: crypto.randomUUID(), url, prompt };
       setVersions((current) => [version, ...current]);
-      setSelectedUrl(url); setRevision(''); toast.success(purpose === 'image' ? 'Image generated' : 'Layout generated');
+      setSelectedUrl(url);
+      setRevision('');
+      toast.success(imageMode === 'edit' && purpose === 'image' ? 'Image edited' : purpose === 'image' ? 'Image generated' : 'Layout generated');
     } catch (error) { toast.error(error?.message || 'Generation failed'); }
     finally { setGenerating(false); }
   };
 
   const saveToVault = async () => {
-    if (!selectedUrl) return; setSaving(true);
+    if (!selectedUrl) return;
+    setSaving(true);
     try {
       await base44.entities.VaultAsset.create({
         user_email: user?.email || '', url: selectedUrl, media_type: 'image',
@@ -299,11 +310,19 @@ export default function LayoutTool({ user, onClose }) {
   const download = async () => {
     if (!selectedUrl) return;
     try {
-      const response = await fetch(selectedUrl); if (!response.ok) throw new Error();
-      const href = URL.createObjectURL(await response.blob()); const link = document.createElement('a');
+      const response = await fetch(selectedUrl);
+      if (!response.ok) throw new Error();
+      const href = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
       const fileName = purpose === 'image' ? 'image' : purpose === 'cover' ? (coverTitle.trim().replace(/[^a-z0-9]+/gi, '_') || 'cover') : (exactText.trim().split('\n')[0]?.replace(/[^a-z0-9]+/gi, '_') || 'layout');
-      link.href = href; link.download = `${fileName}.png`; link.click(); URL.revokeObjectURL(href);
-    } catch { window.open(selectedUrl, '_blank', 'noopener,noreferrer'); toast.info('Open the image to save it'); }
+      link.href = href;
+      link.download = `${fileName}.png`;
+      link.click();
+      URL.revokeObjectURL(href);
+    } catch {
+      window.open(selectedUrl, '_blank', 'noopener,noreferrer');
+      toast.info('Open the image to save it');
+    }
   };
 
   if (showAssetsShop) {
@@ -313,7 +332,7 @@ export default function LayoutTool({ user, onClose }) {
         <div>
           <p className="text-[9px] font-black uppercase tracking-[.24em] text-[#23c7be]">Layout</p>
           <h1 className="text-2xl font-black tracking-tight">{shopAsset ? shopAsset.title : 'Select an asset'}</h1>
-          <p className="mt-1 text-xs font-semibold text-white/45">{shopAsset ? 'Choose the exact image from this asset.' : `Open an asset to access all of its images for ${shopTarget === 'combine' ? 'Images to combine' : 'Source images'}.`}</p>
+          <p className="mt-1 text-xs font-semibold text-white/45">{shopAsset ? 'Choose the exact image from this asset.' : `Open an asset to access all of its images for ${shopTarget === 'edit' ? 'Image to edit' : shopTarget === 'combine' ? 'Images to combine' : 'Source images'}.`}</p>
         </div>
       </header>
       {shopAsset ? <div className="mx-auto max-w-[1500px] p-5 lg:p-8">
@@ -352,7 +371,20 @@ export default function LayoutTool({ user, onClose }) {
         <Picker title="Format" items={FORMATS} value={format} onChange={setFormat} columns="grid-cols-5" />
 
         {purpose === 'image' ? <>
-          <Picker title="Image creation" items={IMAGE_MODES} value={imageMode} onChange={setImageMode} columns="grid-cols-2" />
+          <Picker title="Image creation" items={IMAGE_MODES} value={imageMode} onChange={(mode) => { setImageMode(mode); if (mode === 'prompt') setImageSources([]); if (mode === 'edit' && imageSources.length > 1) setImageSources((current) => current.slice(0, 1)); }} columns="grid-cols-3" />
+
+          {imageMode === 'edit' && <div>
+            <Label>Image to edit · 1 image</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {imageSources.slice(0, 1).map((url) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5"><img src={url} alt="Image to edit" className="h-full w-full object-cover" /><button onClick={() => setImageSources([])} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}
+              {imageSources.length === 0 && <button onClick={() => openVault('edit')} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button>}
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button onClick={() => startUpload('edit')} disabled={uploading || imageSources.length >= 1} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10 disabled:opacity-50"><Upload size={15} />{uploading && uploadTarget === 'edit' ? 'Uploading…' : 'Upload'}</button>
+              <button onClick={() => openAssetsShop('edit')} disabled={imageSources.length >= 1} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10 disabled:opacity-50"><Store size={15} />Assets Shop</button>
+            </div>
+          </div>}
+
           {imageMode === 'combine' && <div><Label>Images to combine · 2 to 3</Label><div className="grid grid-cols-3 gap-2">{imageSources.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setImageSources((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}{imageSources.length < 3 && <button onClick={() => openVault('combine')} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button>}</div><div className="mt-2 grid grid-cols-2 gap-2"><button onClick={() => startUpload('combine')} disabled={uploading} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10 disabled:opacity-50"><Upload size={15} />{uploading && uploadTarget === 'combine' ? 'Uploading…' : 'Upload'}</button><button onClick={() => openAssetsShop('combine')} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10"><Store size={15} />Assets Shop</button></div></div>}
         </> : <div><Label>Source images</Label><div className="grid grid-cols-3 gap-2">{sourceUrls.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setSourceUrls((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}{sourceUrls.length < 4 && <button onClick={() => openVault('source')} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button>}</div><div className="mt-2 grid grid-cols-2 gap-2"><button onClick={() => startUpload('source')} disabled={uploading} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10 disabled:opacity-50"><Upload size={15} />{uploading && uploadTarget === 'source' ? 'Uploading…' : 'Upload'}</button><button onClick={() => openAssetsShop('source')} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10"><Store size={15} />Assets Shop</button></div></div>}
 
@@ -365,10 +397,10 @@ export default function LayoutTool({ user, onClose }) {
         </div>}
 
         {purpose !== 'image' && purpose !== 'cover' && <div><Label>Exact text</Label><textarea value={exactText} onChange={(event) => setExactText(event.target.value)} rows={3} placeholder="Write the exact words and line breaks" className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60" /></div>}
-        <div><Label>{purpose === 'image' ? 'Image prompt' : 'Art direction'}</Label><textarea value={direction} onChange={(event) => setDirection(event.target.value)} rows={5} placeholder={purpose === 'image' ? 'Describe the image to create, its subjects, setting, style, light and composition' : purpose === 'cover' ? 'Describe the cover style, visual hierarchy, mood, typography character, light and composition' : 'Describe the visual world, materials, lettering character, light and composition'} className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60" /></div>
+        <div><Label>{purpose === 'image' ? (imageMode === 'edit' ? 'Edit instruction' : 'Image prompt') : 'Art direction'}</Label><textarea value={direction} onChange={(event) => setDirection(event.target.value)} rows={5} placeholder={purpose === 'image' ? imageMode === 'edit' ? 'Describe only what you want changed, e.g. remove all text, clean the background, create more empty space above the subject' : 'Describe the image to create, its subjects, setting, style, light and composition' : purpose === 'cover' ? 'Describe the cover style, visual hierarchy, mood, typography character, light and composition' : 'Describe the visual world, materials, lettering character, light and composition'} className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60" /></div>
         {selectedUrl && <div><Label>Change this version</Label><textarea value={revision} onChange={(event) => setRevision(event.target.value)} rows={2} placeholder="Describe only what must change" className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60" /></div>}
 
-        <button onClick={generate} disabled={generating} className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:opacity-50">{generating ? <><Loader2 className="animate-spin" size={18} /> Generating…</> : <><Sparkles size={18} /> {selectedUrl ? 'Generate a new version' : purpose === 'image' ? 'Generate image' : 'Generate layout'}{priceLoading ? ' · calculating…' : priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}</>}</button>
+        <button onClick={generate} disabled={generating} className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:opacity-50">{generating ? <><Loader2 className="animate-spin" size={18} /> Generating…</> : <><Sparkles size={18} /> {selectedUrl ? 'Generate a new version' : purpose === 'image' && imageMode === 'edit' ? 'Edit image' : purpose === 'image' ? 'Generate image' : 'Generate layout'}{priceLoading ? ' · calculating…' : priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}</>}</button>
       </section>
 
       <section className="min-h-[600px] rounded-[4px] border border-white/10 bg-[#16181b] p-5 lg:p-6">
@@ -382,7 +414,8 @@ export default function LayoutTool({ user, onClose }) {
     </div>
 
     {showVault && <AtelierAssetPicker userEmail={user?.email} onSelect={(url) => {
-      if (pickerTarget === 'combine') setImageSources((current) => [...new Set([...current, url])].slice(0, 3));
+      if (pickerTarget === 'edit') setImageSources([url]);
+      else if (pickerTarget === 'combine') setImageSources((current) => [...new Set([...current, url])].slice(0, 3));
       else if (pickerTarget === 'logo') setLogoUrls((current) => [...new Set([...current, url])].slice(0, 2));
       else setSourceUrls((current) => [...new Set([...current, url])].slice(0, 4));
       setShowVault(false);
