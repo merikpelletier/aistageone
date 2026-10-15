@@ -1,10 +1,10 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Check, Download, Image as ImageIcon, LayoutTemplate, Loader2, Save, Sparkles, Store, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import AtelierAssetPicker from '@/components/atelier/AtelierAssetPicker';
 import Catalog from '@/pages/Catalog';
-import AssetDetail from '@/pages/AssetDetail';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
@@ -85,6 +85,7 @@ function buildPrompt({ purpose, format, exactText, direction, hasSource, imageMo
 }
 
 export default function LayoutTool({ user, onClose }) {
+  const queryClient = useQueryClient();
   const [purpose, setPurpose] = useState('cover');
   const [imageMode, setImageMode] = useState('prompt');
   const [format, setFormat] = useState('2:3');
@@ -102,7 +103,7 @@ export default function LayoutTool({ user, onClose }) {
   const [showVault, setShowVault] = useState(false);
   const [pickerTarget, setPickerTarget] = useState('source');
   const [showAssetsShop, setShowAssetsShop] = useState(false);
-  const [shopAssetId, setShopAssetId] = useState(null);
+  const [shopTarget, setShopTarget] = useState('source');
   const [uploadTarget, setUploadTarget] = useState('source');
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -177,9 +178,35 @@ export default function LayoutTool({ user, onClose }) {
     }
   };
 
-  const openAssetsShop = () => {
-    setShopAssetId(null);
+  const openAssetsShop = (target) => {
+    const maxCount = target === 'combine' ? 3 : 4;
+    const currentCount = target === 'combine' ? imageSources.length : sourceUrls.length;
+    if (currentCount >= maxCount) {
+      toast.error(`Maximum ${maxCount} source images`);
+      return;
+    }
+    setShopTarget(target);
     setShowAssetsShop(true);
+  };
+
+  const selectAssetFromShop = (assetId) => {
+    const assets = queryClient.getQueryData(['olo-catalog-assets']) || [];
+    const asset = assets.find((item) => item.id === assetId);
+    const assetUrl = asset?.featured_image;
+    if (!assetUrl) {
+      toast.error('This asset has no usable image');
+      return;
+    }
+
+    if (shopTarget === 'combine') {
+      if (imageSources.includes(assetUrl)) toast.info('This asset is already in the composition');
+      else setImageSources((current) => [...current, assetUrl].slice(0, 3));
+    } else {
+      if (sourceUrls.includes(assetUrl)) toast.info('This asset is already in the composition');
+      else setSourceUrls((current) => [...current, assetUrl].slice(0, 4));
+    }
+    setShowAssetsShop(false);
+    if (!(shopTarget === 'combine' ? imageSources : sourceUrls).includes(assetUrl)) toast.success(`${asset?.title || 'Asset'} added to Layout`);
   };
 
   const generate = async () => {
@@ -238,15 +265,14 @@ export default function LayoutTool({ user, onClose }) {
   if (showAssetsShop) {
     return <div className="min-h-screen bg-[#202328] text-white lg:h-[calc(100vh-3.5rem)] lg:min-h-0 lg:overflow-hidden">
       <header className="flex items-center gap-3 border-b border-white/10 bg-[#16181b] px-5 py-4 lg:px-8">
-        <button type="button" onClick={() => { setShopAssetId(null); setShowAssetsShop(false); }} className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/65 transition hover:bg-white/10 hover:text-white"><ArrowLeft size={19} /></button>
+        <button type="button" onClick={() => setShowAssetsShop(false)} className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/65 transition hover:bg-white/10 hover:text-white"><ArrowLeft size={19} /></button>
         <div>
           <p className="text-[9px] font-black uppercase tracking-[.24em] text-[#23c7be]">Layout</p>
-          <h1 className="text-2xl font-black tracking-tight">Assets Shop</h1>
+          <h1 className="text-2xl font-black tracking-tight">Select an asset</h1>
+          <p className="mt-1 text-xs font-semibold text-white/45">Click an asset to add it to {shopTarget === 'combine' ? 'Images to combine' : 'Source images'} and return to Layout.</p>
         </div>
       </header>
-      {shopAssetId
-        ? <AssetDetail assetId={shopAssetId} embedded onBack={() => setShopAssetId(null)} />
-        : <Catalog embedded onOpenAsset={setShopAssetId} />}
+      <Catalog embedded onOpenAsset={selectAssetFromShop} />
     </div>;
   }
 
@@ -276,8 +302,8 @@ export default function LayoutTool({ user, onClose }) {
 
         {purpose === 'image' ? <>
           <Picker title="Image creation" items={IMAGE_MODES} value={imageMode} onChange={setImageMode} columns="grid-cols-2" />
-          {imageMode === 'combine' && <div><Label>Images to combine · 2 to 3</Label><div className="grid grid-cols-3 gap-2">{imageSources.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setImageSources((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}{imageSources.length < 3 && <button onClick={() => openVault('combine')} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button>}</div><div className="mt-2 grid grid-cols-2 gap-2"><button onClick={() => startUpload('combine')} disabled={uploading} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10 disabled:opacity-50"><Upload size={15} />{uploading && uploadTarget === 'combine' ? 'Uploading…' : 'Upload'}</button><button onClick={openAssetsShop} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10"><Store size={15} />Assets Shop</button></div></div>}
-        </> : <div><Label>Source images</Label><div className="grid grid-cols-3 gap-2">{sourceUrls.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setSourceUrls((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}{sourceUrls.length < 4 && <button onClick={() => openVault('source')} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button>}</div><div className="mt-2 grid grid-cols-2 gap-2"><button onClick={() => startUpload('source')} disabled={uploading} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10 disabled:opacity-50"><Upload size={15} />{uploading && uploadTarget === 'source' ? 'Uploading…' : 'Upload'}</button><button onClick={openAssetsShop} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10"><Store size={15} />Assets Shop</button></div></div>}
+          {imageMode === 'combine' && <div><Label>Images to combine · 2 to 3</Label><div className="grid grid-cols-3 gap-2">{imageSources.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setImageSources((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}{imageSources.length < 3 && <button onClick={() => openVault('combine')} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button>}</div><div className="mt-2 grid grid-cols-2 gap-2"><button onClick={() => startUpload('combine')} disabled={uploading} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10 disabled:opacity-50"><Upload size={15} />{uploading && uploadTarget === 'combine' ? 'Uploading…' : 'Upload'}</button><button onClick={() => openAssetsShop('combine')} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10"><Store size={15} />Assets Shop</button></div></div>}
+        </> : <div><Label>Source images</Label><div className="grid grid-cols-3 gap-2">{sourceUrls.map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/15 bg-white/5"><img src={url} alt={`Source ${index + 1}`} className="h-full w-full object-cover" /><button onClick={() => setSourceUrls((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-[3px] bg-black/80 px-2 py-1 text-[10px] font-black text-red-300">Remove</button></div>)}{sourceUrls.length < 4 && <button onClick={() => openVault('source')} className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#23c7be]/55 bg-[#23c7be]/[0.04] p-2 text-center text-xs font-black text-[#23c7be]"><span><ImageIcon size={20} className="mx-auto mb-2" />Add image</span></button>}</div><div className="mt-2 grid grid-cols-2 gap-2"><button onClick={() => startUpload('source')} disabled={uploading} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10 disabled:opacity-50"><Upload size={15} />{uploading && uploadTarget === 'source' ? 'Uploading…' : 'Upload'}</button><button onClick={() => openAssetsShop('source')} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white hover:bg-white/10"><Store size={15} />Assets Shop</button></div></div>}
 
         {purpose === 'cover' && <div className="space-y-4 rounded-[3px] border border-[#23c7be]/25 bg-[#23c7be]/[0.035] p-4">
           <div><Label>Cover title</Label><input value={coverTitle} onChange={(event) => setCoverTitle(event.target.value)} placeholder="Main title" className="w-full rounded-[3px] border border-white/10 bg-[#26292d] px-3 py-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60" /></div>
