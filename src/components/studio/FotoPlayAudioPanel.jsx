@@ -231,7 +231,8 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
       const character = characters.find((item) => item.id === box.speaker_id);
       const voice = resolveVoice(box);
       const stale = lineNeedsGeneration(box);
-      const lineCost = Number(box.audio_credit_cost ?? 0);
+      const hasRecordedLineCost = box.audio_credit_cost !== undefined && box.audio_credit_cost !== null;
+      const lineCost = hasRecordedLineCost ? Number(box.audio_credit_cost) : null;
       return <div key={box.id} className="space-y-3 border border-white/10 bg-[#181c21] p-3">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center bg-[#23c7be] text-xs font-black text-black">{index + 1}</div>
@@ -265,7 +266,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
         </label>
 
         {box.audio_url && !stale && <div className="flex items-center justify-between border border-[#23c7be]/35 bg-[#23c7be]/10 px-3 py-2">
-          <span className="text-[11px] font-black text-[#23c7be]">✓ Generated · {lineCost} credit{lineCost === 1 ? '' : 's'}</span>
+          <span className="text-[11px] font-black text-[#23c7be]">{hasRecordedLineCost ? `✓ Generated · ${lineCost} credit${lineCost === 1 ? '' : 's'}` : '✓ Generated · cost not recorded'}</span>
           <button type="button" onClick={() => { dispatchActive(box.id); playUrl(box.audio_url).finally(() => dispatchActive('')); }} className="inline-flex items-center gap-1 text-[11px] font-black text-white"><Play size={12} /> Listen</button>
         </div>}
         {box.audio_url && stale && <div className="border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] font-black text-amber-200">Audio exists, but this line changed and needs regeneration.</div>}
