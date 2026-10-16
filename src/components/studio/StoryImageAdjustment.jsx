@@ -4,7 +4,7 @@ import { adjustmentFingerprint, adjustmentPrompt, adjustmentTarget } from './sto
 
 import StoryImageFileActions from './StoryImageFileActions.jsx';
 
-const button = 'border border-white/10 px-4 py-3 text-sm font-bold transition-colors disabled:opacity-40';
+const button = 'border border-white/10 px-3 py-2.5 text-xs font-black transition-colors disabled:opacity-40';
 
 export default function StoryImageAdjustment({ userEmail, imageName = 'FotoPlay', segment, ratio, panelRatio, price, busy, setBusy, onApply, referenceImages = [] }) {
   const [targetIndex, setTargetIndex] = useState(undefined);
@@ -70,6 +70,39 @@ export default function StoryImageAdjustment({ userEmail, imageName = 'FotoPlay'
 
   const panels = segment.visual_format === 'comic' ? (segment.comic_panels || []).slice(0, segment.comic_panel_count || 3) : [];
   if (!segment.image_url && !panels.some((panel) => panel.image_url)) return null;
+
+  if (target) return <section className="bg-[#111418] text-white" aria-labelledby="adjust-image-title">
+    <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-white/10 bg-[#111418] px-4 py-3">
+      <div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#23c7be]">FotoPlay tool</p><h3 id="adjust-image-title" className="mt-1 truncate text-lg font-black">{targetIndex === null ? 'Adjust image' : `Adjust panel ${targetIndex + 1}`}</h3></div>
+      <button type="button" onClick={close} disabled={Boolean(busy)} className={`${button} shrink-0 bg-[#1c2025] text-white hover:border-[#23c7be]`}>Back</button>
+    </div>
+    <div className="space-y-4 p-4">
+      <figure>
+        <figcaption className="mb-2 text-xs font-semibold text-white/65">Current image</figcaption>
+        <div className="flex max-h-[260px] min-h-[180px] w-full items-center justify-center overflow-hidden border border-white/10 bg-black"><img src={target.url} alt="Current image before adjustment" className="max-h-[260px] max-w-full object-contain" /></div>
+        <StoryImageFileActions url={target.url} userEmail={userEmail} name={`${imageName} - Current image`} ratio={targetIndex === null ? ratio : panelRatio} onUploaded={(uploadedUrl) => applyManualUpload(uploadedUrl, target)} />
+      </figure>
+
+      {candidate && <figure>
+        <figcaption className="mb-2 text-xs font-black text-[#23c7be]">Adjusted candidate · not yet applied</figcaption>
+        <div className="flex max-h-[260px] min-h-[180px] w-full items-center justify-center overflow-hidden border border-[#23c7be]/45 bg-black"><img src={candidate.url} alt="Adjusted candidate" className="max-h-[260px] max-w-full object-contain" /></div>
+        <StoryImageFileActions url={candidate.url} userEmail={userEmail} name={`${imageName} - Adjusted image`} ratio={targetIndex === null ? ratio : panelRatio} />
+        <a href={candidate.url} target="_blank" rel="noreferrer" className="text-xs font-bold text-[#23c7be] underline">Open candidate</a>
+      </figure>}
+
+      <div>
+        <label htmlFor="image-adjustment-instruction" className="text-xs font-black uppercase tracking-[.08em] text-white/75">What should change?</label>
+        <textarea autoFocus id="image-adjustment-instruction" disabled={Boolean(busy)} value={instruction} onChange={(event) => setInstruction(event.target.value)} rows={4} maxLength={4000} placeholder="Add her black hat. Keep everything else exactly the same." className="mt-2 w-full resize-y border border-white/15 bg-[#20242a] p-3 text-sm text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
+      </div>
+
+      {referenceImages.length > 0 && <div><p className="text-xs text-white/55">Optional detail reference</p><div className="mt-2 flex gap-2 overflow-x-auto pb-1"><button type="button" disabled={Boolean(busy)} onClick={() => setReference('')} className={`${button} shrink-0 ${!reference ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'bg-[#1c2025] text-white hover:border-[#23c7be]'}`}>None</button>{referenceImages.filter((url) => url !== target.url).map((url, index) => <button type="button" key={url} disabled={Boolean(busy)} aria-label={`Use detail reference ${index + 1}`} aria-pressed={reference === url} onClick={() => setReference(url)} className={`shrink-0 border-2 ${reference === url ? 'border-[#23c7be]' : 'border-white/10'}`}><img src={url} alt={`Detail reference ${index + 1}`} className="h-16 w-20 object-contain" /></button>)}</div></div>}
+
+      <p className="text-[11px] leading-relaxed text-white/45">Each generated candidate uses {price ?? 'the configured image-generation price'}{price != null ? ' credits' : ''}. Accepting or restoring does not generate another image.</p>
+      {error && <p role="alert" className="text-xs text-red-300">{error}</p>}
+      <div className="grid gap-2"><button type="button" disabled={Boolean(busy) || !instruction.trim()} onClick={generate} className={`${button} w-full border-[#23c7be] bg-[#23c7be] text-black hover:bg-[#39d7ce]`}>{busy === `${segment.id}-adjust` ? 'Generating adjustment…' : 'Generate adjustment'}</button>{candidate && <><button type="button" disabled={Boolean(busy)} onClick={() => apply()} className={`${button} w-full border-white/15 bg-white text-black hover:bg-white/90`}>Accept this image</button><button type="button" disabled={Boolean(busy)} onClick={() => setCandidate(null)} className={`${button} w-full bg-[#1c2025] text-white hover:border-[#23c7be]`}>Discard candidate</button></>}{original && <button type="button" disabled={Boolean(busy)} onClick={() => apply(true)} className={`${button} w-full bg-[#1c2025] text-white hover:border-[#23c7be]`}>Restore original</button>}</div>
+    </div>
+  </section>;
+
   return <section className="border border-white/10 bg-[#111418] p-4 text-white">
     <h4 className="font-black text-[#23c7be]">Adjust an existing image</h4>
     <p className="mt-1 text-xs text-white/55">Choose an image, describe a correction, then review it before replacing the original.</p>
@@ -77,17 +110,5 @@ export default function StoryImageAdjustment({ userEmail, imageName = 'FotoPlay'
       {segment.visual_format !== 'comic' && segment.image_url && <button type="button" disabled={Boolean(busy)} onClick={() => open(null)} className={`${button} border-[#23c7be] bg-[#23c7be] text-black hover:bg-[#39d7ce]`}>Adjust image</button>}
       {panels.map((panel, index) => panel.image_url && <button key={panel.id || index} type="button" disabled={Boolean(busy)} onClick={() => open(index)} className={`${button} flex items-center gap-3 bg-[#1c2025] text-white hover:border-[#23c7be]`}><img src={panel.image_url} alt="" className="h-14 w-20 object-cover object-center" />Adjust panel {index + 1}</button>)}
     </div>
-    {target && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3" role="dialog" aria-modal="true" aria-labelledby="adjust-image-title">
-      <div className="max-h-[95vh] w-full max-w-6xl overflow-auto border border-white/15 bg-[#111418] p-5">
-        <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#23c7be]">FotoPlay tool</p><h3 id="adjust-image-title" className="text-xl font-black">{targetIndex === null ? 'Adjust image' : `Adjust panel ${targetIndex + 1}`}</h3></div><button type="button" onClick={close} disabled={Boolean(busy)} className={`${button} bg-[#1c2025] text-white hover:border-[#23c7be]`}>Close</button></div>
-        <div className="my-4 grid gap-4 md:grid-cols-2"><figure><figcaption className="mb-2 text-sm text-white/70">Current image — shown proportionally; this exact framed area is what will appear in the final StoryBlock</figcaption><div className="relative isolate flex h-[48vh] w-full items-center justify-center overflow-hidden border border-white/10 bg-black"><img src={target.url} alt="Current image before adjustment" className="max-h-full max-w-full object-contain" /></div><StoryImageFileActions url={target.url} userEmail={userEmail} name={`${imageName} - Current image`} ratio={targetIndex === null ? ratio : panelRatio} onUploaded={(uploadedUrl) => applyManualUpload(uploadedUrl, target)} /></figure>{candidate && <figure><figcaption className="mb-2 text-sm text-[#23c7be]">Adjusted candidate · not yet applied — shown proportionally; this exact framed area is what will appear in the final StoryBlock</figcaption><div className="relative isolate flex h-[48vh] w-full items-center justify-center overflow-hidden border border-white/10 bg-black"><img src={candidate.url} alt="Adjusted candidate" className="max-h-full max-w-full object-contain" /></div><StoryImageFileActions url={candidate.url} userEmail={userEmail} name={`${imageName} - Adjusted image`} ratio={targetIndex === null ? ratio : panelRatio} /><a href={candidate.url} target="_blank" rel="noreferrer" className="text-xs text-[#23c7be] underline">Open candidate</a></figure>}</div>
-        <label htmlFor="image-adjustment-instruction" className="text-sm font-bold">What should change?</label>
-        <textarea autoFocus id="image-adjustment-instruction" disabled={Boolean(busy)} value={instruction} onChange={(event) => setInstruction(event.target.value)} rows={3} maxLength={4000} placeholder="Add her black hat. Keep everything else exactly the same." className="mt-2 w-full border border-white/15 bg-[#20242a] p-3 text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
-        {referenceImages.length > 0 && <div className="mt-3"><p className="text-xs text-white/55">Optional detail reference — choose the image showing the correct hat, costume or object.</p><div className="mt-2 flex gap-2 overflow-x-auto"><button type="button" disabled={Boolean(busy)} onClick={() => setReference('')} className={`${button} ${!reference ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'bg-[#1c2025] text-white hover:border-[#23c7be]'}`}>None</button>{referenceImages.filter((url) => url !== target.url).map((url, index) => <button type="button" key={url} disabled={Boolean(busy)} aria-label={`Use detail reference ${index + 1}`} aria-pressed={reference === url} onClick={() => setReference(url)} className={`shrink-0 border-2 ${reference === url ? 'border-[#23c7be]' : 'border-transparent'}`}><img src={url} alt={`Detail reference ${index + 1}`} className="h-20 w-24 object-contain" /></button>)}</div></div>}
-        <p className="mt-3 text-xs text-white/50">Each generated candidate uses {price ?? 'the configured image-generation price'}{price != null ? ' credits' : ''}. Accepting or restoring does not generate another image. Review the result: AI editing can also alter details you wanted to keep.</p>
-        {error && <p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}
-        <div className="mt-4 flex flex-wrap gap-3"><button type="button" disabled={Boolean(busy) || !instruction.trim()} onClick={generate} className={`${button} border-[#23c7be] bg-[#23c7be] text-black hover:bg-[#39d7ce]`}>{busy === `${segment.id}-adjust` ? 'Generating adjustment…' : 'Generate adjustment'}</button>{candidate && <><button type="button" disabled={Boolean(busy)} onClick={() => apply()} className={`${button} border-white/15 bg-white text-black hover:bg-white/90`}>Accept this image</button><button type="button" disabled={Boolean(busy)} onClick={() => setCandidate(null)} className={`${button} bg-[#1c2025] text-white hover:border-[#23c7be]`}>Discard candidate</button></>}{original && <button type="button" disabled={Boolean(busy)} onClick={() => apply(true)} className={`${button} bg-[#1c2025] text-white hover:border-[#23c7be]`}>Restore original</button>}</div>
-      </div>
-    </div>}
   </section>;
 }
