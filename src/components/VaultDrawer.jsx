@@ -5,10 +5,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bookmark, X, Trash2, Volume2 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import VaultPickerModal from '@/components/studio/VaultPickerModal';
+import AtelierAssetPicker from '@/components/atelier/AtelierAssetPicker';
 
 // Can be used as a controlled drawer (pass open + onClose) or standalone (no props).
-// When onSelect is provided, use the standard VaultPickerModal used across the Studio.
+// When onSelect is provided, use the same Vault picker as Layout.
 export default function VaultDrawer({ open: controlledOpen, onClose, onSelect }) {
   const { user } = useAuth();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -40,7 +40,7 @@ export default function VaultDrawer({ open: controlledOpen, onClose, onSelect })
     if (!open) return null;
 
     return (
-      <VaultPickerModal
+      <AtelierAssetPicker
         userEmail={user.email}
         onClose={handleClose}
         onSelect={(url) => {
