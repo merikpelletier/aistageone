@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import VoicePreviewButton from '@/components/studio/VoicePreviewButton';
+import { VOICE_LANGUAGES, VOICE_NAMES } from '@/lib/voiceCatalog';
 
 function inputSchema(model) {
   return model?.schema?.components?.schemas?.Input?.properties || {};
@@ -34,15 +35,15 @@ function modelVoiceInfo(model) {
     const voices = examples.length ? examples : [String(props.voice_id.default || '')].filter(Boolean);
     return { voices, defaultVoice: String(props.voice_id.default || voices[0] || ''), parameter: 'voice_id' };
   }
-  return { voices: [], defaultVoice: '', parameter: null };
+  return { voices: VOICE_NAMES, defaultVoice: VOICE_NAMES[0] || '', parameter: 'voice' };
 }
 
 function modelLanguages(model) {
   const props = inputSchema(model);
   const propertyName = props.language ? 'language' : props.language_code ? 'language_code' : null;
-  if (!propertyName) return [['en', 'English']];
+  if (!propertyName) return VOICE_LANGUAGES;
   const values = enumFromSchema(model, propertyName).map(String);
-  if (!values.length) return [['en', 'English']];
+  if (!values.length) return VOICE_LANGUAGES;
   const labels = new Intl.DisplayNames(['en'], { type: 'language' });
   return values.map(code => [code, code === 'auto' ? 'Auto detect' : (labels.of(code) || code)]);
 }
@@ -50,7 +51,7 @@ function modelLanguages(model) {
 export default function VoicePicker({ value, onChange, language, onLanguageChange, disabled = false, preview = true, model = null }) {
   const voiceInfo = useMemo(() => modelVoiceInfo(model), [model]);
   const languages = useMemo(() => modelLanguages(model), [model]);
-  const providerName = model?.model_key?.startsWith('inworld/') ? 'Inworld' : model?.model_key?.startsWith('elevenlabs/') ? 'ElevenLabs' : (model?.name || 'Selected model');
+  const providerName = model?.model_key?.startsWith('inworld/') ? 'Inworld' : model?.model_key?.startsWith('elevenlabs/') ? 'ElevenLabs' : (model?.name || 'ElevenLabs');
 
   useEffect(() => {
     if (!voiceInfo.voices.length) return;
@@ -78,6 +79,6 @@ export default function VoicePicker({ value, onChange, language, onLanguageChang
         {languages.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
       </select>
     </label>}
-    <p className="text-[10px] opacity-70">{providerName} via Replicate · voices and languages follow the selected AI model.</p>
+    <p className="text-[10px] opacity-70">{providerName} via Replicate · voices and languages follow the selected AI model when available.</p>
   </div>;
 }

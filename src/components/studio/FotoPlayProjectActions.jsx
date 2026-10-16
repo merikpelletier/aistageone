@@ -1,0 +1,83 @@
+import React, { useMemo, useState } from 'react';
+import { Check, Download, Eye, Image as ImageIcon, Loader2, Rocket, X } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
+import { completedExportChapters, exportAnimatedVideo, exportSlideshowZip, supportedMp4Type } from './storyExport';
+
+const input = 'w-full border border-white/15 bg-[#20242a] px-3 py-2.5 text-sm font-semibold text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none';
+const action = 'inline-flex items-center justify-center gap-2 border border-white/10 px-3 py-2.5 text-xs font-black disabled:cursor-not-allowed disabled:opacity-35';
+
+export function FotoPlayPreviewModal({ project, activeChapterId, onClose }) {
+  const chapters = project.chapters || [];
+  const initial = chapters.find((chapter) => chapter.id === activeChapterId) || chapters[0];
+  const [chapterId, setChapterId] = useState(initial?.id || '');
+  const chapter = chapters.find((item) => item.id === chapterId) || initial;
+  const [index, setIndex] = useState(0);
+  const segment = chapter?.segments?.[Math.min(index, Math.max(0, (chapter?.segments?.length || 1) - 1))];
+  return <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/90 p-4 text-white">
+    <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden border border-white/15 bg-[#111418] shadow-2xl">
+      <div className="flex items-center gap-3 border-b border-white/10 p-4"><Eye size={18} className="text-[#23c7be]" /><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#23c7be]">FotoPlay preview</p><h3 className="truncate text-lg font-black">{project.title}</h3></div><button onClick={onClose} className="p-2 text-white/70"><X /></button></div>
+      <div className="flex flex-wrap gap-2 border-b border-white/10 p-3">{chapters.map((item) => <button key={item.id} onClick={() => { setChapterId(item.id); setIndex(0); }} className={`border px-3 py-2 text-xs font-black ${item.id === chapter?.id ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'border-white/10 bg-white/5'}`}>Chapter {item.number}</button>)}</div>
+      <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[1fr_280px]">
+        <div className="flex min-h-[420px] items-center justify-center bg-black p-4">{segment?.image_url ? <img src={segment.image_url} alt="" className="max-h-[72vh] max-w-full object-contain" /> : <div className="text-sm font-bold text-white/35">This segment has no final page yet.</div>}</div>
+        <div className="space-y-3"><div><p className="text-xs font-black text-[#23c7be]">Segment {segment?.number || index + 1}</p><p className="mt-1 text-sm font-semibold text-white/75">{segment?.summary || 'No summary'}</p></div>{segment?.narration_url && <audio controls src={segment.narration_url} className="w-full" />}<div className="grid grid-cols-3 gap-2">{(chapter?.segments || []).map((item, itemIndex) => <button key={item.id} onClick={() => setIndex(itemIndex)} className={`aspect-square overflow-hidden border ${itemIndex === index ? 'border-[#23c7be]' : 'border-white/10'}`}>{item.image_url ? <img src={item.image_url} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-xs font-black text-white/30">{item.number}</span>}</button>)}</div></div>
+      </div>
+    </div>
+  </div>;
+}
+
+export function FotoPlayExportModal({ project, activeChapterId, onClose }) {
+  const readyChapters = useMemo(() => completedExportChapters(project), [project]);
+  const [selectedIds, setSelectedIds] = useState(() => readyChapters.some((chapter) => chapter.id === activeChapterId) ? [activeChapterId] : readyChapters.map((chapter) => chapter.id));
+  const [task, setTask] = useState(''); const [progress, setProgress] = useState(0); const [label, setLabel] = useState('');
+  const chapters = readyChapters.filter((chapter) => selectedIds.includes(chapter.id));
+  const toggle = (id) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
+  const run = async (kind) => {
+    if (!chapters.length) return toast.error('Select at least one completed chapter');
+    setTask(kind); setProgress(0); setLabel(kind === 'video' ? 'Preparing animated video' : 'Preparing slideshow');
+    try {
+      const report = (text, value) => { setLabel(text); setProgress(Math.max(0, Math.min(1, value))); };
+      if (kind === 'video') await exportAnimatedVideo(project, chapters, report); else await exportSlideshowZip(project, chapters, report);
+      toast.success(kind === 'video' ? 'Animated video downloaded' : 'Slideshow ZIP downloaded');
+    } catch (error) { toast.error(error.message || 'Export failed'); }
+    finally { setTask(''); }
+  };
+  return <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/90 p-4 text-white"><div className="w-full max-w-2xl border border-white/15 bg-[#111418] p-5 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#23c7be]">FotoPlay export</p><h3 className="text-xl font-black">Export project</h3></div><button disabled={Boolean(task)} onClick={onClose}><X /></button></div><div className="mt-5 space-y-2">{readyChapters.map((chapter) => <button key={chapter.id} onClick={() => toggle(chapter.id)} className={`flex w-full items-center gap-3 border p-3 text-left text-sm font-black ${selectedIds.includes(chapter.id) ? 'border-[#23c7be] bg-[#23c7be]/15' : 'border-white/10 bg-white/5'}`}><span className="flex h-5 w-5 items-center justify-center border border-white/25">{selectedIds.includes(chapter.id) && <Check size={13} />}</span>Chapter {chapter.number} · {chapter.title}</button>)}{!readyChapters.length && <p className="border border-white/10 bg-white/5 p-4 text-sm text-white/55">Complete a chapter before exporting it.</p>}</div>{task && <div className="mt-5"><p className="mb-2 text-xs font-bold text-white/55">{label}</p><div className="h-2 bg-white/10"><div className="h-full bg-[#23c7be]" style={{ width: `${Math.round(progress * 100)}%` }} /></div></div>}<div className="mt-5 grid gap-2 sm:grid-cols-2"><button disabled={Boolean(task) || !selectedIds.length || !supportedMp4Type()} onClick={() => run('video')} className={`${action} bg-[#23c7be] text-black`}>{task === 'video' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Animated video</button><button disabled={Boolean(task) || !selectedIds.length} onClick={() => run('slideshow')} className={`${action} bg-white text-black`}>{task === 'slideshow' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Slideshow ZIP</button></div></div></div>;
+}
+
+export function FotoPlayPublishModal({ user, project, publishing, onClose, onPublish }) {
+  const readyChapters = useMemo(() => (project.chapters || []).filter((chapter) => chapter.segments?.length === 9 && chapter.segments.every((segment) => segment.status === 'approved' && segment.image_url && segment.narration_url)), [project.chapters]);
+  const [selectedIds, setSelectedIds] = useState(() => readyChapters.map((chapter) => chapter.id));
+  const [title, setTitle] = useState(project.title || '');
+  const [description, setDescription] = useState(project.story_description || '');
+  const [authorName, setAuthorName] = useState(project.author_name || user?.full_name || user?.email || project.created_by || '');
+  const [category, setCategory] = useState(project.genre || '');
+  const [rating, setRating] = useState(project.production_settings?.content_rating || 'all');
+  const [language, setLanguage] = useState(project.production_settings?.original_language || 'en');
+  const [coverImage, setCoverImage] = useState(project.cover_image || readyChapters.flatMap((chapter) => chapter.segments || []).map((segment) => segment.image_url).find(Boolean) || '');
+  const [confirmed, setConfirmed] = useState(false); const [uploading, setUploading] = useState(false);
+  const coverOptions = useMemo(() => [...new Set([project.cover_image, ...readyChapters.flatMap((chapter) => (chapter.segments || []).map((segment) => segment.image_url))].filter(Boolean))], [project, readyChapters]);
+  const toggle = (id) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
+  const uploadCover = async (event) => {
+    const fileInput = event.currentTarget;
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    if (!file.type?.startsWith('image/')) { toast.error('Choose an image file'); fileInput.value = ''; return; }
+    setUploading(true);
+    try {
+      const result = await base44.integrations.Core.UploadFile({ file });
+      const url = result?.file_url || result?.data?.file_url;
+      if (!url) throw new Error('The upload finished but no image URL was returned');
+      setCoverImage(url);
+      toast.success('Cover uploaded');
+    } catch (error) {
+      toast.error(error.message || 'Cover upload failed');
+    } finally {
+      setUploading(false);
+      fileInput.value = '';
+    }
+  };
+  const canPublish = selectedIds.length && title.trim() && authorName.trim() && rating && language && confirmed;
+  const submit = () => onPublish({ chapter_ids: selectedIds, title: title.trim(), description: description.trim(), author_name: authorName.trim(), contributors: Array.isArray(project.contributors) ? project.contributors : [], dossier_class: 'Story', category: category.trim(), cover_image: coverImage, content_rating: rating, original_language: language, public_promo_confirmed: confirmed });
+  return <div className="fixed inset-0 z-[220] flex items-start justify-center overflow-y-auto bg-black/90 p-4 py-6 text-white"><div className="w-full max-w-3xl border border-white/15 bg-[#111418] p-5 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#23c7be]">Publish from FotoPlay</p><h3 className="text-xl font-black">Publication details</h3></div><button onClick={onClose}><X /></button></div><div className="mt-5 space-y-4"><div><p className="mb-2 text-xs font-black uppercase text-white/55">Chapters</p><div className="space-y-2">{readyChapters.map((chapter) => <button key={chapter.id} onClick={() => toggle(chapter.id)} className={`flex w-full items-center gap-3 border p-3 text-left font-black ${selectedIds.includes(chapter.id) ? 'border-[#23c7be] bg-[#23c7be]/15' : 'border-white/10 bg-white/5'}`}><span className="flex h-5 w-5 items-center justify-center border">{selectedIds.includes(chapter.id) && <Check size={13} />}</span><span className="flex-1">Chapter {chapter.number} · {chapter.title}</span></button>)}</div>{!readyChapters.length && <p className="border border-red-400/30 bg-red-500/10 p-3 text-sm font-bold text-red-200">Complete and approve all 9 segments of a chapter first.</p>}</div><div className="grid gap-3 sm:grid-cols-2"><label><span className="mb-1 block text-[10px] font-black uppercase text-white/55">Public title</span><input value={title} onChange={(e) => setTitle(e.target.value)} className={input} /></label><label><span className="mb-1 block text-[10px] font-black uppercase text-white/55">Author</span><input value={authorName} onChange={(e) => setAuthorName(e.target.value)} className={input} /></label></div><label><span className="mb-1 block text-[10px] font-black uppercase text-white/55">Description</span><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className={input} /></label><div className="grid gap-3 sm:grid-cols-3"><label><span className="mb-1 block text-[10px] font-black uppercase text-white/55">Category</span><input value={category} onChange={(e) => setCategory(e.target.value)} className={input} /></label><label><span className="mb-1 block text-[10px] font-black uppercase text-white/55">Rating</span><select value={rating} onChange={(e) => setRating(e.target.value)} className={input}><option className="text-black" value="all">All audiences</option><option className="text-black" value="13+">13+</option><option className="text-black" value="18+">18+</option></select></label><label><span className="mb-1 block text-[10px] font-black uppercase text-white/55">Language</span><select value={language} onChange={(e) => setLanguage(e.target.value)} className={input}><option className="text-black" value="en">English</option><option className="text-black" value="fr">French</option><option className="text-black" value="es">Spanish</option></select></label></div><div><div className="mb-2 flex items-center justify-between"><p className="text-[10px] font-black uppercase text-white/55">Cover</p><label className={`${action} cursor-pointer bg-white text-black ${uploading ? 'pointer-events-none opacity-50' : ''}`}>{uploading ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />} {uploading ? 'Uploading…' : 'Upload'}<input type="file" accept="image/*" onChange={uploadCover} className="sr-only" /></label></div><div className="grid grid-cols-4 gap-2 md:grid-cols-6">{coverOptions.slice(0, 12).map((url) => <button key={url} onClick={() => setCoverImage(url)} className={`aspect-[3/4] overflow-hidden border-2 ${coverImage === url ? 'border-[#23c7be]' : 'border-transparent opacity-60'}`}><img src={url} alt="" className="h-full w-full object-cover" /></button>)}</div>{coverImage && !coverOptions.includes(coverImage) && <div className="mt-3"><p className="mb-2 text-[10px] font-black uppercase text-[#23c7be]">Uploaded cover selected</p><img src={coverImage} alt="Uploaded cover" className="h-40 max-w-[120px] border-2 border-[#23c7be] object-cover" /></div>}</div><label className="flex items-start gap-3 border border-white/10 bg-white/5 p-4"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1" /><span className="text-sm font-bold">I confirm this FotoPlay may be published publicly on AISTAGE.ONE.</span></label><div className="flex justify-end gap-2"><button onClick={onClose} className={`${action} bg-white/10`}>Cancel</button><button disabled={!canPublish || publishing} onClick={submit} className={`${action} bg-[#23c7be] text-black`}>{publishing ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />} {project.published_dossier_id ? 'Republish' : 'Publish'}</button></div></div></div></div>;
+}
