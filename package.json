@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --config vite.fotoplay.config.js",
+    "dev": "vite --config vite.fotoplay.no-legacy.config.js",
     "verify:preserved-contracts": "node scripts/verify-preserved-contracts.mjs",
     "verify:studio-tools": "node scripts/verify-studio-tool-contracts.mjs",
-    "build": "npm run verify:preserved-contracts && npm run verify:studio-tools && vite build --config vite.fotoplay.config.js",
+    "build": "npm run verify:preserved-contracts && npm run verify:studio-tools && vite build --config vite.fotoplay.no-legacy.config.js",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
