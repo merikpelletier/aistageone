@@ -11,6 +11,7 @@ import AdminDossierCategories from './AdminDossierCategories';
 import AdminEpisodeProduction from './AdminEpisodeProduction';
 import SeriesPageEditor from './SeriesPageEditor';
 import DossierAssociatedMember from '@/components/DossierAssociatedMember';
+import VaultDrawer from '@/components/VaultDrawer';
 import { toast } from 'sonner';
 
 function DossierPagesIndex({ pages, onManage }) {
@@ -58,6 +59,7 @@ export default function AdminDossiers() {
   const [showPageEditor, setShowPageEditor] = useState(null);
   const [subTab, setSubTab] = useState('list');
   const [expandedDossiers, setExpandedDossiers] = useState({});
+  const [coverVaultTarget, setCoverVaultTarget] = useState(null);
 
   const toggleExpand = (id) => setExpandedDossiers(prev => ({ ...prev, [id]: !prev[id] }));
   const queryClient = useQueryClient();
@@ -228,7 +230,7 @@ export default function AdminDossiers() {
         </div>
       )}
 
-      <Dialog open={!!editingDossier} onOpenChange={() => setEditingDossier(null)}>
+      <Dialog open={!!editingDossier} onOpenChange={() => { setEditingDossier(null); setCoverVaultTarget(null); }}>
         <DialogContent className="bg-neutral-950 border-white/10 text-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-light tracking-wide">{editingDossier?.id ? 'Edit' : 'New'} Dossier</DialogTitle>
@@ -314,6 +316,7 @@ export default function AdminDossiers() {
                 {editingDossier.cover_image && <img src={editingDossier.cover_image} alt="" className="w-full h-32 object-cover rounded-sm mb-2" />}
                 <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="dossier-image-upload" />
                 <label htmlFor="dossier-image-upload"><Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild><span><Upload size={16} className="mr-2" />Choose an image</span></Button></label>
+                <Button type="button" onClick={() => setCoverVaultTarget('portrait')} className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2">Choose from Vault</Button>
                 <Input value={editingDossier.cover_image || ''} onChange={(e) => setEditingDossier({ ...editingDossier, cover_image: e.target.value })} placeholder="Or paste an image URL" className="bg-neutral-900 border-white/10 text-white text-sm" />
               </div>
               <div>
@@ -321,6 +324,7 @@ export default function AdminDossiers() {
                 {editingDossier.cover_image_landscape && <img src={editingDossier.cover_image_landscape} alt="" className="w-full h-32 object-cover rounded-sm mb-2" />}
                 <input type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const { file_url } = await base44.integrations.Core.UploadFile({ file }); setEditingDossier({ ...editingDossier, cover_image_landscape: file_url }); }} className="hidden" id="dossier-image-landscape-upload" />
                 <label htmlFor="dossier-image-landscape-upload"><Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2" asChild><span><Upload size={16} className="mr-2" />Choose a landscape image</span></Button></label>
+                <Button type="button" onClick={() => setCoverVaultTarget('landscape')} className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700 mb-2">Choose landscape from Vault</Button>
                 <Input value={editingDossier.cover_image_landscape || ''} onChange={(e) => setEditingDossier({ ...editingDossier, cover_image_landscape: e.target.value })} placeholder="Or paste a URL" className="bg-neutral-900 border-white/10 text-white text-sm" />
               </div>
               <div><label className="block text-white text-sm mb-2">Portrait cover video (optional)</label><Input value={editingDossier.cover_video || ''} onChange={(e) => setEditingDossier({ ...editingDossier, cover_video: e.target.value })} placeholder="Portrait video URL" className="bg-neutral-900 border-white/10 text-white" /></div>
@@ -366,6 +370,18 @@ export default function AdminDossiers() {
           )}
         </DialogContent>
       </Dialog>
+
+      <VaultDrawer
+        open={!!coverVaultTarget}
+        onClose={() => setCoverVaultTarget(null)}
+        onSelect={(url) => {
+          setEditingDossier(current => current ? {
+            ...current,
+            [coverVaultTarget === 'landscape' ? 'cover_image_landscape' : 'cover_image']: url,
+          } : current);
+          setCoverVaultTarget(null);
+        }}
+      />
 
       {showPageEditor && <PageEditor dossier={showPageEditor} pages={allPages.filter(p => p.dossier_id === showPageEditor.id)} onClose={() => setShowPageEditor(null)} />}
     </div>
