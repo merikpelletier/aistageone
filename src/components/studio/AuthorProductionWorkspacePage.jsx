@@ -105,13 +105,15 @@ function wrapLines(ctx, text, maxWidth) {
 function drawDialogueTailCanvas(ctx, box, x, y, w, h) {
   const side = box.tail_side || 'bottom';
   const position = (box.tail_position || 50) / 100;
-  const size = Math.max(16, Math.min(w, h) * (box.tail_size || 22) / 100);
+  const scale = Math.max(10, Math.min(50, Number(box.tail_size) || 22)) / 22;
+  const short = 18 * scale;
+  const long = 24 * scale;
   let a; let tip; let b;
-  if (side === 'top') { const cx = x + w * position; a = [cx - size * .22, y]; tip = [cx, y - size]; b = [cx + size * .22, y]; }
-  else if (side === 'right') { const cy = y + h * position; a = [x + w, cy - size * .22]; tip = [x + w + size, cy]; b = [x + w, cy + size * .22]; }
-  else if (side === 'left') { const cy = y + h * position; a = [x, cy - size * .22]; tip = [x - size, cy]; b = [x, cy + size * .22]; }
-  else { const cx = x + w * position; a = [cx - size * .22, y + h]; tip = [cx, y + h + size]; b = [cx + size * .22, y + h]; }
-  ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...tip); ctx.lineTo(...b); ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#111'; ctx.lineWidth = Math.max(2, ctx.canvas.width * .002); ctx.stroke();
+  if (side === 'top') { const cx = x + w * position; a = [cx - short * .5, y]; tip = [cx, y - long]; b = [cx + short * .5, y]; }
+  else if (side === 'right') { const cy = y + h * position; a = [x + w, cy - short * .5]; tip = [x + w + long, cy]; b = [x + w, cy + short * .5]; }
+  else if (side === 'left') { const cy = y + h * position; a = [x, cy - short * .5]; tip = [x - long, cy]; b = [x, cy + short * .5]; }
+  else { const cx = x + w * position; a = [cx - short * .5, y + h]; tip = [cx, y + h + long]; b = [cx + short * .5, y + h]; }
+  ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...tip); ctx.lineTo(...b); ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#111'; ctx.lineWidth = Math.max(2, ctx.canvas.width * .002); ctx.lineJoin = 'round'; ctx.stroke();
 }
 
 async function addTextBoxesToFile(file, boxes) {
