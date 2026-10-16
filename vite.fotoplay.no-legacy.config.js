@@ -3,7 +3,7 @@ import { defineConfig } from 'vite'
 
 const noLegacyFotoPlayFallback = {
   name: 'fotoplay-no-legacy-fallback',
-  enforce: 'post',
+  enforce: 'pre',
   transform(code, id) {
     const normalizedId = id?.replace(/\\/g, '/') || ''
     if (!normalizedId.endsWith('/src/components/studio/AuthorProductionWorkspacePage.jsx')) return null
