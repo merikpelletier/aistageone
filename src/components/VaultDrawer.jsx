@@ -5,10 +5,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bookmark, X, Trash2, Volume2 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import VaultSection from '@/components/VaultSection';
+import VaultPickerModal from '@/components/studio/VaultPickerModal';
 
 // Can be used as a controlled drawer (pass open + onClose) or standalone (no props).
-// When onSelect is provided, it opens the existing VaultSection and returns the selected image.
+// When onSelect is provided, use the standard VaultPickerModal used across the Studio.
 export default function VaultDrawer({ open: controlledOpen, onClose, onSelect }) {
   const { user } = useAuth();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -37,48 +37,17 @@ export default function VaultDrawer({ open: controlledOpen, onClose, onSelect })
   if (!user?.email) return null;
 
   if (onSelect) {
-    const captureVaultImage = (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLImageElement)) return;
-      const src = target.currentSrc || target.src;
-      if (!src) return;
-      event.preventDefault();
-      event.stopPropagation();
-      onSelect(src, { url: src });
-      handleClose?.();
-    };
+    if (!open) return null;
 
-    return createPortal(
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className="fixed inset-0 z-[220] overflow-y-scroll overscroll-contain bg-[#111317]"
-            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClickCapture={captureVaultImage}
-            onWheel={(e) => e.stopPropagation()}
-            onTouchMove={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 z-[230] flex items-center justify-between border-b border-white/10 bg-[#111317]/95 px-4 py-3 backdrop-blur">
-              <div className="flex items-center gap-2">
-                <Bookmark size={16} className="text-[#23c7be]" fill="currentColor" />
-                <span className="text-sm font-black text-white">Vault</span>
-                <span className="text-xs text-white/40">Choose an image for the cover</span>
-              </div>
-              <button type="button" onClick={handleClose} className="flex h-9 w-9 items-center justify-center border border-white/10 bg-white/[0.04] text-white/70 hover:text-white" aria-label="Close Vault">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="p-3 pb-10 md:p-4 md:pb-12">
-              <VaultSection userEmail={user.email} />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>,
-      document.body
+    return (
+      <VaultPickerModal
+        userEmail={user.email}
+        onClose={handleClose}
+        onSelect={(url) => {
+          onSelect(url, { url });
+          handleClose?.();
+        }}
+      />
     );
   }
 
