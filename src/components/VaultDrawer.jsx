@@ -3,26 +3,16 @@ import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bookmark, X, Trash2, Volume2, Folder, ChevronDown } from 'lucide-react';
+import { Bookmark, X, Trash2, Volume2 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-
-const folderAccent = {
-  red: 'bg-red-400',
-  orange: 'bg-orange-400',
-  yellow: 'bg-amber-300',
-  green: 'bg-emerald-400',
-  blue: 'bg-sky-400',
-  purple: 'bg-violet-400',
-  pink: 'bg-rose-400',
-};
+import VaultSection from '@/components/VaultSection';
 
 // Can be used as a controlled drawer (pass open + onClose) or standalone (no props).
-// When onSelect is provided, the existing Vault folder structure is used to choose an image.
+// When onSelect is provided, it opens the existing VaultSection and returns the selected image.
 export default function VaultDrawer({ open: controlledOpen, onClose, onSelect }) {
   const { user } = useAuth();
   const [internalOpen, setInternalOpen] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState(null);
-  const [expandedFolders, setExpandedFolders] = useState({});
   const qc = useQueryClient();
 
   const isControlled = controlledOpen !== undefined;
@@ -32,13 +22,7 @@ export default function VaultDrawer({ open: controlledOpen, onClose, onSelect })
   const { data: assets = [] } = useQuery({
     queryKey: ['vaultAssets', user?.email],
     queryFn: () => base44.entities.VaultAsset.filter({ user_email: user.email }, '-created_date'),
-    enabled: !!user?.email && open,
-  });
-
-  const { data: folders = [] } = useQuery({
-    queryKey: ['vaultFolders', user?.email],
-    queryFn: () => base44.entities.VaultFolder.filter({ user_email: user.email }, 'order'),
-    enabled: !!user?.email && open && !!onSelect,
+    enabled: !!user?.email && open && !onSelect,
   });
 
   const deleteAsset = async (id) => {
@@ -47,110 +31,62 @@ export default function VaultDrawer({ open: controlledOpen, onClose, onSelect })
   };
 
   const handleImageClick = (asset) => {
-    if (onSelect) {
-      onSelect(asset.url, asset);
-      handleClose?.();
-      return;
-    }
     setLightboxUrl(asset.url);
-  };
-
-  const toggleFolder = (folderId) => {
-    setExpandedFolders(prev => ({ ...prev, [folderId]: !prev[folderId] }));
   };
 
   if (!user?.email) return null;
 
   if (onSelect) {
-    const imageAssets = assets.filter(asset => asset?.url && asset.media_type !== 'video' && asset.media_type !== 'audio' && asset.media_type !== 'script');
-    const unfiledImages = imageAssets.filter(asset => !asset.folder_id);
-
-    const ImageGrid = ({ items }) => (
-      <div className="grid grid-cols-2 gap-2 border-t border-white/10 bg-[#17191d] p-3 sm:grid-cols-3">
-        {items.length === 0 ? (
-          <p className="col-span-full py-5 text-center text-xs text-white/35">No image files in this folder</p>
-        ) : items.map(asset => (
-          <button
-            key={asset.id}
-            type="button"
-            onClick={() => handleImageClick(asset)}
-            className="group min-w-0 overflow-hidden rounded-[4px] border border-white/10 bg-black/30 text-left hover:border-[#23c7be]/50"
-            title={asset.name || 'Vault image'}
-          >
-            <div className="aspect-[4/3] overflow-hidden bg-black/30">
-              <img src={asset.url} alt={asset.name || ''} className="h-full w-full object-contain" loading="lazy" />
-            </div>
-            <div className="truncate px-2 py-2 text-[10px] font-bold text-white/75 group-hover:text-white">{asset.name || 'Untitled'}</div>
-          </button>
-        ))}
-      </div>
-    );
+    const captureVaultImage = (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLImageElement)) return;
+      const src = target.currentSrc || target.src;
+      if (!src) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onSelect(src, { url: src });
+      handleClose?.();
+    };
 
     return createPortal(
       <AnimatePresence>
         {open && (
-          <motion.aside
-            className="fixed right-3 top-3 z-[220] flex h-[calc(100dvh-24px)] max-h-[calc(100dvh-24px)] w-[440px] max-w-[calc(100vw-24px)] flex-col overflow-hidden border border-white/15 bg-[#111317] shadow-2xl"
-            initial={{ x: '105%', opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: '105%', opacity: 0 }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-          >
-            <div className="flex flex-shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
-              <div className="flex min-w-0 items-center gap-2">
-                <Bookmark size={15} className="flex-shrink-0 text-[#23c7be]" fill="currentColor" />
-                <p className="truncate text-sm font-bold text-white">Vault</p>
-              </div>
-              <button type="button" onClick={handleClose} className="p-1.5 text-white/65 hover:text-white" aria-label="Close Vault">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div
-              className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-3"
-              style={{ WebkitOverflowScrolling: 'touch' }}
-              onWheel={(e) => e.stopPropagation()}
-              onTouchMove={(e) => e.stopPropagation()}
+          <>
+            <motion.div
+              className="fixed inset-0 z-[210] bg-black/70"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleClose}
+            />
+            <motion.div
+              className="fixed inset-3 z-[220] flex min-h-0 flex-col overflow-hidden border border-white/15 bg-[#111317] shadow-2xl md:inset-6"
+              initial={{ opacity: 0, scale: 0.985 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.985 }}
+              transition={{ duration: 0.16 }}
+              onClick={(e) => e.stopPropagation()}
             >
-              {unfiledImages.length > 0 && (
-                <section className="overflow-hidden rounded-[4px] border border-white/10 bg-[#202328]">
-                  <button type="button" className="flex w-full items-center gap-2.5 px-3 py-3 text-left" onClick={() => toggleFolder('__unfiled__')}>
-                    <ChevronDown size={15} className={`flex-shrink-0 text-white/45 transition-transform ${!expandedFolders.__unfiled__ ? '-rotate-90' : ''}`} />
-                    <span className="h-2.5 w-2.5 flex-shrink-0 bg-[#23c7be]" />
-                    <Folder size={17} className="flex-shrink-0 text-white/55" />
-                    <span className="min-w-0 flex-1 truncate text-sm font-black text-white">Unfiled</span>
-                    <span className="text-xs font-bold text-white/35">{unfiledImages.length}</span>
-                  </button>
-                  {expandedFolders.__unfiled__ && <ImageGrid items={unfiledImages} />}
-                </section>
-              )}
-
-              {folders.map(folder => {
-                const folderAssets = assets.filter(asset => asset.folder_id === folder.id);
-                const folderImages = imageAssets.filter(asset => asset.folder_id === folder.id);
-                const isExpanded = !!expandedFolders[folder.id];
-                return (
-                  <section key={folder.id} className="overflow-hidden rounded-[4px] border border-white/10 bg-[#202328]">
-                    <button type="button" className="flex w-full items-center gap-2.5 px-3 py-3 text-left hover:bg-white/[0.025]" onClick={() => toggleFolder(folder.id)}>
-                      <ChevronDown size={15} className={`flex-shrink-0 text-white/45 transition-transform ${!isExpanded ? '-rotate-90' : ''}`} />
-                      <span className={`h-2.5 w-2.5 flex-shrink-0 ${folderAccent[folder.color] || folderAccent.blue}`} />
-                      <Folder size={17} className="flex-shrink-0 text-white/55" />
-                      <span className="min-w-0 flex-1 truncate text-sm font-black text-white">{folder.name}</span>
-                      <span className="text-xs font-bold text-white/35">{folderAssets.length}</span>
-                    </button>
-                    {isExpanded && <ImageGrid items={folderImages} />}
-                  </section>
-                );
-              })}
-
-              {folders.length === 0 && unfiledImages.length === 0 && (
-                <div className="py-12 text-center">
-                  <Bookmark size={28} className="mx-auto mb-3 text-white/20" />
-                  <p className="text-sm text-white/60">No image files available in the Vault</p>
+              <div className="flex flex-shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Bookmark size={16} className="text-[#23c7be]" fill="currentColor" />
+                  <span className="text-sm font-black text-white">Vault</span>
+                  <span className="text-xs text-white/40">Choose an image for the cover</span>
                 </div>
-              )}
-            </div>
-          </motion.aside>
+                <button type="button" onClick={handleClose} className="flex h-9 w-9 items-center justify-center border border-white/10 bg-white/[0.04] text-white/70 hover:text-white" aria-label="Close Vault">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 md:p-4"
+                style={{ WebkitOverflowScrolling: 'touch' }}
+                onClickCapture={captureVaultImage}
+              >
+                <VaultSection userEmail={user.email} />
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>,
       document.body
