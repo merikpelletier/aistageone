@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +18,18 @@ export default function VaultDrawer({ open: controlledOpen, onClose, onSelect })
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
   const handleClose = isControlled ? onClose : () => setInternalOpen(false);
+
+  // Radix Dialog disables pointer events on <body> while a dossier dialog is modal.
+  // The Vault picker is rendered in its own portal, so temporarily release that lock
+  // while the picker is open, then restore the exact previous state on close.
+  useEffect(() => {
+    if (!onSelect || !open || typeof document === 'undefined') return undefined;
+    const previousPointerEvents = document.body.style.pointerEvents;
+    document.body.style.pointerEvents = 'auto';
+    return () => {
+      document.body.style.pointerEvents = previousPointerEvents;
+    };
+  }, [onSelect, open]);
 
   const { data: assets = [] } = useQuery({
     queryKey: ['vaultAssets', user?.email],
