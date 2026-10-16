@@ -72,7 +72,7 @@ const textReadingOrderControls = {
 
 const restorePublishVault = {
   name: 'restore-fotoplay-publish-vault',
-  enforce: 'post',
+  enforce: 'pre',
   transform(code, id) {
     const normalizedId = id?.replace(/\\/g, '/') || ''
     if (!normalizedId.endsWith('/src/components/studio/FotoPlayProjectActions.jsx')) return null
