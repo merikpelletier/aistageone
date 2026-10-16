@@ -260,7 +260,6 @@ function ComicPageWorkspace({ user, project, setProject, activeChapterId, setAct
       setProject(published);
       setShowPublish(false);
       toast.success(response.data.republished ? 'Story Block republished' : 'Story Block published');
-      window.open(`/Magazine?dossier=${encodeURIComponent(response.data.dossier_id)}`, '_blank', 'noopener,noreferrer');
     } catch (error) { toast.error(error.message || 'Publication failed'); }
     finally { setPublishing(false); }
   };
