@@ -12,6 +12,7 @@ export default function VaultDrawer({ open: controlledOpen, onClose, onSelect })
   const { user } = useAuth();
   const [internalOpen, setInternalOpen] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState(null);
+  const [pickerTab, setPickerTab] = useState('dossiers');
   const qc = useQueryClient();
 
   const isControlled = controlledOpen !== undefined;
@@ -24,9 +25,38 @@ export default function VaultDrawer({ open: controlledOpen, onClose, onSelect })
     enabled: !!user?.email && open,
   });
 
+  const { data: dossiers = [] } = useQuery({
+    queryKey: ['vaultPickerDossiers'],
+    queryFn: () => base44.entities.Dossier.list('order'),
+    enabled: !!user?.email && open && !!onSelect,
+  });
+
   const visibleAssets = onSelect
     ? assets.filter(asset => asset?.url && asset.media_type !== 'video' && asset.media_type !== 'audio')
     : assets;
+
+  const dossierImages = dossiers.flatMap(dossier => {
+    const images = [];
+    if (dossier.cover_image) {
+      images.push({
+        id: `${dossier.id}-portrait`,
+        url: dossier.cover_image,
+        title: dossier.title || 'Dossier',
+        orientation: 'portrait',
+        dossier,
+      });
+    }
+    if (dossier.cover_image_landscape && dossier.cover_image_landscape !== dossier.cover_image) {
+      images.push({
+        id: `${dossier.id}-landscape`,
+        url: dossier.cover_image_landscape,
+        title: dossier.title || 'Dossier',
+        orientation: 'landscape',
+        dossier,
+      });
+    }
+    return images;
+  });
 
   const deleteAsset = async (id) => {
     await base44.entities.VaultAsset.delete(id);
@@ -45,11 +75,13 @@ export default function VaultDrawer({ open: controlledOpen, onClose, onSelect })
   if (!user?.email) return null;
 
   if (onSelect) {
+    const displayedItems = pickerTab === 'dossiers' ? dossierImages : visibleAssets;
+
     return createPortal(
       <AnimatePresence>
         {open && (
           <motion.aside
-            className="fixed right-3 top-3 bottom-3 z-[220] w-[420px] max-w-[calc(100vw-24px)] bg-black border border-white/15 shadow-2xl overflow-hidden flex flex-col"
+            className="fixed right-3 top-3 z-[220] w-[420px] max-w-[calc(100vw-24px)] h-[calc(100dvh-24px)] max-h-[calc(100dvh-24px)] bg-black border border-white/15 shadow-2xl overflow-hidden flex flex-col pointer-events-auto"
             initial={{ x: '105%', opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '105%', opacity: 0 }}
@@ -58,41 +90,65 @@ export default function VaultDrawer({ open: controlledOpen, onClose, onSelect })
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
               <div className="flex items-center gap-2 min-w-0">
                 <Bookmark size={15} className="text-yellow-400 flex-shrink-0" fill="currentColor" />
-                <p className="text-white text-sm font-medium tracking-wide truncate">Choose from Vault</p>
-                {visibleAssets.length > 0 && <span className="text-white/60 text-xs flex-shrink-0">({visibleAssets.length})</span>}
+                <p className="text-white text-sm font-medium tracking-wide truncate">Choose image</p>
               </div>
-              <button type="button" onClick={handleClose} className="text-white/70 hover:text-white p-1.5 flex-shrink-0" aria-label="Close Vault picker">
+              <button type="button" onClick={handleClose} className="text-white/70 hover:text-white p-1.5 flex-shrink-0" aria-label="Close image picker">
                 <X size={18} />
               </button>
             </div>
 
-            <div className="overflow-y-auto flex-1 p-3">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-white/75 text-[11px] uppercase tracking-widest">All images</p>
+            <div className="flex border-b border-white/10 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setPickerTab('dossiers')}
+                className={`flex-1 px-4 py-3 text-xs uppercase tracking-widest border-b-2 transition-colors ${pickerTab === 'dossiers' ? 'text-white border-white' : 'text-white/45 border-transparent hover:text-white/80'}`}
+              >
+                Dossiers ({dossierImages.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickerTab('vault')}
+                className={`flex-1 px-4 py-3 text-xs uppercase tracking-widest border-b-2 transition-colors ${pickerTab === 'vault' ? 'text-white border-white' : 'text-white/45 border-transparent hover:text-white/80'}`}
+              >
+                Vault ({visibleAssets.length})
+              </button>
+            </div>
+
+            <div
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y p-3"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+              onWheel={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-3 sticky top-0 z-10 bg-black py-1">
+                <p className="text-white/75 text-[11px] uppercase tracking-widest">{pickerTab === 'dossiers' ? 'Dossier covers' : 'Vault images'}</p>
                 <p className="text-white/35 text-[10px]">Click an image to use it</p>
               </div>
 
-              {visibleAssets.length === 0 ? (
+              {displayedItems.length === 0 ? (
                 <div className="py-12 text-center">
                   <Bookmark size={28} className="text-white/20 mx-auto mb-3" />
-                  <p className="text-white/65 text-sm">No image available in the Vault</p>
+                  <p className="text-white/65 text-sm">{pickerTab === 'dossiers' ? 'No dossier cover available' : 'No image available in the Vault'}</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {visibleAssets.map(asset => (
+                <div className="grid grid-cols-3 gap-2 pb-4">
+                  {displayedItems.map(item => (
                     <button
-                      key={asset.id}
+                      key={item.id}
                       type="button"
-                      onClick={() => handleImageClick(asset)}
+                      onClick={() => handleImageClick(item)}
                       className="relative aspect-square overflow-hidden bg-white/5 border border-white/10 hover:border-white/60 focus:outline-none focus:ring-1 focus:ring-white/70"
-                      title={asset.asset_category || 'Vault image'}
+                      title={pickerTab === 'dossiers' ? `${item.title} — ${item.orientation}` : (item.asset_category || 'Vault image')}
                     >
-                      <img src={asset.url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                      {asset.asset_category && (
-                        <span className="absolute left-1.5 bottom-1.5 max-w-[calc(100%-12px)] truncate bg-black/70 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-white/80">
-                          {asset.asset_category}
+                      <img src={item.url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      <span className="absolute left-0 right-0 bottom-0 bg-black/80 px-1.5 py-1 text-left">
+                        <span className="block truncate text-[9px] uppercase tracking-wide text-white/85">
+                          {pickerTab === 'dossiers' ? item.title : (item.asset_category || 'Vault')}
                         </span>
-                      )}
+                        {pickerTab === 'dossiers' && (
+                          <span className="block text-[8px] uppercase tracking-wide text-white/45">{item.orientation}</span>
+                        )}
+                      </span>
                     </button>
                   ))}
                 </div>
