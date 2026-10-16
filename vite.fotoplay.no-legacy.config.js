@@ -9,10 +9,11 @@ const noLegacyFotoPlayFallback = {
 
     if (normalizedId.endsWith('/src/pages/Studio.jsx')) {
       const next = code.replace(
-        "{activeTab === 'stories' && <StoryBlocks user={user} onBack={() => setActiveTab('home')} />}",
-        "{activeTab === 'stories' && !activeToolPanel && editingActor === null && editingSet === null && !showVoiceRecorder && !showAudioUploader && !showDubbingStudio && !showTextToSpeech && !showVideoTools && !showLipSync && !showAnimateImage && <StoryBlocks user={user} onBack={() => setActiveTab('home')} />}"
+        "const closeAllStudioTools = () => {\n    setActiveToolPanel(null);",
+        "const closeAllStudioTools = () => {\n    setActiveTab(null);\n    setActiveToolPanel(null);"
       )
-      return next === code ? null : { code: next, map: null }
+      if (next === code) throw new Error('Studio exclusivity guard was not applied.')
+      return { code: next, map: null }
     }
 
     if (!normalizedId.endsWith('/src/components/studio/AuthorProductionWorkspacePage.jsx')) return null
