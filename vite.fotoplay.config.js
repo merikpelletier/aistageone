@@ -70,6 +70,22 @@ const textReadingOrderControls = {
   },
 }
 
+const restorePublishVault = {
+  name: 'restore-fotoplay-publish-vault',
+  enforce: 'post',
+  transform(code, id) {
+    const normalizedId = id?.replace(/\\/g, '/') || ''
+    if (!normalizedId.endsWith('/src/components/studio/FotoPlayProjectActions.jsx')) return null
+    let next = code
+    if (!next.includes("import VaultPickerModal from './VaultPickerModal';")) next = next.replace("import { completedExportChapters, exportAnimatedVideo, exportSlideshowZip, supportedMp4Type } from './storyExport';", "import VaultPickerModal from './VaultPickerModal';\nimport { completedExportChapters, exportAnimatedVideo, exportSlideshowZip, supportedMp4Type } from './storyExport';")
+    next = next.replace("const [confirmed, setConfirmed] = useState(false); const [uploading, setUploading] = useState(false);", "const [confirmed, setConfirmed] = useState(false); const [uploading, setUploading] = useState(false); const [showVault, setShowVault] = useState(false);")
+    next = next.replace('<div className="mb-2 flex items-center justify-between"><p className="text-[10px] font-black uppercase text-white/55">Cover</p><label', '<div className="mb-2 flex items-center justify-between"><p className="text-[10px] font-black uppercase text-white/55">Cover</p><div className="flex gap-2"><button type="button" onClick={() => setShowVault(true)} className={`${action} bg-[#23c7be] text-black`}><ImageIcon size={14} /> Vault</button><label')
+    next = next.replace('<input type="file" accept="image/*" onChange={uploadCover} className="sr-only" /></label></div><div className="grid grid-cols-4 gap-2 md:grid-cols-6">', '<input type="file" accept="image/*" onChange={uploadCover} className="sr-only" /></label></div></div><div className="grid grid-cols-4 gap-2 md:grid-cols-6">')
+    next = next.replace('</div></div></div>;\n}', '</div></div></div>{showVault && <VaultPickerModal userEmail={user?.email || project.created_by || \'\'} onSelect={(url) => { setCoverImage(url); setShowVault(false); }} onClose={() => setShowVault(false)} />};\n}')
+    return next === code ? null : { code: next, map: null }
+  },
+}
+
 const approvalAndPublishIntegrity = {
   name: 'fotoplay-approval-and-publish-integrity',
   enforce: 'post',
@@ -113,5 +129,5 @@ const finalAudioTerminology = {
 
 export default defineConfig({
   ...baseConfig,
-  plugins: [preserveFotoPlayTextMetadata, ...(baseConfig.plugins || []), narratorVoiceInTextTool, textReadingOrderControls, approvalAndPublishIntegrity, finalAudioTerminology],
+  plugins: [preserveFotoPlayTextMetadata, ...(baseConfig.plugins || []), narratorVoiceInTextTool, textReadingOrderControls, restorePublishVault, approvalAndPublishIntegrity, finalAudioTerminology],
 })
