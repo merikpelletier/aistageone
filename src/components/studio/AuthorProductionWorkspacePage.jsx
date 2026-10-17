@@ -33,57 +33,68 @@ const normalizedTextBoxes = (boxes) => (Array.isArray(boxes) ? boxes : []).map((
   pointer_path: normalizePointerPath(box.pointer_path),
 }));
 
-function pointerSvgPath(points) {
-  if (!points?.length) return '';
-  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
-  let d = `M ${points[0].x} ${points[0].y}`;
-  for (let i = 1; i < points.length - 1; i += 1) {
-    const current = points[i]; const next = points[i + 1];
-    d += ` Q ${current.x} ${current.y} ${(current.x + next.x) / 2} ${(current.y + next.y) / 2}`;
+function dialogueTailGeometry(box, points) {
+  const clean = normalizePointerPath(points);
+  if (!box || clean.length < 2) return null;
+  const tip = clean[clean.length - 1];
+  const x = Number(box.x) || 0; const y = Number(box.y) || 0;
+  const w = Math.max(1, Number(box.width) || 1); const h = Math.max(1, Number(box.height) || 1);
+  const cx = x + w / 2; const cy = y + h / 2;
+  const nx = (tip.x - cx) / w; const ny = (tip.y - cy) / h;
+  let a; let b;
+  if (Math.abs(nx) > Math.abs(ny)) {
+    const edgeX = nx < 0 ? x : x + w;
+    const centerY = Math.max(y + h * 0.22, Math.min(y + h * 0.78, tip.y));
+    const half = Math.max(h * 0.12, Math.min(h * 0.22, 2.4));
+    a = { x: edgeX, y: centerY - half };
+    b = { x: edgeX, y: centerY + half };
+  } else {
+    const edgeY = ny < 0 ? y : y + h;
+    const centerX = Math.max(x + w * 0.22, Math.min(x + w * 0.78, tip.x));
+    const half = Math.max(w * 0.035, Math.min(w * 0.07, 2.8));
+    a = { x: centerX - half, y: edgeY };
+    b = { x: centerX + half, y: edgeY };
   }
-  const last = points[points.length - 1];
-  d += ` L ${last.x} ${last.y}`;
-  return d;
+  const controlA = { x: a.x * 0.48 + tip.x * 0.52, y: a.y * 0.48 + tip.y * 0.52 };
+  const controlB = { x: b.x * 0.48 + tip.x * 0.52, y: b.y * 0.48 + tip.y * 0.52 };
+  return { a, b, tip, controlA, controlB };
 }
 
-function pointerTip(points, size = 1.15) {
-  if (!points || points.length < 2) return '';
-  const end = points[points.length - 1]; const prev = points[Math.max(0, points.length - 3)];
-  const dx = end.x - prev.x; const dy = end.y - prev.y; const length = Math.hypot(dx, dy) || 1;
-  const ux = dx / length; const uy = dy / length; const px = -uy; const py = ux;
-  const baseX = end.x - ux * size * 2.4; const baseY = end.y - uy * size * 2.4;
-  return `${end.x},${end.y} ${baseX + px * size},${baseY + py * size} ${baseX - px * size},${baseY - py * size}`;
+function dialogueTailSvgPath(box, points) {
+  const tail = dialogueTailGeometry(box, points);
+  if (!tail) return '';
+  return `M ${tail.a.x} ${tail.a.y} Q ${tail.controlA.x} ${tail.controlA.y} ${tail.tip.x} ${tail.tip.y} Q ${tail.controlB.x} ${tail.controlB.y} ${tail.b.x} ${tail.b.y} Z`;
 }
 
-function DialoguePointerPath({ points, drawing = false }) {
-  if (!points || points.length < 2) return null;
-  const path = pointerSvgPath(points);
+function DialoguePointerPath({ points, box, drawing = false }) {
+  const path = dialogueTailSvgPath(box, points);
+  if (!path) return null;
+  const tip = normalizePointerPath(points).at(-1);
   return <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-    <path d={path} fill="none" stroke="#111" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    <path d={path} fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    <polygon points={pointerTip(points)} fill="#fff" stroke="#111" strokeWidth="1.8" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    {drawing && <circle cx={points[0].x} cy={points[0].y} r="1" fill="#23c7be" />}
+    <path d={path} fill="#fff" stroke="#111" strokeWidth="1.8" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    {drawing && tip && <circle cx={tip.x} cy={tip.y} r="1" fill="#23c7be" />}
   </svg>;
 }
 
-function drawDialoguePointerCanvas(ctx, points, canvasWidth, canvasHeight) {
-  const clean = normalizePointerPath(points);
-  if (clean.length < 2) return;
-  const mapped = clean.map((point) => ({ x: canvasWidth * point.x / 100, y: canvasHeight * point.y / 100 }));
-  const path = new Path2D(); path.moveTo(mapped[0].x, mapped[0].y);
-  for (let i = 1; i < mapped.length - 1; i += 1) {
-    const current = mapped[i]; const next = mapped[i + 1];
-    path.quadraticCurveTo(current.x, current.y, (current.x + next.x) / 2, (current.y + next.y) / 2);
-  }
-  const end = mapped[mapped.length - 1]; path.lineTo(end.x, end.y);
-  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.strokeStyle = '#111'; ctx.lineWidth = Math.max(7, canvasWidth * 0.004); ctx.stroke(path);
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(4, canvasWidth * 0.0024); ctx.stroke(path);
-  const prev = mapped[Math.max(0, mapped.length - 3)]; const dx = end.x - prev.x; const dy = end.y - prev.y; const length = Math.hypot(dx, dy) || 1;
-  const ux = dx / length; const uy = dy / length; const px = -uy; const py = ux; const size = Math.max(8, canvasWidth * 0.008);
-  const baseX = end.x - ux * size * 2.4; const baseY = end.y - uy * size * 2.4;
-  ctx.beginPath(); ctx.moveTo(end.x, end.y); ctx.lineTo(baseX + px * size, baseY + py * size); ctx.lineTo(baseX - px * size, baseY - py * size); ctx.closePath();
-  ctx.fillStyle = '#fff'; ctx.strokeStyle = '#111'; ctx.lineWidth = Math.max(2, canvasWidth * 0.0015); ctx.fill(); ctx.stroke(); ctx.restore();
+function drawDialoguePointerCanvas(ctx, box, points, canvasWidth, canvasHeight) {
+  const tail = dialogueTailGeometry(box, points);
+  if (!tail) return;
+  const sx = canvasWidth / 100; const sy = canvasHeight / 100;
+  const p = (point) => ({ x: point.x * sx, y: point.y * sy });
+  const a = p(tail.a); const b = p(tail.b); const tip = p(tail.tip); const controlA = p(tail.controlA); const controlB = p(tail.controlB);
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.quadraticCurveTo(controlA.x, controlA.y, tip.x, tip.y);
+  ctx.quadraticCurveTo(controlB.x, controlB.y, b.x, b.y);
+  ctx.closePath();
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = Math.max(2, canvasWidth * 0.0018);
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  ctx.restore();
 }
 
 function comicPageSignature(chapter, panels) {
@@ -167,7 +178,7 @@ async function addTextBoxesToFile(file, boxes) {
     const x = canvas.width * box.x / 100; const y = canvas.height * box.y / 100;
     const w = canvas.width * box.width / 100; const h = canvas.height * box.height / 100;
     if (box.type === 'dialogue') {
-      if (box.pointer_path?.length >= 2) drawDialoguePointerCanvas(ctx, box.pointer_path, canvas.width, canvas.height);
+      if (box.pointer_path?.length >= 2) drawDialoguePointerCanvas(ctx, box, box.pointer_path, canvas.width, canvas.height);
       else if (box.arrow_preset) await drawFixedDialogueArrow(ctx, box, x, y, w, h, canvas.width);
     }
     ctx.fillStyle = '#fff'; ctx.fillRect(x, y, w, h); ctx.strokeStyle = '#111'; ctx.lineWidth = Math.max(2, canvas.width * 0.002); ctx.strokeRect(x, y, w, h);
@@ -220,7 +231,7 @@ function PageCanvas({ panels, ratio, selectedPanel, onSelectPanel, boxes, textMo
     <div className="absolute inset-0 grid gap-[6px] p-[6px]" style={landscape ? { gridTemplateColumns: `repeat(${panels.length},minmax(0,1fr))` } : { gridTemplateRows: `repeat(${panels.length},minmax(0,1fr))` }}>
       {panels.map((panel, index) => <button type="button" key={panel.id || index} onClick={(event) => { if (drawingBoxId) return; event.stopPropagation(); onSelectPanel(index); }} className={`relative min-h-0 min-w-0 overflow-hidden bg-black text-left transition ${selectedPanel === index ? 'ring-4 ring-[#23c7be] ring-inset' : 'ring-1 ring-white/10 ring-inset'}`}><PanelTreePreview panel={panel} /><span className={`absolute left-2 top-2 px-2 py-1 text-[10px] font-black ${selectedPanel === index ? 'bg-[#23c7be] text-black' : 'bg-black/70 text-white'}`}>FRAME {index + 1}</span></button>)}
     </div>
-    <div className="pointer-events-none absolute inset-0 z-10">{items.map((box) => box.type === 'dialogue' && box.pointer_path?.length >= 2 ? <DialoguePointerPath key={`pointer-${box.id}`} points={box.pointer_path} /> : null)}{pointerDraft.length >= 2 && <DialoguePointerPath points={pointerDraft} drawing />}</div>
+    <div className="pointer-events-none absolute inset-0 z-10">{items.map((box) => box.type === 'dialogue' && box.pointer_path?.length >= 2 ? <DialoguePointerPath key={`pointer-${box.id}`} points={box.pointer_path} box={box} /> : null)}{pointerDraft.length >= 2 && <DialoguePointerPath points={pointerDraft} box={items.find((box) => box.id === drawingBoxId)} drawing />}</div>
     {items.map((box) => <div key={box.id} onPointerDown={(event) => { event.stopPropagation(); textMode && !drawingBoxId && setSelectedBox(box.id); }} className={`absolute z-20 bg-white text-black shadow-lg ${textMode && selectedBox === box.id ? 'ring-3 ring-[#23c7be]' : 'ring-1 ring-black/70'}`} style={{ left: `${box.x}%`, top: `${box.y}%`, width: `${box.width}%`, height: `${box.height}%`, fontSize: `${Math.max(9, width * box.font_size / 1400)}px` }}>
       {box.type === 'dialogue' && box.pointer_path?.length < 2 && box.arrow_preset && <FixedDialogueArrow presetId={box.arrow_preset} position={box.arrow_position} frameWidth={width} />}
       <div className="relative z-10 flex h-full items-center justify-center overflow-hidden px-1 text-center font-semibold leading-[1.06] whitespace-pre-wrap">{box.text || (box.type === 'dialogue' ? 'Dialogue' : 'Narration')}</div>
