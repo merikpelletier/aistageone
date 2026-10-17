@@ -1,6 +1,20 @@
 import fotoPlayConfig from './vite.fotoplay.config.js'
 import { defineConfig } from 'vite'
 
+const preserveFotoPlayRuntimeMarker = {
+  name: 'preserve-fotoplay-runtime-marker',
+  enforce: 'pre',
+  transform(code, id) {
+    const normalizedId = id?.replace(/\\/g, '/') || ''
+    if (!normalizedId.endsWith('/src/components/studio/AuthorProductionWorkspacePage.jsx')) return null
+
+    const broken = "const [selectedBox, setSelectedBox] = useState(''); const [pointerDraft, setPointerDraft] = useState([]);\n  const [width, setWidth] = useState(900);"
+    const fixed = "const [selectedBox, setSelectedBox] = useState('');\n  const [width, setWidth] = useState(900);\n  const [pointerDraft, setPointerDraft] = useState([]);"
+    if (!code.includes(broken)) return null
+    return { code: code.replace(broken, fixed), map: null }
+  },
+}
+
 const noLegacyFotoPlayFallback = {
   name: 'fotoplay-no-legacy-fallback',
   enforce: 'pre',
@@ -50,5 +64,5 @@ const noLegacyFotoPlayFallback = {
 
 export default defineConfig({
   ...fotoPlayConfig,
-  plugins: [...(fotoPlayConfig.plugins || []), noLegacyFotoPlayFallback],
+  plugins: [preserveFotoPlayRuntimeMarker, ...(fotoPlayConfig.plugins || []), noLegacyFotoPlayFallback],
 })
