@@ -10,10 +10,12 @@ import StoryImageAdjustment from './StoryImageAdjustment.jsx';
 import StoryImageFileActions from './StoryImageFileActions.jsx';
 import { adjustmentFingerprint, adjustmentRecord } from './storyImageAdjustment.js';
 import { completedExportChapters, exportAnimatedVideo, exportSlideshowZip, supportedMp4Type } from './storyExport';
+import { DIALOGUE_ARROW_PRESETS, DEFAULT_DIALOGUE_ARROW_PRESET, FixedDialogueArrow, defaultDialogueArrowForLegacySide, drawFixedDialogueArrow } from './fixedDialogueArrows.jsx';
 
 const input = 'w-full rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-black placeholder:text-black/35 focus:outline-none';
 const dark = 'w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm font-semibold text-white placeholder:text-white/30 focus:border-yellow-400 focus:outline-none';
 const action = 'inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black disabled:cursor-not-allowed disabled:opacity-35';
+const DIALOGUE_ARROW_PRESET_IDS = new Set(DIALOGUE_ARROW_PRESETS.map((preset) => preset.id));
 const segmentSchema = { type: 'object', properties: { summary: { type: 'string' }, narration_text: { type: 'string' }, image_type: { type: 'string' }, character_ids: { type: 'array', items: { type: 'string' } }, location_ids: { type: 'array', items: { type: 'string' } }, time_periods: { type: 'array', items: { type: 'string' } }, transition_notes: { type: 'string' } }, required: ['summary', 'narration_text', 'image_type', 'character_ids', 'location_ids', 'time_periods', 'transition_notes'] };
 const visualSchema = { type: 'object', properties: { character_directions: { type: 'object' }, final_prompt: { type: 'string' } }, required: ['character_directions', 'final_prompt'] };
 const comicSchema = (count) => ({ type: 'object', properties: { panels: { type: 'array', minItems: count, maxItems: count, items: { type: 'object', properties: { beat: { type: 'string' }, shot: { type: 'string' }, prompt: { type: 'string' } }, required: ['beat', 'shot', 'prompt'] } } }, required: ['panels'] });
@@ -205,15 +207,18 @@ function PanelLeafEditor({ panel, path, direction, ratio, disabled, onUpdate, re
   </div>;
 }
 
-const normalizedTextBoxes = (boxes) => (Array.isArray(boxes) ? boxes : []).map((box) => ({
-  id: box.id || crypto.randomUUID(), type: box.type === 'dialogue' ? 'dialogue' : 'narration', text: box.text || '',
-  x: Number.isFinite(Number(box.x)) ? Number(box.x) : 8, y: Number.isFinite(Number(box.y)) ? Number(box.y) : 8,
-  width: Number.isFinite(Number(box.width)) ? Number(box.width) : 42, height: Number.isFinite(Number(box.height)) ? Number(box.height) : 20,
-  font_size: Number.isFinite(Number(box.font_size)) ? Number(box.font_size) : 26,
-  tail_side: ['top', 'right', 'bottom', 'left'].includes(box.tail_side) ? box.tail_side : 'bottom',
-  tail_position: Number.isFinite(Number(box.tail_position)) ? Math.max(10, Math.min(90, Number(box.tail_position))) : 50,
-  tail_size: Number.isFinite(Number(box.tail_size)) ? Math.max(10, Math.min(50, Number(box.tail_size))) : 22,
-}));
+const normalizedTextBoxes = (boxes) => (Array.isArray(boxes) ? boxes : []).map((box) => {
+  const legacyPosition = Number.isFinite(Number(box.tail_position)) ? Number(box.tail_position) : 50;
+  const arrowPosition = Number.isFinite(Number(box.arrow_position)) ? Number(box.arrow_position) : legacyPosition;
+  return {
+    id: box.id || crypto.randomUUID(), type: box.type === 'dialogue' ? 'dialogue' : 'narration', text: box.text || '',
+    x: Number.isFinite(Number(box.x)) ? Number(box.x) : 8, y: Number.isFinite(Number(box.y)) ? Number(box.y) : 8,
+    width: Number.isFinite(Number(box.width)) ? Number(box.width) : 42, height: Number.isFinite(Number(box.height)) ? Number(box.height) : 20,
+    font_size: Number.isFinite(Number(box.font_size)) ? Number(box.font_size) : 26,
+    arrow_preset: DIALOGUE_ARROW_PRESET_IDS.has(box.arrow_preset) ? box.arrow_preset : defaultDialogueArrowForLegacySide(box.tail_side),
+    arrow_position: Math.max(10, Math.min(90, arrowPosition)),
+  };
+});
 const textBoxSignature = (source, boxes) => JSON.stringify({ source, boxes: normalizedTextBoxes(boxes).map(({ id: _id, ...box }) => box) });
 function roundedRect(ctx, x, y, width, height, radius) {
   const r = Math.min(radius, width / 2, height / 2);
@@ -232,15 +237,6 @@ function drawWrappedText(ctx, text, x, y, maxWidth, maxHeight, fontSize) {
   const startY = y + Math.max(0, (maxHeight - visible.length * lineHeight) / 2); ctx.textAlign = 'center';
   visible.forEach((line, index) => ctx.fillText(line, x + maxWidth / 2, startY + index * lineHeight));
 }
-function drawDialogueTail(ctx, box, x, y, width, height, lineWidth) {
-  const side = box.tail_side || 'bottom'; const position = (box.tail_position || 50) / 100; const size = Math.max(12, Math.min(width, height) * (box.tail_size || 22) / 100); let baseA; let tip; let baseB;
-  if (side === 'top') { const cx = x + width * position; baseA = [cx - size * 0.18, y]; tip = [cx, y - size]; baseB = [cx + size * 0.18, y]; }
-  else if (side === 'right') { const cy = y + height * position; baseA = [x + width, cy - size * 0.18]; tip = [x + width + size, cy]; baseB = [x + width, cy + size * 0.18]; }
-  else if (side === 'left') { const cy = y + height * position; baseA = [x, cy - size * 0.18]; tip = [x - size, cy]; baseB = [x, cy + size * 0.18]; }
-  else { const cx = x + width * position; baseA = [cx - size * 0.18, y + height]; tip = [cx, y + height + size]; baseB = [cx + size * 0.18, y + height]; }
-  ctx.beginPath(); ctx.moveTo(...baseA); ctx.lineTo(...tip); ctx.lineTo(...baseB); ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill();
-  ctx.beginPath(); ctx.moveTo(...baseA); ctx.lineTo(...tip); ctx.lineTo(...baseB); ctx.lineWidth = lineWidth; ctx.strokeStyle = '#111'; ctx.stroke();
-}
 async function composeTextBoxes(imageUrl, boxes) {
   const response = await fetch(imageUrl); if (!response.ok) throw new Error('Unable to load the image for text editing');
   const bitmap = await createImageBitmap(await response.blob()); const canvas = document.createElement('canvas'); canvas.width = bitmap.width; canvas.height = bitmap.height;
@@ -248,7 +244,7 @@ async function composeTextBoxes(imageUrl, boxes) {
   for (const box of normalizedTextBoxes(boxes)) {
     const x = canvas.width * box.x / 100; const y = canvas.height * box.y / 100; const width = canvas.width * box.width / 100; const height = canvas.height * box.height / 100;
     ctx.save(); roundedRect(ctx, x, y, width, height, 0); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = Math.max(2, canvas.width * 0.002); ctx.strokeStyle = '#111'; ctx.stroke();
-    if (box.type === 'dialogue') drawDialogueTail(ctx, box, x, y, width, height, ctx.lineWidth);
+    if (box.type === 'dialogue') await drawFixedDialogueArrow(ctx, box, x, y, width, height, canvas.width);
     roundedRect(ctx, x, y, width, height, 0); ctx.clip();
     const padding = Math.max(3, width * 0.01); const fontSize = Math.max(12, canvas.width * box.font_size / 1300); ctx.font = `600 ${fontSize}px Arial, sans-serif`; ctx.fillStyle = '#111'; ctx.textBaseline = 'top'; drawWrappedText(ctx, box.text, x + padding, y + padding, width - padding * 2, height - padding * 2, fontSize); ctx.restore();
   }
@@ -430,16 +426,6 @@ function AuthorPreviewModal({ project, onClose }) {
   return <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3 lg:p-8"><div className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-zinc-950 text-white shadow-2xl"><div className="flex items-center justify-between border-b border-white/10 p-4"><div><p className="text-xs font-black uppercase tracking-widest text-yellow-400">Story Block Preview</p><h3 className="text-xl font-black">{project.title}</h3></div><button onClick={onClose} className="rounded-xl bg-white/10 p-3"><X size={20} /></button></div>{!current ? <div className="p-16 text-center"><p className="text-lg font-black">Nothing to preview yet</p><p className="mt-2 text-sm text-white/50">Generate an image or audio for the first segment.</p></div> : <div className="min-h-0 overflow-y-auto"><div className="grid lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.7fr)]"><div className="flex min-h-80 items-center justify-center bg-black">{current.segment.image_url ? <img src={current.segment.image_url} alt="" className="max-h-[70vh] w-full object-contain" /> : <div className="text-white/30">No image</div>}</div><div className="flex flex-col p-5"><p className="text-xs font-black uppercase text-yellow-400">Chapter {current.chapter.number} · Segment {current.segment.number}</p><h4 className="mt-2 text-lg font-black">{current.chapter.title}</h4><p className="mt-4 text-sm leading-relaxed text-white/80">{current.segment.narration_text || current.segment.summary}</p>{current.segment.narration_url && <audio key={current.segment.narration_url} controls autoPlay src={current.segment.narration_url} className="mt-5 w-full" />}<div className="mt-auto flex items-center justify-between gap-3 pt-6"><button disabled={index === 0} onClick={() => setIndex((value) => value - 1)} className={`${action} bg-white/10`}>Previous</button><span className="text-xs font-black text-white/50">{index + 1} / {slides.length}</span><button disabled={index === slides.length - 1} onClick={() => setIndex((value) => value + 1)} className={`${action} bg-yellow-400 text-black`}>Next</button></div></div></div></div>}</div></div>;
 }
 
-function DialogueTail({ side = 'bottom', position = 50, size = 22 }) {
-  const scale = Math.max(10, Math.min(50, Number(size) || 22)) / 22; const short = 18 * scale; const long = 24 * scale;
-  const common = { position: 'absolute', pointerEvents: 'none', zIndex: 0 }; let style; let viewBox; let points; let edge;
-  if (side === 'top') { style = { ...common, left: `${position}%`, bottom: 'calc(100% - 1px)', width: short, height: long, transform: 'translateX(-50%)' }; viewBox = '0 0 18 24'; points = '5,23 13,23 9,1'; edge = '5,23 9,1 13,23'; }
-  else if (side === 'right') { style = { ...common, left: 'calc(100% - 1px)', top: `${position}%`, width: long, height: short, transform: 'translateY(-50%)' }; viewBox = '0 0 24 18'; points = '1,5 1,13 23,9'; edge = '1,5 23,9 1,13'; }
-  else if (side === 'left') { style = { ...common, right: 'calc(100% - 1px)', top: `${position}%`, width: long, height: short, transform: 'translateY(-50%)' }; viewBox = '0 0 24 18'; points = '23,5 23,13 1,9'; edge = '23,5 1,9 23,13'; }
-  else { style = { ...common, left: `${position}%`, top: 'calc(100% - 1px)', width: short, height: long, transform: 'translateX(-50%)' }; viewBox = '0 0 18 24'; points = '5,1 13,1 9,23'; edge = '5,1 9,23 13,1'; }
-  return <svg aria-hidden="true" viewBox={viewBox} style={style} className="overflow-visible"><polygon points={points} fill="white" /><polyline points={edge} fill="none" stroke="#111" strokeWidth="2" strokeLinejoin="round" /></svg>;
-}
-
 function fittedTextBoxHeight(box, frameWidth, ratio) {
   const [rw, rh] = String(ratio || '16:9').split(':').map(Number); const frameHeight = frameWidth * (rh || 9) / (rw || 16);
   const boxWidth = frameWidth * box.width / 100; const fontSize = Math.max(9, frameWidth * box.font_size / 1300); const lineHeight = fontSize * 1.08; const padding = Math.max(2, boxWidth * 0.01);
@@ -472,17 +458,17 @@ function ImageTextBoxEditor({ imageUrl, ratio, boxes, defaultNarration, onChange
   }, [items]);
   const begin = (event, box, mode) => { if (disabled) return; event.preventDefault(); event.stopPropagation(); setSelectedId(box.id); dragRef.current = { id: box.id, mode, startX: event.clientX, startY: event.clientY, box: { ...box } }; };
   const replace = (id, values) => changeRef.current(items.map((box) => box.id === id ? { ...box, ...values } : box));
-  const add = (type) => { const index = items.length; const next = { id: crypto.randomUUID(), type, text: type === 'narration' ? (defaultNarration || '') : '', x: 6 + index * 3 % 28, y: 6 + index * 4 % 45, width: 42, height: 20, font_size: 26, tail_side: 'bottom', tail_position: 50, tail_size: 22 }; changeRef.current([...items, next]); setSelectedId(next.id); };
+  const add = (type) => { const index = items.length; const next = { id: crypto.randomUUID(), type, text: type === 'narration' ? (defaultNarration || '') : '', x: 6 + index * 3 % 28, y: 6 + index * 4 % 45, width: 42, height: 20, font_size: 26, arrow_preset: DEFAULT_DIALOGUE_ARROW_PRESET, arrow_position: 50 }; changeRef.current([...items, next]); setSelectedId(next.id); };
   return <div className="p-3"><div className="mb-3 flex flex-wrap items-center gap-2"><button type="button" onClick={() => add('narration')} disabled={disabled} className={`${action} bg-white text-black`}><Type size={14} /> Add narration box</button><button type="button" onClick={() => add('dialogue')} disabled={disabled} className={`${action} bg-white text-black`}><MessageSquareText size={14} /> Add dialogue box</button><span className="text-[11px] text-white/45">Drag the yellow handle to move · drag the corner to resize</span></div>
     <div ref={frameRef} className="relative mx-auto w-full touch-none overflow-hidden bg-white/5" style={{ aspectRatio: String(ratio || '16:9').replace(':', ' / ') }} onPointerDown={() => setSelectedId('')}>
       {imageUrl ? <img src={imageUrl} alt="Text layout preview" className="absolute inset-0 h-full w-full object-contain" draggable={false} /> : <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-xs font-bold text-white/35">Prepare narration and dialogue boxes now. The generated image will appear behind them.</div>}
       {items.map((box) => <div key={box.id} onPointerDown={(event) => { event.stopPropagation(); setSelectedId(box.id); }} className={`absolute select-none bg-white text-black shadow-lg ${selectedId === box.id ? 'ring-4 ring-yellow-400' : 'ring-1 ring-black/70'}`} style={{ left: `${box.x}%`, top: `${box.y}%`, width: `${box.width}%`, height: `${box.height}%`, fontSize: `${Math.max(9, frameWidth * box.font_size / 1300)}px` }}>
-        {box.type === 'dialogue' && <DialogueTail side={box.tail_side} position={box.tail_position} size={box.tail_size} />}
+        {box.type === 'dialogue' && <FixedDialogueArrow presetId={box.arrow_preset} position={box.arrow_position} frameWidth={frameWidth} />}
         <div className="relative z-10 flex h-full items-center justify-center overflow-hidden p-[1%] text-center font-semibold leading-[1.08] whitespace-pre-wrap">{box.text || (box.type === 'dialogue' ? 'Dialogue' : 'Narration')}</div>
         {!disabled && <><button type="button" aria-label="Move text box" onPointerDown={(event) => begin(event, box, 'move')} className="absolute -top-3 left-2 flex h-6 items-center gap-1 rounded-full bg-yellow-400 px-2 text-[9px] font-black text-black shadow"><GripHorizontal size={12} /> MOVE</button><button type="button" aria-label="Resize text box" onPointerDown={(event) => begin(event, box, 'resize')} className="absolute -bottom-2 -right-2 h-6 w-6 cursor-nwse-resize rounded-sm border-2 border-black bg-yellow-400 text-black">↘</button></>}
       </div>)}
     </div>
-    {selected && !disabled && <div className="mt-3 flex flex-wrap items-start gap-2 rounded-xl border border-yellow-400/30 bg-white/5 p-3"><select value={selected.type} onChange={(event) => replace(selected.id, { type: event.target.value })} className={`${dark} min-w-[140px] flex-none`} style={{ width: 'auto' }}><option className="text-black" value="narration">Narration</option><option className="text-black" value="dialogue">Dialogue</option></select><textarea value={selected.text} onChange={(event) => replace(selected.id, { text: event.target.value })} rows={2} className={`${input} min-w-[220px] flex-1 basis-64`} placeholder="Text shown on the image" /><label className="min-w-[130px] flex-none text-[10px] font-black uppercase text-white/50">Text size<input type="range" min="18" max="50" value={selected.font_size} onChange={(event) => replace(selected.id, { font_size: Number(event.target.value) })} className="mt-2 w-full accent-yellow-400" /></label><button type="button" onClick={() => { changeRef.current(items.filter((box) => box.id !== selected.id)); setSelectedId(''); }} className={`${action} flex-none bg-red-500 text-white`}><Trash2 size={14} /> Delete</button>{selected.type === 'dialogue' && <div className="col-span-full grid gap-3 rounded-xl bg-black/35 p-3 sm:grid-cols-3"><div><p className="mb-2 text-[10px] font-black uppercase text-white/50">Pointer side</p><div className="flex flex-wrap gap-2">{['top', 'right', 'bottom', 'left'].map((side) => <button type="button" key={side} onClick={() => replace(selected.id, { tail_side: side })} className={`${action} ${selected.tail_side === side ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white'}`}>{side}</button>)}</div></div><label className="text-[10px] font-black uppercase text-white/50">Pointer position<input type="range" min="10" max="90" value={selected.tail_position} onChange={(event) => replace(selected.id, { tail_position: Number(event.target.value) })} className="mt-3 w-full accent-yellow-400" /></label><label className="text-[10px] font-black uppercase text-white/50">Pointer size · {selected.tail_size}%<input type="range" min="10" max="50" value={selected.tail_size} onChange={(event) => replace(selected.id, { tail_size: Number(event.target.value) })} className="mt-3 w-full accent-yellow-400" /></label></div>}</div>}
+    {selected && !disabled && <div className="mt-3 flex flex-wrap items-start gap-2 rounded-xl border border-yellow-400/30 bg-white/5 p-3"><select value={selected.type} onChange={(event) => replace(selected.id, { type: event.target.value })} className={`${dark} min-w-[140px] flex-none`} style={{ width: 'auto' }}><option className="text-black" value="narration">Narration</option><option className="text-black" value="dialogue">Dialogue</option></select><textarea value={selected.text} onChange={(event) => replace(selected.id, { text: event.target.value })} rows={2} className={`${input} min-w-[220px] flex-1 basis-64`} placeholder="Text shown on the image" /><label className="min-w-[130px] flex-none text-[10px] font-black uppercase text-white/50">Text size<input type="range" min="18" max="50" value={selected.font_size} onChange={(event) => replace(selected.id, { font_size: Number(event.target.value) })} className="mt-2 w-full accent-yellow-400" /></label><button type="button" onClick={() => { changeRef.current(items.filter((box) => box.id !== selected.id)); setSelectedId(''); }} className={`${action} flex-none bg-red-500 text-white`}><Trash2 size={14} /> Delete</button>{selected.type === 'dialogue' && <div className="w-full rounded-xl bg-black/35 p-3"><p className="mb-2 text-[10px] font-black uppercase text-white/50">Arrow style</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">{DIALOGUE_ARROW_PRESETS.map((preset) => <button type="button" key={preset.id} onClick={() => replace(selected.id, { arrow_preset: preset.id })} className={`flex min-h-20 flex-col items-center justify-center gap-1 rounded-lg border p-2 ${selected.arrow_preset === preset.id ? 'border-yellow-400 bg-yellow-400/15' : 'border-white/10 bg-white/5'}`}><span className="flex h-10 w-full items-center justify-center rounded bg-white"><img src={preset.src} alt="" className="max-h-9 max-w-full object-contain" /></span><span className="text-[9px] font-black text-white/70">{preset.label}</span></button>)}</div><label className="mt-3 block text-[10px] font-black uppercase text-white/50">Arrow position<input type="range" min="10" max="90" value={selected.arrow_position} onChange={(event) => replace(selected.id, { arrow_position: Number(event.target.value) })} className="mt-2 w-full accent-yellow-400" /></label></div>}</div>}
   </div>;
 }
 
