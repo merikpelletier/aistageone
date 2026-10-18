@@ -120,10 +120,10 @@ function buildPrompt({
         ? 'Use the supplied source image as the primary visual. Preserve its essential subject and identity while recomposing it professionally.'
         : 'Create the complete primary visual from the cover direction and selected style.',
       coverTitle.trim()
-        ? `Use this exact cover title with identical spelling: <<<${coverTitle.trim()}>>>. Place the title in the ${titlePosition} area of the cover.`
+        ? `The exact cover title text is: ${coverTitle.trim()}. Render only these title words, with identical spelling. Do not render quotation marks, chevrons, brackets, delimiters, or extra punctuation. Place the title in the ${titlePosition} area of the cover.`
         : 'Do not invent a title.',
       coverSubtitle.trim()
-        ? `Use this exact subtitle with identical spelling: <<<${coverSubtitle.trim()}>>>. Place the subtitle in the ${subtitlePosition} area of the cover.`
+        ? `The exact subtitle text is: ${coverSubtitle.trim()}. Render only these subtitle words, with identical spelling. Do not render quotation marks, chevrons, brackets, delimiters, or extra punctuation. Place the subtitle in the ${subtitlePosition} area of the cover.`
         : 'Do not invent a subtitle.',
       `Cover style: ${coverStyle}.`,
       `Title treatment: ${coverTreatment}.`,
@@ -145,7 +145,7 @@ function buildPrompt({
       ? 'Use the supplied source image as the primary visual. Preserve its essential subject and identity while recomposing it professionally.'
       : 'Create the complete primary visual from the art direction.',
     exactText.trim()
-      ? `Integrate this exact text with identical spelling and line breaks: <<<${exactText.trim()}>>>.`
+      ? `Integrate the following exact text with identical spelling and line breaks: ${exactText.trim()}. Render only the supplied text itself. Do not render quotation marks, chevrons, brackets, delimiters, or extra punctuation unless they are intentionally part of the supplied text.`
       : 'Do not add any words, letters, logos or typographic marks.',
     exactText.trim()
       ? 'Design the lettering as an original graphic element inside the artwork, integrated with its lighting, depth, material and composition. Do not use a conventional font overlay, generic caption, plain white text, interface typography or a text box. Keep every character readable and correctly spelled.'
