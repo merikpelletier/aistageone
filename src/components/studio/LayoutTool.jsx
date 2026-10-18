@@ -565,7 +565,7 @@ export default function LayoutTool({ user, onClose }) {
   const previewAspect = format.replace(':', ' / ');
 
   return (
-    <div className="min-h-screen bg-[#202328] px-5 pb-24 pt-6 text-white lg:h-[calc(100vh-3.5rem)] lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-8">
+    <div className="relative min-h-screen bg-[#202328] px-5 pb-24 pt-6 text-white lg:h-[calc(100vh-3.5rem)] lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-8">
       <header className="mx-auto mb-5 flex max-w-[1500px] items-center gap-3 border-b border-white/10 pb-5">
         <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/65 transition hover:bg-white/10 hover:text-white">
           <ArrowLeft size={19} />
@@ -857,7 +857,7 @@ export default function LayoutTool({ user, onClose }) {
       )}
 
       {assetShopTarget && (
-        <div className="fixed inset-0 z-[130] flex flex-col bg-[#202328] text-white">
+        <div className="absolute inset-0 z-[130] flex flex-col bg-[#202328] text-white">
           <div className="flex min-h-14 items-center gap-3 border-b border-white/10 bg-[#16181b] px-4 sm:px-6">
             <button type="button" onClick={() => setAssetShopTarget(null)} disabled={assetSelecting} className="flex items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-black text-white transition hover:bg-white/10 disabled:opacity-40">
               <ArrowLeft size={17} /> Back to Layout
