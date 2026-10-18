@@ -1,0 +1,34 @@
+name: Apply FotoPlay arrow handles
+on:
+  push:
+    branches:
+      - fix/fotoplay-dialogue-arrow-handles
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply targeted patch
+        run: python3 scripts/apply_fotoplay_arrow_handles.py
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Verify build
+        run: npm run build
+      - name: Keep only the FotoPlay source change
+        run: |
+          git checkout -- package-lock.json || true
+          git rm .github/workflows/apply-fotoplay-arrow-handles.yml scripts/apply_fotoplay_arrow_handles.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/studio/AuthorProductionWorkspacePage.jsx
+          git commit -m "Add FotoPlay dialogue arrow reference handles"
+          git push origin HEAD:fix/fotoplay-dialogue-arrow-handles
