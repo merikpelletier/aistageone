@@ -13,7 +13,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import AtelierAssetPicker from '@/components/atelier/AtelierAssetPicker';
+import Catalog from '@/pages/Catalog';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
@@ -85,6 +87,8 @@ export default function LayoutTool({ user, onClose }) {
   const [versions, setVersions] = useState([]);
   const [selectedUrl, setSelectedUrl] = useState('');
   const [vaultTarget, setVaultTarget] = useState(null);
+  const [assetShopTarget, setAssetShopTarget] = useState(null);
+  const [assetSelecting, setAssetSelecting] = useState(false);
   const [uploadTarget, setUploadTarget] = useState('source');
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -172,9 +176,29 @@ export default function LayoutTool({ user, onClose }) {
     }
   };
 
-  const openAssetsShop = () => {
-    const shop = window.open('/Catalog', '_blank', 'noopener,noreferrer');
-    if (!shop) window.location.assign('/Catalog');
+  const openAssetsShop = (target) => {
+    setAssetShopTarget(target);
+  };
+
+  const handleAssetShopSelect = async (assetId) => {
+    if (!assetId || !assetShopTarget || assetSelecting) return;
+    setAssetSelecting(true);
+    try {
+      const { data: asset, error } = await supabase
+        .from('catalog_asset')
+        .select('featured_image')
+        .eq('id', assetId)
+        .single();
+      if (error) throw error;
+      if (!asset?.featured_image) throw new Error('This asset has no image available for Layout');
+      addSourceUrl(asset.featured_image, assetShopTarget);
+      setAssetShopTarget(null);
+      toast.success('Asset added to Layout');
+    } catch (error) {
+      toast.error(error?.message || 'Unable to add this asset to Layout');
+    } finally {
+      setAssetSelecting(false);
+    }
   };
 
   const generate = async () => {
@@ -332,8 +356,9 @@ export default function LayoutTool({ user, onClose }) {
                 </button>
                 <button
                   type="button"
-                  onClick={openAssetsShop}
-                  className="flex min-h-14 items-center justify-center gap-2 rounded-[3px] border border-white/15 bg-white/[0.04] px-3 py-3 text-sm font-black text-white transition hover:border-[#23c7be]/50 hover:text-[#23c7be]"
+                  onClick={() => openAssetsShop(sourceTarget)}
+                  disabled={sourceList.length >= maxSources}
+                  className="flex min-h-14 items-center justify-center gap-2 rounded-[3px] border border-white/15 bg-white/[0.04] px-3 py-3 text-sm font-black text-white transition hover:border-[#23c7be]/50 hover:text-[#23c7be] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Store size={17} /> Assets Shop
                 </button>
@@ -475,6 +500,35 @@ export default function LayoutTool({ user, onClose }) {
           onSelect={(url) => addSourceUrl(url, vaultTarget)}
           onClose={() => setVaultTarget(null)}
         />
+      )}
+
+      {assetShopTarget && (
+        <div className="fixed inset-0 z-[130] flex flex-col bg-[#202328] text-white">
+          <div className="flex min-h-14 items-center gap-3 border-b border-white/10 bg-[#16181b] px-4 sm:px-6">
+            <button
+              type="button"
+              onClick={() => setAssetShopTarget(null)}
+              disabled={assetSelecting}
+              className="flex items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-black text-white transition hover:bg-white/10 disabled:opacity-40"
+            >
+              <ArrowLeft size={17} /> Back to Layout
+            </button>
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#23c7be]">Assets Shop</p>
+              <p className="truncate text-xs font-semibold text-white/55">Select an asset to add it to this composition</p>
+            </div>
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <Catalog embedded onOpenAsset={handleAssetShopSelect} />
+          </div>
+          {assetSelecting && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/55">
+              <div className="flex items-center gap-3 rounded-[3px] border border-white/10 bg-[#16181b] px-5 py-4 font-black">
+                <Loader2 size={18} className="animate-spin text-[#23c7be]" /> Adding asset to Layout…
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
