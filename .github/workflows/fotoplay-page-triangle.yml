@@ -1,0 +1,26 @@
+name: FotoPlay page triangle
+on:
+  push:
+    branches: [fix/fotoplay-triangle-tail]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: python3 scripts/apply_fotoplay_page_triangle.py
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: |
+          git checkout -- package-lock.json || true
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add src/components/studio/AuthorProductionWorkspacePage.jsx
+          git commit -m "Replace visible dialogue arrow with manipulable triangle" || exit 0
+          git push
