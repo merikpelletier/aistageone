@@ -33,68 +33,55 @@ const normalizedTextBoxes = (boxes) => (Array.isArray(boxes) ? boxes : []).map((
   pointer_path: normalizePointerPath(box.pointer_path),
 }));
 
-function dialogueTailGeometry(box, points) {
+function pointerControlPoints(box, points) {
   const clean = normalizePointerPath(points);
-  if (!box || clean.length < 2) return null;
-  const tip = clean[clean.length - 1];
-  const x = Number(box.x) || 0; const y = Number(box.y) || 0;
-  const w = Math.max(1, Number(box.width) || 1); const h = Math.max(1, Number(box.height) || 1);
-  const cx = x + w / 2; const cy = y + h / 2;
-  const nx = (tip.x - cx) / w; const ny = (tip.y - cy) / h;
-  let a; let b;
-  if (Math.abs(nx) > Math.abs(ny)) {
-    const edgeX = nx < 0 ? x : x + w;
-    const centerY = Math.max(y + h * 0.22, Math.min(y + h * 0.78, tip.y));
-    const half = Math.max(h * 0.12, Math.min(h * 0.22, 2.4));
-    a = { x: edgeX, y: centerY - half };
-    b = { x: edgeX, y: centerY + half };
-  } else {
-    const edgeY = ny < 0 ? y : y + h;
-    const centerX = Math.max(x + w * 0.22, Math.min(x + w * 0.78, tip.x));
-    const half = Math.max(w * 0.035, Math.min(w * 0.07, 2.8));
-    a = { x: centerX - half, y: edgeY };
-    b = { x: centerX + half, y: edgeY };
-  }
-  const controlA = { x: a.x * 0.48 + tip.x * 0.52, y: a.y * 0.48 + tip.y * 0.52 };
-  const controlB = { x: b.x * 0.48 + tip.x * 0.52, y: b.y * 0.48 + tip.y * 0.52 };
-  return { a, b, tip, controlA, controlB };
+  if (clean.length >= 3) return [clean[0], clean[Math.floor((clean.length - 1) / 2)], clean[clean.length - 1]];
+  if (clean.length === 2) return [clean[0], { x: (clean[0].x + clean[1].x) / 2, y: (clean[0].y + clean[1].y) / 2 }, clean[1]];
+  const x = Number(box?.x) || 0; const y = Number(box?.y) || 0;
+  const w = Math.max(1, Number(box?.width) || 1); const h = Math.max(1, Number(box?.height) || 1);
+  const start = { x: Math.max(0, Math.min(100, x + w * 0.5)), y: Math.max(0, Math.min(100, y + h)) };
+  const tip = { x: Math.max(0, Math.min(100, start.x + 10)), y: Math.max(0, Math.min(100, start.y + 18)) };
+  const control = { x: Math.max(0, Math.min(100, start.x + 4)), y: Math.max(0, Math.min(100, (start.y + tip.y) / 2)) };
+  return [start, control, tip];
 }
 
-function dialogueTailSvgPath(box, points) {
-  const tail = dialogueTailGeometry(box, points);
-  if (!tail) return '';
-  return `M ${tail.a.x} ${tail.a.y} Q ${tail.controlA.x} ${tail.controlA.y} ${tail.tip.x} ${tail.tip.y} Q ${tail.controlB.x} ${tail.controlB.y} ${tail.b.x} ${tail.b.y} Z`;
+function pointerCurvePath(box, points) {
+  const [start, control, tip] = pointerControlPoints(box, points);
+  return `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${tip.x} ${tip.y}`;
 }
 
-function DialoguePointerPath({ points, box, drawing = false }) {
-  const path = dialogueTailSvgPath(box, points);
-  if (!path) return null;
-  const tip = normalizePointerPath(points).at(-1);
+function pointerArrowHead(box, points) {
+  const [, control, tip] = pointerControlPoints(box, points);
+  const dx = tip.x - control.x; const dy = tip.y - control.y;
+  const length = Math.hypot(dx, dy) || 1; const ux = dx / length; const uy = dy / length;
+  const size = 2.2; const half = 0.95;
+  const baseX = tip.x - ux * size; const baseY = tip.y - uy * size;
+  return { tip, left: { x: baseX - uy * half, y: baseY + ux * half }, right: { x: baseX + uy * half, y: baseY - ux * half } };
+}
+
+function DialoguePointerPath({ points, box, frameWidth = 900 }) {
+  const path = pointerCurvePath(box, points);
+  const head = pointerArrowHead(box, points);
+  const outer = Math.max(4, frameWidth * 0.0042); const inner = Math.max(2, frameWidth * 0.0018);
   return <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-    <path d={path} fill="#fff" stroke="#111" strokeWidth="1.8" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    {drawing && tip && <circle cx={tip.x} cy={tip.y} r="1" fill="#23c7be" />}
+    <path d={path} fill="none" stroke="#fff" strokeWidth={outer} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    <path d={path} fill="none" stroke="#111" strokeWidth={inner} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    <polygon points={`${head.tip.x},${head.tip.y} ${head.left.x},${head.left.y} ${head.right.x},${head.right.y}`} fill="#111" stroke="#fff" strokeWidth="0.8" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
   </svg>;
 }
 
 function drawDialoguePointerCanvas(ctx, box, points, canvasWidth, canvasHeight) {
-  const tail = dialogueTailGeometry(box, points);
-  if (!tail) return;
+  const [start, control, tip] = pointerControlPoints(box, points);
   const sx = canvasWidth / 100; const sy = canvasHeight / 100;
   const p = (point) => ({ x: point.x * sx, y: point.y * sy });
-  const a = p(tail.a); const b = p(tail.b); const tip = p(tail.tip); const controlA = p(tail.controlA); const controlB = p(tail.controlB);
+  const a = p(start); const c = p(control); const z = p(tip);
+  const head = pointerArrowHead(box, points); const ht = p(head.tip); const hl = p(head.left); const hr = p(head.right);
   ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(a.x, a.y);
-  ctx.quadraticCurveTo(controlA.x, controlA.y, tip.x, tip.y);
-  ctx.quadraticCurveTo(controlB.x, controlB.y, b.x, b.y);
-  ctx.closePath();
-  ctx.fillStyle = '#fff';
-  ctx.fill();
-  ctx.strokeStyle = '#111';
-  ctx.lineWidth = Math.max(2, canvasWidth * 0.0018);
-  ctx.lineJoin = 'round';
-  ctx.stroke();
-  ctx.restore();
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(c.x, c.y, z.x, z.y);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(4, canvasWidth * 0.0042); ctx.stroke();
+  ctx.strokeStyle = '#111'; ctx.lineWidth = Math.max(2, canvasWidth * 0.0018); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ht.x, ht.y); ctx.lineTo(hl.x, hl.y); ctx.lineTo(hr.x, hr.y); ctx.closePath(); ctx.fillStyle = '#111'; ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1.5, canvasWidth * 0.0008); ctx.stroke(); ctx.restore();
 }
 
 function comicPageSignature(chapter, panels) {
@@ -204,9 +191,10 @@ function PageCanvas({ panels, ratio, selectedPanel, onSelectPanel, boxes, textMo
   const ref = useRef(null); const drag = useRef(null);
   const [selectedBox, setSelectedBox] = useState('');
   const [width, setWidth] = useState(900);
-  const pointerDraftRef = useRef([]); const [drawingBoxId, setDrawingBoxId] = useState(''); const [pointerDraft, setPointerDraft] = useState([]);
+  const pointerPointsRef = useRef([]); const pointerDragRef = useRef(null); const [drawingBoxId, setDrawingBoxId] = useState(''); const [pointerDraft, setPointerDraft] = useState([]);
   const [rw, rh] = String(ratio || '16:9').split(':').map(Number); const landscape = rw >= rh;
   const items = normalizedTextBoxes(boxes);
+  const editingBox = items.find((box) => box.id === drawingBoxId);
   useEffect(() => { if (!ref.current) return undefined; const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width || 900)); observer.observe(ref.current); return () => observer.disconnect(); }, []);
   useEffect(() => {
     const move = (event) => {
@@ -223,21 +211,25 @@ function PageCanvas({ panels, ratio, selectedPanel, onSelectPanel, boxes, textMo
   }, [items, onBoxesChange, drawingBoxId]);
   const begin = (event, box, mode) => { if (!textMode || drawingBoxId) return; event.preventDefault(); event.stopPropagation(); setSelectedBox(box.id); drag.current = { id: box.id, box: { ...box }, x: event.clientX, y: event.clientY, mode }; };
   const pointFromEvent = (event) => { const rect = ref.current?.getBoundingClientRect(); if (!rect) return null; return { x: Math.max(0, Math.min(100, (event.clientX - rect.left) / rect.width * 100)), y: Math.max(0, Math.min(100, (event.clientY - rect.top) / rect.height * 100)) }; };
-  const startPointer = (event) => { if (!drawingBoxId) return; event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture?.(event.pointerId); const point = pointFromEvent(event); if (!point) return; pointerDraftRef.current = [point]; setPointerDraft([point]); };
-  const movePointer = (event) => { if (!drawingBoxId || !pointerDraftRef.current.length) return; event.preventDefault(); const point = pointFromEvent(event); if (!point) return; const previous = pointerDraftRef.current[pointerDraftRef.current.length - 1]; if (Math.hypot(point.x - previous.x, point.y - previous.y) < 0.35) return; const next = [...pointerDraftRef.current, point]; pointerDraftRef.current = next; setPointerDraft(next); };
-  const finishPointer = (event) => { if (!drawingBoxId || !pointerDraftRef.current.length) return; event.preventDefault(); event.stopPropagation(); const points = pointerDraftRef.current; pointerDraftRef.current = []; setPointerDraft([]); if (points.length >= 2) onBoxesChange(items.map((box) => box.id === drawingBoxId ? { ...box, pointer_path: points, arrow_preset: null, arrow_position: 50 } : box)); setDrawingBoxId(''); };
+  const startPointerHandle = (event, index) => { if (!drawingBoxId) return; event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture?.(event.pointerId); pointerDragRef.current = { index, pointerId: event.pointerId }; };
+  const movePointerHandle = (event) => { const dragState = pointerDragRef.current; if (!drawingBoxId || !dragState) return; event.preventDefault(); const point = pointFromEvent(event); if (!point) return; const next = [...pointerPointsRef.current]; next[dragState.index] = point; pointerPointsRef.current = next; setPointerDraft(next); onBoxesChange(items.map((box) => box.id === drawingBoxId ? { ...box, pointer_path: next, arrow_preset: null, arrow_position: 50 } : box)); };
+  const finishPointerHandle = (event) => { if (!pointerDragRef.current) return; movePointerHandle(event); pointerDragRef.current = null; };
   const pageWidth = `min(100%, calc((100vh - 330px) * ${(rw || 16) / (rh || 9)}))`;
   return <div ref={ref} className="relative mx-auto overflow-hidden border border-white/15 bg-[#090b0d] shadow-[0_30px_80px_rgba(0,0,0,.45)]" style={{ aspectRatio: `${rw || 16} / ${rh || 9}`, width: pageWidth, maxHeight: 'calc(100vh - 330px)' }} onPointerDown={() => textMode && !drawingBoxId && setSelectedBox('')}>
     <div className="absolute inset-0 grid gap-[6px] p-[6px]" style={landscape ? { gridTemplateColumns: `repeat(${panels.length},minmax(0,1fr))` } : { gridTemplateRows: `repeat(${panels.length},minmax(0,1fr))` }}>
       {panels.map((panel, index) => <button type="button" key={panel.id || index} onClick={(event) => { if (drawingBoxId) return; event.stopPropagation(); onSelectPanel(index); }} className={`relative min-h-0 min-w-0 overflow-hidden bg-black text-left transition ${selectedPanel === index ? 'ring-4 ring-[#23c7be] ring-inset' : 'ring-1 ring-white/10 ring-inset'}`}><PanelTreePreview panel={panel} /><span className={`absolute left-2 top-2 px-2 py-1 text-[10px] font-black ${selectedPanel === index ? 'bg-[#23c7be] text-black' : 'bg-black/70 text-white'}`}>FRAME {index + 1}</span></button>)}
     </div>
-    <div className="pointer-events-none absolute inset-0 z-10">{items.map((box) => box.type === 'dialogue' && box.pointer_path?.length >= 2 ? <DialoguePointerPath key={`pointer-${box.id}`} points={box.pointer_path} box={box} /> : null)}{pointerDraft.length >= 2 && <DialoguePointerPath points={pointerDraft} box={items.find((box) => box.id === drawingBoxId)} drawing />}</div>
+    <div className="pointer-events-none absolute inset-0 z-10">{items.map((box) => box.type === 'dialogue' && box.pointer_path?.length >= 2 && box.id !== drawingBoxId ? <DialoguePointerPath key={`pointer-${box.id}`} points={box.pointer_path} box={box} frameWidth={width} /> : null)}</div>
     {items.map((box) => <div key={box.id} onPointerDown={(event) => { event.stopPropagation(); textMode && !drawingBoxId && setSelectedBox(box.id); }} className={`absolute z-20 bg-white text-black shadow-lg ${textMode && selectedBox === box.id ? 'ring-3 ring-[#23c7be]' : 'ring-1 ring-black/70'}`} style={{ left: `${box.x}%`, top: `${box.y}%`, width: `${box.width}%`, height: `${box.height}%`, fontSize: `${Math.max(9, width * box.font_size / 1400)}px` }}>
       {box.type === 'dialogue' && box.pointer_path?.length < 2 && box.arrow_preset && <FixedDialogueArrow presetId={box.arrow_preset} position={box.arrow_position} frameWidth={width} />}
       <div className="relative z-10 flex h-full items-center justify-center overflow-hidden px-1 text-center font-semibold leading-[1.06] whitespace-pre-wrap">{box.text || (box.type === 'dialogue' ? 'Dialogue' : 'Narration')}</div>
-      {textMode && selectedBox === box.id && !drawingBoxId && <><button type="button" onPointerDown={(event) => begin(event, box, 'move')} className="absolute -top-7 left-0 z-30 bg-[#23c7be] px-2 py-1 text-[9px] font-black text-black">MOVE</button>{box.type === 'dialogue' && <><button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); pointerDraftRef.current = []; setPointerDraft([]); setDrawingBoxId(box.id); }} className="absolute -bottom-7 left-0 z-30 bg-white px-2 py-1 text-[9px] font-black text-black">{box.pointer_path?.length >= 2 ? 'REDRAW' : 'DRAW'}</button><button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onBoxesChange(items.map((item) => item.id === box.id ? { ...item, pointer_path: [], arrow_preset: null, arrow_position: 50 } : item)); }} className="absolute -bottom-7 left-16 z-30 bg-[#242930] px-2 py-1 text-[9px] font-black text-white">CLEAR</button></>}<button type="button" onPointerDown={(event) => begin(event, box, 'resize')} className="absolute -bottom-2 -right-2 z-30 h-6 w-6 bg-[#23c7be] text-xs font-black text-black">↘</button><button type="button" aria-label="Delete text block" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onBoxesChange(items.filter((item) => item.id !== box.id)); setSelectedBox(''); }} className="absolute -top-7 right-0 z-30 flex h-6 w-6 items-center justify-center bg-red-500 text-white"><Trash2 size={12} /></button></>}
+      {textMode && selectedBox === box.id && !drawingBoxId && <><button type="button" onPointerDown={(event) => begin(event, box, 'move')} className="absolute -top-7 left-0 z-30 bg-[#23c7be] px-2 py-1 text-[9px] font-black text-black">MOVE</button>{box.type === 'dialogue' && <><button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); const points = pointerControlPoints(box, box.pointer_path); pointerPointsRef.current = points; setPointerDraft(points); setDrawingBoxId(box.id); onBoxesChange(items.map((item) => item.id === box.id ? { ...item, pointer_path: points, arrow_preset: null, arrow_position: 50 } : item)); }} className="absolute -bottom-7 left-0 z-30 bg-white px-2 py-1 text-[9px] font-black text-black">EDIT ARROW</button><button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onBoxesChange(items.map((item) => item.id === box.id ? { ...item, pointer_path: [], arrow_preset: null, arrow_position: 50 } : item)); }} className="absolute -bottom-7 left-16 z-30 bg-[#242930] px-2 py-1 text-[9px] font-black text-white">CLEAR</button></>}<button type="button" onPointerDown={(event) => begin(event, box, 'resize')} className="absolute -bottom-2 -right-2 z-30 h-6 w-6 bg-[#23c7be] text-xs font-black text-black">↘</button><button type="button" aria-label="Delete text block" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onBoxesChange(items.filter((item) => item.id !== box.id)); setSelectedBox(''); }} className="absolute -top-7 right-0 z-30 flex h-6 w-6 items-center justify-center bg-red-500 text-white"><Trash2 size={12} /></button></>}
     </div>)}
-    {drawingBoxId && <div className="absolute inset-0 z-40 cursor-crosshair touch-none" onPointerDown={startPointer} onPointerMove={movePointer} onPointerUp={finishPointer} onPointerCancel={finishPointer}><div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 bg-[#23c7be] px-3 py-1.5 text-[10px] font-black uppercase text-black shadow-lg">Draw from the dialogue box toward the speaker</div></div>}
+    {drawingBoxId && editingBox && <div className="absolute inset-0 z-40 touch-none" onPointerDown={(event) => { if (event.target === event.currentTarget) { pointerDragRef.current = null; pointerPointsRef.current = []; setPointerDraft([]); setDrawingBoxId(''); } }} onPointerMove={movePointerHandle} onPointerUp={finishPointerHandle} onPointerCancel={finishPointerHandle}>
+      <DialoguePointerPath points={pointerDraft} box={editingBox} frameWidth={width} />
+      {pointerDraft.map((point, index) => <button type="button" key={`pointer-handle-${index}`} aria-label={index === 0 ? 'Arrow anchor' : index === 1 ? 'Arrow curve' : 'Arrow tip'} onPointerDown={(event) => startPointerHandle(event, index)} className={`absolute z-50 h-5 w-5 -translate-x-1/2 -translate-y-1/2 border-2 shadow-lg ${index === 0 ? 'border-white bg-black' : index === 1 ? 'border-black bg-[#23c7be]' : 'border-white bg-red-500'}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} />)}
+      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 bg-[#23c7be] px-3 py-1.5 text-[10px] font-black uppercase text-black shadow-lg">Drag the 3 reference points · click outside to finish</div>
+    </div>}
   </div>;
 }
 
@@ -322,7 +314,7 @@ function ComicPageWorkspace({ user, project, setProject, activeChapterId, setAct
     {tool === 'direction' && <><div className="grid grid-cols-2 gap-2"><label className="text-[10px] font-black uppercase text-white/45">Panels<select value={panelCount} onChange={(event) => change({ comic_panel_count: Number(event.target.value), comic_page_source: '' })} className={`${dark} mt-1`}>{[2,3,4].map((count) => <option key={count} className="text-black" value={count}>{count}</option>)}</select></label><label className="text-[10px] font-black uppercase text-white/45">Page ratio<select value={active.image_aspect_ratio || '16:9'} onChange={(event) => setProject((current) => ({ ...current, chapters: current.chapters.map((chapter) => chapter.id === active.id ? { ...chapter, image_aspect_ratio: event.target.value } : chapter) }))} className={`${dark} mt-1`}>{IMAGE_RATIOS.map((ratio) => <option key={ratio} className="text-black">{ratio}</option>)}</select></label></div><input value={segment.exact_area || ''} onChange={(e) => change({ exact_area: e.target.value })} className={dark} placeholder="Exact set area" /><input value={segment.environment_direction || ''} onChange={(e) => change({ environment_direction: e.target.value })} className={dark} placeholder="Light, weather, atmosphere" /><input value={segment.fixed_set_elements || ''} onChange={(e) => change({ fixed_set_elements: e.target.value })} className={dark} placeholder="Fixed set elements" /><textarea value={segment.image_instruction || ''} onChange={(e) => change({ image_instruction: e.target.value, comic_page_source: '' })} rows={8} className={dark} placeholder="Shared visual direction for the page" /><button onClick={buildDirection} disabled={busy === 'direction'} className={`${action} w-full bg-[#23c7be] text-black`}>{busy === 'direction' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Build shared direction · {pricing.ai_text ?? '—'}</button></>}
     {tool === 'adjust' && <StoryImageAdjustment userEmail={user?.email || ''} imageName={`${project.title} - Segment ${segment.number}`} segment={segment} ratio={active.image_aspect_ratio || '16:9'} panelRatio="1:1" price={pricing.compose_scene} busy={busy} setBusy={setBusy} onApply={applyAdjustment} referenceImages={refs} />}
     {tool === 'panel' && selected && <><div className="flex items-center justify-between"><p className="font-black text-[#23c7be]">Frame {selectedPanel + 1}</p><button onClick={planPanels} disabled={busy === 'plan'} className={`${action} bg-[#1b1f24]`}>{busy === 'plan' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Plan all · {pricing.ai_text ?? '—'}</button></div><input value={selected.beat || ''} onChange={(e) => updatePanel(selectedPanel, { beat: e.target.value })} className={dark} placeholder="Story beat" /><select value={selected.shot || 'Medium shot'} onChange={(e) => updatePanel(selectedPanel, { shot: e.target.value })} className={dark}>{IMAGE_TYPES.map((type) => <option key={type} className="text-black">{type}</option>)}</select><textarea value={selected.prompt || ''} onChange={(e) => updatePanel(selectedPanel, { prompt: e.target.value })} rows={8} className={dark} placeholder="Action and composition for this frame" /><button onClick={() => generatePanel(selectedPanel)} disabled={busy === `panel-${selectedPanel}`} className={`${action} w-full bg-[#23c7be] text-black`}>{busy === `panel-${selectedPanel}` ? <Loader2 size={14} className="animate-spin" /> : selected.image_url ? <RotateCcw size={14} /> : <ImageIcon size={14} />} {selected.image_url ? 'Regenerate frame' : 'Generate frame'} · {pricing.compose_scene ?? '—'}</button><label className={`${action} w-full cursor-pointer bg-[#1b1f24]`}><Upload size={14} /> Upload frame<input type="file" className="hidden" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; uploadPanel(selectedPanel, file); }} /></label>{selected.image_url && <button onClick={() => selectMaster(selected.image_url, 'panel', `Segment ${segment.number} · frame ${selectedPanel + 1}`)} className={`${action} w-full bg-[#1b1f24]`}>Use selected frame as sequence master</button>}</>}
-    {tool === 'text' && <><div className="border border-white/10 bg-[#181c21] p-3"><p className="text-xs text-white/65">Add a block, then move and resize it directly on the page. For dialogue, select the block on the page and use DRAW to trace the pointer directly toward the speaker.</p><div className="mt-3 flex gap-2"><button onClick={() => change({ text_boxes: [...boxes, { id: crypto.randomUUID(), type: 'narration', text: segment.narration_text || '', x: 6, y: 6, width: 42, height: 16, font_size: 26 }] })} className={`${action} flex-1 bg-white text-black`}><Type size={14} /> Narration</button><button onClick={() => change({ text_boxes: [...boxes, { id: crypto.randomUUID(), type: 'dialogue', text: '', x: 48, y: 60, width: 36, height: 14, font_size: 26, pointer_path: [], arrow_preset: null, arrow_position: 50 }] })} className={`${action} flex-1 bg-white text-black`}><MessageSquareText size={14} /> Dialogue</button></div></div>{boxes.map((box, index) => <div key={box.id} className="space-y-3 border border-white/10 bg-[#181c21] p-3"><div className="flex items-center justify-between gap-2"><p className="text-xs font-black uppercase text-[#23c7be]">{box.type === 'dialogue' ? 'Dialogue' : 'Narration'} {index + 1}</p><button onClick={() => deleteTextBox(box.id)} className="flex items-center gap-1 bg-red-500/20 px-2 py-1 text-[10px] font-black text-red-200"><Trash2 size={12} /> Delete block</button></div><div className="grid grid-cols-[130px_1fr] gap-2"><select value={box.type} onChange={(e) => updateTextBox(box.id, { type: e.target.value })} className={dark}><option className="text-black" value="narration">Narration</option><option className="text-black" value="dialogue">Dialogue</option></select><textarea value={box.text} onChange={(e) => updateTextBox(box.id, { text: e.target.value })} rows={3} className={dark} /></div><label className="block text-[10px] font-black uppercase text-white/50">Text size · {box.font_size}<input type="range" min="16" max="50" value={box.font_size} onChange={(e) => updateTextBox(box.id, { font_size: Number(e.target.value) })} className="mt-2 w-full accent-[#23c7be]" /></label>{box.type === 'dialogue' && <div className="space-y-3 border-t border-white/10 pt-3"><label className="block text-[10px] font-black uppercase text-white/50">Character / speaker<select value={box.speaker_id || ''} onChange={(e) => updateTextBox(box.id, { speaker_id: e.target.value, voice: '' })} className={`${dark} mt-1`}><option className="text-black" value="">Choose character</option>{project.characters.map((character) => <option key={character.id} value={character.id} className="text-black">{character.name}{character.voice ? ` · ${character.voice}` : ' · no voice assigned'}</option>)}</select></label>{box.speaker_id && <p className="text-[10px] font-semibold text-[#23c7be]">Voice inherited: {project.characters.find((character) => character.id === box.speaker_id)?.voice || 'No character voice assigned yet'}</p>}<p className="text-[11px] font-semibold text-white/60">Select this dialogue on the page. DRAW traces a new pointer directly on the segment; REDRAW replaces it; CLEAR removes it.</p></div>}</div>)}</>}
+    {tool === 'text' && <><div className="border border-white/10 bg-[#181c21] p-3"><p className="text-xs text-white/65">Add a block, then move and resize it directly on the page. For dialogue, select the block on the page and use EDIT ARROW. Three reference points appear directly on the image so you can shape the arrow toward the speaker.</p><div className="mt-3 flex gap-2"><button onClick={() => change({ text_boxes: [...boxes, { id: crypto.randomUUID(), type: 'narration', text: segment.narration_text || '', x: 6, y: 6, width: 42, height: 16, font_size: 26 }] })} className={`${action} flex-1 bg-white text-black`}><Type size={14} /> Narration</button><button onClick={() => change({ text_boxes: [...boxes, { id: crypto.randomUUID(), type: 'dialogue', text: '', x: 48, y: 60, width: 36, height: 14, font_size: 26, pointer_path: [], arrow_preset: null, arrow_position: 50 }] })} className={`${action} flex-1 bg-white text-black`}><MessageSquareText size={14} /> Dialogue</button></div></div>{boxes.map((box, index) => <div key={box.id} className="space-y-3 border border-white/10 bg-[#181c21] p-3"><div className="flex items-center justify-between gap-2"><p className="text-xs font-black uppercase text-[#23c7be]">{box.type === 'dialogue' ? 'Dialogue' : 'Narration'} {index + 1}</p><button onClick={() => deleteTextBox(box.id)} className="flex items-center gap-1 bg-red-500/20 px-2 py-1 text-[10px] font-black text-red-200"><Trash2 size={12} /> Delete block</button></div><div className="grid grid-cols-[130px_1fr] gap-2"><select value={box.type} onChange={(e) => updateTextBox(box.id, { type: e.target.value })} className={dark}><option className="text-black" value="narration">Narration</option><option className="text-black" value="dialogue">Dialogue</option></select><textarea value={box.text} onChange={(e) => updateTextBox(box.id, { text: e.target.value })} rows={3} className={dark} /></div><label className="block text-[10px] font-black uppercase text-white/50">Text size · {box.font_size}<input type="range" min="16" max="50" value={box.font_size} onChange={(e) => updateTextBox(box.id, { font_size: Number(e.target.value) })} className="mt-2 w-full accent-[#23c7be]" /></label>{box.type === 'dialogue' && <div className="space-y-3 border-t border-white/10 pt-3"><label className="block text-[10px] font-black uppercase text-white/50">Character / speaker<select value={box.speaker_id || ''} onChange={(e) => updateTextBox(box.id, { speaker_id: e.target.value, voice: '' })} className={`${dark} mt-1`}><option className="text-black" value="">Choose character</option>{project.characters.map((character) => <option key={character.id} value={character.id} className="text-black">{character.name}{character.voice ? ` · ${character.voice}` : ' · no voice assigned'}</option>)}</select></label>{box.speaker_id && <p className="text-[10px] font-semibold text-[#23c7be]">Voice inherited: {project.characters.find((character) => character.id === box.speaker_id)?.voice || 'No character voice assigned yet'}</p>}<p className="text-[11px] font-semibold text-white/60">Select this dialogue on the page. EDIT ARROW shows three reference points directly on the image: anchor, curve and tip. Drag them to shape the arrow; CLEAR removes it.</p></div>}</div>)}</>}
     {tool === 'voice' && <><VoicePicker value={segment.narrator_voice || ''} onChange={(value) => change({ narrator_voice: value, audio_stale: Boolean(segment.narration_url) })} language={segment.narrator_language || project.production_settings?.narrator_language || 'en'} onLanguageChange={(value) => change({ narrator_language: value, audio_stale: Boolean(segment.narration_url) })} disabled={Boolean(busy)} />{segment.narration_url && <audio controls src={segment.narration_url} className="w-full" />}<button onClick={generateAudio} disabled={busy === 'audio'} className={`${action} w-full bg-[#23c7be] text-black`}><Volume2 size={14} /> {segment.narration_url ? 'Regenerate' : 'Generate'} audio · {pricing.tts ?? '—'}</button></>}
     {tool === 'master' && <><div className="flex items-center gap-3 border border-white/10 bg-[#181c21] p-3">{active.master_reference_url ? <img src={active.master_reference_url} alt="" className="h-20 w-20 object-cover" /> : <div className="h-20 w-20 bg-[#242930]" />}<div><p className="font-black text-[#23c7be]">Sequence master</p><p className="text-xs text-white/45">{active.master_reference_label || 'No master selected'}</p></div></div><div className="grid grid-cols-2 gap-2"><button onClick={() => setShowMasterVault(true)} className={`${action} bg-white text-black`}>Vault</button><label className={`${action} cursor-pointer bg-[#1b1f24]`}><Upload size={14} /> Upload<input ref={masterUploadRef} type="file" accept="image/*" className="hidden" onChange={uploadMaster} /></label><button onClick={() => setShowMasterShop(true)} className={`${action} bg-[#1b1f24]`}><Store size={14} /> Assets Shop</button>{active.master_reference_url && <button onClick={() => persist({}, { master_reference_url: '', master_reference_source: '', master_reference_label: '' })} className={`${action} bg-red-500/20 text-red-200`}>Clear</button>}</div></>}
     {tool === 'files' && <><p className="text-xs font-black uppercase text-white/45">Selected frame</p><StoryImageFileActions url={selected?.image_url} userEmail={user?.email || ''} name={`${project.title} - Segment ${segment.number} - Frame ${selectedPanel + 1}`} ratio="1:1" /><p className="pt-2 text-xs font-black uppercase text-white/45">Final page</p><StoryImageFileActions url={segment.image_url} userEmail={user?.email || ''} name={`${project.title} - Segment ${segment.number}`} ratio={active.image_aspect_ratio || '16:9'} /></>}
