@@ -39,9 +39,65 @@ const FORMATS = [
   { id: '1:1', label: '1:1' },
 ];
 
+const COVER_POSITIONS = [
+  { id: 'top', label: 'Top' },
+  { id: 'middle', label: 'Middle' },
+  { id: 'bottom', label: 'Bottom' },
+];
+
+const COVER_STYLES = [
+  { id: 'classic', label: 'Classic' },
+  { id: 'romantic', label: 'Romantic' },
+  { id: 'drama', label: 'Drama' },
+  { id: 'sci-fi', label: 'Sci-Fi' },
+  { id: 'fashion', label: 'Fashion' },
+  { id: 'horror', label: 'Horror' },
+  { id: 'comedy', label: 'Comedy' },
+  { id: 'action', label: 'Action' },
+  { id: 'documentary', label: 'Documentary' },
+];
+
+const COVER_TREATMENTS = [
+  { id: 'minimal', label: 'Minimal' },
+  { id: 'bold', label: 'Bold' },
+  { id: 'elegant', label: 'Elegant' },
+  { id: 'editorial', label: 'Editorial' },
+  { id: 'cinematic', label: 'Cinematic' },
+];
+
+const COVER_ALIGNMENTS = [
+  { id: 'left', label: 'Left' },
+  { id: 'center', label: 'Center' },
+  { id: 'right', label: 'Right' },
+];
+
+const COVER_EMPHASIS = [
+  { id: 'portrait', label: 'Portrait' },
+  { id: 'full-image', label: 'Full image' },
+  { id: 'typography', label: 'Typography' },
+  { id: 'balanced', label: 'Balanced' },
+];
+
 const ALLOWED_UPLOAD_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
-function buildPrompt({ purpose, format, exactText, direction, hasSource, imageMode, imageCount, revision }) {
+function buildPrompt({
+  purpose,
+  format,
+  exactText,
+  direction,
+  hasSource,
+  imageMode,
+  imageCount,
+  revision,
+  coverTitle,
+  coverSubtitle,
+  titlePosition,
+  subtitlePosition,
+  coverStyle,
+  coverTreatment,
+  coverAlignment,
+  coverEmphasis,
+}) {
   if (purpose === 'image') {
     return [
       imageMode === 'combine'
@@ -54,6 +110,31 @@ function buildPrompt({ purpose, format, exactText, direction, hasSource, imageMo
       revision.trim() ? `Revision requested from the previous version: ${revision.trim()}` : '',
       'Do not add any words, letters, numbers, captions, speech bubbles, signs, logos, watermarks or typographic marks anywhere in the image.',
       'Deliver one complete publication-ready image without mockup borders, editor controls, guides or margins.',
+    ].filter(Boolean).join('\n');
+  }
+
+  if (purpose === 'cover') {
+    return [
+      `Create a finished cover layout in ${format} format.`,
+      hasSource
+        ? 'Use the supplied source image as the primary visual. Preserve its essential subject and identity while recomposing it professionally.'
+        : 'Create the complete primary visual from the cover direction and selected style.',
+      coverTitle.trim()
+        ? `Use this exact cover title with identical spelling: <<<${coverTitle.trim()}>>>. Place the title in the ${titlePosition} area of the cover.`
+        : 'Do not invent a title.',
+      coverSubtitle.trim()
+        ? `Use this exact subtitle with identical spelling: <<<${coverSubtitle.trim()}>>>. Place the subtitle in the ${subtitlePosition} area of the cover.`
+        : 'Do not invent a subtitle.',
+      `Cover style: ${coverStyle}.`,
+      `Title treatment: ${coverTreatment}.`,
+      `Text alignment: ${coverAlignment}.`,
+      `Visual emphasis: ${coverEmphasis}.`,
+      coverTitle.trim() || coverSubtitle.trim()
+        ? 'Treat the title and subtitle as intentional graphic elements inside the artwork. Keep every supplied word readable and correctly spelled. Do not add any other words, captions, logos or typographic marks.'
+        : 'Do not add any words, letters, logos or typographic marks.',
+      direction.trim() ? `Art direction: ${direction.trim()}` : '',
+      revision.trim() ? `Revision requested from the previous version: ${revision.trim()}` : '',
+      'Deliver one complete publication-ready flattened cover without mockup borders, editor controls, guides or margins.',
     ].filter(Boolean).join('\n');
   }
 
@@ -94,6 +175,14 @@ export default function LayoutTool({ user, onClose }) {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [coverTitle, setCoverTitle] = useState('');
+  const [coverSubtitle, setCoverSubtitle] = useState('');
+  const [titlePosition, setTitlePosition] = useState('top');
+  const [subtitlePosition, setSubtitlePosition] = useState('bottom');
+  const [coverStyle, setCoverStyle] = useState('classic');
+  const [coverTreatment, setCoverTreatment] = useState('editorial');
+  const [coverAlignment, setCoverAlignment] = useState('center');
+  const [coverEmphasis, setCoverEmphasis] = useState('balanced');
   const fileInputRef = useRef(null);
 
   const prompt = useMemo(() => buildPrompt({
@@ -105,7 +194,32 @@ export default function LayoutTool({ user, onClose }) {
     imageMode,
     imageCount: imageSources.length,
     revision,
-  }), [purpose, format, exactText, direction, sourceUrls.length, imageMode, imageSources.length, revision]);
+    coverTitle,
+    coverSubtitle,
+    titlePosition,
+    subtitlePosition,
+    coverStyle,
+    coverTreatment,
+    coverAlignment,
+    coverEmphasis,
+  }), [
+    purpose,
+    format,
+    exactText,
+    direction,
+    sourceUrls.length,
+    imageMode,
+    imageSources.length,
+    revision,
+    coverTitle,
+    coverSubtitle,
+    titlePosition,
+    subtitlePosition,
+    coverStyle,
+    coverTreatment,
+    coverAlignment,
+    coverEmphasis,
+  ]);
 
   const pricingInput = { aspect_ratio: format, prompt };
   const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
@@ -255,7 +369,9 @@ export default function LayoutTool({ user, onClose }) {
         media_type: 'image',
         name: purpose === 'image'
           ? (direction.trim().slice(0, 60) || 'Generated image')
-          : (exactText.trim().split('\n')[0]?.slice(0, 60) || `Layout ${purpose}`),
+          : purpose === 'cover'
+            ? (coverTitle.trim().slice(0, 60) || 'Generated cover')
+            : (exactText.trim().split('\n')[0]?.slice(0, 60) || `Layout ${purpose}`),
         tags: ['ai-generated', purpose === 'image' ? 'image' : 'layout', purpose],
         asset_category: 'reference',
         aspect_ratio: format.replace(':', ''),
@@ -277,7 +393,9 @@ export default function LayoutTool({ user, onClose }) {
       const link = document.createElement('a');
       const fileName = purpose === 'image'
         ? 'image'
-        : (exactText.trim().split('\n')[0]?.replace(/[^a-z0-9]+/gi, '_') || 'layout');
+        : purpose === 'cover'
+          ? (coverTitle.trim().replace(/[^a-z0-9]+/gi, '_') || 'cover')
+          : (exactText.trim().split('\n')[0]?.replace(/[^a-z0-9]+/gi, '_') || 'layout');
       link.href = href;
       link.download = `${fileName}.png`;
       link.click();
@@ -395,7 +513,39 @@ export default function LayoutTool({ user, onClose }) {
             </div>
           )}
 
-          {purpose !== 'image' && (
+          {purpose === 'cover' && (
+            <div className="space-y-4 border-t border-white/10 pt-5">
+              <div>
+                <Label>Cover title</Label>
+                <input
+                  type="text"
+                  value={coverTitle}
+                  onChange={(event) => setCoverTitle(event.target.value)}
+                  placeholder="Write the exact title"
+                  className="w-full rounded-[3px] border border-white/10 bg-[#26292d] px-3 py-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60"
+                />
+              </div>
+              <Picker title="Title position" items={COVER_POSITIONS} value={titlePosition} onChange={setTitlePosition} columns="grid-cols-3" />
+
+              <div>
+                <Label>Subtitle</Label>
+                <input
+                  type="text"
+                  value={coverSubtitle}
+                  onChange={(event) => setCoverSubtitle(event.target.value)}
+                  placeholder="Write the exact subtitle"
+                  className="w-full rounded-[3px] border border-white/10 bg-[#26292d] px-3 py-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60"
+                />
+              </div>
+              <Picker title="Subtitle position" items={COVER_POSITIONS} value={subtitlePosition} onChange={setSubtitlePosition} columns="grid-cols-3" />
+              <Picker title="Style" items={COVER_STYLES} value={coverStyle} onChange={setCoverStyle} columns="grid-cols-3" />
+              <Picker title="Title treatment" items={COVER_TREATMENTS} value={coverTreatment} onChange={setCoverTreatment} columns="grid-cols-3" />
+              <Picker title="Text alignment" items={COVER_ALIGNMENTS} value={coverAlignment} onChange={setCoverAlignment} columns="grid-cols-3" />
+              <Picker title="Visual emphasis" items={COVER_EMPHASIS} value={coverEmphasis} onChange={setCoverEmphasis} columns="grid-cols-2" />
+            </div>
+          )}
+
+          {purpose !== 'image' && purpose !== 'cover' && (
             <div>
               <Label>Exact text</Label>
               <textarea
@@ -409,14 +559,16 @@ export default function LayoutTool({ user, onClose }) {
           )}
 
           <div>
-            <Label>{purpose === 'image' ? 'Image prompt' : 'Art direction'}</Label>
+            <Label>{purpose === 'image' ? 'Image prompt' : purpose === 'cover' ? 'Art direction · optional' : 'Art direction'}</Label>
             <textarea
               value={direction}
               onChange={(event) => setDirection(event.target.value)}
               rows={5}
               placeholder={purpose === 'image'
                 ? 'Describe the image to create, its subjects, setting, style, light and composition'
-                : 'Describe the visual world, materials, lettering character, light and composition'}
+                : purpose === 'cover'
+                  ? 'Optional: add specific visual direction, setting, subject, lighting or composition'
+                  : 'Describe the visual world, materials, lettering character, light and composition'}
               className="w-full resize-none rounded-[3px] border border-white/10 bg-[#26292d] p-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/60"
             />
           </div>
