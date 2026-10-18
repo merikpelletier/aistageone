@@ -1,0 +1,34 @@
+name: Apply active FotoPlay arrow points
+on:
+  push:
+    branches:
+      - fix/live-current-fotoplay-arrows14
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply patch to active FotoPlay only
+        run: python3 scripts/apply_live_fotoplay_arrow_points.py
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Verify build
+        run: npm run build
+      - name: Keep only active FotoPlay source change
+        run: |
+          git checkout -- package-lock.json || true
+          git rm .github/workflows/apply-live-fotoplay-arrow-points.yml scripts/apply_live_fotoplay_arrow_points.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/studio/AuthorProductionWorkspace.jsx
+          git commit -m "Add direct arrow point editing to active FotoPlay"
+          git push origin HEAD:fix/live-current-fotoplay-arrows14
