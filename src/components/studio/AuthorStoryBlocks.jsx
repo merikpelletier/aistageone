@@ -44,15 +44,22 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
         .eq('is_active', true);
       if (categoryError) throw categoryError;
 
+      const { data: subcategories, error: subcategoryError } = await supabase
+        .from('asset_subcategory')
+        .select('id,category_id,key,label_en,label_fr')
+        .eq('is_active', true);
+      if (subcategoryError) throw subcategoryError;
+
       const categoryText = (category) => `${category.key || ''} ${category.label_en || ''} ${category.label_fr || ''}`.toLowerCase();
       const categoryById = new Map((categories || []).map((category) => [category.id, category]));
+      const subcategoryById = new Map((subcategories || []).map((subcategory) => [subcategory.id, subcategory]));
       const characterCategoryIds = (categories || []).filter((category) => /\b(actor|character|acteur|personnage)s?\b/.test(categoryText(category))).map((category) => category.id);
       const setCategoryIds = (categories || []).filter((category) => /\b(set|sets|décor|decor|lieu|location)s?\b/.test(categoryText(category))).map((category) => category.id);
       const selectAssets = async (categoryIds) => {
         if (!categoryIds.length) return [];
         const { data, error } = await supabase
           .from('catalog_asset')
-          .select('id,title,description,featured_image,preview_images,category_id,creator_name')
+          .select('id,title,description,featured_image,preview_images,category_id,subcategory_id,creator_name')
           .eq('status', 'published')
           .in('category_id', categoryIds)
           .order('title', { ascending: true })
@@ -60,10 +67,13 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
         if (error) throw error;
         return (data || []).map((asset) => {
           const category = categoryById.get(asset.category_id);
+          const subcategory = subcategoryById.get(asset.subcategory_id);
           return {
             ...asset,
             category_key: category?.key || '',
             category_label: category?.label_en || category?.label_fr || category?.key || '',
+            subcategory_key: subcategory?.key || '',
+            subcategory_label: subcategory?.label_en || subcategory?.label_fr || subcategory?.key || '',
           };
         });
       };
@@ -277,35 +287,39 @@ function AssetBuilder({ title, icon: Icon, items, draft, setDraft, editingId, on
   const [librarySearch, setLibrarySearch] = useState('');
   const [libraryCreator, setLibraryCreator] = useState('all');
   const [libraryCategory, setLibraryCategory] = useState('all');
+  const [librarySubcategory, setLibrarySubcategory] = useState('all');
   const libraryCreators = useMemo(() => [...new Set(library.map((item) => item.creator_name).filter(Boolean))].sort(), [library]);
   const libraryCategories = useMemo(() => [...new Set(library.map((item) => item.category_label).filter(Boolean))].sort(), [library]);
+  const librarySubcategories = useMemo(() => [...new Set(library.filter((item) => libraryCategory === 'all' || item.category_label === libraryCategory).map((item) => item.subcategory_label).filter(Boolean))].sort(), [library, libraryCategory]);
   const filteredLibrary = useMemo(() => {
     const term = librarySearch.trim().toLowerCase();
     return library.filter((item) => {
       if (libraryCreator !== 'all' && item.creator_name !== libraryCreator) return false;
       if (libraryCategory !== 'all' && item.category_label !== libraryCategory) return false;
+      if (librarySubcategory !== 'all' && item.subcategory_label !== librarySubcategory) return false;
       if (!term) return true;
-      return [item.title, item.description, item.creator_name, item.category_label]
+      return [item.title, item.description, item.creator_name, item.category_label, item.subcategory_label]
         .some((value) => String(value || '').toLowerCase().includes(term));
     });
-  }, [library, librarySearch, libraryCreator, libraryCategory]);
+  }, [library, librarySearch, libraryCreator, libraryCategory, librarySubcategory]);
   const filteredLibraryImages = useMemo(() => filteredLibrary.flatMap((item) => {
     const images = [...new Set([item.featured_image, ...(Array.isArray(item.preview_images) ? item.preview_images : [])].filter(Boolean))];
     return images.map((imageUrl, imageIndex) => ({ item, imageUrl, imageIndex }));
   }), [filteredLibrary]);
-  const clearLibraryFilters = () => { setLibrarySearch(''); setLibraryCreator('all'); setLibraryCategory('all'); };
+  const clearLibraryFilters = () => { setLibrarySearch(''); setLibraryCreator('all'); setLibraryCategory('all'); setLibrarySubcategory('all'); };
   return <div><div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><Icon size={17} className="text-yellow-400" /><h4 className="text-sm font-black">{title} *</h4></div><span className="rounded-full bg-yellow-400 px-2.5 py-1 text-xs font-black text-black">{items.length}</span></div>
     <div className="space-y-2">{items.map((item) => <div key={item.id} className={`flex items-center gap-3 rounded-2xl p-2.5 ${editingId === item.id ? 'bg-yellow-400/20 ring-1 ring-yellow-400' : 'bg-white/10'}`}><div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-yellow-400 text-black">{item.image_url ? <img src={item.image_url} alt="" className="h-full w-full object-cover" /> : <Icon size={18} />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-black">{item.name}</p><p className="text-xs font-semibold text-white/50">{item.source === 'olo_shop' ? 'OLO Shop selection' : item.source === 'story_pack' ? `Story Pack · ${item.source_pack_title || 'Imported'}` : 'Author asset'}</p></div><button onClick={() => onEdit(item)} className="p-2 text-yellow-400" aria-label={`Edit ${item.name}`} title="Edit"><Pencil size={15} /></button><button onClick={() => onRemove(item.id)} className="p-2 text-red-400" aria-label={`Remove ${item.name}`} title="Remove"><X size={15} /></button></div>)}</div>
     <div className="mt-3 space-y-2 rounded-2xl bg-white/5 p-3">{editingId && <div className="flex items-center justify-between rounded-xl bg-yellow-400/15 px-3 py-2"><span className="text-xs font-black uppercase tracking-wider text-yellow-400">Editing {title.slice(0, -1).toLowerCase()}</span><button onClick={onCancelEdit} className="text-xs font-black text-white/70">Cancel</button></div>}<input className="w-full rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-black" placeholder={`${editingId ? 'Edit' : 'New'} ${title.slice(0, -1).toLowerCase()} name`} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /><textarea className="w-full rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-black" rows={2} placeholder="Description" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />{draft.image_url && <div className="flex items-center gap-3 rounded-xl border border-yellow-400/30 bg-black/30 p-2"><img src={draft.image_url} alt="Selected reference" className="h-14 w-14 rounded-lg object-cover" /><div className="min-w-0 flex-1"><p className="text-xs font-black text-yellow-400">Selected image</p><p className="truncate text-[11px] font-semibold text-white/50">{draft.image_source === 'olo_shop' ? 'OLO Shop' : 'Vault'}</p></div><button onClick={() => setDraft({ ...draft, image_url: '', image_source: '', image_source_id: null })} className="p-2 text-red-400" aria-label="Remove selected image"><X size={15} /></button></div>}<div className="flex gap-2"><button onClick={onVault} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-xs font-black text-yellow-400"><Library size={14} /> Select image from Vault</button><button onClick={onAdd} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black">{editingId ? <Save size={14} /> : <Plus size={14} />} {editingId ? 'Save changes' : 'Add'}</button></div></div>
     <button onClick={() => setShowLibrary(!showLibrary)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-yellow-400/40 py-2.5 text-xs font-black text-yellow-400"><Library size={14} /> {showLibrary ? 'Hide OLO Shop images' : 'Select image from OLO Shop'}</button>
     {showLibrary && <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <input value={librarySearch} onChange={(event) => setLibrarySearch(event.target.value)} placeholder="Search OLO Shop" className="rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-black placeholder:text-black/40" />
-        <select value={libraryCategory} onChange={(event) => setLibraryCategory(event.target.value)} className="rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-black"><option value="all">All categories</option>{libraryCategories.map((category) => <option key={category} value={category}>{category}</option>)}</select>
+        <select value={libraryCategory} onChange={(event) => { setLibraryCategory(event.target.value); setLibrarySubcategory('all'); }} className="rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-black"><option value="all">All categories</option>{libraryCategories.map((category) => <option key={category} value={category}>{category}</option>)}</select>
+        <select value={librarySubcategory} onChange={(event) => setLibrarySubcategory(event.target.value)} className="rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-black"><option value="all">All subcategories</option>{librarySubcategories.map((subcategory) => <option key={subcategory} value={subcategory}>{subcategory}</option>)}</select>
         <select value={libraryCreator} onChange={(event) => setLibraryCreator(event.target.value)} className="rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-black"><option value="all">All creators</option>{libraryCreators.map((creator) => <option key={creator} value={creator}>{creator}</option>)}</select>
       </div>
-      <div className="my-3 flex items-center justify-between text-xs font-bold text-white/55"><span>{filteredLibraryImages.length} images from {filteredLibrary.length} assets</span>{(librarySearch || libraryCategory !== 'all' || libraryCreator !== 'all') && <button onClick={clearLibraryFilters} className="text-yellow-400">Clear filters</button>}</div>
-      <div className="grid grid-cols-2 gap-2">{filteredLibraryImages.map(({ item, imageUrl, imageIndex }) => <button key={`${item.id}-${imageIndex}`} onClick={() => onSelectImage(item, imageUrl)} className={`rounded-xl border p-2 text-left ${selected(item, imageUrl) ? 'border-yellow-400 bg-yellow-400/15' : 'border-white/10 bg-white/5'}`}><div className="mb-2 aspect-video overflow-hidden rounded-lg bg-white/5"><img src={imageUrl} alt={`${item.title} reference ${imageIndex + 1}`} className="h-full w-full object-contain" /></div><div className="flex items-center justify-between gap-2"><div className="min-w-0"><span className="block truncate text-xs font-black">{item.title}</span><span className="block truncate text-[10px] text-white/45">Image {imageIndex + 1} · {item.category_label}{item.creator_name ? ` · ${item.creator_name}` : ''}</span></div>{selected(item, imageUrl) && <Check size={14} className="shrink-0 text-yellow-400" />}</div></button>)}</div>
+      <div className="my-3 flex items-center justify-between text-xs font-bold text-white/55"><span>{filteredLibraryImages.length} images from {filteredLibrary.length} assets</span>{(librarySearch || libraryCategory !== 'all' || librarySubcategory !== 'all' || libraryCreator !== 'all') && <button onClick={clearLibraryFilters} className="text-yellow-400">Clear filters</button>}</div>
+      <div className="grid grid-cols-2 gap-2">{filteredLibraryImages.map(({ item, imageUrl, imageIndex }) => <button key={`${item.id}-${imageIndex}`} onClick={() => onSelectImage(item, imageUrl)} className={`rounded-xl border p-2 text-left ${selected(item, imageUrl) ? 'border-yellow-400 bg-yellow-400/15' : 'border-white/10 bg-white/5'}`}><div className="mb-2 aspect-video overflow-hidden rounded-lg bg-white/5"><img src={imageUrl} alt={`${item.title} reference ${imageIndex + 1}`} className="h-full w-full object-contain" /></div><div className="flex items-center justify-between gap-2"><div className="min-w-0"><span className="block truncate text-xs font-black">{item.title}</span><span className="block truncate text-[10px] text-white/45">Image {imageIndex + 1} · {item.category_label}{item.subcategory_label ? ` · ${item.subcategory_label}` : ''}{item.creator_name ? ` · ${item.creator_name}` : ''}</span></div>{selected(item, imageUrl) && <Check size={14} className="shrink-0 text-yellow-400" />}</div></button>)}</div>
     </div>}
   </div>;
 }
