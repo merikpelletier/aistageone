@@ -16,6 +16,15 @@ const noLegacyFotoPlayFallback = {
       return { code: next, map: null }
     }
 
+    if (normalizedId.endsWith('/src/components/studio/AuthorStoryBlocks.jsx')) {
+      const next = code.replace(
+        "saving={saving} onBack={() => setView(project.id ? 'workspace' : 'dashboard')} onSave={(foundationComplete) => saveProject(foundationComplete ? 'workspace' : 'setup')}",
+        "saving={saving} onBack={() => setView(project.id ? 'workspace' : 'dashboard')} onSave={() => saveProject('workspace')}"
+      )
+      if (next === code) throw new Error('FotoPlay setup-to-editor handoff was not applied.')
+      return { code: next, map: null }
+    }
+
     if (!normalizedId.endsWith('/src/components/studio/AuthorProductionWorkspacePage.jsx')) return null
 
     let next = code
@@ -28,6 +37,11 @@ const noLegacyFotoPlayFallback = {
     next = next.replace(
       "if (!desktop || classic || !current || current.visual_format !== 'comic') return <div className=\"relative\">{classic && desktop && <button type=\"button\" onClick={() => setClassic(false)} className=\"fixed right-5 top-20 z-[180] border border-[#23c7be] bg-[#23c7be] px-4 py-2 text-xs font-black text-black\">Return to page editor</button>}<LegacyAuthorProductionWorkspace {...props} /></div>;\n  return <ComicPageWorkspace {...props} onClassic={() => setClassic(true)} />;",
       "if (!current) return <LegacyAuthorProductionWorkspace {...props} />;\n  return <ComicPageWorkspace {...props} />;"
+    )
+
+    next = next.replace(
+      "  if (!current) return <div className=\"min-h-[70vh] bg-[#202328] text-white flex items-center justify-center px-6\"><div className=\"text-center\"><p className=\"text-xs font-black uppercase tracking-[.18em] text-[#23c7be]\">FotoPlay</p><p className=\"mt-2 text-sm font-semibold text-white/60\">Select a project to open the current workspace.</p></div></div>;\n  return <ComicPageWorkspace {...props} onClassic={() => {}} />;",
+      "  const createFirstChapter = async () => { const chapter = newChapter(0, 'manual', null); const nextProject = { ...project, chapters: [chapter] }; props.setProject(nextProject); props.setActiveChapterId(chapter.id); await props.onSave(nextProject, { silent: true }); };\n  if (!current) return <div className=\"mx-auto w-full max-w-[1900px] px-3 pb-6 lg:px-4\"><header className=\"mb-3 flex items-center gap-3 border-b border-black/10 bg-white px-2 py-2 text-black\"><button onClick={props.onBack} className=\"flex h-10 w-10 items-center justify-center bg-black text-white\"><ArrowLeft size={18} /></button><div className=\"min-w-0 flex-1\"><p className=\"text-[10px] font-black uppercase tracking-[.16em] text-black/45\">FotoPlay page editor</p><h2 className=\"truncate text-lg font-black\">{project.title || 'New FotoPlay'}</h2></div><button onClick={props.onEditSetup} className=\"border border-black/15 px-3 py-2 text-xs font-black\">Story / cast</button></header><div className=\"flex min-h-[70vh] items-center justify-center border border-white/10 bg-[#0d1013] px-6 text-white\"><div className=\"max-w-lg text-center\"><p className=\"text-xs font-black uppercase tracking-[.18em] text-[#23c7be]\">New FotoPlay</p><h3 className=\"mt-2 text-2xl font-black\">Start the first chapter</h3><p className=\"mt-3 text-sm font-semibold text-white/55\">Your project is saved and connected to the page editor.</p><button type=\"button\" onClick={createFirstChapter} className=\"mt-6 bg-[#23c7be] px-5 py-3 text-sm font-black text-black\">Create first chapter</button></div></div></div>;\n  return <ComicPageWorkspace {...props} onClassic={() => {}} />;"
     )
 
     next = next.replace(
