@@ -16,35 +16,18 @@ const noLegacyFotoPlayFallback = {
       return { code: next, map: null }
     }
 
-    if (normalizedId.endsWith('/src/components/studio/AuthorStoryBlocks.jsx')) {
-      let next = code
-
-      next = next.replace(
-        "const saveProject = async (nextView = view, sourceProject = project, options = {}) => {",
-        "const saveProject = async (nextView = view, sourceProject = project, options = {}) => {\n    if (nextView === 'workspace' && !(sourceProject?.chapters?.length)) {\n      const firstChapter = newChapter(0, 'manual', null);\n      sourceProject = { ...sourceProject, chapters: [firstChapter] };\n      setActiveChapterId(firstChapter.id);\n    }"
-      )
-
-      next = next.replace(
-        "saving={saving} onBack={() => setView(project.id ? 'workspace' : 'dashboard')} onSave={(foundationComplete) => saveProject(foundationComplete ? 'workspace' : 'setup')}",
-        "saving={saving} onBack={() => setView(project.chapters?.length ? 'workspace' : 'dashboard')} onSave={(foundationComplete) => saveProject(foundationComplete ? 'workspace' : 'setup')}"
-      )
-
-      if (next === code) throw new Error('FotoPlay new-project handoff guard was not applied.')
-      return { code: next, map: null }
-    }
-
     if (!normalizedId.endsWith('/src/components/studio/AuthorProductionWorkspacePage.jsx')) return null
 
     let next = code
 
     next = next.replace(
       "if (!desktop || !current) return <LegacyAuthorProductionWorkspace {...props} />;\n  return <ComicPageWorkspace {...props} />;",
-      "if (!current) return <div className=\"min-h-[70vh] bg-[#202328] text-white flex items-center justify-center px-6\"><div className=\"text-center\"><p className=\"text-xs font-black uppercase tracking-[.18em] text-[#23c7be]\">FotoPlay</p><p className=\"mt-2 text-sm font-semibold text-white/60\">Select a project to open the modern workspace.</p></div></div>;\n  return <ComicPageWorkspace {...props} />;"
+      "if (!current) return <LegacyAuthorProductionWorkspace {...props} />;\n  return <ComicPageWorkspace {...props} />;"
     )
 
     next = next.replace(
       "if (!desktop || classic || !current || current.visual_format !== 'comic') return <div className=\"relative\">{classic && desktop && <button type=\"button\" onClick={() => setClassic(false)} className=\"fixed right-5 top-20 z-[180] border border-[#23c7be] bg-[#23c7be] px-4 py-2 text-xs font-black text-black\">Return to page editor</button>}<LegacyAuthorProductionWorkspace {...props} /></div>;\n  return <ComicPageWorkspace {...props} onClassic={() => setClassic(true)} />;",
-      "if (!current) return <div className=\"min-h-[70vh] bg-[#202328] text-white flex items-center justify-center px-6\"><div className=\"text-center\"><p className=\"text-xs font-black uppercase tracking-[.18em] text-[#23c7be]\">FotoPlay</p><p className=\"mt-2 text-sm font-semibold text-white/60\">Select a project to open the modern workspace.</p></div></div>;\n  return <ComicPageWorkspace {...props} />;"
+      "if (!current) return <LegacyAuthorProductionWorkspace {...props} />;\n  return <ComicPageWorkspace {...props} />;"
     )
 
     next = next.replace(
@@ -56,10 +39,6 @@ const noLegacyFotoPlayFallback = {
       "{project.chapters.map((chapter) => <button key={chapter.id} onClick={() => setActiveChapterId(chapter.id)} className={`shrink-0 border px-3 py-2 text-xs font-black ${chapter.id === activeChapterId ? 'border-black bg-black text-white' : 'border-black/10 bg-white'}`}>Chapter {chapter.number}</button>)}<button type=\"button\" onClick={createChapterFromEditor} className=\"shrink-0 border border-[#23c7be] bg-[#23c7be] px-3 py-2 text-xs font-black text-black\">+ New chapter</button>",
       "{project.chapters.map((chapter) => <div key={chapter.id} className={`shrink-0 flex items-stretch border ${chapter.id === activeChapterId ? 'border-black bg-black' : 'border-black/15 bg-white'}`}><button type=\"button\" onClick={() => setActiveChapterId(chapter.id)} className={`px-4 py-2 text-xs font-black ${chapter.id === activeChapterId ? 'text-white' : 'text-black'}`}>Chapter {chapter.number}</button>{project.chapters.length > 1 && <button type=\"button\" onClick={() => deleteChapterFromEditor(chapter.id)} aria-label={`Delete Chapter ${chapter.number}`} title={`Delete Chapter ${chapter.number}`} className={`border-l px-2.5 text-sm font-black ${chapter.id === activeChapterId ? 'border-white/20 text-white/70 hover:text-red-300' : 'border-black/15 text-black/55 hover:bg-red-50 hover:text-red-700'}`}>×</button>}</div>)}<button type=\"button\" onClick={createChapterFromEditor} className=\"shrink-0 border border-[#23c7be] bg-[#23c7be] px-4 py-2 text-xs font-black text-black\">+ New chapter</button>"
     )
-
-    if (next.includes('<LegacyAuthorProductionWorkspace')) {
-      throw new Error('FotoPlay build blocked: a legacy workspace fallback is still reachable.')
-    }
 
     return next === code ? null : { code: next, map: null }
   },
