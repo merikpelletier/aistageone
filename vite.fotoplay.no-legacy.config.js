@@ -16,6 +16,23 @@ const noLegacyFotoPlayFallback = {
       return { code: next, map: null }
     }
 
+    if (normalizedId.endsWith('/src/components/studio/AuthorStoryBlocks.jsx')) {
+      let next = code
+
+      next = next.replace(
+        "const saveProject = async (nextView = view, sourceProject = project, options = {}) => {",
+        "const saveProject = async (nextView = view, sourceProject = project, options = {}) => {\n    if (nextView === 'workspace' && !(sourceProject?.chapters?.length)) {\n      const firstChapter = newChapter(0, 'manual', null);\n      sourceProject = { ...sourceProject, chapters: [firstChapter] };\n      setActiveChapterId(firstChapter.id);\n    }"
+      )
+
+      next = next.replace(
+        "saving={saving} onBack={() => setView(project.id ? 'workspace' : 'dashboard')} onSave={(foundationComplete) => saveProject(foundationComplete ? 'workspace' : 'setup')}",
+        "saving={saving} onBack={() => setView(project.chapters?.length ? 'workspace' : 'dashboard')} onSave={(foundationComplete) => saveProject(foundationComplete ? 'workspace' : 'setup')}"
+      )
+
+      if (next === code) throw new Error('FotoPlay new-project handoff guard was not applied.')
+      return { code: next, map: null }
+    }
+
     if (!normalizedId.endsWith('/src/components/studio/AuthorProductionWorkspacePage.jsx')) return null
 
     let next = code
