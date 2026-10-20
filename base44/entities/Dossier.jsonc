@@ -16,7 +16,6 @@
     },
     "class": {
       "type": "string",
-      "enum": ["Videos", "Story", "Assets", "Kits", "Merchandise"],
       "description": "Content class for the dossier"
     },
     "cover_image": { "type": "string", "description": "URL of the cover image (portrait)" },
