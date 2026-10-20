@@ -1,0 +1,47 @@
+name: Add FotoPlay location additions field
+
+on:
+  push:
+    branches:
+      - fix/location-additions
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Add FotoPlay location additions field'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/location-additions
+      - name: Add only location additions UI and prompt mapping
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/studio/AuthorProductionWorkspacePage.jsx')
+          s = p.read_text()
+
+          old = """  const characterDirectionPrompt = characters.map((character) => { const value = { ...(active.appearance_continuity?.[character.id] || {}), ...(segment.character_directions?.[character.id] || {}) }; const details = [value.look && `appearance: ${value.look}`, value.position && `position: ${value.position}`, value.expression && `expression: ${value.expression}`].filter(Boolean).join('; '); return details ? `${character.name}: ${details}.` : ''; }).filter(Boolean).join(' ');
+  const framePrompt = (panel, index) => { const establishing = panel.frame_type === 'establishing'; const manifest = establishing ? establishingReferenceManifest : referenceManifest; const characterBlock = establishing ? 'No featured characters. Do not use character identity references.' : (characterDirectionPrompt ? `Character directions: ${characterDirectionPrompt}` : 'Preserve the selected character identities.'); return `Create one photorealistic live-action cinematic production still. Use the supplied reference images according to this exact mapping:\n${manifest || 'No reference images supplied.'}\nReferences labeled CHARACTER IDENTITY define only that named person's identity. References labeled LOCATION define only that environment. Do not transfer facial features, age, clothing, or identity between different characters or from a character reference into a location. ${characterBlock} Location: ${locations.map((item) => item.name).join(', ') || 'Use the described environment.'}. Exact set area: ${segment.exact_area || 'not specified'}. Atmosphere and light: ${segment.environment_direction || 'natural to the scene'}. Fixed set elements: ${segment.fixed_set_elements || 'preserve the location reference'}. FRAME ${index + 1}/${panelCount}. Shot: ${panel.shot}. Do not add text, captions, borders, speech bubbles, illustration or graphic-novel styling.`; };"""
+          new = """  const characterDirectionPrompt = characters.map((character) => { const value = { ...(active.appearance_continuity?.[character.id] || {}), ...(segment.character_directions?.[character.id] || {}) }; const details = [value.look && `appearance: ${value.look}`, value.position && `position: ${value.position}`, value.expression && `expression: ${value.expression}`].filter(Boolean).join('; '); return details ? `${character.name}: ${details}.` : ''; }).filter(Boolean).join(' ');
+  const locationChangePrompt = locations.map((location) => { const value = segment.location_changes?.[location.id]?.trim(); return value ? `${location.name}: ${value}.` : ''; }).filter(Boolean).join(' ');
+  const framePrompt = (panel, index) => { const establishing = panel.frame_type === 'establishing'; const manifest = establishing ? establishingReferenceManifest : referenceManifest; const characterBlock = establishing ? 'No featured characters. Do not use character identity references.' : (characterDirectionPrompt ? `Character directions: ${characterDirectionPrompt}` : 'Preserve the selected character identities.'); return `Create one photorealistic live-action cinematic production still. Use the supplied reference images according to this exact mapping:\n${manifest || 'No reference images supplied.'}\nReferences labeled CHARACTER IDENTITY define only that named person's identity. References labeled LOCATION define only that environment. Do not transfer facial features, age, clothing, or identity between different characters or from a character reference into a location. ${characterBlock} Location: ${locations.map((item) => item.name).join(', ') || 'Use the described environment.'}. ${locationChangePrompt ? `Location additions / changes: ${locationChangePrompt} ` : ''}Exact set area: ${segment.exact_area || 'not specified'}. Atmosphere and light: ${segment.environment_direction || 'natural to the scene'}. Fixed set elements: ${segment.fixed_set_elements || 'preserve the location reference'}. FRAME ${index + 1}/${panelCount}. Shot: ${panel.shot}. Do not add text, captions, borders, speech bubbles, illustration or graphic-novel styling.`; };"""
+          assert s.count(old) == 1, s.count(old)
+          s = s.replace(old, new)
+
+          old = """{tool === 'references' && <><div className=\"space-y-3\">{locations.map((location) => <ReferencePicker key={location.id} title={`${location.name} · set references`} images={assetGallery(location, catalogGalleries)} selected={selectedRefs(location, 'location_reference_images')} onChange={(images) => change({ location_reference_images: { ...segment.location_reference_images, [location.id]: images }, comic_page_source: '' })} />)}</div>{characters.map((character) =>"""
+          new = """{tool === 'references' && <><div className=\"space-y-3\">{locations.map((location) => <div key={location.id} className=\"space-y-2\"><ReferencePicker title={`${location.name} · set references`} images={assetGallery(location, catalogGalleries)} selected={selectedRefs(location, 'location_reference_images')} onChange={(images) => change({ location_reference_images: { ...segment.location_reference_images, [location.id]: images }, comic_page_source: '' })} /><input className={dark} value={segment.location_changes?.[location.id] || ''} onChange={(e) => change({ location_changes: { ...(segment.location_changes || {}), [location.id]: e.target.value }, comic_page_source: '' })} placeholder=\"Set additions / changes (clients, props, temporary elements)\" /></div>)}</div>{characters.map((character) =>"""
+          assert s.count(old) == 1, s.count(old)
+          s = s.replace(old, new)
+
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/studio/AuthorProductionWorkspacePage.jsx
+          git commit -m "Add FotoPlay location additions field"
+          git push origin HEAD:fix/location-additions
