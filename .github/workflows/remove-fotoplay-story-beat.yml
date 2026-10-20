@@ -1,0 +1,36 @@
+name: Remove FotoPlay story beat field
+
+on:
+  push:
+    branches:
+      - fix/remove-story-beat
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Remove FotoPlay Story beat field'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/remove-story-beat
+      - name: Remove only Story beat input
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/studio/AuthorProductionWorkspacePage.jsx')
+          s = p.read_text()
+          old = '<input value={selected.beat || \'\'} onChange={(e) => updatePanel(selectedPanel, { beat: e.target.value })} className={dark} placeholder="Story beat" />'
+          assert s.count(old) == 1, s.count(old)
+          s = s.replace(old, '')
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/studio/AuthorProductionWorkspacePage.jsx
+          git commit -m "Remove FotoPlay Story beat field"
+          git push origin HEAD:fix/remove-story-beat
