@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, GripVertical, Pencil, Plus, Trash2, X } from 'lucide-react';
@@ -12,13 +12,22 @@ export default function AdminDossierClasses() {
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState('');
   const [ordered, setOrdered] = useState([]);
+  const defaultsSeeded = useRef(false);
 
-  const { data: classes = [] } = useQuery({
+  const { data: classes = [], isFetched } = useQuery({
     queryKey: ['dossierClasses'],
     queryFn: () => base44.entities.DossierClass.list('order'),
   });
 
   useEffect(() => setOrdered(classes), [classes]);
+
+  useEffect(() => {
+    if (!isFetched || classes.length > 0 || defaultsSeeded.current) return;
+    defaultsSeeded.current = true;
+    Promise.all(
+      DEFAULT_CLASSES.map((name, order) => base44.entities.DossierClass.create({ name, order }))
+    ).then(() => qc.invalidateQueries({ queryKey: ['dossierClasses'] }));
+  }, [classes, isFetched, qc]);
 
   const createMutation = useMutation({
     mutationFn: ({ name, order }) => base44.entities.DossierClass.create({ name, order }),
@@ -59,13 +68,6 @@ export default function AdminDossierClasses() {
     createMutation.mutate({ name: trimmed, order: ordered.length });
   };
 
-  const initializeDefaults = async () => {
-    await Promise.all(
-      DEFAULT_CLASSES.map((name, order) => base44.entities.DossierClass.create({ name, order }))
-    );
-    qc.invalidateQueries({ queryKey: ['dossierClasses'] });
-  };
-
   const confirmEdit = () => {
     const trimmed = editingName.trim();
     if (!trimmed) return;
@@ -76,14 +78,6 @@ export default function AdminDossierClasses() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-white text-sm font-medium tracking-wide">Dossier Classes</h3>
-        {ordered.length === 0 && (
-          <button
-            onClick={initializeDefaults}
-            className="px-3 py-1.5 border border-white/20 text-white text-xs hover:border-white/50"
-          >
-            Load default classes
-          </button>
-        )}
       </div>
 
       <div className="flex gap-2">
@@ -103,10 +97,6 @@ export default function AdminDossierClasses() {
           <Plus size={14} /> Add
         </button>
       </div>
-
-      {ordered.length === 0 && (
-        <p className="text-white/50 text-sm text-center py-6">No classes yet.</p>
-      )}
 
       <DragDropContext onDragEnd={handleDragEnd}>
         <Droppable droppableId="dossier-classes">
