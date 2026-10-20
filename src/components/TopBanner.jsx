@@ -5,7 +5,7 @@ import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { GripHorizontal, Search } from 'lucide-react';
 
-const CLASS_ORDER = ['Videos', 'Story', 'Assets', 'Kits', 'Merchandise'];
+const FALLBACK_CLASS_ORDER = ['Videos', 'Story', 'Assets', 'Kits', 'Merchandise'];
 const SHEET_SNAPS = [28, 60, 100];
 
 function localDayKey() {
@@ -166,6 +166,12 @@ export default function TopBanner({ dossiers }) {
   const draggingRef = useRef(false);
   const dayKey = localDayKey();
 
+  const { data: dossierClasses = [] } = useQuery({
+    queryKey: ['dossierClasses'],
+    queryFn: () => base44.entities.DossierClass.list('order'),
+  });
+  const classOrder = dossierClasses.length ? dossierClasses.map(item => item.name) : FALLBACK_CLASS_ORDER;
+
   const { data: ratings = [] } = useQuery({
     queryKey: ['dossierRatings', 'indexPopularity'],
     queryFn: async () => { try { return await base44.entities.DossierRating.listAll(); } catch { return []; } },
@@ -204,10 +210,10 @@ export default function TopBanner({ dossiers }) {
   const masonry = useMemo(() => buildDailyMasonry(dossiers, dayKey), [dossiers, dayKey]);
 
   const selectorOptions = useMemo(() => {
-    const classes = CLASS_ORDER.filter(label => dossiers.some(d => d.class === label));
+    const classes = classOrder.filter(label => dossiers.some(d => d.class === label));
     const categories = [...new Set(dossiers.map(d => d.category).filter(Boolean))];
     return ['All', ...classes, ...categories.filter(name => !classes.includes(name))];
-  }, [dossiers]);
+  }, [dossiers, classOrder]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -234,7 +240,7 @@ export default function TopBanner({ dossiers }) {
     if (selected !== 'All') return [{ title: selected, dossiers: rankRow(visible, selected) }];
 
     const result = [];
-    CLASS_ORDER.forEach((label) => {
+    classOrder.forEach((label) => {
       const items = visible.filter(d => d.class === label);
       if (items.length) result.push({ title: label, dossiers: rankRow(items, `class:${label}`) });
     });
@@ -243,7 +249,7 @@ export default function TopBanner({ dossiers }) {
       if (items.length) result.push({ title: category, dossiers: rankRow(items, `category:${category}`) });
     });
     return result;
-  }, [visible, selected, query, popularityMap, dayKey]);
+  }, [visible, selected, query, popularityMap, dayKey, classOrder]);
 
   const startDrag = (event) => {
     event.preventDefault();
