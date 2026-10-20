@@ -37,6 +37,13 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
     queryFn: () => base44.entities.DossierCategory.list('name'),
   });
 
+  const { data: dossierClasses = [] } = useQuery({
+    queryKey: ['dossierClasses'],
+    queryFn: () => base44.entities.DossierClass.list('order'),
+  });
+
+  const classOptions = dossierClasses.length ? dossierClasses.map(item => item.name) : ['Videos', 'Story', 'Assets', 'Kits', 'Merchandise'];
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       const now = new Date();
@@ -121,7 +128,7 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
               </Select>
               <Select value={form.class || 'Videos'} onValueChange={(value) => set('class', value)}>
                 <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="Videos">Videos</SelectItem><SelectItem value="Story">Story</SelectItem><SelectItem value="Assets">Assets</SelectItem><SelectItem value="Kits">Kits</SelectItem><SelectItem value="Merchandise">Merchandise</SelectItem></SelectContent>
+                <SelectContent>{classOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={form.access_level} onValueChange={(value) => set('access_level', value)}>
                 <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
