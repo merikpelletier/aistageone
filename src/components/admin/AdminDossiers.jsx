@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Edit2, Trash2, Eye, EyeOff, Layers, Upload, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import AdminDossierCategories from './AdminDossierCategories';
+import AdminDossierClasses from './AdminDossierClasses';
 import AdminEpisodeProduction from './AdminEpisodeProduction';
 import SeriesPageEditor from './SeriesPageEditor';
 import DossierAssociatedMember from '@/components/DossierAssociatedMember';
@@ -73,6 +74,13 @@ export default function AdminDossiers() {
     queryKey: ['dossierCategories'],
     queryFn: () => base44.entities.DossierCategory.list('name'),
   });
+
+  const { data: dossierClasses = [] } = useQuery({
+    queryKey: ['dossierClasses'],
+    queryFn: () => base44.entities.DossierClass.list('order'),
+  });
+
+  const classOptions = dossierClasses.length ? dossierClasses.map(item => item.name) : ['Videos', 'Story', 'Assets', 'Kits', 'Merchandise'];
 
   const { data: allPages = [] } = useQuery({
     queryKey: ['adminDossierPages'],
@@ -173,6 +181,7 @@ export default function AdminDossiers() {
         <div className="flex gap-2">
           <button onClick={() => setSubTab('list')} className={`px-4 py-1.5 text-sm rounded-lg transition-colors ${subTab === 'list' ? 'bg-white text-black font-medium' : 'text-white hover:text-white hover:bg-white/10'}`}>Dossiers</button>
           <button onClick={() => setSubTab('categories')} className={`px-4 py-1.5 text-sm rounded-lg transition-colors ${subTab === 'categories' ? 'bg-white text-black font-medium' : 'text-white hover:text-white hover:bg-white/10'}`}>Categories</button>
+          <button onClick={() => setSubTab('classes')} className={`px-4 py-1.5 text-sm rounded-lg transition-colors ${subTab === 'classes' ? 'bg-white text-black font-medium' : 'text-white hover:text-white hover:bg-white/10'}`}>Classes</button>
         </div>
         {subTab === 'list' && (
           <Button
@@ -186,6 +195,7 @@ export default function AdminDossiers() {
       </div>
 
       {subTab === 'categories' && <AdminDossierCategories />}
+      {subTab === 'classes' && <AdminDossierClasses />}
 
       {subTab === 'list' && (
         <div className="space-y-3">
@@ -262,11 +272,7 @@ export default function AdminDossiers() {
                   <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue placeholder="Select a class..." /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">— No class —</SelectItem>
-                    <SelectItem value="Videos">Videos</SelectItem>
-                    <SelectItem value="Story">Story</SelectItem>
-                    <SelectItem value="Assets">Assets</SelectItem>
-                    <SelectItem value="Kits">Kits</SelectItem>
-                    <SelectItem value="Merchandise">Merchandise</SelectItem>
+                    {classOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
