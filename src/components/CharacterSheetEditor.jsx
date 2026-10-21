@@ -75,7 +75,7 @@ function SourceButton({ icon: Icon, label, onClick, tone }) {
 
 function AssetPicker({
   picker, onClose, onSelect, vaultAssets, catalogAssets, categories,
-  loadingCatalog, catalogError, onManageVault,
+  loadingCatalog, catalogError, onManageVault, embedded = false,
 }) {
   const [source, setSource] = useState(picker.source || 'vault');
   const [search, setSearch] = useState('');
@@ -103,7 +103,7 @@ function AssetPicker({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[220] flex items-center justify-center bg-black/85 p-3 backdrop-blur-md"
+      className={`fixed z-[220] flex items-center justify-center bg-black/85 p-3 backdrop-blur-md ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)]' : 'inset-0'}`}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}
     >
       <motion.div
@@ -644,6 +644,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
           vaultAssets={vaultAssets} catalogAssets={catalogAssets} categories={categories}
           loadingCatalog={loadingCatalog} catalogError={catalogError}
           onManageVault={() => { setPicker(null); setVaultOpen(true); }}
+          embedded={embedded}
         />
       )}</AnimatePresence>
       <VaultDrawer open={vaultOpen} onClose={() => { setVaultOpen(false); refetchVault(); }} />
