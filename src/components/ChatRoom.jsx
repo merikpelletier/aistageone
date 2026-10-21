@@ -15,6 +15,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
   const [openComments, setOpenComments] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
   const [copiedPostId, setCopiedPostId] = useState(null);
+  const [likeErrors, setLikeErrors] = useState({});
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
@@ -54,13 +55,43 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
   });
 
   const likeMutation = useMutation({
-    mutationFn: (messageId) => base44.entities.ChatMessageLike.create({
+    mutationFn: ({ messageId }) => base44.entities.ChatMessageLike.create({
       salon,
       message_id: messageId,
       user_identifier: userIdentifier,
       session_id: sessionId
     }),
-    onSuccess: () => {
+    onMutate: async ({ messageId }) => {
+      setLikeErrors((current) => ({ ...current, [messageId]: null }));
+      await queryClient.cancelQueries({ queryKey: ['chatMessageLikes', salon] });
+      const previousLikes = queryClient.getQueryData(['chatMessageLikes', salon]) || [];
+      queryClient.setQueryData(['chatMessageLikes', salon], [
+        ...previousLikes,
+        {
+          id: `optimistic-${messageId}-${userIdentifier}`,
+          salon,
+          message_id: messageId,
+          user_identifier: userIdentifier,
+          session_id: sessionId,
+          __optimistic: true
+        }
+      ]);
+      return { previousLikes, messageId };
+    },
+    onError: (error, variables, context) => {
+      if (context?.previousLikes) {
+        queryClient.setQueryData(['chatMessageLikes', salon], context.previousLikes);
+      }
+      setLikeErrors((current) => ({
+        ...current,
+        [variables.messageId]: error?.message || 'Like could not be saved.'
+      }));
+      console.error('Error liking Chat Room post:', error);
+    },
+    onSuccess: (_, variables) => {
+      setLikeErrors((current) => ({ ...current, [variables.messageId]: null }));
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['chatMessageLikes', salon] });
     }
   });
@@ -144,8 +175,8 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
       (like) => like.message_id === messageId && like.user_identifier === userIdentifier
     );
 
-    if (!alreadyLiked) {
-      likeMutation.mutate(messageId);
+    if (!alreadyLiked && !likeMutation.isPending) {
+      likeMutation.mutate({ messageId });
     }
   };
 
@@ -212,13 +243,14 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      <div className="flex-1 overflow-y-auto p-6 space-y-10">
         <AnimatePresence initial={false}>
           {messages.map((msg) => {
             const messageLikes = likes.filter((like) => like.message_id === msg.id);
             const messageComments = comments.filter((comment) => comment.message_id === msg.id);
             const isLiked = messageLikes.some((like) => like.user_identifier === userIdentifier);
             const commentsOpen = !!openComments[msg.id];
+            const likeError = likeErrors[msg.id];
 
             return (
               <motion.article
@@ -226,7 +258,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
                 key={msg.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-[640px] mx-auto bg-black/75 backdrop-blur-sm border border-white/15 shadow-xl text-white overflow-hidden"
+                className="w-full max-w-[640px] mx-auto bg-black/80 backdrop-blur-sm border border-white/20 shadow-2xl text-white overflow-hidden"
               >
                 <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
                   <button
@@ -272,7 +304,6 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
                   {(!msg.photo_url || msg.content !== '📷 Photo') && (
                     <p className={`text-base font-medium whitespace-pre-wrap ${msg.photo_url ? 'mt-4' : ''}`}>
                       {msg.content.split('\n').map((line, i) => {
-                        // Check if line contains a URL
                         const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
                         if (urlMatch) {
                           const parts = line.split(urlMatch[0]);
@@ -304,10 +335,11 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 border-t border-white/10">
+                <div className="grid grid-cols-3 border-t border-white/15 bg-black/30">
                   <button
                     onClick={() => handleLike(msg.id)}
-                    className={`flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold transition-colors ${
+                    disabled={likeMutation.isPending && !isLiked}
+                    className={`flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-60 ${
                       isLiked ? 'text-red-400 bg-white/5' : 'text-white/70 hover:text-white hover:bg-white/5'
                     }`}
                   >
@@ -317,7 +349,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
 
                   <button
                     onClick={() => setOpenComments((current) => ({ ...current, [msg.id]: !current[msg.id] }))}
-                    className={`flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold transition-colors ${
+                    className={`flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold transition-colors border-l border-white/10 ${
                       commentsOpen ? 'text-white bg-white/5' : 'text-white/70 hover:text-white hover:bg-white/5'
                     }`}
                   >
@@ -327,12 +359,18 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
 
                   <button
                     onClick={() => handleShare(msg)}
-                    className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                    className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/5 transition-colors border-l border-white/10"
                   >
                     {copiedPostId === msg.id ? <Check size={18} /> : <Share2 size={18} />}
                     <span>{copiedPostId === msg.id ? 'Copied' : 'Share'}</span>
                   </button>
                 </div>
+
+                {likeError && (
+                  <div className="px-5 py-2 border-t border-red-500/30 bg-red-950/40 text-red-300 text-xs">
+                    Like error: {likeError}
+                  </div>
+                )}
 
                 {commentsOpen && (
                   <div className="border-t border-white/10 px-5 py-4 space-y-4">
