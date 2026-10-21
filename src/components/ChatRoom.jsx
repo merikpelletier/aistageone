@@ -139,7 +139,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
                 {msg.sender_identifier}
                 {msg.is_admin && ' • Admin'}
               </button>
-              <div className={`max-w-[85%] px-5 py-3 rounded-2xl shadow-lg ${
+              <div className={`${msg.photo_url ? 'w-fit max-w-[85%] sm:max-w-[520px]' : 'max-w-[85%]'} px-5 py-3 rounded-2xl shadow-lg ${
                 msg.sender_identifier === userIdentifier
                   ? 'bg-black text-yellow-400'
                   : msg.is_admin 
@@ -150,7 +150,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
                   <img
                     src={msg.photo_url}
                     alt=""
-                    className="max-w-full rounded-xl mb-3 cursor-pointer border-2 border-black/10"
+                    className="block w-auto max-w-full max-h-[450px] object-contain rounded-xl mb-3 cursor-pointer border-2 border-black/10"
                     onClick={() => window.open(msg.photo_url, '_blank')}
                   />
                 )}
