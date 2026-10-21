@@ -232,18 +232,18 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
   return (
     <div className="relative h-full flex flex-col bg-transparent">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-black/10 flex items-center justify-end">
+      <div className="px-6 py-4 border-b border-black/10 flex items-center justify-end lg:px-3 lg:py-1.5">
         <button 
           onClick={() => setGridOpen(true)}
-          className="flex items-center gap-2 text-black hover:text-black font-medium text-sm transition-colors"
+          className="flex items-center gap-2 text-black hover:text-black font-medium text-sm transition-colors lg:text-xs lg:gap-1.5"
         >
-          <Eye size={18} className="text-black" />
+          <Eye size={18} className="text-black lg:w-3.5 lg:h-3.5" />
           <span>See who is online</span>
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-10">
+      <div className="flex-1 overflow-y-auto p-6 space-y-10 lg:p-3 lg:space-y-6">
         <AnimatePresence initial={false}>
           {messages.map((msg) => {
             const messageLikes = likes.filter((like) => like.message_id === msg.id);
@@ -258,12 +258,12 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
                 key={msg.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-[640px] mx-auto bg-black/80 backdrop-blur-sm border border-white/20 shadow-2xl text-white overflow-hidden"
+                className="w-full max-w-[640px] mx-auto bg-black/80 backdrop-blur-sm border border-white/20 shadow-2xl text-white overflow-hidden lg:max-w-[560px]"
               >
-                <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
+                <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10 lg:px-3 lg:py-2 lg:gap-2">
                   <button
                     onClick={() => !msg.is_admin && handleViewProfile(msg.sender_identifier)}
-                    className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center font-bold text-sm border ${
+                    className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center font-bold text-sm border lg:w-8 lg:h-8 lg:text-xs ${
                       msg.is_admin
                         ? 'bg-red-600 border-red-500 text-white cursor-default'
                         : 'bg-white/10 border-white/20 text-white hover:bg-white/20 cursor-pointer'
@@ -276,7 +276,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
                   <div className="min-w-0 flex-1">
                     <button
                       onClick={() => !msg.is_admin && handleViewProfile(msg.sender_identifier)}
-                      className={`block max-w-full truncate text-sm font-bold ${
+                      className={`block max-w-full truncate text-sm font-bold lg:text-xs ${
                         msg.is_admin ? 'text-red-400 cursor-default' : 'text-white hover:text-white/80 cursor-pointer'
                       } transition-colors`}
                     >
@@ -284,25 +284,25 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
                       {msg.is_admin && ' • Admin'}
                     </button>
                     {msg.created_date && (
-                      <div className="text-xs text-white/50 mt-0.5">
+                      <div className="text-xs text-white/50 mt-0.5 lg:text-[10px]">
                         {new Date(msg.created_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="px-5 py-4">
+                <div className="px-5 py-4 lg:px-3 lg:py-2.5">
                   {msg.photo_url && (
                     <img
                       src={msg.photo_url}
                       alt=""
-                      className="block w-auto max-w-full max-h-[450px] object-contain mx-auto cursor-pointer border border-white/10"
+                      className="block w-auto max-w-full max-h-[450px] object-contain mx-auto cursor-pointer border border-white/10 lg:max-h-[360px]"
                       onClick={() => window.open(msg.photo_url, '_blank')}
                     />
                   )}
 
                   {(!msg.photo_url || msg.content !== '📷 Photo') && (
-                    <p className={`text-base font-medium whitespace-pre-wrap ${msg.photo_url ? 'mt-4' : ''}`}>
+                    <p className={`text-base font-medium whitespace-pre-wrap lg:text-sm ${msg.photo_url ? 'mt-4 lg:mt-2.5' : ''}`}>
                       {msg.content.split('\n').map((line, i) => {
                         const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
                         if (urlMatch) {
@@ -339,29 +339,29 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
                   <button
                     onClick={() => handleLike(msg.id)}
                     disabled={likeMutation.isPending && !isLiked}
-                    className={`flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-60 ${
+                    className={`flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-60 lg:gap-1.5 lg:px-2 lg:py-2 lg:text-xs ${
                       isLiked ? 'text-red-400 bg-white/5' : 'text-white/70 hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} />
+                    <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} className="lg:w-4 lg:h-4" />
                     <span>{isLiked ? 'Liked' : 'Like'}{messageLikes.length > 0 ? ` ${messageLikes.length}` : ''}</span>
                   </button>
 
                   <button
                     onClick={() => setOpenComments((current) => ({ ...current, [msg.id]: !current[msg.id] }))}
-                    className={`flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold transition-colors border-l border-white/10 ${
+                    className={`flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold transition-colors border-l border-white/10 lg:gap-1.5 lg:px-2 lg:py-2 lg:text-xs ${
                       commentsOpen ? 'text-white bg-white/5' : 'text-white/70 hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    <MessageCircle size={18} />
+                    <MessageCircle size={18} className="lg:w-4 lg:h-4" />
                     <span>Comment{messageComments.length > 0 ? ` ${messageComments.length}` : ''}</span>
                   </button>
 
                   <button
                     onClick={() => handleShare(msg)}
-                    className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/5 transition-colors border-l border-white/10"
+                    className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/5 transition-colors border-l border-white/10 lg:gap-1.5 lg:px-2 lg:py-2 lg:text-xs"
                   >
-                    {copiedPostId === msg.id ? <Check size={18} /> : <Share2 size={18} />}
+                    {copiedPostId === msg.id ? <Check size={18} className="lg:w-4 lg:h-4" /> : <Share2 size={18} className="lg:w-4 lg:h-4" />}
                     <span>{copiedPostId === msg.id ? 'Copied' : 'Share'}</span>
                   </button>
                 </div>
@@ -422,16 +422,16 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
       </div>
 
       {/* Input */}
-      <div className="p-6 border-t border-white/10 bg-black/40 lg:absolute lg:-top-[49px] lg:right-4 lg:z-20 lg:w-[46%] lg:p-1 lg:border-0 lg:bg-transparent">
+      <div className="p-6 border-t border-white/10 bg-black/40 lg:absolute lg:-top-[37px] lg:right-2 lg:z-20 lg:w-[46%] lg:p-0 lg:border-0 lg:bg-transparent">
         {!userIdentifier ? (
           <button
             onClick={onRequestIdentifier}
-            className="w-full bg-black text-yellow-400 hover:bg-black/90 font-bold tracking-wide px-6 py-4 rounded-2xl transition-colors shadow-lg lg:px-4 lg:py-2 lg:text-sm lg:rounded-lg lg:shadow-none"
+            className="w-full bg-black text-yellow-400 hover:bg-black/90 font-bold tracking-wide px-6 py-4 rounded-2xl transition-colors shadow-lg lg:h-8 lg:px-3 lg:py-0 lg:text-xs lg:rounded-md lg:shadow-none"
           >
             GET AN IDENTIFIER TO PARTICIPATE
           </button>
         ) : (
-          <div className="flex gap-3 lg:gap-2">
+          <div className="flex gap-3 lg:gap-1.5">
             <input
               ref={fileInputRef}
               type="file"
@@ -443,9 +443,9 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingPhoto}
-              className="w-16 h-16 bg-black text-yellow-400 hover:bg-black/90 rounded-2xl disabled:opacity-50 transition-colors shadow-xl flex items-center justify-center border-2 border-black/20 lg:w-10 lg:h-10 lg:rounded-lg lg:shadow-none"
+              className="w-16 h-16 bg-black text-yellow-400 hover:bg-black/90 rounded-2xl disabled:opacity-50 transition-colors shadow-xl flex items-center justify-center border-2 border-black/20 lg:w-8 lg:h-8 lg:rounded-md lg:shadow-none lg:border"
             >
-              {uploadingPhoto ? <div className="w-6 h-6 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin lg:w-4 lg:h-4 lg:border-2" /> : <ImageIcon size={24} strokeWidth={2.5} className="lg:w-4 lg:h-4" />}
+              {uploadingPhoto ? <div className="w-6 h-6 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin lg:w-3.5 lg:h-3.5 lg:border-2" /> : <ImageIcon size={24} strokeWidth={2.5} className="lg:w-3.5 lg:h-3.5" />}
             </button>
             <Input
               value={message}
@@ -459,14 +459,14 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="Your Post..."
-              className="hidden lg:block flex-1 h-10 bg-white border-black/10 text-black placeholder:text-black/55 text-sm font-medium rounded-lg px-3"
+              className="hidden lg:block flex-1 h-8 bg-white border-black/10 text-black placeholder:text-black/55 text-xs font-medium rounded-md px-2.5"
             />
             <button
               onClick={handleSend}
               disabled={!message.trim() || sendMessageMutation.isPending}
-              className="w-16 h-16 bg-black text-yellow-400 hover:bg-black/90 rounded-2xl disabled:opacity-50 transition-colors shadow-xl flex items-center justify-center border-2 border-black/20 lg:w-10 lg:h-10 lg:rounded-lg lg:shadow-none"
+              className="w-16 h-16 bg-black text-yellow-400 hover:bg-black/90 rounded-2xl disabled:opacity-50 transition-colors shadow-xl flex items-center justify-center border-2 border-black/20 lg:w-8 lg:h-8 lg:rounded-md lg:shadow-none lg:border"
             >
-              <Send size={24} strokeWidth={2.5} className="lg:w-4 lg:h-4" />
+              <Send size={24} strokeWidth={2.5} className="lg:w-3.5 lg:h-3.5" />
             </button>
           </div>
         )}
