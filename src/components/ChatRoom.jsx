@@ -1,11 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { Input } from "@/components/ui/input";
-import { Send, Users, Lock, Image as ImageIcon, Eye, Heart, MessageCircle, Share2, Check } from 'lucide-react';
+import { Send, Lock, Image as ImageIcon, Eye, Heart, MessageCircle, Share2, Check } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ProfileViewer from '@/components/ProfileViewer';
 import UserGridDrawer from '@/components/UserGridDrawer';
+
+async function requireSupabaseUser() {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  if (!data?.user) throw new Error('You must be signed in to participate.');
+  return data.user;
+}
+
+async function loadSalonRows(table, salon, limit) {
+  const { data, error } = await supabase
+    .from(table)
+    .select('*')
+    .eq('salon', salon)
+    .order('created_date', { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
 
 export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId, onRequestIdentifier, onOpenPrivateChat }) {
   const [gridOpen, setGridOpen] = useState(false);
@@ -22,32 +40,44 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
 
   const { data: messages = [] } = useQuery({
     queryKey: ['chatMessages', salon],
-    queryFn: () => base44.entities.ChatMessage.filter({ salon }, 'created_date', 50),
+    queryFn: () => loadSalonRows('chat_message', salon, 50),
     refetchInterval: 3000,
     enabled: salonStatus?.is_open !== false
   });
 
   const { data: likes = [] } = useQuery({
     queryKey: ['chatMessageLikes', salon],
-    queryFn: () => base44.entities.ChatMessageLike.filter({ salon }, 'created_date', 500),
+    queryFn: () => loadSalonRows('chat_message_like', salon, 500),
     refetchInterval: 3000,
     enabled: salonStatus?.is_open !== false
   });
 
   const { data: comments = [] } = useQuery({
     queryKey: ['chatMessageComments', salon],
-    queryFn: () => base44.entities.ChatMessageComment.filter({ salon }, 'created_date', 500),
+    queryFn: () => loadSalonRows('chat_message_comment', salon, 500),
     refetchInterval: 3000,
     enabled: salonStatus?.is_open !== false
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: (data) => base44.entities.ChatMessage.create({
-      salon,
-      sender_identifier: userIdentifier,
-      session_id: sessionId,
-      ...data
-    }),
+    mutationFn: async (data) => {
+      const user = await requireSupabaseUser();
+      const payload = {
+        salon,
+        sender_identifier: userIdentifier,
+        session_id: sessionId,
+        created_by_id: user.id,
+        created_by: user.email || null,
+        ...data
+      };
+      const { data: created, error } = await supabase
+        .from('chat_message')
+        .insert(payload)
+        .select('*')
+        .single();
+      if (error) throw error;
+      return created;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chatMessages', salon] });
       setMessage('');
@@ -55,12 +85,23 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
   });
 
   const likeMutation = useMutation({
-    mutationFn: ({ messageId }) => base44.entities.ChatMessageLike.create({
-      salon,
-      message_id: messageId,
-      user_identifier: userIdentifier,
-      session_id: sessionId
-    }),
+    mutationFn: async ({ messageId }) => {
+      const user = await requireSupabaseUser();
+      const { data: created, error } = await supabase
+        .from('chat_message_like')
+        .insert({
+          salon,
+          message_id: messageId,
+          user_identifier: userIdentifier,
+          session_id: sessionId,
+          created_by_id: user.id,
+          created_by: user.email || null
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+      return created;
+    },
     onMutate: async ({ messageId }) => {
       setLikeErrors((current) => ({ ...current, [messageId]: null }));
       await queryClient.cancelQueries({ queryKey: ['chatMessageLikes', salon] });
@@ -97,13 +138,24 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
   });
 
   const commentMutation = useMutation({
-    mutationFn: ({ messageId, content }) => base44.entities.ChatMessageComment.create({
-      salon,
-      message_id: messageId,
-      author_identifier: userIdentifier,
-      session_id: sessionId,
-      content
-    }),
+    mutationFn: async ({ messageId, content }) => {
+      const user = await requireSupabaseUser();
+      const { data: created, error } = await supabase
+        .from('chat_message_comment')
+        .insert({
+          salon,
+          message_id: messageId,
+          author_identifier: userIdentifier,
+          session_id: sessionId,
+          content,
+          created_by_id: user.id,
+          created_by: user.email || null
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+      return created;
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['chatMessageComments', salon] });
       setCommentDrafts((current) => ({ ...current, [variables.messageId]: '' }));
@@ -111,12 +163,17 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
   });
 
   const handleViewProfile = async (identifier) => {
-    if (identifier === userIdentifier) return; // Don't show own profile
+    if (identifier === userIdentifier) return;
     try {
-      const users = await base44.entities.TemporaryUser.filter({ identifier, is_active: true });
-      if (users && users.length > 0) {
-        setViewingProfile(users[0]);
-      }
+      const { data, error } = await supabase
+        .from('temporary_user')
+        .select('*')
+        .eq('identifier', identifier)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (data) setViewingProfile(data);
     } catch (err) {
       console.error('Error fetching profile:', err);
     }
@@ -149,12 +206,27 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
 
     setUploadingPhoto(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      sendMessageMutation.mutate({ content: '📷 Photo', photo_url: file_url });
+      const user = await requireSupabaseUser();
+      const extension = file.name?.split('.').pop()?.toLowerCase() || 'jpg';
+      const safeExtension = extension.replace(/[^a-z0-9]/g, '') || 'jpg';
+      const objectPath = `${user.id}/social/${Date.now()}-${crypto.randomUUID()}.${safeExtension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(objectPath, file, {
+          contentType: file.type || 'image/jpeg',
+          cacheControl: '3600',
+          upsert: false
+        });
+      if (uploadError) throw uploadError;
+      const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(objectPath);
+      const photoUrl = publicUrlData?.publicUrl;
+      if (!photoUrl) throw new Error('Unable to create photo URL.');
+      await sendMessageMutation.mutateAsync({ content: '📷 Photo', photo_url: photoUrl });
     } catch (error) {
       console.error('Error uploading photo:', error);
     } finally {
       setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -231,7 +303,6 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
 
   return (
     <div className="relative h-full flex flex-col bg-transparent">
-      {/* Header */}
       <div className="px-6 py-4 border-b border-black/10 flex items-center justify-end lg:px-3 lg:py-1.5">
         <button 
           onClick={() => setGridOpen(true)}
@@ -242,7 +313,6 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
         </button>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-10 lg:p-3 lg:space-y-6">
         <AnimatePresence initial={false}>
           {messages.map((msg) => {
@@ -421,7 +491,6 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       <div className="p-6 border-t border-white/10 bg-black/40 lg:absolute lg:-top-[37px] lg:right-2 lg:z-20 lg:w-[46%] lg:p-0 lg:border-0 lg:bg-transparent">
         {!userIdentifier ? (
           <button
@@ -472,7 +541,6 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
         )}
       </div>
 
-      {/* Profile Viewer */}
       <ProfileViewer
         isOpen={!!viewingProfile}
         onClose={() => setViewingProfile(null)}
@@ -480,7 +548,6 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
         onSendMessage={onOpenPrivateChat}
       />
 
-      {/* User Grid Drawer */}
       <UserGridDrawer
         salon={salon}
         isOpen={gridOpen}
