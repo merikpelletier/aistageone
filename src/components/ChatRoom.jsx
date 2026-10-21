@@ -122,71 +122,88 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
         <AnimatePresence initial={false}>
           {messages.map((msg) => (
-            <motion.div
+            <motion.article
               key={msg.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex flex-col ${
-                msg.sender_identifier === userIdentifier ? 'items-end' : 'items-start'
-              }`}
+              className="w-full max-w-[640px] mx-auto bg-black/75 backdrop-blur-sm border border-white/15 shadow-xl text-white overflow-hidden"
             >
-              <button
-                onClick={() => !msg.is_admin && handleViewProfile(msg.sender_identifier)}
-                className={`text-xs mb-2 font-bold ${
-                  msg.is_admin ? 'text-red-600 cursor-default' : 'text-black hover:text-black cursor-pointer'
-                } transition-colors`}
-              >
-                {msg.sender_identifier}
-                {msg.is_admin && ' • Admin'}
-              </button>
-              <div className={`${msg.photo_url ? 'w-fit max-w-[85%] sm:max-w-[520px]' : 'max-w-[85%]'} px-5 py-3 rounded-2xl shadow-lg ${
-                msg.sender_identifier === userIdentifier
-                  ? 'bg-black text-yellow-400'
-                  : msg.is_admin 
-                    ? 'bg-red-600 text-white'
-                    : 'bg-white text-black'
-              }`}>
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
+                <button
+                  onClick={() => !msg.is_admin && handleViewProfile(msg.sender_identifier)}
+                  className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center font-bold text-sm border ${
+                    msg.is_admin
+                      ? 'bg-red-600 border-red-500 text-white cursor-default'
+                      : 'bg-white/10 border-white/20 text-white hover:bg-white/20 cursor-pointer'
+                  } transition-colors`}
+                  aria-label={`View ${msg.sender_identifier} profile`}
+                >
+                  {(msg.sender_identifier || '?').charAt(0).toUpperCase()}
+                </button>
+
+                <div className="min-w-0 flex-1">
+                  <button
+                    onClick={() => !msg.is_admin && handleViewProfile(msg.sender_identifier)}
+                    className={`block max-w-full truncate text-sm font-bold ${
+                      msg.is_admin ? 'text-red-400 cursor-default' : 'text-white hover:text-white/80 cursor-pointer'
+                    } transition-colors`}
+                  >
+                    {msg.sender_identifier}
+                    {msg.is_admin && ' • Admin'}
+                  </button>
+                  {msg.created_date && (
+                    <div className="text-xs text-white/50 mt-0.5">
+                      {new Date(msg.created_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="px-5 py-4">
                 {msg.photo_url && (
                   <img
                     src={msg.photo_url}
                     alt=""
-                    className="block w-auto max-w-full max-h-[450px] object-contain rounded-xl mb-3 cursor-pointer border-2 border-black/10"
+                    className="block w-auto max-w-full max-h-[450px] object-contain mx-auto cursor-pointer border border-white/10"
                     onClick={() => window.open(msg.photo_url, '_blank')}
                   />
                 )}
-                <p className="text-base font-medium whitespace-pre-wrap">
-                  {msg.content.split('\n').map((line, i) => {
-                    // Check if line contains a URL
-                    const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
-                    if (urlMatch) {
-                      const parts = line.split(urlMatch[0]);
+
+                {(!msg.photo_url || msg.content !== '📷 Photo') && (
+                  <p className={`text-base font-medium whitespace-pre-wrap ${msg.photo_url ? 'mt-4' : ''}`}>
+                    {msg.content.split('\n').map((line, i) => {
+                      // Check if line contains a URL
+                      const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
+                      if (urlMatch) {
+                        const parts = line.split(urlMatch[0]);
+                        return (
+                          <span key={i}>
+                            {parts[0]}
+                            <a
+                              href={urlMatch[0]}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-red-400 hover:text-red-300 underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {urlMatch[0]}
+                            </a>
+                            {parts[1]}
+                            {i < msg.content.split('\n').length - 1 && <br />}
+                          </span>
+                        );
+                      }
                       return (
                         <span key={i}>
-                          {parts[0]}
-                          <a
-                            href={urlMatch[0]}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-red-400 hover:text-red-300 underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {urlMatch[0]}
-                          </a>
-                          {parts[1]}
+                          {line}
                           {i < msg.content.split('\n').length - 1 && <br />}
                         </span>
                       );
-                    }
-                    return (
-                      <span key={i}>
-                        {line}
-                        {i < msg.content.split('\n').length - 1 && <br />}
-                      </span>
-                    );
-                  })}
-                </p>
+                    })}
+                  </p>
+                )}
               </div>
-            </motion.div>
+            </motion.article>
           ))}
         </AnimatePresence>
         <div ref={messagesEndRef} />
