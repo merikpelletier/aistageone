@@ -1,5 +1,6 @@
-import React from 'react';
-import { CalendarClock, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { CalendarClock, Check, Play } from 'lucide-react';
 
 const DAYS = [
   ['mon', 'M'], ['tue', 'T'], ['wed', 'W'], ['thu', 'T'], ['fri', 'F'], ['sat', 'S'], ['sun', 'S'],
@@ -45,6 +46,10 @@ function configFor(member) {
 }
 
 export default function AIMemberAutomationPlanner({ members, onUpdate }) {
+  const [running, setRunning] = useState(false);
+  const [runResult, setRunResult] = useState(null);
+  const [runError, setRunError] = useState('');
+
   const updateConfig = (member, patch) => {
     const current = configFor(member);
     onUpdate(member.id, {
@@ -77,16 +82,52 @@ export default function AIMemberAutomationPlanner({ members, onUpdate }) {
     });
   };
 
+  const runNow = async () => {
+    setRunning(true);
+    setRunError('');
+    setRunResult(null);
+    try {
+      const response = await base44.functions.invoke('aiMemberRunnerScheduled', {});
+      const data = response?.data || response;
+      setRunResult(data);
+    } catch (error) {
+      setRunError(error?.message || 'AI member runner failed.');
+    } finally {
+      setRunning(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="border border-white/15 bg-neutral-950 p-4">
-        <div className="flex items-center gap-2">
-          <CalendarClock size={16} />
-          <h3 className="text-sm font-medium">Activity Planner</h3>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <CalendarClock size={16} />
+              <h3 className="text-sm font-medium">Activity Planner</h3>
+            </div>
+            <p className="text-xs text-white/50 mt-1">
+              Define how often each AI member can act, when it can act, and which actions are allowed. Automation still remains individually switchable.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={runNow}
+            disabled={running}
+            className="h-9 px-4 bg-white text-black text-xs font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            <Play size={13} />
+            {running ? 'Running...' : 'Run now'}
+          </button>
         </div>
-        <p className="text-xs text-white/50 mt-1">
-          Define how often each AI member can act, when it can act, and which actions are allowed. Automation still remains individually switchable.
-        </p>
+        {runError && <p className="mt-3 text-xs text-red-300">{runError}</p>}
+        {runResult && (
+          <div className="mt-3 border-t border-white/10 pt-3 text-xs text-white/60">
+            <span>{runResult.published ?? 0} action(s) published</span>
+            {runResult.processed !== undefined && <span> · {runResult.processed} member(s) checked</span>}
+            {runResult.local_time && <span> · {runResult.local_time}</span>}
+          </div>
+        )}
       </div>
 
       {members.map(member => {
