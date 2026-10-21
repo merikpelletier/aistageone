@@ -9,12 +9,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing dossierId' }, { status: 400 });
     }
 
-    const comments = await base44.entities.DossierComment.filter(
+    const comments = await base44.asServiceRole.entities.DossierComment.filter(
       { dossier_id: dossierId },
       '-created_date'
     );
 
-    return Response.json({ comments });
+    return Response.json({ comments, count: comments.length });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
