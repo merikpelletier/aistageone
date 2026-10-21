@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useQuery } from '@tanstack/react-query';
 import { X, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,18 +11,31 @@ export default function UserGridDrawer({ salon, isOpen, onClose }) {
   const { data: users = [] } = useQuery({
     queryKey: ['activeUsers', salon],
     queryFn: async () => {
-      const allUsers = await base44.entities.TemporaryUser.filter({ is_active: true, expelled: false });
-      // Filter users active in last 5 minutes
-      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
-      return allUsers.filter(u => new Date(u.last_activity) > fiveMinAgo);
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('temporary_user')
+        .select('*')
+        .eq('is_active', true)
+        .eq('expelled', false)
+        .gt('last_activity', fiveMinAgo)
+        .order('last_activity', { ascending: false });
+      if (error) throw error;
+      return data || [];
     },
     enabled: isOpen,
-    refetchInterval: 30000 // Refresh every 30s
+    refetchInterval: 30000
   });
 
   const { data: placeholders = [] } = useQuery({
     queryKey: ['profilePlaceholders'],
-    queryFn: () => base44.entities.ProfilePlaceholder.filter({ is_active: true }),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profile_placeholder')
+        .select('*')
+        .eq('is_active', true);
+      if (error) throw error;
+      return data || [];
+    },
     enabled: isOpen
   });
 
@@ -47,7 +60,6 @@ export default function UserGridDrawer({ salon, isOpen, onClose }) {
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -56,7 +68,6 @@ export default function UserGridDrawer({ salon, isOpen, onClose }) {
               className="fixed inset-0 bg-black/60 z-40"
             />
 
-            {/* Drawer */}
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
@@ -64,7 +75,6 @@ export default function UserGridDrawer({ salon, isOpen, onClose }) {
               transition={{ type: 'tween', duration: 0.3 }}
               className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-neutral-950 border-l border-white/10 z-50 overflow-y-auto"
             >
-              {/* Header */}
               <div className="sticky top-0 bg-neutral-950 border-b border-white/10 p-4 flex items-center justify-between z-10">
                 <div className="flex items-center gap-2">
                   <Users size={20} className="text-white" />
@@ -77,7 +87,6 @@ export default function UserGridDrawer({ salon, isOpen, onClose }) {
                 </button>
               </div>
 
-              {/* User Grid */}
               <div className="p-4">
                 {users.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -117,13 +126,11 @@ export default function UserGridDrawer({ salon, isOpen, onClose }) {
         )}
       </AnimatePresence>
 
-      {/* Profile Viewer */}
-      {selectedUser && (
-        <ProfileViewer
-          user={selectedUser}
-          onClose={() => setSelectedUser(null)}
-        />
-      )}
+      <ProfileViewer
+        isOpen={!!selectedUser}
+        onClose={() => setSelectedUser(null)}
+        profile={selectedUser}
+      />
     </>
   );
 }
