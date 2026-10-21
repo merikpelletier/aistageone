@@ -1,1 +1,414 @@
-import{jsx as t,jsxs as s}from"react/jsx-runtime";import{useEffect as Be,useMemo as O,useState as c}from"react";import{base44 as m}from"@/api/base44Client";import{supabase as ie}from"@/api/supabaseClient";import Ee from"@/components/studio/SaveToVaultModal";import{useAiModelOptions as Ie}from"@/hooks/useAiModelOptions";import{useAiPriceQuote as Re}from"@/hooks/useAiPriceQuote";import{Loader2 as oe,Plus as G,Search as Oe,ShoppingBag as Ge,Sparkles as We,Trash2 as ne,Upload as Le,Users as ce,Wand2 as De}from"lucide-react";import{toast as re}from"sonner";const C=[{id:"establishing",label:"Establishing",characters:0,action:"establishing composition with clear spatial geography"},{id:"dialogue",label:"Dialogue",characters:2,action:"dialogue blocking with clear eyelines and conversational spacing"},{id:"group",label:"Group Scene",characters:4,action:"group blocking with layered depth and readable relationships"},{id:"walk_run",label:"Walk / Run",characters:2,action:"clear movement path and direction of travel"},{id:"action",label:"Action",characters:3,action:"dynamic action blocking with readable movement lanes"},{id:"product",label:"Product Placement",characters:1,action:"natural product integration with deliberate visibility"},{id:"custom",label:"Custom",characters:1,action:"custom cinematic blocking"}],qe=["Close-up","Medium close-up","Medium shot","Full shot","Wide shot","Background"],Ke=["Primary","Secondary","Background"],F=(i,n="custom")=>({id:`character-${Date.now()}-${i}-${Math.random().toString(36).slice(2,7)}`,label:`Character ${i+1}`,asset:null,position:n==="dialogue"?i===0?"Seated at the table on the left":"Seated on the right, facing Character 1":"",action:"",lookAt:n==="dialogue"?i===0?"Character 2":"Character 1":"",shot:"Medium shot",importance:i===0?"Primary":"Secondary",note:""}),de=(i,n="prop",r=null)=>({id:`element-${Date.now()}-${i}-${Math.random().toString(36).slice(2,7)}`,label:r?.title||`${n==="product"?"Product":"Prop"} ${i+1}`,kind:n,asset:r,position:"",usedBy:"",visibility:"Visible",note:""}),W=i=>{if(i?.url)return i.url;const n=i?.character_photos?.[0];if(!n)return null;if(typeof n==="string"&&/^https?:\/\//i.test(n))return n;if(typeof n==="string")try{const r=JSON.parse(n);return r?.portrait||r?.front||r?.profile||r?.side||r?.back||Object.values(r||{}).find(w=>typeof w==="string")||null}catch{return null}return typeof n==="object"&&(n?.portrait||n?.front||n?.profile||n?.side||n?.back)||null},L=i=>[...new Set([i?.featured_image,...Array.isArray(i?.preview_images)?i.preview_images:[]].filter(Boolean))],$=i=>i?.images?.[0]||i?.url||i?.selected_image||i?.featured_image||null;function pe({image:i,label:n,selected:r,onClick:w}){return s("div",{onClick:w,className:`relative aspect-[4/3] w-full overflow-hidden border bg-black ${r?"border-cyan-300":"border-white/15"}`,children:[i?t("img",{src:i,alt:n||"",className:"block h-full w-full object-cover"}):t("div",{className:"flex h-full items-center justify-center text-white/30",children:t(ce,{size:18})}),t("span",{className:"absolute bottom-0 left-0 right-0 truncate bg-black/80 px-1.5 py-1 text-[9px] font-bold text-white",children:n})]})}function He({userEmail:i,onDone:n}){const[r,w]=c("dialogue"),[v,A]=c([F(0,"dialogue"),F(1,"dialogue")]),[M,P]=c([]),[j,D]=c(null),[me,be]=c([]),[T,he]=c([]),[b,B]=c("all"),[q,ge]=c([]),[K,fe]=c([]),[sc,fc]=c([]),[N,H]=c("all"),[sn,hn]=c("all"),[E,xe]=c(""),[p,k]=c(null),[up,setUp]=c(null),[ye,we]=c(null),[h,ve]=c("16:9"),[f,Ne]=c(""),[x,Q]=c(null),[S,J]=c(null),[X,Y]=c(!1),[Z,ee]=c(!1),[te,z]=c(!1),[ae,u]=c(""),[vo,setVo]=c(!1),[so,setSo]=c(!1),[vl,setVl]=c(!1),[sl,setSl]=c(!1),[ar,setAr]=c(!1),I=C.find(e=>e.id===r)||C[0],ke=v.find(e=>e.id===j)||null,se=O(()=>({aspect_ratio:h,prompt:f||I.action}),[h,f,I.action]),{options:_,loading:R}=Ie({service:"replicateGenerate:compose_scene",kind:"image",input:se,enabled:ar}),y=ye||_.find(e=>e.recommended)?.model_key||_[0]?.model_key||null,{quote:le,loading:Se}=Re({service:"replicateGenerate:compose_scene",kind:"image",input:se,modelKey:y,enabled:ar});Be(()=>{const e=setTimeout(()=>setAr(!0),400);return()=>clearTimeout(e)},[]);const loadVault=async()=>{if(!vo&&!vl&&i){const[e,a]=await Promise.all([m.entities.VaultFolder.filter({user_email:i},"order",100).catch(()=>[]),m.entities.VaultAsset.filter({user_email:i,media_type:"image"},"-created_date",300).catch(()=>[])]);be(e||[]),he(a||[]),setVl(!0)}setVo(e=>!e)},loadShop=async()=>{if(!so&&!sl){const[e,a,l]=await Promise.all([ie.from("catalog_asset").select("id,title,description,featured_image,preview_images,category_id,subcategory_id,creator_name,tags").eq("status","published").order("title",{ascending:!0}).limit(500).then(({data:o})=>o||[]).catch(()=>[]),ie.from("asset_category").select("id,key,label_en,label_fr,display_order").eq("is_active",!0).order("display_order",{ascending:!0}).then(({data:o})=>o||[]).catch(()=>[]),ie.from("asset_subcategory").select("id,category_id,key,label_en,label_fr,display_order").eq("is_active",!0).order("display_order",{ascending:!0}).then(({data:o})=>o||[]).catch(()=>[])]);ge((e||[]).filter(o=>L(o).length).flatMap(o=>L(o).map((d,idx)=>({...o,id:`${o.id}::${idx}`,featured_image:d,preview_images:[d],__source_asset_id:o.id,__image_index:idx})))),fe(a||[]),fc(l||[]),setSl(!0)}setSo(e=>!e)},_e=O(()=>b==="all"?T:b==="unfiled"?T.filter(e=>!e.folder_id):T.filter(e=>e.folder_id===b),[T,b]),selectedCategory=K.find(e=>e.id===N)||null,selectedSubcategories=selectedCategory?sc.filter(e=>e.category_id===selectedCategory.id).sort((e,a)=>(e.display_order||0)-(a.display_order||0)):[],Ce=O(()=>{const e=E.trim().toLowerCase();return q.filter(a=>N!=="all"&&a.category_id!==N?!1:sn!=="all"&&selectedSubcategories.length&&a.subcategory_id!==sn?!1:e?`${a.title||""} ${a.description||""} ${a.creator_name||""} ${(a.tags||[]).join(" ")}`.toLowerCase().includes(e):!0)},[q,N,sn,E,selectedSubcategories]),$e=e=>{const a=C.find(l=>l.id===e)||C[0];w(a.id),A(Array.from({length:a.characters},(l,o)=>F(o,a.id))),P(a.id==="product"?[de(0,"product")]:[]),D(null),Q(null),J(null),u("")},g=(e,a)=>A(l=>l.map(o=>o.id===e?{...o,...a}:o)),Ae=()=>A(e=>[...e,F(e.length,r)]),Me=e=>A(a=>a.filter(l=>l.id!==e).map((l,o)=>({...l,label:`Character ${o+1}`}))),Pe=e=>{if(!j){u("Select a character in Scene Blocking first.");return}g(j,{asset:e}),u("")},U=(e,a=null)=>P(l=>[...l,de(l.length,e,a)]),V=(e,a)=>P(l=>l.map(o=>o.id===e?{...o,...a}:o)),je=e=>P(a=>a.filter(l=>l.id!==e)),Te=()=>v.map(e=>`${e.label}: where: ${e.position||"not specified"}; action: ${e.action||"not specified"}; looks toward: ${e.lookAt||"not specified"}; framing: ${e.shot}; importance: ${e.importance}${e.note?`; note: ${e.note}`:""}`).join(" | "),ze=()=>M.map(e=>`${e.label}: where: ${e.position||"not specified"}; used by: ${e.usedBy||"nobody specified"}; visibility: ${e.visibility}${e.note?`; note: ${e.note}`:""}`).join(" | "),Ue=async()=>{Y(!0),u("");try{const e=[],setRef=$(p),selectedCharacters=v.filter(character=>character.asset),missingRefs=selectedCharacters.filter(character=>!W(character.asset));if(missingRefs.length)throw new Error(`Missing character reference image for ${missingRefs.map(character=>character.label).join(", ")}.`);setRef&&e.push(setRef);const characterRefs=selectedCharacters.map(character=>W(character.asset)).filter(Boolean);e.push(...characterRefs);const identityMap=selectedCharacters.map((character,index)=>`${character.label} = ${character.asset?.label||character.asset?.name||`selected character ${index+1}`}`).join(" | "),masterPrompt=`COMPOSE SCENE. Template: ${I.label}. ${setRef?"The first supplied reference image is the selected Set and is the visual source of truth for location, lighting, palette, atmosphere and style; do not redesign it.":""} ${characterRefs.length?`CHARACTER IDENTITY LOCK — MANDATORY. The supplied character reference images ${setRef?"after the Set reference ":""}correspond to the selected characters in Scene Blocking order. Identity mapping: ${identityMap}. Use those exact people. Do not invent, replace, reinterpret, blend, merge, or substitute any selected character. Preserve each selected character's facial identity, age presentation, skin tone, hair, body proportions, and recognizable physical appearance. Clothing, pose, expression and staging may change only as required by the scene instructions. Do not add extra principal performers unless explicitly requested. Character blocking: ${Te()}.`:v.length?`Character blocking: ${Te()}. No selected character identity reference was supplied.`:"No required performer."} ${M.length?`Props and products: ${ze()}.`:""} ${f?`Additional instruction only: ${f}.`:""} Preserve the established look of the Set while staging the described action clearly.`,result=await m.functions.invoke("replicateGenerate",{method:"compose_scene",prompt:masterPrompt,reference_image_urls:e.slice(0,3),aspect_ratio:h,model_key:y||void 0});if(!result.data?.file_url)throw new Error(result.data?.error||"Master Scene generation failed.");Q(result.data.file_url),re.success("Master Scene generated")}catch(e){u(e?.response?.data?.error||e?.message||"Master Scene generation failed.")}finally{Y(!1)}},Ve=async()=>{if(!x){u("Generate the Master Scene first.");return}ee(!0),u("");try{let e=x;const a=$(p);if(a){const l=await m.functions.invoke("replicateGenerate",{method:"compose_scene",prompt:`Keep the Master Scene camera, composition and blocking unchanged. Preserve the supplied set reference exactly as the visual source of truth for location, lighting, palette, atmosphere and style. ${f||""}`,reference_image_urls:[e,a],aspect_ratio:h,model_key:y||void 0});l.data?.file_url&&(e=l.data.file_url)}for(const l of v){const o=W(l.asset);if(!o)continue;const d=await m.functions.invoke("replicateGenerate",{method:"compose_scene",prompt:`Keep the scene, set look, camera and all other elements unchanged. Replace only ${l.label} with the supplied character reference. Stage this character as follows: where: ${l.position||"not specified"}; action: ${l.action||"not specified"}; looking toward: ${l.lookAt||"not specified"}; framing: ${l.shot}; importance: ${l.importance}. Preserve identity. ${l.note||""}`,reference_image_urls:[e,o],aspect_ratio:h,model_key:y||void 0});d.data?.file_url&&(e=d.data.file_url)}for(const l of M){const o=l.asset?.selected_image||l.asset?.url||L(l.asset)[0];if(!o)continue;const d=await m.functions.invoke("replicateGenerate",{method:"compose_scene",prompt:`Keep the current scene, camera, set look and characters unchanged. Add only ${l.label}. Placement: ${l.position||"not specified"}. Used by: ${l.usedBy||"not specified"}. Visibility: ${l.visibility}. Preserve the supplied object's recognizable design. ${l.note||""}`,reference_image_urls:[e,o],aspect_ratio:h,model_key:y||void 0});d.data?.file_url&&(e=d.data.file_url)}J(e),z(!0),re.success("Final Scene rendered")}catch(e){u(e?.response?.data?.error||e?.message||"Final Scene generation failed.")}finally{ee(!1)}};return s("div",{className:"space-y-4 pb-28",children:[s("section",{className:"space-y-2",children:[t("p",{className:"text-xs font-bold uppercase tracking-wider text-white",children:"AI Model"}),s("select",{value:y||"",onChange:e=>we(e.target.value||null),disabled:R||!_.length,className:"w-full bg-black px-4 py-3 text-sm font-bold text-yellow-400 disabled:opacity-50",children:[R&&t("option",{value:"",children:"Loading models\u2026"}),!R&&!_.length&&t("option",{value:"",children:"No model available"}),_.map(e=>s("option",{value:e.model_key,children:[e.name||e.model_key,e.recommended?" \u2014 Recommended":"",e.credits?` \u2014 ${e.credits} credits`:""]},e.model_key))]}),s("div",{className:"flex justify-between text-xs text-white/65",children:[t("span",{children:"AI cost"}),t("span",{children:Se?"Calculating\u2026":le?.credits?`${le.credits} credits`:"Calculated automatically"})]})]}),s("section",{className:"space-y-2",children:[t("p",{className:"text-xs font-bold uppercase tracking-wider text-white",children:"Additional Prompt"}),t("textarea",{value:f,onChange:e=>Ne(e.target.value),rows:3,placeholder:"Optional extra instruction for this scene \u2014 do not redefine the Set look",className:"w-full resize-none bg-white/10 px-4 py-3 text-sm text-white"}),t("div",{className:"flex flex-wrap gap-2",children:["16:9","4:3","9:16","1:1"].map(e=>t("button",{type:"button",onClick:()=>ve(e),className:`px-3 py-2 text-xs font-bold ${h===e?"bg-yellow-400 text-black":"bg-white/10 text-white"}`,children:e},e))})]}),s("section",{className:"space-y-3 border border-cyan-300/35 p-3",children:[s("div",{children:[t("p",{className:"text-xs font-bold uppercase tracking-wider text-cyan-200",children:"Set \u2014 Scene Environment"}),t("p",{className:"text-[11px] text-white/55",children:"This is the environment used for the scene. Choose one source below."})]}),p?s("div",{className:"flex flex-col gap-3 sm:flex-row sm:items-center",children:[t("div",{className:"h-28 w-full overflow-hidden border border-white/15 bg-black sm:w-48",children:$(p)?t("img",{src:$(p),alt:"Selected Set",className:"h-full w-full object-cover"}):t("div",{className:"flex h-full items-center justify-center text-xs text-white/35",children:"No preview"})}),s("div",{className:"min-w-0 flex-1",children:[t("p",{className:"text-sm font-bold text-white",children:p.name||p.title||"Selected Set"}),t("p",{className:"mt-1 text-[11px] text-white/55",children:"This Set controls the location, lighting, palette, atmosphere and visual style of the scene."}),t("button",{type:"button",onClick:()=>k(null),className:"mt-3 bg-white/10 px-3 py-2 text-[10px] font-bold text-white",children:"Remove Set"})]})]}):t("div",{className:"border border-dashed border-white/20 p-4 text-xs text-white/55",children:"No Set selected yet."}),s("div",{className:"space-y-2",children:[s("div",{className:"grid gap-2 sm:grid-cols-3",children:[t("button",{type:"button",onClick:loadVault,className:"bg-white/10 px-3 py-2.5 text-center text-xs font-bold text-white",children:vo?"Close Vault":"Choose from Vault"}),t("button",{type:"button",onClick:loadShop,className:"bg-white/10 px-3 py-2.5 text-center text-xs font-bold text-white",children:so?"Close Assets Shop":"Choose from Assets Shop"}),s("label",{className:"inline-flex cursor-pointer items-center justify-center gap-2 bg-white/10 px-3 py-2.5 text-xs font-bold text-white",children:[t(Le,{size:14})," Upload Image",t("input",{type:"file",accept:"image/*",className:"hidden",onChange:async e=>{const a=e.target.files?.[0];if(!a)return;const{file_url:l}=await m.integrations.Core.UploadFile({file:a});setUp({id:`upload-${Date.now()}`,name:a.name||"Uploaded image",url:l,images:[l],selected_image:l,source:"upload"})}})]})]}),up&&s("div",{className:"border border-white/15 p-2",children:[s("div",{className:"flex items-center gap-3",children:[t("img",{src:up.url,alt:"Uploaded",className:"h-16 w-16 object-cover"}),t("p",{className:"text-xs font-bold text-white",children:up.name})]}),s("div",{className:"mt-2 grid grid-cols-3 gap-1",children:[t("button",{type:"button",onClick:()=>k({...up,name:up.name||"Uploaded Set"}),className:`py-1.5 text-[9px] font-bold ${$(p)===up.url?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:$(p)===up.url?"Selected Set":"Use as Set"}),t("button",{type:"button",onClick:()=>Pe({...up,label:up.name||"Uploaded character",character_photos:[up.url]}),className:`py-1.5 text-[9px] font-bold ${v.some(e=>W(e.asset)===up.url)?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:v.find(e=>W(e.asset)===up.url)?`Selected ${v.find(e=>W(e.asset)===up.url).label}`:"Use as Character"}),t("button",{type:"button",onClick:()=>U("product",{...up,selected_image:up.url}),className:`py-1.5 text-[9px] font-bold ${M.some(e=>(e.asset?.selected_image||e.asset?.url)===up.url)?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:M.some(e=>(e.asset?.selected_image||e.asset?.url)===up.url)?"Added as Prop/Product":"Add as Prop / Product"})]})]})]})]}),s("section",{className:"space-y-2",children:[t("p",{className:"text-xs font-bold uppercase tracking-wider text-white",children:"Scene Template"}),t("div",{className:"flex flex-wrap gap-2",children:C.map(e=>t("button",{type:"button",onClick:()=>$e(e.id),className:`px-3 py-2 text-xs font-bold ${r===e.id?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:e.label},e.id))})]}),s("section",{className:"space-y-3",children:[s("div",{className:"flex flex-wrap items-center justify-between gap-2",children:[s("div",{children:[t("p",{className:"text-xs font-bold uppercase tracking-wider text-white",children:"Scene Blocking"}),t("p",{className:"text-[11px] text-white/55",children:"Describe where each character is and what they are doing. The selected Set keeps its existing look."})]}),s("button",{type:"button",onClick:Ae,className:"flex items-center gap-1 bg-white/10 px-3 py-2 text-[10px] font-bold text-white",children:[t(G,{size:11})," Add Character"]})]}),t("div",{className:"space-y-3",children:v.map(e=>s("div",{className:`border p-3 ${j===e.id?"border-cyan-300":"border-white/10"}`,children:[s("div",{className:"flex items-center gap-3",children:[s("button",{type:"button",onClick:()=>D(e.id),className:"flex min-w-0 flex-1 items-center gap-3 text-left",children:[t("div",{className:"h-14 w-14 shrink-0 overflow-hidden border border-white/15 bg-black",children:W(e.asset)?t("img",{src:W(e.asset),alt:"",className:"h-full w-full object-cover"}):t("div",{className:"flex h-full items-center justify-center text-white/30",children:t(ce,{size:18})})}),s("div",{className:"min-w-0",children:[t("p",{className:"truncate text-xs font-bold text-white",children:e.asset?.label||e.asset?.name||e.label}),t("p",{className:"text-[10px] text-white/45",children:e.label})]})]}),t("button",{type:"button",onClick:()=>Me(e.id),className:"text-white/50",children:t(ne,{size:13})})]}),s("div",{className:"mt-3 grid gap-2 md:grid-cols-2",children:[s("label",{className:"space-y-1",children:[s("span",{className:"text-[10px] font-bold text-white/70",children:["Where is ",e.label,"?"]}),t("input",{value:e.position,onChange:a=>g(e.id,{position:a.target.value}),placeholder:"e.g. seated at the table on the left",className:"w-full bg-black p-2.5 text-xs text-white"})]}),s("label",{className:"space-y-1",children:[s("span",{className:"text-[10px] font-bold text-white/70",children:["What is ",e.label," doing?"]}),t("input",{value:e.action,onChange:a=>g(e.id,{action:a.target.value}),placeholder:"e.g. talking calmly, one hand on the table",className:"w-full bg-black p-2.5 text-xs text-white"})]}),s("label",{className:"space-y-1",children:[s("span",{className:"text-[10px] font-bold text-white/70",children:["Who or what is ",e.label," looking at?"]}),t("input",{value:e.lookAt,onChange:a=>g(e.id,{lookAt:a.target.value}),placeholder:"e.g. Character 2",className:"w-full bg-black p-2.5 text-xs text-white"})]}),s("div",{className:"grid grid-cols-2 gap-2",children:[s("label",{className:"space-y-1",children:[t("span",{className:"text-[10px] font-bold text-white/70",children:"Framing"}),t("select",{value:e.shot,onChange:a=>g(e.id,{shot:a.target.value}),className:"w-full bg-black p-2.5 text-xs text-white",children:qe.map(a=>t("option",{children:a},a))})]}),s("label",{className:"space-y-1",children:[t("span",{className:"text-[10px] font-bold text-white/70",children:"Importance"}),t("select",{value:e.importance,onChange:a=>g(e.id,{importance:a.target.value}),className:"w-full bg-black p-2.5 text-xs text-white",children:Ke.map(a=>t("option",{children:a},a))})]})]}),s("label",{className:"space-y-1 md:col-span-2",children:[t("span",{className:"text-[10px] font-bold text-white/70",children:"Additional blocking note"}),t("input",{value:e.note,onChange:a=>g(e.id,{note:a.target.value}),placeholder:"Optional relationship, gesture or staging detail",className:"w-full bg-black p-2.5 text-xs text-white"})]})]})]},e.id))})]}),vo&&s("section",{id:"set-vault",className:"space-y-2",children:[t("p",{className:"text-xs font-bold uppercase tracking-wider text-white",children:"Vault"}),s("div",{className:"flex flex-wrap gap-2",children:[t("button",{type:"button",onClick:()=>B("all"),className:`px-3 py-1.5 text-[10px] font-bold ${b==="all"?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:"All"}),t("button",{type:"button",onClick:()=>B("unfiled"),className:`px-3 py-1.5 text-[10px] font-bold ${b==="unfiled"?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:"Unfiled"}),me.map(e=>t("button",{type:"button",onClick:()=>B(e.id),className:`px-3 py-1.5 text-[10px] font-bold ${b===e.id?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:e.name},e.id))]}),t("div",{className:"grid max-h-72 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5 lg:grid-cols-8",children:_e.map(e=>{const a=$(p)===e.url,l=v.find(o=>W(o.asset)===e.url),d=M.some(o=>(o.asset?.selected_image||o.asset?.url)===e.url);return s("div",{className:`space-y-1 border p-1 ${a||l||d?"border-cyan-300":"border-transparent"}`,children:[t(pe,{image:e.url,label:e.name||"Vault image",selected:!!(a||l||d),onClick:()=>{}}),t("button",{type:"button",onClick:()=>k({...e,name:e.name||"Vault set",images:[e.url],source:"vault"}),className:`w-full py-1 text-[9px] font-bold ${a?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:a?"Selected Set":"Use as Set"}),t("button",{type:"button",onClick:()=>Pe({...e,label:e.name||"Vault character",character_photos:[e.url]}),className:`w-full py-1 text-[9px] font-bold ${l?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:l?`Selected ${l.label}`:"Use as Character"}),t("button",{type:"button",onClick:()=>U("product",{...e,selected_image:e.url}),className:`w-full py-1 text-[9px] font-bold ${d?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:d?"Added as Prop/Product":"Add as Prop / Product"})]},e.id)})})]}),so&&s("section",{id:"set-shop",className:"space-y-2",children:[s("div",{className:"flex items-center gap-2",children:[t(Ge,{size:14,className:"text-cyan-300"}),t("p",{className:"text-xs font-bold uppercase tracking-wider text-white",children:"Assets Shop"})]}),s("div",{className:"flex flex-wrap gap-2",children:[t("button",{type:"button",onClick:()=>{H("all"),hn("all")},className:`px-3 py-1.5 text-[10px] font-bold ${N==="all"?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:"All"}),K.map(e=>t("button",{type:"button",onClick:()=>{H(e.id),hn("all")},className:`px-3 py-1.5 text-[10px] font-bold ${N===e.id?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:e.label_en||e.label_fr||e.key},e.id))]}),selectedSubcategories.length>0&&s("div",{className:"flex flex-wrap gap-2 border-t border-white/10 pt-2",children:[t("button",{type:"button",onClick:()=>hn("all"),className:`px-3 py-1.5 text-[10px] font-bold ${sn==="all"?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:"All"}),selectedSubcategories.map(e=>t("button",{type:"button",onClick:()=>hn(e.id),className:`px-3 py-1.5 text-[10px] font-bold ${sn===e.id?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:e.label_en||e.label_fr||e.key},e.id))]}),s("div",{className:"relative",children:[t(Oe,{size:14,className:"absolute left-3 top-1/2 -translate-y-1/2 text-white/40"}),t("input",{value:E,onChange:e=>xe(e.target.value),placeholder:"Search Assets Shop",className:"w-full bg-black/50 py-2.5 pl-9 pr-3 text-xs text-white"})]}),t("div",{className:"grid max-h-[30rem] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 lg:grid-cols-6",children:Ce.map(e=>{const a=L(e)[0],l=$(p)===a,o=v.find(d=>W(d.asset)===a),d=M.some(g=>(g.asset?.selected_image||g.asset?.url)===a);return s("div",{className:`space-y-1 border p-1 ${l||o||d?"border-cyan-300":"border-white/10"}`,children:[t(pe,{image:a,label:e.title||"Asset",selected:!!(l||o||d),onClick:()=>{}}),t("button",{type:"button",onClick:()=>k({...e,name:e.title||"Assets Shop Set",images:[a],selected_image:a,source:"assets-shop"}),className:`w-full py-1 text-[9px] font-bold ${l?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:l?"Selected Set":"Use as Set"}),t("button",{type:"button",onClick:()=>Pe({...e,url:a,label:e.title||"Assets Shop character",character_photos:[a]}),className:`w-full py-1 text-[9px] font-bold ${o?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:o?`Selected ${o.label}`:"Use as Character"}),t("button",{type:"button",onClick:()=>U("product",{...e,selected_image:a,url:a}),className:`w-full py-1 text-[9px] font-bold ${d?"bg-cyan-300 text-black":"bg-white/10 text-white"}`,children:d?"Added as Prop/Product":"Add as Prop / Product"})]},e.id)})})]}),s("section",{className:"space-y-2",children:[s("div",{className:"flex items-center justify-between",children:[t("p",{className:"text-xs font-bold uppercase tracking-wider text-white",children:"Props / Products"}),s("div",{className:"flex gap-2",children:[s("button",{type:"button",onClick:()=>U("prop"),className:"bg-white/10 px-2 py-1.5 text-[10px] font-bold text-white",children:[t(G,{size:11,className:"inline"})," Prop"]}),s("button",{type:"button",onClick:()=>U("product"),className:"bg-white/10 px-2 py-1.5 text-[10px] font-bold text-white",children:[t(G,{size:11,className:"inline"})," Product"]})]})]}),M.map(e=>s("div",{className:"space-y-2 border border-white/10 p-3",children:[s("div",{className:"flex items-center justify-between",children:[s("div",{children:[t("p",{className:"text-xs font-bold text-white",children:e.label}),t("p",{className:"text-[9px] text-white/45",children:e.kind})]}),t("button",{type:"button",onClick:()=>je(e.id),className:"text-white/50",children:t(ne,{size:14})})]}),s("div",{className:"grid gap-2 md:grid-cols-3",children:[s("label",{className:"space-y-1",children:[t("span",{className:"text-[10px] font-bold text-white/70",children:"Where is it?"}),t("input",{value:e.position,onChange:a=>V(e.id,{position:a.target.value}),placeholder:"e.g. in the center of the table",className:"w-full bg-black p-2.5 text-xs text-white"})]}),s("label",{className:"space-y-1",children:[t("span",{className:"text-[10px] font-bold text-white/70",children:"Who uses or holds it?"}),t("input",{value:e.usedBy,onChange:a=>V(e.id,{usedBy:a.target.value}),placeholder:"e.g. Character 1",className:"w-full bg-black p-2.5 text-xs text-white"})]}),s("label",{className:"space-y-1",children:[t("span",{className:"text-[10px] font-bold text-white/70",children:"How visible?"}),s("select",{value:e.visibility,onChange:a=>V(e.id,{visibility:a.target.value}),className:"w-full bg-black p-2.5 text-xs text-white",children:[t("option",{children:"Hero / prominent"}),t("option",{children:"Visible"}),t("option",{children:"Natural / subtle"}),t("option",{children:"Background"})]})]}),s("label",{className:"space-y-1 md:col-span-3",children:[t("span",{className:"text-[10px] font-bold text-white/70",children:"Additional instruction"}),t("input",{value:e.note,onChange:a=>V(e.id,{note:a.target.value}),placeholder:"Optional placement or interaction detail",className:"w-full bg-black p-2.5 text-xs text-white"})]})]})]},e.id))]}),ae&&t("p",{className:"border border-red-400/30 bg-red-500/10 p-3 text-xs text-red-300",children:ae}),s("div",{className:"grid gap-2 sm:grid-cols-2",children:[s("button",{type:"button",onClick:Ue,disabled:X,className:"flex items-center justify-center gap-2 border border-cyan-300 py-4 text-sm font-bold text-cyan-200 disabled:opacity-40",children:[X?t(oe,{size:16,className:"animate-spin"}):t(We,{size:16})," ",x?"Regenerate Master Scene":"Generate Master Scene"]}),s("button",{type:"button",onClick:Ve,disabled:!x||Z,className:"flex items-center justify-center gap-2 bg-cyan-300 py-4 text-sm font-bold text-black disabled:opacity-40",children:[Z?t(oe,{size:16,className:"animate-spin"}):t(De,{size:16})," Render Final Scene"]})]}),x&&s("div",{children:[t("p",{className:"mb-2 text-xs font-bold uppercase text-white",children:"Master Scene"}),t("img",{src:x,alt:"Master Scene",className:"max-h-[60vh] w-full bg-black object-contain"})]}),S&&!te&&s("div",{children:[t("p",{className:"mb-2 text-xs font-bold uppercase text-white",children:"Final Scene"}),t("img",{src:S,alt:"Final Scene",className:"max-h-[65vh] w-full bg-black object-contain"}),t("button",{type:"button",onClick:()=>z(!0),className:"mt-2 w-full bg-yellow-400 py-3 text-sm font-bold text-black",children:"Save to Vault"})]}),te&&S&&t(Ee,{userEmail:i,imageUrl:S,mediaType:"image",onSaved:e=>{z(!1),n?.(S,"image",e?.id)},onClose:()=>z(!1)})]})}export{He as default};
+import React, { useEffect, useMemo, useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
+import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
+import {
+  Loader2,
+  Plus,
+  Search,
+  ShoppingBag,
+  Sparkles,
+  Trash2,
+  Upload,
+  Users,
+  Wand2,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+const SCENE_TEMPLATES = [
+  { id: 'establishing', label: 'Establishing', characters: 0, action: 'establishing composition with clear spatial geography' },
+  { id: 'dialogue', label: 'Dialogue', characters: 2, action: 'dialogue blocking with clear eyelines and conversational spacing' },
+  { id: 'group', label: 'Group Scene', characters: 4, action: 'group blocking with layered depth and readable relationships' },
+  { id: 'walk_run', label: 'Walk / Run', characters: 2, action: 'clear movement path and direction of travel' },
+  { id: 'action', label: 'Action', characters: 3, action: 'dynamic action blocking with readable movement lanes' },
+  { id: 'product', label: 'Product Placement', characters: 1, action: 'natural product integration with deliberate visibility' },
+  { id: 'custom', label: 'Custom', characters: 1, action: 'custom cinematic blocking' },
+];
+
+const FRAMING_OPTIONS = [
+  'Close-up',
+  'Medium close-up',
+  'Medium shot',
+  'Full shot',
+  'Wide shot',
+  'Background',
+  'Off frame',
+];
+
+const IMPORTANCE_OPTIONS = ['Primary', 'Secondary', 'Background'];
+
+const SHOT_PRESETS = [
+  { id: 'closeup-1', label: 'Close-up · Character 1', focusIndex: 0, instruction: 'Tight close-up on Character 1. Character 1 is the clear camera subject.' },
+  { id: 'closeup-2', label: 'Close-up · Character 2', focusIndex: 1, instruction: 'Tight close-up on Character 2. Character 2 is the clear camera subject.' },
+  { id: 'medium', label: 'Medium shot', instruction: 'Medium shot preserving the established scene geography and eyelines.' },
+  { id: 'two-shot', label: 'Two-shot', instruction: 'Two-shot showing the two principal visible characters together with clear conversational geography.' },
+  { id: 'ots-1', label: 'Over shoulder · Character 1', focusIndex: 0, instruction: 'Over-the-shoulder shot focused on Character 1; the other character may appear only as the near shoulder/foreground shape if appropriate.' },
+  { id: 'ots-2', label: 'Over shoulder · Character 2', focusIndex: 1, instruction: 'Over-the-shoulder shot focused on Character 2; the other character may appear only as the near shoulder/foreground shape if appropriate.' },
+  { id: 'wide', label: 'Wide shot', instruction: 'Wide shot that preserves the established spatial geography of the scene.' },
+  { id: 'insert', label: 'Insert / detail', instruction: 'Insert/detail shot of the most relevant prop, product, hand action, or scene detail. Do not redesign the environment.' },
+  { id: 'reverse', label: 'Reverse angle', instruction: 'Reverse-angle coverage of the same established scene, preserving screen direction, identity, wardrobe, set, and eyelines.' },
+  { id: 'custom', label: 'Custom framing', instruction: '' },
+];
+
+const createCharacter = (index, template = 'custom') => ({
+  id: `character-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
+  label: `Character ${index + 1}`,
+  asset: null,
+  position: template === 'dialogue' ? (index === 0 ? 'Seated at the table on the left' : 'Seated on the right, facing Character 1') : '',
+  action: '',
+  lookAt: template === 'dialogue' ? (index === 0 ? 'Character 2' : 'Character 1') : '',
+  shot: 'Medium shot',
+  importance: index === 0 ? 'Primary' : 'Secondary',
+  note: '',
+});
+
+const createElement = (index, kind = 'prop', asset = null) => ({
+  id: `element-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
+  label: asset?.title || `${kind === 'product' ? 'Product' : 'Prop'} ${index + 1}`,
+  kind,
+  asset,
+  position: '',
+  usedBy: '',
+  visibility: 'Visible',
+  note: '',
+});
+
+const getCharacterImage = (asset) => {
+  if (asset?.url) return asset.url;
+  const raw = asset?.character_photos?.[0];
+  if (!raw) return null;
+  if (typeof raw === 'string' && /^https?:\/\//i.test(raw)) return raw;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed?.portrait || parsed?.front || parsed?.profile || parsed?.side || parsed?.back || Object.values(parsed || {}).find((value) => typeof value === 'string') || null;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof raw === 'object') return raw?.portrait || raw?.front || raw?.profile || raw?.side || raw?.back || null;
+  return null;
+};
+
+const getCatalogImages = (asset) => [...new Set([
+  asset?.featured_image,
+  ...(Array.isArray(asset?.preview_images) ? asset.preview_images : []),
+].filter(Boolean))];
+
+const getAssetImage = (asset) => asset?.images?.[0] || asset?.url || asset?.selected_image || asset?.featured_image || null;
+
+function AssetTile({ image, label, selected }) {
+  return (
+    <div className={`relative aspect-[4/3] w-full overflow-hidden border bg-black ${selected ? 'border-cyan-300' : 'border-white/15'}`}>
+      {image ? <img src={image} alt={label || ''} className="block h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-white/30"><Users size={18} /></div>}
+      <span className="absolute bottom-0 left-0 right-0 truncate bg-black/80 px-1.5 py-1 text-[9px] font-bold text-white">{label}</span>
+    </div>
+  );
+}
+
+export default function ComposeSceneBuilder({ userEmail, onDone }) {
+  const [templateId, setTemplateId] = useState('dialogue');
+  const [characters, setCharacters] = useState([createCharacter(0, 'dialogue'), createCharacter(1, 'dialogue')]);
+  const [elements, setElements] = useState([]);
+  const [selectedCharacterId, setSelectedCharacterId] = useState(null);
+  const [vaultFolders, setVaultFolders] = useState([]);
+  const [vaultAssets, setVaultAssets] = useState([]);
+  const [vaultFolder, setVaultFolder] = useState('all');
+  const [shopAssets, setShopAssets] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
+  const [categoryId, setCategoryId] = useState('all');
+  const [subcategoryId, setSubcategoryId] = useState('all');
+  const [shopSearch, setShopSearch] = useState('');
+  const [selectedSet, setSelectedSet] = useState(null);
+  const [uploadedAsset, setUploadedAsset] = useState(null);
+  const [selectedModel, setSelectedModel] = useState(null);
+  const [aspectRatio, setAspectRatio] = useState('16:9');
+  const [additionalPrompt, setAdditionalPrompt] = useState('');
+  const [masterScene, setMasterScene] = useState(null);
+  const [generatedShot, setGeneratedShot] = useState(null);
+  const [generatingMaster, setGeneratingMaster] = useState(false);
+  const [generatingShot, setGeneratingShot] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [error, setError] = useState('');
+  const [vaultOpen, setVaultOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [vaultLoaded, setVaultLoaded] = useState(false);
+  const [shopLoaded, setShopLoaded] = useState(false);
+  const [modelReady, setModelReady] = useState(false);
+  const [shotPreset, setShotPreset] = useState('closeup-1');
+  const [customShot, setCustomShot] = useState('');
+
+  const template = SCENE_TEMPLATES.find((item) => item.id === templateId) || SCENE_TEMPLATES[0];
+  const modelInput = useMemo(() => ({ aspect_ratio: aspectRatio, prompt: additionalPrompt || template.action }), [aspectRatio, additionalPrompt, template.action]);
+  const { options: modelOptions, loading: modelLoading } = useAiModelOptions({ service: 'replicateGenerate:compose_scene', kind: 'image', input: modelInput, enabled: modelReady });
+  const modelKey = selectedModel || modelOptions.find((item) => item.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const { quote, loading: quoteLoading } = useAiPriceQuote({ service: 'replicateGenerate:compose_scene', kind: 'image', input: modelInput, modelKey, enabled: modelReady });
+
+  useEffect(() => {
+    const timer = setTimeout(() => setModelReady(true), 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const loadVault = async () => {
+    if (!vaultOpen && !vaultLoaded && userEmail) {
+      const [folders, assets] = await Promise.all([
+        base44.entities.VaultFolder.filter({ user_email: userEmail }, 'order', 100).catch(() => []),
+        base44.entities.VaultAsset.filter({ user_email: userEmail, media_type: 'image' }, '-created_date', 300).catch(() => []),
+      ]);
+      setVaultFolders(folders || []);
+      setVaultAssets(assets || []);
+      setVaultLoaded(true);
+    }
+    setVaultOpen((value) => !value);
+  };
+
+  const loadShop = async () => {
+    if (!shopOpen && !shopLoaded) {
+      const [assets, cats, subs] = await Promise.all([
+        supabase.from('catalog_asset').select('id,title,description,featured_image,preview_images,category_id,subcategory_id,creator_name,tags').eq('status', 'published').order('title', { ascending: true }).limit(500).then(({ data }) => data || []).catch(() => []),
+        supabase.from('asset_category').select('id,key,label_en,label_fr,display_order').eq('is_active', true).order('display_order', { ascending: true }).then(({ data }) => data || []).catch(() => []),
+        supabase.from('asset_subcategory').select('id,category_id,key,label_en,label_fr,display_order').eq('is_active', true).order('display_order', { ascending: true }).then(({ data }) => data || []).catch(() => []),
+      ]);
+      setShopAssets((assets || []).filter((asset) => getCatalogImages(asset).length).flatMap((asset) => getCatalogImages(asset).map((image, index) => ({ ...asset, id: `${asset.id}::${index}`, featured_image: image, preview_images: [image], __source_asset_id: asset.id, __image_index: index }))));
+      setCategories(cats || []);
+      setSubcategories(subs || []);
+      setShopLoaded(true);
+    }
+    setShopOpen((value) => !value);
+  };
+
+  const visibleVaultAssets = useMemo(() => {
+    if (vaultFolder === 'all') return vaultAssets;
+    if (vaultFolder === 'unfiled') return vaultAssets.filter((asset) => !asset.folder_id);
+    return vaultAssets.filter((asset) => asset.folder_id === vaultFolder);
+  }, [vaultAssets, vaultFolder]);
+
+  const selectedCategory = categories.find((item) => item.id === categoryId) || null;
+  const selectedSubcategories = selectedCategory ? subcategories.filter((item) => item.category_id === selectedCategory.id).sort((a, b) => (a.display_order || 0) - (b.display_order || 0)) : [];
+
+  const filteredShopAssets = useMemo(() => {
+    const query = shopSearch.trim().toLowerCase();
+    return shopAssets.filter((asset) => {
+      if (categoryId !== 'all' && asset.category_id !== categoryId) return false;
+      if (subcategoryId !== 'all' && selectedSubcategories.length && asset.subcategory_id !== subcategoryId) return false;
+      if (!query) return true;
+      return `${asset.title || ''} ${asset.description || ''} ${asset.creator_name || ''} ${(asset.tags || []).join(' ')}`.toLowerCase().includes(query);
+    });
+  }, [shopAssets, categoryId, subcategoryId, shopSearch, selectedSubcategories]);
+
+  const selectTemplate = (id) => {
+    const next = SCENE_TEMPLATES.find((item) => item.id === id) || SCENE_TEMPLATES[0];
+    setTemplateId(next.id);
+    setCharacters(Array.from({ length: next.characters }, (_, index) => createCharacter(index, next.id)));
+    setElements(next.id === 'product' ? [createElement(0, 'product')] : []);
+    setSelectedCharacterId(null);
+    setMasterScene(null);
+    setGeneratedShot(null);
+    setError('');
+  };
+
+  const updateCharacter = (id, patch) => setCharacters((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
+  const addCharacter = () => setCharacters((items) => [...items, createCharacter(items.length, templateId)]);
+  const removeCharacter = (id) => setCharacters((items) => items.filter((item) => item.id !== id).map((item, index) => ({ ...item, label: `Character ${index + 1}` })));
+
+  const assignCharacterAsset = (asset) => {
+    if (!selectedCharacterId) {
+      setError('Select a character in Scene Blocking first.');
+      return;
+    }
+    updateCharacter(selectedCharacterId, { asset });
+    setError('');
+  };
+
+  const addElement = (kind, asset = null) => setElements((items) => [...items, createElement(items.length, kind, asset)]);
+  const updateElement = (id, patch) => setElements((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
+  const removeElement = (id) => setElements((items) => items.filter((item) => item.id !== id));
+
+  const blockingText = () => characters.map((character) => `${character.label}: where: ${character.position || 'not specified'}; action: ${character.action || 'not specified'}; looks toward: ${character.lookAt || 'not specified'}; framing: ${character.shot}; importance: ${character.importance}${character.note ? `; note: ${character.note}` : ''}`).join(' | ');
+  const elementsText = () => elements.map((element) => `${element.label}: where: ${element.position || 'not specified'}; used by: ${element.usedBy || 'nobody specified'}; visibility: ${element.visibility}${element.note ? `; note: ${element.note}` : ''}`).join(' | ');
+
+  const generateMaster = async () => {
+    setGeneratingMaster(true);
+    setError('');
+    try {
+      const setRef = getAssetImage(selectedSet);
+      const selectedCharacters = characters.filter((character) => character.asset);
+      const visibleCharacters = selectedCharacters.filter((character) => character.shot !== 'Off frame');
+      const missingRefs = visibleCharacters.filter((character) => !getCharacterImage(character.asset));
+      if (missingRefs.length) throw new Error(`Missing character reference image for ${missingRefs.map((character) => character.label).join(', ')}.`);
+
+      const refs = [];
+      if (setRef) refs.push(setRef);
+      refs.push(...visibleCharacters.map((character) => getCharacterImage(character.asset)).filter(Boolean));
+
+      const identityMap = visibleCharacters.map((character, index) => `${character.label} = ${character.asset?.label || character.asset?.name || `selected character ${index + 1}`}`).join(' | ');
+      const offFrameNames = characters.filter((character) => character.shot === 'Off frame').map((character) => character.label);
+      const masterPrompt = `COMPOSE SCENE. Template: ${template.label}. ${setRef ? 'The first supplied reference image is the selected Set and is the visual source of truth for location, lighting, palette, atmosphere and style; do not redesign it.' : ''} ${visibleCharacters.length ? `CHARACTER IDENTITY LOCK — MANDATORY. The supplied character reference images ${setRef ? 'after the Set reference ' : ''}correspond to the visible selected characters in Scene Blocking order. Identity mapping: ${identityMap}. Use those exact people. Do not invent, replace, reinterpret, blend, merge, or substitute any selected character. Preserve each visible selected character's facial identity, age presentation, skin tone, hair, body proportions, wardrobe/look, and recognizable physical appearance. Character blocking: ${blockingText()}.` : characters.length ? `Character blocking: ${blockingText()}.` : 'No required performer.'} ${offFrameNames.length ? `OFF FRAME IS ABSOLUTE: ${offFrameNames.join(', ')} remain part of the scene context and eyelines but MUST NOT appear anywhere in the image, including background, reflection, silhouette, shoulder, or partial body.` : ''} ${elements.length ? `Props and products: ${elementsText()}.` : ''} ${additionalPrompt ? `Additional instruction only: ${additionalPrompt}.` : ''} Preserve the established look of the Set while staging the described action clearly.`;
+
+      const result = await base44.functions.invoke('replicateGenerate', {
+        method: 'compose_scene',
+        prompt: masterPrompt,
+        reference_image_urls: refs.slice(0, 3),
+        aspect_ratio: aspectRatio,
+        model_key: modelKey || undefined,
+      });
+      if (!result.data?.file_url) throw new Error(result.data?.error || 'Master Scene generation failed.');
+      setMasterScene(result.data.file_url);
+      setGeneratedShot(null);
+      toast.success('Master Scene generated');
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || 'Master Scene generation failed.');
+    } finally {
+      setGeneratingMaster(false);
+    }
+  };
+
+  const generateShot = async () => {
+    if (!masterScene) {
+      setError('Generate the Master Scene first.');
+      return;
+    }
+    setGeneratingShot(true);
+    setError('');
+    try {
+      const preset = SHOT_PRESETS.find((item) => item.id === shotPreset) || SHOT_PRESETS[0];
+      const setRef = getAssetImage(selectedSet);
+      const visibleCharacters = characters.filter((character) => character.asset && character.shot !== 'Off frame');
+      const offFrameNames = characters.filter((character) => character.shot === 'Off frame').map((character) => character.label);
+      const focusCharacter = Number.isInteger(preset.focusIndex) ? characters[preset.focusIndex] : null;
+      const focusRef = focusCharacter?.shot !== 'Off frame' ? getCharacterImage(focusCharacter?.asset) : null;
+      const refs = [];
+      const guide = [];
+
+      if (setRef) {
+        refs.push(setRef);
+        guide.push(`Image ${refs.length} is the ORIGINAL SET reference and controls location/look.`);
+      }
+
+      if (focusRef) {
+        refs.push(focusRef);
+        guide.push(`Image ${refs.length} is the ORIGINAL identity/wardrobe reference for ${focusCharacter.label}.`);
+        if (refs.length < 3) {
+          refs.push(masterScene);
+          guide.push(`Image ${refs.length} is the MASTER SCENE and is for spatial continuity/composition only — NEVER use it as the identity reference.`);
+        }
+      } else if (shotPreset === 'insert') {
+        const propRef = elements.map((element) => element.asset?.selected_image || element.asset?.url || getCatalogImages(element.asset)[0]).find(Boolean);
+        if (propRef && refs.length < 3) {
+          refs.push(propRef);
+          guide.push(`Image ${refs.length} is the ORIGINAL prop/product reference.`);
+        }
+        if (refs.length < 3) {
+          refs.push(masterScene);
+          guide.push(`Image ${refs.length} is the MASTER SCENE for spatial continuity only.`);
+        }
+      } else {
+        for (const character of visibleCharacters) {
+          const ref = getCharacterImage(character.asset);
+          if (!ref || refs.length >= 3) continue;
+          refs.push(ref);
+          guide.push(`Image ${refs.length} is the ORIGINAL identity/wardrobe reference for ${character.label}.`);
+        }
+        if (refs.length < 3) {
+          refs.push(masterScene);
+          guide.push(`Image ${refs.length} is the MASTER SCENE for spatial continuity/composition only — NEVER use it as an identity reference.`);
+        }
+      }
+
+      const shotInstruction = shotPreset === 'custom' ? customShot.trim() : preset.instruction;
+      if (!shotInstruction) throw new Error('Describe the custom framing first.');
+
+      const prompt = `GENERATE A NEW CAMERA SHOT OF THE SAME ESTABLISHED SCENE. ${guide.join(' ')} REFERENCE PRIORITY IS STRICT: original character references control face, hair, skin tone, body, wardrobe and recognizable look; the original Set controls the environment; the Master Scene, when supplied, controls ONLY spatial geography, blocking continuity, lighting direction and scene relationship. Never copy a face, wardrobe, or altered appearance from the Master when an original reference is supplied. Do not create a generation chain from a previous generated shot. CAMERA INSTRUCTION: ${shotInstruction} Scene blocking continuity: ${blockingText()}. ${offFrameNames.length ? `OFF FRAME IS ABSOLUTE: ${offFrameNames.join(', ')} may still be looked at or spoken to but MUST NOT be visible anywhere in this shot, including reflection, silhouette, shoulder, background or partial body.` : ''} ${elements.length ? `Props/products continuity: ${elementsText()}.` : ''} ${additionalPrompt ? `Additional instruction: ${additionalPrompt}.` : ''} Preserve the same location, wardrobe, time, lighting logic, screen direction and character relationships unless the camera instruction explicitly requires a new angle.`;
+
+      const result = await base44.functions.invoke('replicateGenerate', {
+        method: 'compose_scene',
+        prompt,
+        reference_image_urls: refs.slice(0, 3),
+        aspect_ratio: aspectRatio,
+        model_key: modelKey || undefined,
+      });
+      if (!result.data?.file_url) throw new Error(result.data?.error || 'Shot generation failed.');
+      setGeneratedShot(result.data.file_url);
+      setSaveOpen(false);
+      toast.success('Shot generated');
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || 'Shot generation failed.');
+    } finally {
+      setGeneratingShot(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 pb-28">
+      <section className="space-y-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-white">AI Model</p>
+        <select value={modelKey || ''} onChange={(event) => setSelectedModel(event.target.value || null)} disabled={modelLoading || !modelOptions.length} className="w-full bg-black px-4 py-3 text-sm font-bold text-yellow-400 disabled:opacity-50">
+          {modelLoading && <option value="">Loading models…</option>}
+          {!modelLoading && !modelOptions.length && <option value="">No model available</option>}
+          {modelOptions.map((item) => <option key={item.model_key} value={item.model_key}>{item.name || item.model_key}{item.recommended ? ' — Recommended' : ''}{item.credits ? ` — ${item.credits} credits` : ''}</option>)}
+        </select>
+        <div className="flex justify-between text-xs text-white/65"><span>AI cost</span><span>{quoteLoading ? 'Calculating…' : quote?.credits ? `${quote.credits} credits` : 'Calculated automatically'}</span></div>
+      </section>
+
+      <section className="space-y-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-white">Additional Prompt</p>
+        <textarea value={additionalPrompt} onChange={(event) => setAdditionalPrompt(event.target.value)} rows={3} placeholder="Optional extra instruction for this scene — do not redefine the Set look" className="w-full resize-none bg-white/10 px-4 py-3 text-sm text-white" />
+        <div className="flex flex-wrap gap-2">{['16:9', '4:3', '9:16', '1:1'].map((ratio) => <button key={ratio} type="button" onClick={() => setAspectRatio(ratio)} className={`px-3 py-2 text-xs font-bold ${aspectRatio === ratio ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white'}`}>{ratio}</button>)}</div>
+      </section>
+
+      <section className="space-y-3 border border-cyan-300/35 p-3">
+        <div><p className="text-xs font-bold uppercase tracking-wider text-cyan-200">Set — Scene Environment</p><p className="text-[11px] text-white/55">This is the environment used for the scene. Choose one source below.</p></div>
+        {selectedSet ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="h-28 w-full overflow-hidden border border-white/15 bg-black sm:w-48">{getAssetImage(selectedSet) ? <img src={getAssetImage(selectedSet)} alt="Selected Set" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs text-white/35">No preview</div>}</div>
+            <div className="min-w-0 flex-1"><p className="text-sm font-bold text-white">{selectedSet.name || selectedSet.title || 'Selected Set'}</p><p className="mt-1 text-[11px] text-white/55">This Set controls the location, lighting, palette, atmosphere and visual style of the scene.</p><button type="button" onClick={() => setSelectedSet(null)} className="mt-3 bg-white/10 px-3 py-2 text-[10px] font-bold text-white">Remove Set</button></div>
+          </div>
+        ) : <div className="border border-dashed border-white/20 p-4 text-xs text-white/55">No Set selected yet.</div>}
+        <div className="space-y-2">
+          <div className="grid gap-2 sm:grid-cols-3">
+            <button type="button" onClick={loadVault} className="bg-white/10 px-3 py-2.5 text-center text-xs font-bold text-white">{vaultOpen ? 'Close Vault' : 'Choose from Vault'}</button>
+            <button type="button" onClick={loadShop} className="bg-white/10 px-3 py-2.5 text-center text-xs font-bold text-white">{shopOpen ? 'Close Assets Shop' : 'Choose from Assets Shop'}</button>
+            <label className="inline-flex cursor-pointer items-center justify-center gap-2 bg-white/10 px-3 py-2.5 text-xs font-bold text-white"><Upload size={14} /> Upload Image<input type="file" accept="image/*" className="hidden" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const { file_url } = await base44.integrations.Core.UploadFile({ file }); setUploadedAsset({ id: `upload-${Date.now()}`, name: file.name || 'Uploaded image', url: file_url, images: [file_url], selected_image: file_url, source: 'upload' }); }} /></label>
+          </div>
+          {uploadedAsset && <div className="border border-white/15 p-2"><div className="flex items-center gap-3"><img src={uploadedAsset.url} alt="Uploaded" className="h-16 w-16 object-cover" /><p className="text-xs font-bold text-white">{uploadedAsset.name}</p></div><div className="mt-2 grid grid-cols-3 gap-1"><button type="button" onClick={() => setSelectedSet({ ...uploadedAsset, name: uploadedAsset.name || 'Uploaded Set' })} className={`py-1.5 text-[9px] font-bold ${getAssetImage(selectedSet) === uploadedAsset.url ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{getAssetImage(selectedSet) === uploadedAsset.url ? 'Selected Set' : 'Use as Set'}</button><button type="button" onClick={() => assignCharacterAsset({ ...uploadedAsset, label: uploadedAsset.name || 'Uploaded character', character_photos: [uploadedAsset.url] })} className={`py-1.5 text-[9px] font-bold ${characters.some((character) => getCharacterImage(character.asset) === uploadedAsset.url) ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{characters.find((character) => getCharacterImage(character.asset) === uploadedAsset.url) ? `Selected ${characters.find((character) => getCharacterImage(character.asset) === uploadedAsset.url).label}` : 'Use as Character'}</button><button type="button" onClick={() => addElement('product', { ...uploadedAsset, selected_image: uploadedAsset.url })} className={`py-1.5 text-[9px] font-bold ${elements.some((element) => (element.asset?.selected_image || element.asset?.url) === uploadedAsset.url) ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{elements.some((element) => (element.asset?.selected_image || element.asset?.url) === uploadedAsset.url) ? 'Added as Prop/Product' : 'Add as Prop / Product'}</button></div></div>}
+        </div>
+      </section>
+
+      <section className="space-y-2"><p className="text-xs font-bold uppercase tracking-wider text-white">Scene Template</p><div className="flex flex-wrap gap-2">{SCENE_TEMPLATES.map((item) => <button key={item.id} type="button" onClick={() => selectTemplate(item.id)} className={`px-3 py-2 text-xs font-bold ${templateId === item.id ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{item.label}</button>)}</div></section>
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-bold uppercase tracking-wider text-white">Scene Blocking</p><p className="text-[11px] text-white/55">Describe where each character is and what they are doing. The selected Set keeps its existing look.</p></div><button type="button" onClick={addCharacter} className="flex items-center gap-1 bg-white/10 px-3 py-2 text-[10px] font-bold text-white"><Plus size={11} /> Add Character</button></div>
+        <div className="space-y-3">{characters.map((character) => <div key={character.id} className={`border p-3 ${selectedCharacterId === character.id ? 'border-cyan-300' : 'border-white/10'}`}>
+          <div className="flex items-center gap-3"><button type="button" onClick={() => setSelectedCharacterId(character.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left"><div className="h-14 w-14 shrink-0 overflow-hidden border border-white/15 bg-black">{getCharacterImage(character.asset) ? <img src={getCharacterImage(character.asset)} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-white/30"><Users size={18} /></div>}</div><div className="min-w-0"><p className="truncate text-xs font-bold text-white">{character.asset?.label || character.asset?.name || character.label}</p><p className="text-[10px] text-white/45">{character.label}</p></div></button><button type="button" onClick={() => removeCharacter(character.id)} className="text-white/50"><Trash2 size={13} /></button></div>
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            <label className="space-y-1"><span className="text-[10px] font-bold text-white/70">Where is {character.label}?</span><input value={character.position} onChange={(event) => updateCharacter(character.id, { position: event.target.value })} placeholder="e.g. seated at the table on the left" className="w-full bg-black p-2.5 text-xs text-white" /></label>
+            <label className="space-y-1"><span className="text-[10px] font-bold text-white/70">What is {character.label} doing?</span><input value={character.action} onChange={(event) => updateCharacter(character.id, { action: event.target.value })} placeholder="e.g. talking calmly, one hand on the table" className="w-full bg-black p-2.5 text-xs text-white" /></label>
+            <label className="space-y-1"><span className="text-[10px] font-bold text-white/70">Who or what is {character.label} looking at?</span><input value={character.lookAt} onChange={(event) => updateCharacter(character.id, { lookAt: event.target.value })} placeholder="e.g. Character 2" className="w-full bg-black p-2.5 text-xs text-white" /></label>
+            <div className="grid grid-cols-2 gap-2"><label className="space-y-1"><span className="text-[10px] font-bold text-white/70">Framing</span><select value={character.shot} onChange={(event) => updateCharacter(character.id, { shot: event.target.value })} className="w-full bg-black p-2.5 text-xs text-white">{FRAMING_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label><label className="space-y-1"><span className="text-[10px] font-bold text-white/70">Importance</span><select value={character.importance} onChange={(event) => updateCharacter(character.id, { importance: event.target.value })} className="w-full bg-black p-2.5 text-xs text-white">{IMPORTANCE_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label></div>
+            <label className="space-y-1 md:col-span-2"><span className="text-[10px] font-bold text-white/70">Additional blocking note</span><input value={character.note} onChange={(event) => updateCharacter(character.id, { note: event.target.value })} placeholder="Optional relationship, gesture or staging detail" className="w-full bg-black p-2.5 text-xs text-white" /></label>
+          </div>
+        </div>)}</div>
+      </section>
+
+      {vaultOpen && <section id="set-vault" className="space-y-2"><p className="text-xs font-bold uppercase tracking-wider text-white">Vault</p><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setVaultFolder('all')} className={`px-3 py-1.5 text-[10px] font-bold ${vaultFolder === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>All</button><button type="button" onClick={() => setVaultFolder('unfiled')} className={`px-3 py-1.5 text-[10px] font-bold ${vaultFolder === 'unfiled' ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>Unfiled</button>{vaultFolders.map((folder) => <button key={folder.id} type="button" onClick={() => setVaultFolder(folder.id)} className={`px-3 py-1.5 text-[10px] font-bold ${vaultFolder === folder.id ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{folder.name}</button>)}</div><div className="grid max-h-72 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5 lg:grid-cols-8">{visibleVaultAssets.map((asset) => { const isSet = getAssetImage(selectedSet) === asset.url; const selectedCharacter = characters.find((character) => getCharacterImage(character.asset) === asset.url); const isElement = elements.some((element) => (element.asset?.selected_image || element.asset?.url) === asset.url); return <div key={asset.id} className={`space-y-1 border p-1 ${isSet || selectedCharacter || isElement ? 'border-cyan-300' : 'border-transparent'}`}><AssetTile image={asset.url} label={asset.name || 'Vault image'} selected={!!(isSet || selectedCharacter || isElement)} /><button type="button" onClick={() => setSelectedSet({ ...asset, name: asset.name || 'Vault set', images: [asset.url], source: 'vault' })} className={`w-full py-1 text-[9px] font-bold ${isSet ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{isSet ? 'Selected Set' : 'Use as Set'}</button><button type="button" onClick={() => assignCharacterAsset({ ...asset, label: asset.name || 'Vault character', character_photos: [asset.url] })} className={`w-full py-1 text-[9px] font-bold ${selectedCharacter ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{selectedCharacter ? `Selected ${selectedCharacter.label}` : 'Use as Character'}</button><button type="button" onClick={() => addElement('product', { ...asset, selected_image: asset.url })} className={`w-full py-1 text-[9px] font-bold ${isElement ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{isElement ? 'Added as Prop/Product' : 'Add as Prop / Product'}</button></div>; })}</div></section>}
+
+      {shopOpen && <section id="set-shop" className="space-y-2"><div className="flex items-center gap-2"><ShoppingBag size={14} className="text-cyan-300" /><p className="text-xs font-bold uppercase tracking-wider text-white">Assets Shop</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => { setCategoryId('all'); setSubcategoryId('all'); }} className={`px-3 py-1.5 text-[10px] font-bold ${categoryId === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>All</button>{categories.map((category) => <button key={category.id} type="button" onClick={() => { setCategoryId(category.id); setSubcategoryId('all'); }} className={`px-3 py-1.5 text-[10px] font-bold ${categoryId === category.id ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{category.label_en || category.label_fr || category.key}</button>)}</div>{selectedSubcategories.length > 0 && <div className="flex flex-wrap gap-2 border-t border-white/10 pt-2"><button type="button" onClick={() => setSubcategoryId('all')} className={`px-3 py-1.5 text-[10px] font-bold ${subcategoryId === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>All</button>{selectedSubcategories.map((subcategory) => <button key={subcategory.id} type="button" onClick={() => setSubcategoryId(subcategory.id)} className={`px-3 py-1.5 text-[10px] font-bold ${subcategoryId === subcategory.id ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{subcategory.label_en || subcategory.label_fr || subcategory.key}</button>)}</div>}<div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" /><input value={shopSearch} onChange={(event) => setShopSearch(event.target.value)} placeholder="Search Assets Shop" className="w-full bg-black/50 py-2.5 pl-9 pr-3 text-xs text-white" /></div><div className="grid max-h-[30rem] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 lg:grid-cols-6">{filteredShopAssets.map((asset) => { const image = getCatalogImages(asset)[0]; const isSet = getAssetImage(selectedSet) === image; const selectedCharacter = characters.find((character) => getCharacterImage(character.asset) === image); const isElement = elements.some((element) => (element.asset?.selected_image || element.asset?.url) === image); return <div key={asset.id} className={`space-y-1 border p-1 ${isSet || selectedCharacter || isElement ? 'border-cyan-300' : 'border-white/10'}`}><AssetTile image={image} label={asset.title || 'Asset'} selected={!!(isSet || selectedCharacter || isElement)} /><button type="button" onClick={() => setSelectedSet({ ...asset, name: asset.title || 'Assets Shop Set', images: [image], selected_image: image, source: 'assets-shop' })} className={`w-full py-1 text-[9px] font-bold ${isSet ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{isSet ? 'Selected Set' : 'Use as Set'}</button><button type="button" onClick={() => assignCharacterAsset({ ...asset, url: image, label: asset.title || 'Assets Shop character', character_photos: [image] })} className={`w-full py-1 text-[9px] font-bold ${selectedCharacter ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{selectedCharacter ? `Selected ${selectedCharacter.label}` : 'Use as Character'}</button><button type="button" onClick={() => addElement('product', { ...asset, selected_image: image, url: image })} className={`w-full py-1 text-[9px] font-bold ${isElement ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{isElement ? 'Added as Prop/Product' : 'Add as Prop / Product'}</button></div>; })}</div></section>}
+
+      <section className="space-y-2"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-white">Props / Products</p><div className="flex gap-2"><button type="button" onClick={() => addElement('prop')} className="bg-white/10 px-2 py-1.5 text-[10px] font-bold text-white"><Plus size={11} className="inline" /> Prop</button><button type="button" onClick={() => addElement('product')} className="bg-white/10 px-2 py-1.5 text-[10px] font-bold text-white"><Plus size={11} className="inline" /> Product</button></div></div>{elements.map((element) => <div key={element.id} className="space-y-2 border border-white/10 p-3"><div className="flex items-center justify-between"><div><p className="text-xs font-bold text-white">{element.label}</p><p className="text-[9px] text-white/45">{element.kind}</p></div><button type="button" onClick={() => removeElement(element.id)} className="text-white/50"><Trash2 size={14} /></button></div><div className="grid gap-2 md:grid-cols-3"><label className="space-y-1"><span className="text-[10px] font-bold text-white/70">Where is it?</span><input value={element.position} onChange={(event) => updateElement(element.id, { position: event.target.value })} placeholder="e.g. in the center of the table" className="w-full bg-black p-2.5 text-xs text-white" /></label><label className="space-y-1"><span className="text-[10px] font-bold text-white/70">Who uses or holds it?</span><input value={element.usedBy} onChange={(event) => updateElement(element.id, { usedBy: event.target.value })} placeholder="e.g. Character 1" className="w-full bg-black p-2.5 text-xs text-white" /></label><label className="space-y-1"><span className="text-[10px] font-bold text-white/70">How visible?</span><select value={element.visibility} onChange={(event) => updateElement(element.id, { visibility: event.target.value })} className="w-full bg-black p-2.5 text-xs text-white"><option>Hero / prominent</option><option>Visible</option><option>Natural / subtle</option><option>Background</option></select></label><label className="space-y-1 md:col-span-3"><span className="text-[10px] font-bold text-white/70">Additional instruction</span><input value={element.note} onChange={(event) => updateElement(element.id, { note: event.target.value })} placeholder="Optional placement or interaction detail" className="w-full bg-black p-2.5 text-xs text-white" /></label></div></div>)}</section>
+
+      {error && <p className="border border-red-400/30 bg-red-500/10 p-3 text-xs text-red-300">{error}</p>}
+
+      <button type="button" onClick={generateMaster} disabled={generatingMaster} className="flex w-full items-center justify-center gap-2 border border-cyan-300 py-4 text-sm font-bold text-cyan-200 disabled:opacity-40">{generatingMaster ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />} {masterScene ? 'Regenerate Master Scene' : 'Generate Master Scene'}</button>
+
+      {masterScene && <div><p className="mb-2 text-xs font-bold uppercase text-white">Master Scene</p><img src={masterScene} alt="Master Scene" className="max-h-[60vh] w-full bg-black object-contain" /></div>}
+
+      {masterScene && <section className="space-y-3 border border-cyan-300/35 p-3"><div><p className="text-xs font-bold uppercase tracking-wider text-cyan-200">Camera / Shots</p><p className="text-[11px] text-white/55">Generate new coverage from the original Set and character references. The Master Scene is used only for spatial continuity when reference capacity allows; it never replaces identity references.</p></div><select value={shotPreset} onChange={(event) => setShotPreset(event.target.value)} className="w-full bg-black p-3 text-xs text-white">{SHOT_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}</select>{shotPreset === 'custom' && <textarea value={customShot} onChange={(event) => setCustomShot(event.target.value)} rows={2} placeholder="Describe the camera position and framing" className="w-full resize-none bg-black p-3 text-xs text-white" />}<button type="button" onClick={generateShot} disabled={generatingShot} className="flex w-full items-center justify-center gap-2 bg-cyan-300 py-4 text-sm font-bold text-black disabled:opacity-40">{generatingShot ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />} Generate Shot</button></section>}
+
+      {generatedShot && !saveOpen && <div><p className="mb-2 text-xs font-bold uppercase text-white">Generated Shot</p><img src={generatedShot} alt="Generated Shot" className="max-h-[65vh] w-full bg-black object-contain" /><button type="button" onClick={() => setSaveOpen(true)} className="mt-2 w-full bg-yellow-400 py-3 text-sm font-bold text-black">Save to Vault</button></div>}
+      {saveOpen && generatedShot && <SaveToVaultModal userEmail={userEmail} imageUrl={generatedShot} mediaType="image" onSaved={(saved) => { setSaveOpen(false); onDone?.(generatedShot, 'image', saved?.id); }} onClose={() => setSaveOpen(false)} />}
+    </div>
+  );
+}
