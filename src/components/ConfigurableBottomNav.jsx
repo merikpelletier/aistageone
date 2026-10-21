@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/AuthContext';
 
 const NAV_ITEMS = [
   { key: 'Index', labelKey: 'nav_magazine', label: 'Magazine', icon: Clapperboard },
-  { key: 'Salons', labelKey: 'nav_salons', label: 'Salons', icon: MessageCircle },
+  { key: 'Salons', labelKey: 'nav_social', label: 'Social', icon: MessageCircle },
   { key: 'Plus', labelKey: 'nav_plus', label: 'Plus', icon: MoreHorizontal },
   { key: 'Studio', label: 'Studio', icon: Wand2 },
   { key: 'MemberListing', label: 'Members', icon: UsersRound },
