@@ -163,8 +163,6 @@ export default function Salons() {
     createIdentifierMutation.mutate();
   };
 
-
-
   // Désactiver après 30 minutes d'inactivité
   useEffect(() => {
     const cleanupInactive = async () => {
@@ -240,12 +238,12 @@ export default function Salons() {
 
       {/* Salon Tabs */}
       <Tabs value={activeSalon} onValueChange={setActiveSalon} className="h-[calc(100vh-11rem)]">
-        <TabsList className="w-full bg-transparent border-b border-white/10 rounded-none h-auto p-0 overflow-x-auto flex-nowrap text-white">
+        <TabsList className="w-full bg-transparent border-b border-white/10 rounded-none h-auto p-0 overflow-x-auto flex-nowrap text-white lg:h-9 lg:min-h-9">
           <TabsTrigger
             value="messages"
-            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white relative whitespace-nowrap flex items-center gap-2"
+            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white relative whitespace-nowrap flex items-center gap-2 lg:h-9 lg:py-1 lg:px-2.5 lg:text-xs lg:gap-1.5"
           >
-            <Heart size={24} className="text-white" strokeWidth={2} />
+            <Heart size={24} className="text-white lg:w-4 lg:h-4" strokeWidth={2} />
             <span className="hidden sm:inline">MESSAGE</span>
             {unreadCount > 0 && activeSalon !== 'messages' && (
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full animate-pulse" />
@@ -253,25 +251,25 @@ export default function Salons() {
           </TabsTrigger>
           <TabsTrigger
             value="contact"
-            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2"
+            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:h-9 lg:py-1 lg:px-2.5 lg:text-xs lg:gap-1.5"
           >
-            <MessageCircle size={24} className="text-white" strokeWidth={2} />
+            <MessageCircle size={24} className="text-white lg:w-4 lg:h-4" strokeWidth={2} />
             <span className="hidden sm:inline">{getSalonLabel('contact') || 'CONTACT'}</span>
           </TabsTrigger>
           {isRegistered && (
             <TabsTrigger
               value="cochon"
-              className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2"
+              className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:h-9 lg:py-1 lg:px-2.5 lg:text-xs lg:gap-1.5"
             >
-              <UserIcon size={24} className="text-white" strokeWidth={2} />
+              <UserIcon size={24} className="text-white lg:w-4 lg:h-4" strokeWidth={2} />
               <span className="hidden sm:inline">{getSalonLabel('cochon') || 'CREATOR CHATS'}</span>
             </TabsTrigger>
           )}
           <TabsTrigger
             value="commercial"
-            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2"
+            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:h-9 lg:py-1 lg:px-2.5 lg:text-xs lg:gap-1.5"
           >
-            <FileText size={24} className="text-white" strokeWidth={2} />
+            <FileText size={24} className="text-white lg:w-4 lg:h-4" strokeWidth={2} />
             <span className="hidden sm:inline">{getSalonLabel('commercial') || 'INFO'}</span>
           </TabsTrigger>
         </TabsList>
