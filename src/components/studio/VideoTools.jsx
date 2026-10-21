@@ -244,13 +244,11 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
                 </section>
               )}
 
-              {mode === 'text' && (
-                <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-                  <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Type size={14} className="text-[#23c7be]" /> Video Prompt</p>
-                  <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe your video scene in detail..." className="min-h-[130px] w-full resize-none rounded-[3px] border border-white/15 bg-black/25 p-4 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" maxLength={1000} />
-                  <p className="mt-2 text-right text-[10px] text-white/35">{prompt.length}/1000 characters</p>
-                </section>
-              )}
+              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+                <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Type size={14} className="text-[#23c7be]" /> {mode === 'text' ? 'Video Prompt' : 'Video Instructions'}</p>
+                <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={mode === 'text' ? 'Describe your video scene in detail...' : mode === 'image' ? 'Describe exactly how this image should move, what the subject should do, and how the camera should behave...' : 'Describe how the reference video should be used and what the generated video should do...'} className="min-h-[130px] w-full resize-none rounded-[3px] border border-white/15 bg-black/25 p-4 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" maxLength={1000} />
+                <p className="mt-2 text-right text-[10px] text-white/35">{prompt.length}/1000 characters</p>
+              </section>
 
               {mode === 'image' && (
                 <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
@@ -287,7 +285,7 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
                 <select value={effectiveModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={modelsLoading || modelOptions.length === 0} className="w-full rounded-[3px] border border-white/15 bg-black/25 px-3 py-3 text-sm font-bold text-white outline-none focus:border-[#23c7be] disabled:opacity-50">{modelsLoading && <option value="">Loading models…</option>}{!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}{modelOptions.map(m => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}</select>
               </section>
 
-              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Aspect Ratio</p><div className="grid grid-cols-3 gap-2">{RATIOS.map(ratio => <button key={ratio.id} onClick={() => setAspectRatio(ratio.id)} className={`rounded-[3px] border p-2 text-center ${aspectRatio === ratio.id ? activeButton : idleButton}`}><p className="text-lg">{ratio.icon}</p><p className="text-[10px] font-bold">{ratio.label}</p></button>)}</div></section>
+              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Aspect Ratio</p><div className="grid grid-cols-3 gap-2">{RATIOS.map(ratio => <button key={ratio.id} onClick={() => setAspectRatio(ratio.id)} className={`rounded-[3px] border p-2 text-center ${aspectRatio === ratio.id ? activeButton : idleButton}`}><p className="text-lg">{ratio.icon}</p><p className="text-[10px] font-bold">{ratio.label}</p><p className="mt-1 text-[10px] font-black">{ratio.id}</p></button>)}</div></section>
 
               <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Duration</p><div className="grid grid-cols-2 gap-2">{DURATIONS.map(d => <button key={d.id} onClick={() => setDuration(d.id)} className={`rounded-[3px] border p-2.5 text-center ${duration === d.id ? activeButton : idleButton}`}><p className="font-black">{d.label}</p><p className="text-[9px] opacity-60">{duration === d.id ? (priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Automatic price') : 'Auto price'}</p></button>)}</div></section>
 
