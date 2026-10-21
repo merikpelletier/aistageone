@@ -56,7 +56,6 @@ const catalogImages = (asset) => [...new Set([
   asset?.featured_image,
   ...(Array.isArray(asset?.preview_images) ? asset.preview_images : []),
 ].filter(Boolean))];
-const catalogImage = (asset) => catalogImages(asset)[0] || null;
 const categoryText = (category) => `${category?.key || ''} ${category?.label_en || ''} ${category?.label_fr || ''}`.toLowerCase();
 const purposePattern = (purpose) => purpose === 'costume'
   ? /(costume|clothing|clothes|wardrobe|outfit|vêtement|vetement|tenue)/i
@@ -74,32 +73,34 @@ function SourceButton({ icon: Icon, label, onClick, tone }) {
 }
 
 function AssetPicker({
-  picker, onClose, onSelect, vaultAssets, catalogAssets, categories,
+  picker, onClose, onSelect, vaultAssets, catalogAssets, categories, subcategories,
   loadingCatalog, catalogError, onManageVault, embedded = false,
 }) {
   const [source, setSource] = useState(picker.source || 'vault');
   const [search, setSearch] = useState('');
-  const [catalogCategoryKey, setCatalogCategoryKey] = useState('actor');
   const pattern = purposePattern(picker.purpose);
+  const initialCategoryId = useMemo(() => {
+    if (picker.purpose === 'costume') return categories.find((item) => pattern.test(categoryText(item)))?.id || 'all';
+    return categories.find((item) => item.key === 'actor')?.id || categories.find((item) => item.key === 'character')?.id || 'all';
+  }, [categories, pattern, picker.purpose]);
+  const [catalogCategoryId, setCatalogCategoryId] = useState(initialCategoryId);
+  const [catalogSubcategoryId, setCatalogSubcategoryId] = useState('all');
   const categoryById = useMemo(() => new Map(categories.map((item) => [item.id, item])), [categories]);
-  const referenceCategories = useMemo(() => categories.filter((item) => ['actor', 'character'].includes(item.key)), [categories]);
-  const matchingCategoryIds = useMemo(
-    () => new Set(categories.filter((item) => pattern.test(categoryText(item))).map((item) => item.id)),
-    [categories, pattern],
+  const activeSubcategories = useMemo(
+    () => catalogCategoryId === 'all' ? [] : subcategories.filter((item) => item.category_id === catalogCategoryId),
+    [catalogCategoryId, subcategories],
   );
   const items = useMemo(() => {
     const term = search.trim().toLowerCase();
     const pool = source === 'vault'
       ? vaultAssets.filter((asset) => asset.media_type === 'image')
-      : catalogAssets.filter((asset) => {
-        const text = `${asset.title || ''} ${asset.description || ''} ${(asset.tags || []).join(' ')}`;
-        const categoryMatch = picker.purpose === 'costume'
-          ? (matchingCategoryIds.size ? matchingCategoryIds.has(asset.category_id) : pattern.test(text))
-          : categoryById.get(asset.category_id)?.key === catalogCategoryKey;
-        return categoryMatch && catalogImages(asset).length;
-      });
+      : catalogAssets.filter((asset) => (
+        catalogImages(asset).length
+        && (catalogCategoryId === 'all' || asset.category_id === catalogCategoryId)
+        && (catalogSubcategoryId === 'all' || asset.subcategory_id === catalogSubcategoryId)
+      ));
     return pool.filter((asset) => !term || `${asset.name || ''} ${asset.title || ''} ${asset.actor_name || ''} ${asset.creator_name || ''} ${(asset.tags || []).join(' ')} ${categoryText(categoryById.get(asset.category_id))}`.toLowerCase().includes(term));
-  }, [catalogAssets, catalogCategoryKey, categoryById, matchingCategoryIds, pattern, picker.purpose, search, source, vaultAssets]);
+  }, [catalogAssets, catalogCategoryId, catalogSubcategoryId, categoryById, search, source, vaultAssets]);
 
   return (
     <motion.div
@@ -128,15 +129,29 @@ function AssetPicker({
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search actors, characters or costumes" className="w-full bg-transparent py-3 text-sm text-white outline-none placeholder:text-white/30" />
           </label>
         </div>
-        {source === 'shop' && picker.purpose !== 'costume' && (
-          <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6">
-            <span className="mr-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Category</span>
-            {referenceCategories.map((category) => {
-              const count = catalogAssets.filter((asset) => asset.category_id === category.id && catalogImages(asset).length).length;
-              const active = catalogCategoryKey === category.key;
-              return <button type="button" key={category.id} onClick={() => { setCatalogCategoryKey(category.key); setSearch(''); }} className={`rounded-full px-4 py-2 text-xs font-black transition ${active ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>{category.key === 'actor' ? 'Actors' : 'Characters'} <span className="ml-1 opacity-60">{count}</span></button>;
-            })}
-          </div>
+        {source === 'shop' && (
+          <>
+            <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6">
+              <span className="mr-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Category</span>
+              <button type="button" onClick={() => { setCatalogCategoryId('all'); setCatalogSubcategoryId('all'); setSearch(''); }} className={`rounded-full px-4 py-2 text-xs font-black transition ${catalogCategoryId === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>All</button>
+              {categories.map((category) => {
+                const count = catalogAssets.filter((asset) => asset.category_id === category.id && catalogImages(asset).length).length;
+                const active = catalogCategoryId === category.id;
+                return <button type="button" key={category.id} onClick={() => { setCatalogCategoryId(category.id); setCatalogSubcategoryId('all'); setSearch(''); }} className={`rounded-full px-4 py-2 text-xs font-black transition ${active ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>{category.label_en || category.label_fr || category.key} <span className="ml-1 opacity-60">{count}</span></button>;
+              })}
+            </div>
+            {activeSubcategories.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6">
+                <span className="mr-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Subcategory</span>
+                <button type="button" onClick={() => setCatalogSubcategoryId('all')} className={`rounded-full px-4 py-2 text-xs font-black transition ${catalogSubcategoryId === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>All</button>
+                {activeSubcategories.map((subcategory) => {
+                  const count = catalogAssets.filter((asset) => asset.subcategory_id === subcategory.id && catalogImages(asset).length).length;
+                  const active = catalogSubcategoryId === subcategory.id;
+                  return <button type="button" key={subcategory.id} onClick={() => setCatalogSubcategoryId(subcategory.id)} className={`rounded-full px-4 py-2 text-xs font-black transition ${active ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>{subcategory.label_en || subcategory.label_fr || subcategory.key} <span className="ml-1 opacity-60">{count}</span></button>;
+                })}
+              </div>
+            )}
+          </>
         )}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {source === 'shop' && loadingCatalog ? (
@@ -302,7 +317,15 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const { data: categories = [] } = useQuery({
     queryKey: ['olo-asset-categories-for-character-designer'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('asset_category').select('id,key,label_en,label_fr').eq('is_active', true);
+      const { data, error } = await supabase.from('asset_category').select('id,key,label_en,label_fr,display_order').eq('is_active', true).order('display_order', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  const { data: subcategories = [] } = useQuery({
+    queryKey: ['olo-asset-subcategories-for-character-designer'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('asset_subcategory').select('id,category_id,key,label_en,label_fr,display_order').eq('is_active', true).order('display_order', { ascending: true });
       if (error) throw error;
       return data || [];
     },
@@ -312,7 +335,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
     queryFn: async () => {
       const { data, error } = await supabase
         .from('catalog_asset')
-        .select('id,title,description,featured_image,preview_images,category_id,creator_name,tags')
+        .select('id,title,description,featured_image,preview_images,category_id,subcategory_id,creator_name,tags')
         .eq('status', 'published')
         .order('title', { ascending: true })
         .limit(500);
@@ -641,7 +664,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
       <AnimatePresence>{picker && (
         <AssetPicker
           picker={picker} onClose={() => setPicker(null)} onSelect={selectAsset}
-          vaultAssets={vaultAssets} catalogAssets={catalogAssets} categories={categories}
+          vaultAssets={vaultAssets} catalogAssets={catalogAssets} categories={categories} subcategories={subcategories}
           loadingCatalog={loadingCatalog} catalogError={catalogError}
           onManageVault={() => { setPicker(null); setVaultOpen(true); }}
           embedded={embedded}
