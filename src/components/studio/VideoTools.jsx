@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Film, X, Loader2, Type, CheckCircle2, Image as ImageIcon, Sparkles, Upload, Video, Play, Folder } from 'lucide-react';
+import { Film, X, Loader2, Type, CheckCircle2, Image as ImageIcon, Sparkles, Upload, Video, Play, Folder, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { toast } from 'sonner';
 import ProductionContextInfo from '@/components/ProductionContextInfo';
 import VaultPickerModal from '@/components/studio/VaultPickerModal';
@@ -26,6 +27,77 @@ const RESOLUTIONS = [
   { id: '720p', label: '720p', quality: 'HD' },
 ];
 
+const catalogImages = (asset) => [...new Set([
+  asset?.featured_image,
+  ...(Array.isArray(asset?.preview_images) ? asset.preview_images : []),
+].filter(Boolean))];
+
+function AiVideoAssetsShopPicker({ onSelect, onClose, embedded = false }) {
+  const [search, setSearch] = useState('');
+  const [assets, setAssets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    supabase
+      .from('catalog_asset')
+      .select('id,title,description,featured_image,preview_images,creator_name,tags')
+      .eq('status', 'published')
+      .order('title', { ascending: true })
+      .limit(500)
+      .then(({ data, error: loadError }) => {
+        if (!active) return;
+        if (loadError) throw loadError;
+        setAssets((data || []).filter((asset) => catalogImages(asset).length));
+        setError('');
+      })
+      .catch((loadError) => {
+        if (!active) return;
+        setAssets([]);
+        setError(loadError?.message || 'Assets Shop could not load.');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const term = search.trim().toLowerCase();
+  const filtered = assets.filter((asset) => {
+    if (!term) return true;
+    const tags = Array.isArray(asset.tags) ? asset.tags.join(' ') : String(asset.tags || '');
+    return `${asset.title || ''} ${asset.description || ''} ${asset.creator_name || ''} ${tags}`.toLowerCase().includes(term);
+  });
+
+  const frameClass = embedded
+    ? 'fixed top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)]'
+    : 'fixed inset-0';
+
+  return (
+    <motion.div className={`${frameClass} z-[99999] flex items-center justify-center bg-black/90 p-3 backdrop-blur-md`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+      <motion.div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[4px] border border-white/10 bg-[#17191d] shadow-2xl" initial={{ y: 20 }} animate={{ y: 0 }} exit={{ y: 20 }} onClick={(event) => event.stopPropagation()}>
+        <header className="flex items-center justify-between border-b border-white/10 p-5">
+          <div><p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#23c7be]">Assets Shop</p><h3 className="mt-1 text-xl font-black text-white">Choose an image reference</h3></div>
+          <button type="button" onClick={onClose} className="rounded-[3px] border border-white/10 bg-white/[0.05] p-2 text-white"><X size={18} /></button>
+        </header>
+        <div className="border-b border-white/10 p-4"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Assets Shop" className="w-full rounded-[3px] border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" /></div>
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+          {loading ? <div className="flex min-h-56 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div> : error ? <div className="border border-red-400/20 bg-red-400/10 p-6 text-sm text-red-100">{error}</div> : filtered.length ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((asset) => catalogImages(asset).map((url, index) => (
+                <button key={`${asset.id}-${index}`} type="button" onClick={() => onSelect(url)} className="overflow-hidden rounded-[3px] border border-white/10 bg-black text-left hover:border-[#23c7be]/60">
+                  <div className="aspect-[4/3] bg-[#0b0d0f]"><img src={url} alt={asset.title || 'Asset'} className="h-full w-full object-contain" /></div>
+                  <div className="p-3"><p className="truncate text-xs font-black text-white">{asset.title || 'Untitled asset'}</p><p className="mt-1 text-[10px] text-white/35">Image {index + 1} of {catalogImages(asset).length}</p></div>
+                </button>
+              )))}
+            </div>
+          ) : <div className="flex min-h-56 items-center justify-center border border-dashed border-white/15 text-sm text-white/40">No matching image assets.</div>}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function VideoTools({ onComplete, onClose, recommendedTools = [], referenceMedia = [], productionMethod = null, block = null, character = null, initialMode = null, episodePageId, blockId, user, embedded = false }) {
   const showContext = productionMethod && block;
   const [mode, setMode] = useState(initialMode || 'text');
@@ -39,6 +111,7 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
   const [result, setResult] = useState(null);
   const [showVaultPicker, setShowVaultPicker] = useState(false);
   const [vaultPickerTarget, setVaultPickerTarget] = useState(null);
+  const [showAssetShopPicker, setShowAssetShopPicker] = useState(false);
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [userEmail, setUserEmail] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -182,7 +255,7 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
               {mode === 'image' && (
                 <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
                   <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><ImageIcon size={14} className="text-[#23c7be]" /> Image Reference</p>
-                  {imagePreview ? <div className="relative overflow-hidden rounded-[4px] border border-white/10 bg-black"><img src={imagePreview} alt="Preview" className="max-h-[430px] w-full object-contain" /><button onClick={() => setImagePreview(null)} className="absolute right-2 top-2 rounded-[3px] bg-black/75 p-2"><X size={15} /></button></div> : <div className="rounded-[4px] border border-dashed border-white/20 bg-black/20 p-8 text-center"><Upload size={30} className="mx-auto mb-3 text-[#23c7be]" /><p className="mb-3 text-sm text-white/70">Add an image reference</p><input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} className="hidden" id="image-upload" /><label htmlFor="image-upload" className="inline-block cursor-pointer rounded-[3px] bg-[#23c7be] px-4 py-2 text-sm font-black text-black">Choose File</label></div>}
+                  {imagePreview ? <div className="relative overflow-hidden rounded-[4px] border border-white/10 bg-black"><img src={imagePreview} alt="Preview" className="max-h-[430px] w-full object-contain" /><button onClick={() => setImagePreview(null)} className="absolute right-2 top-2 rounded-[3px] bg-black/75 p-2"><X size={15} /></button></div> : <div className="rounded-[4px] border border-dashed border-white/20 bg-black/20 p-8 text-center"><Upload size={30} className="mx-auto mb-3 text-[#23c7be]" /><p className="mb-3 text-sm text-white/70">Add an image reference</p><input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} className="hidden" id="image-upload" /><div className="flex flex-wrap justify-center gap-2"><label htmlFor="image-upload" className="inline-flex cursor-pointer items-center gap-2 rounded-[3px] bg-[#23c7be] px-4 py-2 text-sm font-black text-black"><Upload size={14} /> Upload</label><button type="button" onClick={() => { setVaultPickerTarget('image'); setShowVaultPicker(true); }} className="inline-flex items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-white"><Folder size={14} /> Vault</button><button type="button" onClick={() => setShowAssetShopPicker(true)} className="inline-flex items-center gap-2 rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 px-4 py-2 text-sm font-bold text-[#8ee9e4]"><ShoppingBag size={14} /> Assets Shop</button></div></div>}
                 </section>
               )}
 
@@ -190,7 +263,7 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
                 <div className="space-y-4">
                   <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
                     <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><ImageIcon size={14} className="text-[#23c7be]" /> Subject Image <span className="normal-case font-normal">(optional if supported by the selected model)</span></p>
-                    {imagePreview ? <div className="relative overflow-hidden rounded-[4px] border border-white/10 bg-black"><img src={imagePreview} alt="Preview" className="max-h-[330px] w-full object-contain" /><button onClick={() => setImagePreview(null)} className="absolute right-2 top-2 rounded-[3px] bg-black/75 p-2"><X size={15} /></button></div> : <div className="rounded-[4px] border border-dashed border-white/20 bg-black/20 p-6 text-center"><ImageIcon size={28} className="mx-auto mb-3 text-[#23c7be]" /><p className="mb-3 text-sm text-white/55">Add an image or pick from Vault</p><div className="flex justify-center gap-2"><input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} className="hidden" id="image-upload-vref" /><label htmlFor="image-upload-vref" className="inline-flex cursor-pointer items-center gap-2 rounded-[3px] bg-[#23c7be] px-4 py-2 text-sm font-black text-black"><Upload size={14} /> Upload</label><button onClick={() => { setVaultPickerTarget('image'); setShowVaultPicker(true); }} className="inline-flex items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-white"><Folder size={14} /> Vault</button></div></div>}
+                    {imagePreview ? <div className="relative overflow-hidden rounded-[4px] border border-white/10 bg-black"><img src={imagePreview} alt="Preview" className="max-h-[330px] w-full object-contain" /><button onClick={() => setImagePreview(null)} className="absolute right-2 top-2 rounded-[3px] bg-black/75 p-2"><X size={15} /></button></div> : <div className="rounded-[4px] border border-dashed border-white/20 bg-black/20 p-6 text-center"><ImageIcon size={28} className="mx-auto mb-3 text-[#23c7be]" /><p className="mb-3 text-sm text-white/55">Add a subject image</p><div className="flex flex-wrap justify-center gap-2"><input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} className="hidden" id="image-upload-vref" /><label htmlFor="image-upload-vref" className="inline-flex cursor-pointer items-center gap-2 rounded-[3px] bg-[#23c7be] px-4 py-2 text-sm font-black text-black"><Upload size={14} /> Upload</label><button type="button" onClick={() => { setVaultPickerTarget('image'); setShowVaultPicker(true); }} className="inline-flex items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-white"><Folder size={14} /> Vault</button><button type="button" onClick={() => setShowAssetShopPicker(true)} className="inline-flex items-center gap-2 rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 px-4 py-2 text-sm font-bold text-[#8ee9e4]"><ShoppingBag size={14} /> Assets Shop</button></div></div>}
                   </section>
 
                   <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
@@ -228,7 +301,8 @@ export default function VideoTools({ onComplete, onClose, recommendedTools = [],
         </div>
 
         {showSaveVault && <SaveToVaultModal userEmail={user?.email} imageUrl={result} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={handleVaultSaved} />}
-        {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} onSelect={(url) => { if (vaultPickerTarget === 'video') setVideoPreview(url); else setImagePreview(url); setShowVaultPicker(false); setVaultPickerTarget(null); }} onClose={() => { setShowVaultPicker(false); setVaultPickerTarget(null); }} />}
+        {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} onSelect={(url) => { if (vaultPickerTarget === 'video') setVideoPreview(url); else setImagePreview(url); setShowVaultPicker(false); setVaultPickerTarget(null); }} onClose={() => { setShowVaultPicker(false); setVaultPickerTarget(null); }} embedded={embedded} />}
+        {showAssetShopPicker && <AiVideoAssetsShopPicker embedded={embedded} onSelect={(url) => { setImagePreview(url); setShowAssetShopPicker(false); }} onClose={() => setShowAssetShopPicker(false)} />}
       </motion.div>
     </div>
   );
