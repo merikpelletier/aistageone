@@ -10,18 +10,30 @@ Deno.serve(async (req) => {
     }
 
     const { dossierId, rating } = await req.json();
+    const numericRating = Number(rating);
 
-    if (!dossierId || !rating || rating < 1 || rating > 5) {
+    if (!dossierId || !Number.isFinite(numericRating) || numericRating < 1 || numericRating > 5) {
       return Response.json({ error: 'Invalid dossierId or rating' }, { status: 400 });
     }
 
-    await base44.entities.DossierRating.create({
+    const existing = await base44.entities.DossierRating.filter({
       dossier_id: dossierId,
       user_email: user.email,
-      rating
-    });
+    }, '-created_date');
 
-    return Response.json({ success: true });
+    if (existing.length > 0) {
+      await base44.entities.DossierRating.update(existing[0].id, {
+        rating: numericRating,
+      });
+    } else {
+      await base44.entities.DossierRating.create({
+        dossier_id: dossierId,
+        user_email: user.email,
+        rating: numericRating,
+      });
+    }
+
+    return Response.json({ success: true, rating: numericRating });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
