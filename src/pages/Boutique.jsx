@@ -80,7 +80,7 @@ export default function Boutique() {
     products.find(product => product.product_type === type && product.image_url)?.image_url || '';
 
   const renderProductCards = (items) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 gap-5 lg:gap-4">
       {items.map((product, idx) => (
         <Link
           key={product.id}
@@ -102,14 +102,14 @@ export default function Boutique() {
                 />
               </div>
             )}
-            <div className="p-4">
-              <p className="text-white/45 text-[11px] uppercase tracking-[0.18em] mb-2">
+            <div className="p-4 lg:p-3">
+              <p className="text-white/45 text-[11px] uppercase tracking-[0.18em] mb-2 lg:text-[9px] lg:mb-1">
                 {product.product_type || 'Gift Shop'}
               </p>
-              <h3 className="text-white text-base font-light leading-snug">
+              <h3 className="text-white text-base font-light leading-snug lg:text-sm">
                 {product.name}
               </h3>
-              <div className="mt-3 text-white text-lg font-light">{product.price}</div>
+              <div className="mt-3 text-white text-lg font-light lg:mt-2 lg:text-base">{product.price}</div>
             </div>
           </motion.article>
         </Link>
@@ -131,17 +131,17 @@ export default function Boutique() {
 
   return (
     <div className="min-h-screen bg-black text-white pb-24">
-      <header className="px-6 pt-6 pb-5 flex items-center justify-between border-b border-white/10">
+      <header className="px-6 pt-6 pb-5 flex items-center justify-between border-b border-white/10 lg:px-5 lg:pt-4 lg:pb-3">
         <div>
-          <p className="text-white/45 text-[11px] uppercase tracking-[0.28em]">AISTAGE.ONE</p>
-          <h1 className="text-2xl md:text-3xl font-extralight tracking-widest mt-1">Gift Shop</h1>
+          <p className="text-white/45 text-[11px] uppercase tracking-[0.28em] lg:text-[9px]">AISTAGE.ONE</p>
+          <h1 className="text-2xl md:text-3xl font-extralight tracking-widest mt-1 lg:text-2xl">Gift Shop</h1>
         </div>
         <Link to={createPageUrl('Cart')}>
           <Button
             variant="outline"
-            className="border-white/20 text-white bg-neutral-900 hover:bg-neutral-800 relative"
+            className="border-white/20 text-white bg-neutral-900 hover:bg-neutral-800 relative lg:h-9 lg:w-10 lg:p-0"
           >
-            <ShoppingCart size={18} />
+            <ShoppingCart size={18} className="lg:w-4 lg:h-4" />
             {cartItemsCount > 0 && (
               <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs w-5 h-5 flex items-center justify-center">
                 {cartItemsCount}
@@ -151,8 +151,8 @@ export default function Boutique() {
         </Link>
       </header>
 
-      <section className="px-6 pt-6">
-        <div className="relative min-h-[360px] md:min-h-[460px] overflow-hidden border border-white/10 bg-neutral-950">
+      <section className="px-6 pt-6 lg:px-5 lg:pt-4">
+        <div className="relative min-h-[360px] md:min-h-[460px] overflow-hidden border border-white/10 bg-neutral-950 lg:min-h-[300px]">
           {heroImage && (
             <img
               src={heroImage}
@@ -161,27 +161,27 @@ export default function Boutique() {
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/15" />
-          <div className="relative z-10 min-h-[360px] md:min-h-[460px] flex items-center">
-            <div className="max-w-2xl p-8 md:p-12">
-              <p className="text-white/60 text-xs uppercase tracking-[0.24em] mb-4">
+          <div className="relative z-10 min-h-[360px] md:min-h-[460px] flex items-center lg:min-h-[300px]">
+            <div className="max-w-2xl p-8 md:p-12 lg:max-w-[560px] lg:p-7">
+              <p className="text-white/60 text-xs uppercase tracking-[0.24em] mb-4 lg:text-[10px] lg:mb-2">
                 Official merchandise
               </p>
-              <h2 className="text-4xl md:text-6xl font-extralight leading-[1.02] tracking-tight">
+              <h2 className="text-4xl md:text-6xl font-extralight leading-[1.02] tracking-tight lg:text-4xl lg:leading-[1.04]">
                 Wear the stories.
                 <br />
                 Collect the worlds.
               </h2>
-              <p className="text-white/75 text-sm md:text-base leading-relaxed mt-5 max-w-xl">
+              <p className="text-white/75 text-sm md:text-base leading-relaxed mt-5 max-w-xl lg:text-sm lg:mt-3 lg:max-w-[500px]">
                 Discover apparel, objects and collectibles inspired by AISTAGE.ONE series,
                 characters and original worlds.
               </p>
               <button
                 type="button"
                 onClick={scrollToCollections}
-                className="mt-7 h-11 px-5 bg-white text-black text-sm inline-flex items-center gap-2 hover:bg-white/90"
+                className="mt-7 h-11 px-5 bg-white text-black text-sm inline-flex items-center gap-2 hover:bg-white/90 lg:mt-5 lg:h-9 lg:px-4 lg:text-xs"
               >
                 Explore the shop
-                <ArrowRight size={16} />
+                <ArrowRight size={16} className="lg:w-3.5 lg:h-3.5" />
               </button>
             </div>
           </div>
@@ -189,11 +189,11 @@ export default function Boutique() {
       </section>
 
       {topLevelSections.length > 0 && (
-        <section id="shop-collections" className="px-6 pt-14">
-          <div className="flex items-end justify-between gap-4 mb-6">
+        <section id="shop-collections" className="px-6 pt-14 lg:px-5 lg:pt-9">
+          <div className="flex items-end justify-between gap-4 mb-6 lg:mb-4">
             <div>
-              <p className="text-white/40 text-xs uppercase tracking-[0.22em]">Stories & worlds</p>
-              <h2 className="text-2xl font-light mt-1">Shop by Collection</h2>
+              <p className="text-white/40 text-xs uppercase tracking-[0.22em] lg:text-[9px]">Stories & worlds</p>
+              <h2 className="text-2xl font-light mt-1 lg:text-lg">Shop by Collection</h2>
             </div>
             {activeCollectionId && (
               <button
@@ -206,7 +206,7 @@ export default function Boutique() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 lg:gap-4">
             {topLevelSections.map((section) => {
               const image = getCollectionImage(section);
               const productCount = getCollectionProducts(section.id).length;
@@ -219,7 +219,7 @@ export default function Boutique() {
                       activeCollectionId === section.id ? null : section.id
                     )
                   }
-                  className={`relative text-left min-h-[220px] overflow-hidden border transition-colors ${
+                  className={`relative text-left min-h-[220px] lg:min-h-[165px] overflow-hidden border transition-colors ${
                     activeCollectionId === section.id
                       ? 'border-white'
                       : 'border-white/10 hover:border-white/35'
@@ -233,9 +233,9 @@ export default function Boutique() {
                     />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-transparent" />
-                  <div className="relative z-10 min-h-[220px] flex flex-col justify-end p-5">
-                    <h3 className="text-xl font-light">{section.name}</h3>
-                    <p className="text-white/60 text-xs mt-1">
+                  <div className="relative z-10 min-h-[220px] lg:min-h-[165px] flex flex-col justify-end p-5 lg:p-4">
+                    <h3 className="text-xl font-light lg:text-base">{section.name}</h3>
+                    <p className="text-white/60 text-xs mt-1 lg:text-[10px]">
                       {productCount} {productCount === 1 ? 'product' : 'products'}
                     </p>
                   </div>
@@ -245,11 +245,11 @@ export default function Boutique() {
           </div>
 
           {activeCollectionId && (
-            <div id="collection-products" className="mt-8 scroll-mt-20 border-t border-white/10 pt-8">
-              <div className="mb-5 flex items-center justify-between gap-4">
+            <div id="collection-products" className="mt-8 scroll-mt-20 border-t border-white/10 pt-8 lg:mt-6 lg:pt-6">
+              <div className="mb-5 flex items-center justify-between gap-4 lg:mb-4">
                 <div>
-                  <p className="text-white/40 text-xs uppercase tracking-[0.22em]">Collection</p>
-                  <h3 className="mt-1 text-xl font-light">
+                  <p className="text-white/40 text-xs uppercase tracking-[0.22em] lg:text-[9px]">Collection</p>
+                  <h3 className="mt-1 text-xl font-light lg:text-lg">
                     {topLevelSections.find((section) => section.id === activeCollectionId)?.name || 'Products'}
                   </h3>
                 </div>
@@ -264,11 +264,11 @@ export default function Boutique() {
       )}
 
       {productTypes.length > 0 && (
-        <section className="px-6 pt-14">
-          <div className="flex items-end justify-between gap-4 mb-6">
+        <section className="px-6 pt-14 lg:px-5 lg:pt-9">
+          <div className="flex items-end justify-between gap-4 mb-6 lg:mb-4">
             <div>
-              <p className="text-white/40 text-xs uppercase tracking-[0.22em]">Browse the shop</p>
-              <h2 className="text-2xl font-light mt-1">Shop by Product Type</h2>
+              <p className="text-white/40 text-xs uppercase tracking-[0.22em] lg:text-[9px]">Browse the shop</p>
+              <h2 className="text-2xl font-light mt-1 lg:text-lg">Shop by Product Type</h2>
             </div>
             {activeProductType && (
               <button
@@ -281,7 +281,7 @@ export default function Boutique() {
             )}
           </div>
 
-          <div className="flex gap-4 overflow-x-auto pb-3">
+          <div className="flex gap-4 overflow-x-auto pb-3 lg:gap-3">
             {productTypes.map((type) => {
               const image = getTypeImage(type);
               return (
@@ -289,7 +289,7 @@ export default function Boutique() {
                   type="button"
                   key={type}
                   onClick={() => setActiveProductType(activeProductType === type ? null : type)}
-                  className={`relative shrink-0 w-[210px] h-[170px] overflow-hidden border text-left ${
+                  className={`relative shrink-0 w-[210px] h-[170px] lg:w-[175px] lg:h-[125px] overflow-hidden border text-left ${
                     activeProductType === type
                       ? 'border-white'
                       : 'border-white/10 hover:border-white/35'
@@ -299,8 +299,8 @@ export default function Boutique() {
                     <img src={image} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
-                  <div className="relative z-10 h-full flex items-end p-4">
-                    <span className="text-base font-light">{type}</span>
+                  <div className="relative z-10 h-full flex items-end p-4 lg:p-3">
+                    <span className="text-base font-light lg:text-sm">{type}</span>
                   </div>
                 </button>
               );
@@ -308,11 +308,11 @@ export default function Boutique() {
           </div>
 
           {activeProductType && (
-            <div id="product-type-products" className="mt-6 scroll-mt-20 border-t border-white/10 pt-8">
-              <div className="mb-5 flex items-center justify-between gap-4">
+            <div id="product-type-products" className="mt-6 scroll-mt-20 border-t border-white/10 pt-8 lg:pt-6">
+              <div className="mb-5 flex items-center justify-between gap-4 lg:mb-4">
                 <div>
-                  <p className="text-white/40 text-xs uppercase tracking-[0.22em]">Product type</p>
-                  <h3 className="mt-1 text-xl font-light">{activeProductType}</h3>
+                  <p className="text-white/40 text-xs uppercase tracking-[0.22em] lg:text-[9px]">Product type</p>
+                  <h3 className="mt-1 text-xl font-light lg:text-lg">{activeProductType}</h3>
                 </div>
                 <span className="text-xs text-white/45">
                   {products.filter(product => product.product_type === activeProductType).length} {products.filter(product => product.product_type === activeProductType).length === 1 ? 'product' : 'products'}
@@ -327,30 +327,30 @@ export default function Boutique() {
       )}
 
       {featuredProducts.length > 0 && (
-        <section className="px-6 pt-14">
-          <div className="mb-6">
-            <p className="text-white/40 text-xs uppercase tracking-[0.22em]">Curated for the shop</p>
-            <h2 className="text-2xl font-light mt-1">Featured Products</h2>
+        <section className="px-6 pt-14 lg:px-5 lg:pt-9">
+          <div className="mb-6 lg:mb-4">
+            <p className="text-white/40 text-xs uppercase tracking-[0.22em] lg:text-[9px]">Curated for the shop</p>
+            <h2 className="text-2xl font-light mt-1 lg:text-lg">Featured Products</h2>
           </div>
           {renderProductCards(featuredProducts)}
         </section>
       )}
 
       {popularProducts.length > 0 && products.length > 4 && (
-        <section className="px-6 pt-14">
-          <div className="mb-6">
-            <p className="text-white/40 text-xs uppercase tracking-[0.22em]">More to discover</p>
-            <h2 className="text-2xl font-light mt-1">Popular Picks</h2>
+        <section className="px-6 pt-14 lg:px-5 lg:pt-9">
+          <div className="mb-6 lg:mb-4">
+            <p className="text-white/40 text-xs uppercase tracking-[0.22em] lg:text-[9px]">More to discover</p>
+            <h2 className="text-2xl font-light mt-1 lg:text-lg">Popular Picks</h2>
           </div>
           {renderProductCards(popularProducts)}
         </section>
       )}
 
       {newArrivals.length > 0 && (
-        <section className="px-6 pt-14">
-          <div className="mb-6">
-            <p className="text-white/40 text-xs uppercase tracking-[0.22em]">Recently added</p>
-            <h2 className="text-2xl font-light mt-1">New Arrivals</h2>
+        <section className="px-6 pt-14 lg:px-5 lg:pt-9">
+          <div className="mb-6 lg:mb-4">
+            <p className="text-white/40 text-xs uppercase tracking-[0.22em] lg:text-[9px]">Recently added</p>
+            <h2 className="text-2xl font-light mt-1 lg:text-lg">New Arrivals</h2>
           </div>
           {renderProductCards(newArrivals)}
         </section>
