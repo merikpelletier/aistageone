@@ -66,7 +66,7 @@ function AssetsShopPicker({ onSelect, onClose }) {
   }, [assets, search]);
 
   return (
-    <motion.div className="fixed inset-0 z-[230] flex items-center justify-center bg-black/90 p-3 backdrop-blur-md" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+    <motion.div className="fixed top-14 right-0 bottom-[64px] left-0 z-[230] flex items-center justify-center bg-black/90 p-3 backdrop-blur-md lg:bottom-0 lg:left-[var(--studio-toolbar-width)]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden border border-white/10 bg-[#17191d]" initial={{ y: 20 }} animate={{ y: 0 }} exit={{ y: 20 }} onClick={event => event.stopPropagation()}>
         <header className="flex items-center justify-between border-b border-white/10 p-5">
           <div><p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#23c7be]">Assets Shop</p><h3 className="mt-1 text-xl font-black text-white">Choose a composition element</h3></div>
@@ -172,7 +172,7 @@ export default function CompositionElementsPanel({ userEmail, elements, setEleme
       )}
 
       <AnimatePresence>
-        {vaultOpen && <VaultPickerModal userEmail={userEmail} onSelect={url => { addElement(url); setVaultOpen(false); }} onClose={() => setVaultOpen(false)} />}
+        {vaultOpen && <VaultPickerModal userEmail={userEmail} onSelect={url => { addElement(url); setVaultOpen(false); }} onClose={() => setVaultOpen(false)} embedded />}
         {shopOpen && <AssetsShopPicker onSelect={(url, title) => { addElement(url, title); setShopOpen(false); }} onClose={() => setShopOpen(false)} />}
       </AnimatePresence>
     </section>
