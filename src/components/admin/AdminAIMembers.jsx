@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { AI_MEMBER_COHORT } from './aiMemberCohort';
 import MerchantInlineTools from './MerchantInlineTools';
+import AIMemberAutomationPlanner from './AIMemberAutomationPlanner';
 
 const MEMBER_TYPES = ['creator', 'talent', 'media', 'sponsor', 'merchant', 'producer', 'social'];
 const ACTIVITY_TYPES = ['publish', 'comment', 'like', 'follow', 'sponsor', 'sell', 'collaborate', 'system'];
@@ -149,6 +150,8 @@ export default function AdminAIMembers() {
 
   const associateDossier = (dossier, aiMemberId) => updateDossier.mutate({ id: dossier.id, data: { ai_member_id: aiMemberId === '__none__' ? null : aiMemberId } });
 
+  const updateAutomation = (id, data) => updateMember.mutate({ id, data });
+
   return (
     <div className="space-y-5 text-white">
       <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 border-b border-white/10 pb-4">
@@ -204,7 +207,7 @@ export default function AdminAIMembers() {
         <div className="space-y-2">{relationships.map(r => <div key={r.id} className="border border-white/10 bg-neutral-950 p-3 flex items-center gap-3"><Link2 size={14} className="text-white/40" /><div className="flex-1"><p className="text-sm">{memberName(members, r.source_member_id)} <span className="text-teal-300">{r.relationship_type}</span> {memberName(members, r.target_member_id)}</p>{r.notes && <p className="text-xs text-white/45 mt-1">{r.notes}</p>}</div><button onClick={() => deleteRelationship.mutate(r.id)} className="text-white/35 hover:text-red-400"><Trash2 size={14} /></button></div>)}</div>
       </div>}
 
-      {tab === 'automation' && <div className="space-y-3">{members.map(member => <div key={member.id} className="border border-white/10 bg-neutral-950 p-4 flex flex-col md:flex-row md:items-center gap-4"><div className="flex-1"><p className="font-medium">{member.display_name}</p><p className="text-xs text-white/45">@{member.handle} · {member.member_type}</p></div><select value={member.activity_frequency || 'manual'} onChange={e => updateMember.mutate({ id: member.id, data: { activity_frequency: e.target.value } })} className="input-ai md:w-40"><option>manual</option><option>low</option><option>normal</option><option>high</option></select><button onClick={() => updateMember.mutate({ id: member.id, data: { automation_enabled: !member.automation_enabled } })} className={`px-3 py-2 text-xs border ${member.automation_enabled ? 'bg-teal-400 text-black border-teal-400' : 'border-white/20 text-white'}`}>{member.automation_enabled ? 'Automation ON' : 'Automation OFF'}</button><button onClick={() => updateMember.mutate({ id: member.id, data: { is_active: !member.is_active } })} className="px-3 py-2 text-xs border border-white/20">{member.is_active ? 'Active' : 'Inactive'}</button></div>)}</div>}
+      {tab === 'automation' && <AIMemberAutomationPlanner members={members} onUpdate={updateAutomation} />}
 
       {editing && <div className="fixed inset-0 z-[100] bg-black/80 flex items-start justify-center overflow-y-auto p-4 md:p-8"><div className="w-full max-w-5xl bg-neutral-950 border border-white/20 p-5 md:p-7 my-4">
         <div className="flex items-start justify-between gap-4 mb-5"><div><h3 className="text-xl font-light">{editing === 'new' ? 'New AI Member' : 'Edit AI Member'}</h3><p className="text-xs text-teal-300 mt-1">Same public profile tools as a regular member, plus AI behavior controls.</p></div><button onClick={() => setEditing(null)} className="text-white/60 hover:text-white"><X size={20} /></button></div>
