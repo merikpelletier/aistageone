@@ -22,6 +22,21 @@
       "type": "string",
       "description": "Professional title or role"
     },
+    "member_type": {
+      "type": "string",
+      "description": "Directory member type such as Author, Brand, Producer or Specialist"
+    },
+    "location_label": {
+      "type": "string",
+      "description": "Public location label such as city, region or country"
+    },
+    "interests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Public interests used for member discovery"
+    },
     "images": {
       "type": "array",
       "items": {
