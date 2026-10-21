@@ -15,7 +15,7 @@ const folderColors = {
   pink: 'bg-pink-500/20 border-pink-500/40 text-pink-400',
 };
 
-export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUpload = false }) {
+export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUpload = false, embedded = false }) {
   const queryClient = useQueryClient();
   const [expandedFolders, setExpandedFolders] = useState({});
   const [uploading, setUploading] = useState(false);
@@ -80,9 +80,13 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
     setExpandedFolders(prev => ({ ...prev, [folderId]: !prev[folderId] }));
   };
 
+  const frameClass = embedded
+    ? 'fixed top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)]'
+    : 'fixed inset-0';
+
   if (foldersLoading || assetsLoading) {
     return createPortal(
-      <div className="fixed inset-0 z-[99999] bg-black flex items-center justify-center">
+      <div className={`${frameClass} z-[99999] bg-black flex items-center justify-center`}>
         <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
       </div>,
       document.body,
@@ -90,7 +94,7 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
   }
 
   const picker = (
-    <div className="fixed inset-0 z-[99999] bg-black flex flex-col text-white">
+    <div className={`${frameClass} z-[99999] bg-black flex flex-col text-white`}>
       {/* Header */}
       <div className="flex items-center justify-between gap-3 px-5 pt-10 pb-4 border-b border-white/10 flex-shrink-0">
         <h3 className="text-white text-sm font-medium tracking-widest uppercase">Pick from Vault</h3>
