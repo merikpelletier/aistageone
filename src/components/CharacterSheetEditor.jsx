@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import VaultDrawer from '@/components/VaultDrawer';
+import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
@@ -210,22 +211,22 @@ const PROMPT_TEMPLATES = [
   {
     key: 'face_swap',
     label: 'Face Swap',
-    prompt: 'Replace the character\u2019s face with the face from the STEP 3 reference image.\nUse the STEP 3 face reference as the new facial identity.\nDo not preserve the original face from the character sheet.\nKeep the original body, pose, age, clothing, proportions, and background unchanged.\nApply the new face consistently across all views.',
+    prompt: 'Replace the character’s face with the face from the STEP 3 reference image.\nUse the STEP 3 face reference as the new facial identity.\nDo not preserve the original face from the character sheet.\nKeep the original body, pose, age, clothing, proportions, and background unchanged.\nApply the new face consistently across all views.',
   },
   {
     key: 'wardrobe_change',
     label: 'Wardrobe Change',
-    prompt: 'Use the STEP 3 reference image as the clothing reference.\nKeep the character\u2019s identity, face, body, age, pose, and proportions unchanged.\nReplace only the clothing and related accessories.\nApply the new wardrobe consistently across all views.',
+    prompt: 'Use the STEP 3 reference image as the clothing reference.\nKeep the character’s identity, face, body, age, pose, and proportions unchanged.\nReplace only the clothing and related accessories.\nApply the new wardrobe consistently across all views.',
   },
   {
     key: 'hair_change',
     label: 'Hair Change',
-    prompt: 'Use the STEP 3 reference image as the hairstyle reference.\nKeep the character\u2019s face, body, age, clothing, pose, and proportions unchanged.\nChange only the hairstyle and hair color.\nApply the new hairstyle consistently across all views.',
+    prompt: 'Use the STEP 3 reference image as the hairstyle reference.\nKeep the character’s face, body, age, clothing, pose, and proportions unchanged.\nChange only the hairstyle and hair color.\nApply the new hairstyle consistently across all views.',
   },
   {
     key: 'full_look',
     label: 'Full Look Transformation',
-    prompt: 'Use the STEP 3 reference image as the visual design reference.\nPreserve the character\u2019s core identity and body proportions.\nApply the reference look, styling, wardrobe, hair, and visual details consistently across all views.',
+    prompt: 'Use the STEP 3 reference image as the visual design reference.\nPreserve the character’s core identity and body proportions.\nApply the reference look, styling, wardrobe, hair, and visual details consistently across all views.',
   },
 ];
 
@@ -272,6 +273,8 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const [saving, setSaving] = useState(false);
   const [picker, setPicker] = useState(null);
   const [vaultOpen, setVaultOpen] = useState(false);
+  const [showSaveVault, setShowSaveVault] = useState(false);
+  const [savedCharacterId, setSavedCharacterId] = useState(sheet?.id || null);
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
   const pricingInput = {
@@ -494,30 +497,31 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
       const savedCharacter = sheet?.id
         ? await base44.entities.CharacterSheet.update(sheet.id, data)
         : await base44.entities.CharacterSheet.create(data);
-      const existingVaultAsset = vaultAssets.find((asset) => asset.url === preview && asset.asset_category === 'character');
-      const primarySourceId = photoSources.front?.source_asset_id || photoSources.portrait?.source_asset_id || '';
-      const vaultData = {
-        name: name.trim(),
-        actor_name: name.trim(),
-        url: preview,
-        media_type: 'image',
-        asset_category: 'character',
-        tags: data.character_traits,
-        aspect_ratio: generatedSheet ? aspectRatio : undefined,
-        source_asset_id: generatedSheet ? savedCharacter.id : primarySourceId,
-      };
-      if (existingVaultAsset) await base44.entities.VaultAsset.update(existingVaultAsset.id, vaultData);
-      else await base44.entities.VaultAsset.create({ user_email: userEmail, ...vaultData });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['characterSheet', userEmail] }),
-        queryClient.invalidateQueries({ queryKey: ['vaultAssetsForCharacterDesigner', userEmail] }),
-      ]);
-      toast.success('Character saved to your Vault');
-      onClose();
+      setSavedCharacterId(savedCharacter?.id || sheet?.id || null);
+      await queryClient.invalidateQueries({ queryKey: ['characterSheet', userEmail] });
+      setShowSaveVault(true);
     } catch (error) {
       toast.error(error.message || 'Character could not be saved');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleVaultSaved = async (savedAsset) => {
+    try {
+      const primarySourceId = photoSources.front?.source_asset_id || photoSources.portrait?.source_asset_id || '';
+      await base44.entities.VaultAsset.update(savedAsset.id, {
+        actor_name: name.trim(),
+        asset_category: 'character',
+        tags: traits.split(',').map((value) => value.trim()).filter(Boolean),
+        aspect_ratio: generatedSheet ? aspectRatio : undefined,
+        source_asset_id: generatedSheet ? savedCharacterId : primarySourceId,
+      });
+      await queryClient.invalidateQueries({ queryKey: ['vaultAssetsForCharacterDesigner', userEmail] });
+      setShowSaveVault(false);
+      toast.success('Character saved to your Vault');
+    } catch (error) {
+      toast.error(error.message || 'Character could not be finalized in your Vault');
     }
   };
 
@@ -654,9 +658,9 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
 
       <footer className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-black/90 px-4 py-4 backdrop-blur-xl sm:px-7">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-          <p className="hidden text-sm text-white/45 sm:block">The character and its final visual will be available in your Vault.</p>
+          <p className="hidden text-sm text-white/45 sm:block">Choose the Vault folder when you save. Actor stays open after saving.</p>
           <button type="button" onClick={save} disabled={saving || !name.trim() || !preview} className="ml-auto flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-300 to-yellow-400 px-6 py-3.5 font-black text-black disabled:cursor-not-allowed disabled:opacity-35">
-            {saving ? <Loader2 size={18} className="animate-spin" /> : <Bookmark size={18} />}{saving ? 'Saving...' : 'Save character to Vault'}<ArrowRight size={17} />
+            {saving ? <Loader2 size={18} className="animate-spin" /> : <Bookmark size={18} />}{saving ? 'Preparing...' : 'Save character to Vault'}<ArrowRight size={17} />
           </button>
         </div>
       </footer>
@@ -671,6 +675,15 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
         />
       )}</AnimatePresence>
       <VaultDrawer open={vaultOpen} onClose={() => { setVaultOpen(false); refetchVault(); }} />
+      {showSaveVault && preview && (
+        <SaveToVaultModal
+          userEmail={userEmail}
+          imageUrl={preview}
+          mediaType="image"
+          onSaved={handleVaultSaved}
+          onClose={() => setShowSaveVault(false)}
+        />
+      )}
     </motion.div>,
     document.body,
   );
