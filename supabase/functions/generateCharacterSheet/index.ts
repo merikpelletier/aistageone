@@ -36,17 +36,21 @@ serveWithCors(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { source_mode, reference_sheet_url, angle_urls, image_urls, costume_url, aspect_ratio, prompt_override, reference_layout_url, accessories, replace_preset, model_key } = await req.json();
+    const { source_mode, reference_sheet_url, angle_urls, image_urls, costume_url, look_reference_urls, aspect_ratio, prompt_override, reference_layout_url, accessories, replace_preset, model_key } = await req.json();
     const ratio = aspect_ratio || DEFAULT_RATIO;
     const { dims, resolvedRatio } = resolveDims(ratio);
 
     const TOKEN = Deno.env.get('REPLICATE_API_TOKEN');
     if (!TOKEN) throw new Error('REPLICATE_API_TOKEN not set');
 
+    const lookReferences = Array.isArray(look_reference_urls) && look_reference_urls.length
+      ? look_reference_urls.filter(Boolean)
+      : [costume_url].filter(Boolean);
+
     const dynamicQuote = await quoteAiService(
       billing.service,
       'generateCharacterSheet',
-      { aspect_ratio: ratio, prompt: prompt_override || '', image_urls, angle_urls, reference_sheet_url, costume_url },
+      { aspect_ratio: ratio, prompt: prompt_override || '', image_urls, angle_urls, reference_sheet_url, costume_url, look_reference_urls: lookReferences },
       model_key || null,
       'image'
     );
@@ -63,40 +67,50 @@ serveWithCors(async (req) => {
       ? [reference_sheet_url || (image_urls && image_urls[0])].filter(Boolean)
       : (Array.isArray(angle_urls) && angle_urls.length ? angle_urls : image_urls || []).filter(Boolean);
     if (!sourceImages.length) return Response.json({ error: 'Character source required' }, { status: 400 });
-    const imageInput = [...sourceImages];
-    if (costume_url) imageInput.push(costume_url);
 
-    const accessoriesText = accessories ? ` Include ${accessories}.` : '';
+    const imageInput = [...sourceImages, ...lookReferences];
+    const firstLookImageNumber = sourceImages.length + 1;
+    const lookMapText = lookReferences.length
+      ? lookReferences.map((_, index) => `Look Reference ${index + 1} = Image ${firstLookImageNumber + index}.`).join(' ')
+      : '';
+    const lookFusionInstruction = lookReferences.length
+      ? `The supplied look references are styling sources, not identity sources. ${lookMapText} Extract the requested clothing, footwear, hair, accessories, makeup, materials, colors, and styling details from these look references and combine them into ONE coherent final look on the base character. Do not copy the people, faces, bodies, poses, or backgrounds from the look-reference images. Do not average, morph, or randomly blend the references. Treat each look reference as a separate source of specific design elements. Follow the user's styling instructions exactly when they identify which element should come from which Look Reference. When an element is not explicitly assigned, use the distinct compatible design information visible in the supplied look references without replacing the base character's identity.`
+      : '';
+
+    const accessoriesText = accessories ? ` User styling instructions: ${accessories}` : '';
     const overrideText = prompt_override ? ` ${prompt_override}` : '';
 
-    // Custom mode: the user wrote their own full prompt — replace the preset entirely.
+    // Custom mode: keep the user's custom instruction, but still identify the image roles so multiple look references are usable.
     let prompt;
     if (replace_preset && prompt_override && prompt_override.trim()) {
-      prompt = prompt_override.trim() + accessoriesText;
+      const identityMap = sourceMode === 'sheet'
+        ? 'Image 1 is the base character reference sheet and the ONLY identity source.'
+        : `Images 1 through ${sourceImages.length} are identity references of the SAME base character.`;
+      prompt = `${identityMap} ${lookFusionInstruction} User instruction: ${prompt_override.trim()}${accessoriesText}`;
     } else if (sourceMode === 'angles') {
-      const costumeInstruction = costume_url
-        ? `The last supplied image is the costume reference. Apply that complete outfit consistently to every generated view, preserving its colors, fabrics, cut, layers, accessories, and construction details.`
+      const lookInstruction = lookReferences.length
+        ? lookFusionInstruction
         : 'Preserve the clothing shown in the supplied character angles unless the user instruction requests a change.';
-      prompt = `The first ${sourceImages.length} supplied image${sourceImages.length === 1 ? ' is' : 's are'} separate visual reference${sourceImages.length === 1 ? '' : 's'} of the same character. Use all of them together to preserve one exact identity, face, skin tone, hair, age, body proportions, and recognizable features. ${costumeInstruction}${accessoriesText}
+      prompt = `Images 1 through ${sourceImages.length} are separate visual references of the SAME base character. Use all of these identity images together to preserve one exact identity: same face, skin tone, hair, age, body proportions, and recognizable features. Never take identity from any later look-reference image. ${lookInstruction}${accessoriesText}
 
 Create one clean ${resolvedRatio} character reference sheet composed of five consistent views: full-body front, full-body side, full-body back, portrait front, and portrait profile. Use a seamless light grey studio background, even professional lighting, photorealistic rendering, centered subjects, and no text, labels, or borders.${overrideText}`;
-    } else if (costume_url) {
-      prompt = `Image A is the actor reference sheet and also the layout/composition reference. Preserve the same person's exact identity across all views: same face, skin tone, hair texture and hairstyle, age, body proportions, and overall appearance. Preserve the same reference-sheet structure, panel disposition, framing, and relative image sizes as Image A.
+    } else if (lookReferences.length) {
+      prompt = `Image 1 is the base actor reference sheet, the layout/composition reference, and the ONLY identity source. Preserve the same person's exact identity across all views: same face, skin tone, hair texture, age, body proportions, and overall recognizable appearance. Preserve the same reference-sheet structure, panel disposition, framing, and relative image sizes as Image 1. Never replace the base person's identity with a person shown in any look reference.
 
-Image B is the costume reference. Dress the actor from Image A in the outfit from Image B. Reproduce the costume design as closely as possible, including all colors, fabrics, cuts, panels, layers, sheer inserts, piping, translucent details, straps, buckles, rings, hardware, and structural elements visible in the reference.${accessoriesText}
+${lookFusionInstruction}${accessoriesText}
 
-Generate a clean ${resolvedRatio} character reference sheet with five vertical panels, keeping the same arrangement and proportions as Image A:
+Generate a clean ${resolvedRatio} character reference sheet with five vertical panels, keeping the same arrangement and proportions as Image 1:
 1. full-body front view
 2. full-body side view
 3. full-body back view
 4. portrait front view
 5. portrait profile view
 
-Use a seamless light grey studio background, even professional lighting, photorealistic rendering, and consistent appearance across all five views. Keep the subject centered in each panel and preserve the clean reference-sheet look. No text, no labels, no borders.${overrideText}`;
+The SAME fused final look must appear consistently in every applicable view. Use a seamless light grey studio background, even professional lighting, photorealistic rendering, and consistent appearance across all five views. Keep the subject centered in each panel and preserve the clean reference-sheet look. No text, no labels, no borders.${overrideText}`;
     } else {
-      prompt = `Image A is the actor reference sheet and also the layout/composition reference. Preserve the same person's exact identity across all views: same face, skin tone, hair texture and hairstyle, age, body proportions, and overall appearance. Preserve the same reference-sheet structure, panel disposition, framing, and relative image sizes as Image A.${accessoriesText}
+      prompt = `Image 1 is the actor reference sheet and also the layout/composition reference. Preserve the same person's exact identity across all views: same face, skin tone, hair texture and hairstyle, age, body proportions, and overall appearance. Preserve the same reference-sheet structure, panel disposition, framing, and relative image sizes as Image 1.${accessoriesText}
 
-Generate a clean ${resolvedRatio} character reference sheet with five vertical panels, keeping the same arrangement and proportions as Image A:
+Generate a clean ${resolvedRatio} character reference sheet with five vertical panels, keeping the same arrangement and proportions as Image 1:
 1. full-body front view
 2. full-body side view
 3. full-body back view
