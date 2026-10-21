@@ -1,0 +1,16 @@
+/* Set Designer only: keep its Vault and Assets Shop overlays inside the Studio workspace. */
+body:has(.set-generator-panel) .fixed.z-\[220\].inset-0,
+body:has(.set-generator-panel) .fixed.z-\[99999\].inset-0.bg-black {
+  top: 3.5rem;
+  right: 0;
+  bottom: 64px;
+  left: 0;
+}
+
+@media (min-width: 1024px) {
+  body:has(.set-generator-panel) .fixed.z-\[220\].inset-0,
+  body:has(.set-generator-panel) .fixed.z-\[99999\].inset-0.bg-black {
+    bottom: 0;
+    left: var(--studio-toolbar-width);
+  }
+}
