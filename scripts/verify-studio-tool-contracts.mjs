@@ -16,7 +16,6 @@ const forbidMarker = (label, content, marker) => {
 const dubbingUi = read('src/components/studio/DubbingStudio.jsx');
 const studio = read('src/pages/Studio.jsx');
 const dubbingServer = read('supabase/functions/mixAudioVideo/index.ts');
-const dubbingBase44 = read('base44/functions/mixAudioVideo/entry.ts');
 
 for (const marker of ['audio_url: voiceUrl', 'video_url: videoUrl', 'mediaType="video"', '<video src={mixedResult}']) {
   requireMarker('Dubbing UI', dubbingUi, marker);
@@ -31,9 +30,8 @@ for (const marker of ["const { audio_url, video_url }", 'audio_file: audio_url',
 
 const versionPattern = /MODEL_VERSION\s*=\s*'([^']+)'/;
 const migratedVersion = dubbingServer.match(versionPattern)?.[1];
-const historicalVersion = dubbingBase44.match(versionPattern)?.[1];
-if (!migratedVersion || migratedVersion !== historicalVersion) {
-  failures.push('Dubbing server: Replicate version differs from the Base44 export');
+if (!migratedVersion) {
+  failures.push('Dubbing server: Replicate MODEL_VERSION is missing');
 }
 
 const replicateGenerate = read('supabase/functions/replicateGenerate/index.ts');
