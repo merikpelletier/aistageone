@@ -6,7 +6,43 @@ import { motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
-const MEMBER_TYPES = ['creator', 'talent', 'media', 'sponsor', 'merchant', 'producer', 'social'];
+const MEMBER_TYPES = [
+  ['creator', 'Creator'],
+  ['author', 'Author / Writer'],
+  ['producer', 'Producer'],
+  ['brand', 'Brand'],
+  ['talent', 'Talent / Performer'],
+  ['media', 'Media'],
+  ['sponsor', 'Sponsor'],
+  ['merchant', 'Merchant'],
+  ['social', 'Social member'],
+];
+
+const INTEREST_OPTIONS = [
+  ['film', 'Film'],
+  ['series', 'Series'],
+  ['writing', 'Writing'],
+  ['directing', 'Directing'],
+  ['producing', 'Producing'],
+  ['acting', 'Acting'],
+  ['music', 'Music'],
+  ['fashion', 'Fashion'],
+  ['photography', 'Photography'],
+  ['animation', 'Animation'],
+  ['3d', '3D'],
+  ['ai', 'AI'],
+  ['vfx', 'VFX'],
+  ['games', 'Games'],
+  ['advertising', 'Advertising'],
+  ['brands', 'Brands'],
+  ['design', 'Design'],
+  ['documentary', 'Documentary'],
+  ['comedy', 'Comedy'],
+  ['horror', 'Horror'],
+  ['romance', 'Romance'],
+  ['action', 'Action'],
+  ['education', 'Education'],
+];
 
 export default function MemberProfileEditor({ profile, user, onClose }) {
   const [formData, setFormData] = useState({
@@ -14,6 +50,8 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
     bio: profile?.bio || '',
     title: profile?.title || '',
     member_type: profile?.member_type || 'creator',
+    location_label: profile?.location_label || '',
+    interests: Array.isArray(profile?.interests) ? profile.interests : [],
     links: profile?.links || [],
     avatar_url: profile?.avatar_url || '',
     images: profile?.images || [],
@@ -25,18 +63,41 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
   useEffect(() => {
     base44.auth.me().then(u => { if (u?.role === 'admin') setIsAdmin(true); }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    setFormData({
+      display_name: profile?.display_name || '',
+      bio: profile?.bio || '',
+      title: profile?.title || '',
+      member_type: profile?.member_type || 'creator',
+      location_label: profile?.location_label || '',
+      interests: Array.isArray(profile?.interests) ? profile.interests : [],
+      links: profile?.links || [],
+      avatar_url: profile?.avatar_url || '',
+      images: profile?.images || [],
+      custom_banner_url: profile?.custom_banner_url || '',
+      custom_banner_link: profile?.custom_banner_link || '',
+    });
+  }, [profile]);
+
   const [uploading, setUploading] = useState(false);
   const queryClient = useQueryClient();
 
   const saveMutation = useMutation({
     mutationFn: async (data) => {
+      const payload = {
+        ...data,
+        location_label: String(data.location_label || '').trim(),
+        interests: Array.isArray(data.interests) ? data.interests : [],
+      };
       if (profile?.id) {
-        return base44.entities.MemberProfile.update(profile.id, data);
+        return base44.entities.MemberProfile.update(profile.id, payload);
       }
-      return base44.entities.MemberProfile.create({ user_email: user.email, ...data });
+      return base44.entities.MemberProfile.create({ user_email: user.email, ...payload });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['memberProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['memberProfiles'] });
       onClose();
     },
   });
@@ -73,6 +134,15 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
     }
   };
 
+  const toggleInterest = (value) => {
+    setFormData(prev => ({
+      ...prev,
+      interests: prev.interests.includes(value)
+        ? prev.interests.filter(item => item !== value)
+        : [...prev.interests, value],
+    }));
+  };
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden mb-24">
@@ -95,11 +165,37 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
           </div>
 
           <div>
-            <label className="text-black font-semibold text-sm block mb-2">Member Type</label>
+            <label className="text-black font-semibold text-sm block mb-2">What best describes you?</label>
             <select value={formData.member_type} onChange={e => setFormData(prev => ({ ...prev, member_type: e.target.value }))} className="w-full bg-gray-50 border-2 border-gray-300 text-black text-base py-3 px-3">
-              {MEMBER_TYPES.map(type => <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>)}
+              {MEMBER_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
             {formData.member_type === 'merchant' && <p className="text-xs text-gray-500 mt-1">Merchant profiles can display Gift Shop products and visual promotions.</p>}
+          </div>
+
+          <div>
+            <label className="text-black font-semibold text-sm block mb-2">Where are you based?</label>
+            <Input placeholder="City, region or country" value={formData.location_label} onChange={(e) => setFormData(prev => ({ ...prev, location_label: e.target.value }))} className="bg-gray-50 border-2 border-gray-300 text-black text-base py-3" />
+            <p className="text-xs text-gray-500 mt-1">Used to help members find collaborators by location.</p>
+          </div>
+
+          <div>
+            <label className="text-black font-semibold text-sm block mb-2">What are you interested in?</label>
+            <p className="text-xs text-gray-500 mb-2">Choose all that apply. These interests can be combined in the Members search.</p>
+            <div className="flex flex-wrap gap-2">
+              {INTEREST_OPTIONS.map(([value, label]) => {
+                const selected = formData.interests.includes(value);
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => toggleInterest(value)}
+                    className={`border px-2.5 py-1.5 text-xs font-medium transition-colors ${selected ? 'border-black bg-black text-white' : 'border-gray-300 bg-white text-black hover:border-black'}`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div>
