@@ -230,7 +230,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
   }
 
   return (
-    <div className="h-full flex flex-col bg-transparent">
+    <div className="relative h-full flex flex-col bg-transparent">
       {/* Header */}
       <div className="px-6 py-4 border-b border-black/10 flex items-center justify-end">
         <button 
@@ -422,16 +422,16 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
       </div>
 
       {/* Input */}
-      <div className="p-6 border-t border-white/10 bg-black/40">
+      <div className="p-6 border-t border-white/10 bg-black/40 lg:absolute lg:-top-[49px] lg:right-4 lg:z-20 lg:w-[46%] lg:p-1 lg:border-0 lg:bg-transparent">
         {!userIdentifier ? (
           <button
             onClick={onRequestIdentifier}
-            className="w-full bg-black text-yellow-400 hover:bg-black/90 font-bold tracking-wide px-6 py-4 rounded-2xl transition-colors shadow-lg"
+            className="w-full bg-black text-yellow-400 hover:bg-black/90 font-bold tracking-wide px-6 py-4 rounded-2xl transition-colors shadow-lg lg:px-4 lg:py-2 lg:text-sm lg:rounded-lg lg:shadow-none"
           >
             GET AN IDENTIFIER TO PARTICIPATE
           </button>
         ) : (
-          <div className="flex gap-3">
+          <div className="flex gap-3 lg:gap-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -443,23 +443,30 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingPhoto}
-              className="w-16 h-16 bg-black text-yellow-400 hover:bg-black/90 rounded-2xl disabled:opacity-50 transition-colors shadow-xl flex items-center justify-center border-2 border-black/20"
+              className="w-16 h-16 bg-black text-yellow-400 hover:bg-black/90 rounded-2xl disabled:opacity-50 transition-colors shadow-xl flex items-center justify-center border-2 border-black/20 lg:w-10 lg:h-10 lg:rounded-lg lg:shadow-none"
             >
-              {uploadingPhoto ? <div className="w-6 h-6 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" /> : <ImageIcon size={24} strokeWidth={2.5} />}
+              {uploadingPhoto ? <div className="w-6 h-6 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin lg:w-4 lg:h-4 lg:border-2" /> : <ImageIcon size={24} strokeWidth={2.5} className="lg:w-4 lg:h-4" />}
             </button>
             <Input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="Your message..."
-              className="flex-1 bg-white border-black/10 text-black placeholder:text-black text-base font-medium rounded-2xl px-5"
+              className="flex-1 bg-white border-black/10 text-black placeholder:text-black text-base font-medium rounded-2xl px-5 lg:hidden"
+            />
+            <Input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="Your Post..."
+              className="hidden lg:block flex-1 h-10 bg-white border-black/10 text-black placeholder:text-black/55 text-sm font-medium rounded-lg px-3"
             />
             <button
               onClick={handleSend}
               disabled={!message.trim() || sendMessageMutation.isPending}
-              className="w-16 h-16 bg-black text-yellow-400 hover:bg-black/90 rounded-2xl disabled:opacity-50 transition-colors shadow-xl flex items-center justify-center border-2 border-black/20"
+              className="w-16 h-16 bg-black text-yellow-400 hover:bg-black/90 rounded-2xl disabled:opacity-50 transition-colors shadow-xl flex items-center justify-center border-2 border-black/20 lg:w-10 lg:h-10 lg:rounded-lg lg:shadow-none"
             >
-              <Send size={24} strokeWidth={2.5} />
+              <Send size={24} strokeWidth={2.5} className="lg:w-4 lg:h-4" />
             </button>
           </div>
         )}
