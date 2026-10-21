@@ -197,6 +197,8 @@ export default function Salons() {
     };
   }, [sessionData]);
 
+  const socialContentClass = "h-full mt-0 lg:[&>div>div:first-child]:absolute lg:[&>div>div:first-child]:top-[-34px] lg:[&>div>div:first-child]:right-[38.5%] lg:[&>div>div:first-child]:z-30 lg:[&>div>div:first-child]:p-0 lg:[&>div>div:first-child]:border-0 lg:[&>div>div:first-child_span]:hidden lg:[&>div>div:nth-child(3)]:!w-[37%] lg:[&>div>div:nth-child(3)]:!right-2 lg:[&>div>div:nth-child(3)]:!-top-[34px]";
+
   return (
     <div className="relative min-h-screen bg-black pb-24">
       {pageBackground && (
@@ -237,40 +239,40 @@ export default function Salons() {
       </div>
 
       {/* Salon Tabs */}
-      <Tabs value={activeSalon} onValueChange={setActiveSalon} className="h-[calc(100vh-11rem)]">
-        <TabsList className="w-full bg-transparent border-b border-white/10 rounded-none h-auto p-0 overflow-x-auto flex-nowrap text-white lg:h-9 lg:min-h-9">
+      <Tabs value={activeSalon} onValueChange={setActiveSalon} className="h-[calc(100vh-11rem)] lg:relative">
+        <TabsList className="w-full bg-transparent border-b border-white/10 rounded-none h-auto p-0 overflow-x-auto flex-nowrap text-white lg:w-[60%] lg:max-w-[60%] lg:h-9 lg:min-h-9 lg:overflow-hidden">
           <TabsTrigger
             value="messages"
-            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white relative whitespace-nowrap flex items-center gap-2 lg:h-9 lg:py-1 lg:px-2.5 lg:text-xs lg:gap-1.5"
+            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white relative whitespace-nowrap flex items-center gap-2 lg:flex-1 lg:min-w-0 lg:h-9 lg:py-1 lg:px-2 lg:text-[11px] lg:gap-1.5"
           >
-            <Heart size={24} className="text-white lg:w-4 lg:h-4" strokeWidth={2} />
-            <span className="hidden sm:inline">MESSAGE</span>
+            <Heart size={24} className="text-white lg:w-3.5 lg:h-3.5" strokeWidth={2} />
+            <span className="hidden sm:inline lg:truncate">MESSAGE</span>
             {unreadCount > 0 && activeSalon !== 'messages' && (
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full animate-pulse" />
             )}
           </TabsTrigger>
           <TabsTrigger
             value="contact"
-            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:h-9 lg:py-1 lg:px-2.5 lg:text-xs lg:gap-1.5"
+            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:flex-1 lg:min-w-0 lg:h-9 lg:py-1 lg:px-2 lg:text-[11px] lg:gap-1.5"
           >
-            <MessageCircle size={24} className="text-white lg:w-4 lg:h-4" strokeWidth={2} />
-            <span className="hidden sm:inline">{getSalonLabel('contact') || 'CONTACT'}</span>
+            <MessageCircle size={24} className="text-white lg:w-3.5 lg:h-3.5" strokeWidth={2} />
+            <span className="hidden sm:inline lg:truncate">{getSalonLabel('contact') || 'CONTACT'}</span>
           </TabsTrigger>
           {isRegistered && (
             <TabsTrigger
               value="cochon"
-              className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:h-9 lg:py-1 lg:px-2.5 lg:text-xs lg:gap-1.5"
+              className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:flex-1 lg:min-w-0 lg:h-9 lg:py-1 lg:px-2 lg:text-[11px] lg:gap-1.5"
             >
-              <UserIcon size={24} className="text-white lg:w-4 lg:h-4" strokeWidth={2} />
-              <span className="hidden sm:inline">{getSalonLabel('cochon') || 'CREATOR CHATS'}</span>
+              <UserIcon size={24} className="text-white lg:w-3.5 lg:h-3.5" strokeWidth={2} />
+              <span className="hidden sm:inline lg:truncate">{getSalonLabel('cochon') || 'CREATOR CHATS'}</span>
             </TabsTrigger>
           )}
           <TabsTrigger
             value="commercial"
-            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:h-9 lg:py-1 lg:px-2.5 lg:text-xs lg:gap-1.5"
+            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:flex-1 lg:min-w-0 lg:h-9 lg:py-1 lg:px-2 lg:text-[11px] lg:gap-1.5"
           >
-            <FileText size={24} className="text-white lg:w-4 lg:h-4" strokeWidth={2} />
-            <span className="hidden sm:inline">{getSalonLabel('commercial') || 'INFO'}</span>
+            <FileText size={24} className="text-white lg:w-3.5 lg:h-3.5" strokeWidth={2} />
+            <span className="hidden sm:inline lg:truncate">{getSalonLabel('commercial') || 'INFO'}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -303,7 +305,7 @@ export default function Salons() {
           )}
         </TabsContent>
 
-        <TabsContent value="contact" className="h-full mt-0">
+        <TabsContent value="contact" className={socialContentClass}>
           <ChatRoom
             salon="contact"
             salonStatus={getSalonStatus('contact')}
@@ -315,7 +317,7 @@ export default function Salons() {
         </TabsContent>
 
         {isRegistered && (
-          <TabsContent value="cochon" className="h-full mt-0">
+          <TabsContent value="cochon" className={socialContentClass}>
             <ChatRoom
               salon="cochon"
               salonStatus={getSalonStatus('cochon')}
@@ -327,7 +329,7 @@ export default function Salons() {
           </TabsContent>
         )}
 
-        <TabsContent value="commercial" className="h-full mt-0">
+        <TabsContent value="commercial" className={socialContentClass}>
           <ChatRoom
             salon="commercial"
             salonStatus={getSalonStatus('commercial')}
