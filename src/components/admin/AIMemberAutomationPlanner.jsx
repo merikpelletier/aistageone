@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { CalendarClock, Check, Play } from 'lucide-react';
 
 const DAYS = [
@@ -87,8 +87,8 @@ export default function AIMemberAutomationPlanner({ members, onUpdate }) {
     setRunError('');
     setRunResult(null);
     try {
-      const response = await base44.functions.invoke('aiMemberRunnerScheduled', {});
-      const data = response?.data || response;
+      const { data, error } = await supabase.functions.invoke('ai-member-runner', { body: {} });
+      if (error) throw error;
       setRunResult(data);
     } catch (error) {
       setRunError(error?.message || 'AI member runner failed.');
