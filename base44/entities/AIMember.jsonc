@@ -56,6 +56,30 @@
       "enum": ["manual", "low", "normal", "high"],
       "default": "manual"
     },
+    "automation_config": {
+      "type": "object",
+      "description": "Per-member activity planner settings used by the automation system",
+      "properties": {
+        "daily_min": { "type": "integer", "default": 1 },
+        "daily_max": { "type": "integer", "default": 3 },
+        "active_days": { "type": "array", "items": { "type": "string" }, "default": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] },
+        "active_start": { "type": "string", "default": "09:00" },
+        "active_end": { "type": "string", "default": "21:00" },
+        "use_interests": { "type": "boolean", "default": true },
+        "activity_mix": {
+          "type": "object",
+          "properties": {
+            "publish": { "type": "boolean", "default": true },
+            "comment": { "type": "boolean", "default": true },
+            "like": { "type": "boolean", "default": true },
+            "follow": { "type": "boolean", "default": false },
+            "sponsor": { "type": "boolean", "default": false },
+            "sell": { "type": "boolean", "default": false },
+            "collaborate": { "type": "boolean", "default": false }
+          }
+        }
+      }
+    },
     "quiet_hours": { "type": "string", "description": "Optional internal quiet-hours note" },
     "is_active": { "type": "boolean", "default": true },
     "is_ai_disclosed": { "type": "boolean", "default": true, "description": "Must remain true so the account is clearly identified as virtual/AI" },
