@@ -243,26 +243,24 @@ export default function Magazine() {
             <div className="absolute inset-0 bg-black" />
           )}
 
-
-
           {/* Program toggle — top left */}
           <Link
             to="/Index"
             onClick={(e) => e.stopPropagation()}
-            className="absolute top-[60px] left-4 z-20 w-9 h-9 bg-yellow-400 rounded-full flex items-center justify-center hover:bg-yellow-300 transition-colors"
+            className="absolute top-[60px] left-4 z-20 w-9 h-9 bg-yellow-400 rounded-full flex items-center justify-center hover:bg-yellow-300 transition-colors lg:top-5 lg:left-[calc(50%-330px)] lg:w-8 lg:h-8 lg:rounded-md"
           >
-            <LayoutGrid size={16} className="text-black" />
+            <LayoutGrid size={16} className="text-black lg:w-3.5 lg:h-3.5" />
           </Link>
 
           {/* Classification + language — always visible on the cover */}
           {(currentDossier?.content_rating || currentDossier?.default_language || currentDossier?.original_language) && (
             <div
-              className="absolute top-[60px] right-4 z-[60] flex items-center gap-2"
+              className="absolute top-[60px] right-4 z-[60] flex items-center gap-2 lg:top-5 lg:right-[calc(50%-330px)] lg:gap-1.5"
               onClick={(e) => e.stopPropagation()}
             >
               {currentDossier?.content_rating && (
                 <div
-                  className="min-w-[52px] h-9 px-3 flex items-center justify-center border border-white bg-black text-white text-xs font-black tracking-[0.12em] uppercase"
+                  className="min-w-[52px] h-9 px-3 flex items-center justify-center border border-white bg-black text-white text-xs font-black tracking-[0.12em] uppercase lg:min-w-[44px] lg:h-8 lg:px-2 lg:text-[10px]"
                   aria-label={`Content rating ${currentDossier.content_rating}`}
                 >
                   {currentDossier.content_rating === 'all' ? 'ALL' : currentDossier.content_rating}
@@ -270,7 +268,7 @@ export default function Magazine() {
               )}
               {(currentDossier?.default_language || currentDossier?.original_language) && (
                 <div
-                  className="h-9 px-3 flex items-center justify-center border border-white bg-black text-white text-xs font-black tracking-[0.12em] uppercase"
+                  className="h-9 px-3 flex items-center justify-center border border-white bg-black text-white text-xs font-black tracking-[0.12em] uppercase lg:h-8 lg:px-2 lg:text-[10px]"
                   aria-label={`Language ${currentDossier.default_language || currentDossier.original_language}`}
                 >
                   {({
@@ -290,12 +288,12 @@ export default function Magazine() {
 
           {/* Content */}
           {magazineSections.cover_text.visible && !currentDossier?.hide_text_on_cover && (
-            <div className="absolute top-[108px] left-0 right-0 px-6">
+            <div className="absolute top-[108px] left-0 right-0 px-6 lg:top-16 lg:left-1/2 lg:right-auto lg:w-[620px] lg:max-w-[calc(100vw-80px)] lg:-translate-x-1/2 lg:px-4">
               <motion.h1
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                className="text-white text-4xl md:text-6xl font-black tracking-wide mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+                className="text-white text-4xl md:text-6xl font-black tracking-wide mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] lg:text-3xl lg:mb-2"
               >
                 {currentDossier?.title}
               </motion.h1>
@@ -304,7 +302,7 @@ export default function Magazine() {
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.3 }}
-                  className="text-white text-lg font-light"
+                  className="text-white text-lg font-light lg:text-sm"
                 >
                   {currentDossier.subtitle}
                 </motion.p>
@@ -314,7 +312,7 @@ export default function Magazine() {
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.4 }}
-                  className="text-white text-sm mt-4 tracking-wide"
+                  className="text-white text-sm mt-4 tracking-wide lg:text-xs lg:mt-2"
                 >
                   By {currentDossier.author_name}
                 </motion.p>
@@ -323,17 +321,17 @@ export default function Magazine() {
           )}
 
           {/* Tap to read indicator */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 lg:bottom-5">
             <motion.button
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
               onClick={(e) => { e.stopPropagation(); openDossier(currentDossier); }}
-              className="group flex items-center gap-3 rounded-full px-7 py-3.5 transition-all"
+              className="group flex items-center gap-3 rounded-full px-7 py-3.5 transition-all lg:gap-2 lg:px-5 lg:py-2.5"
               style={{ background: 'rgba(255,255,255,0.90)', color: '#111', border: '1px solid rgba(0,0,0,0.18)', boxShadow: '0 4px 18px rgba(0,0,0,0.30)', backdropFilter: 'blur(10px)', fontWeight: 700 }}
             >
-              <span className="text-sm tracking-[0.2em] uppercase">Explore</span>
-              <span className="group-hover:translate-x-1 transition-transform text-base">→</span>
+              <span className="text-sm tracking-[0.2em] uppercase lg:text-xs">Explore</span>
+              <span className="group-hover:translate-x-1 transition-transform text-base lg:text-sm">→</span>
             </motion.button>
           </div>
 
@@ -343,39 +341,45 @@ export default function Magazine() {
               <DossierCoverActions dossierId={currentDossier?.id} />
             </div>
           )}
-          </motion.div>
-          </AnimatePresence>
+        </motion.div>
+      </AnimatePresence>
 
       {/* Navigation hints */}
       {magazineSections.navigation_hints.visible && currentDossierIndex > 0 && (
         <button
           onClick={() => setCurrentDossierIndex(currentDossierIndex - 1)}
-          className="fixed left-1/2 -translate-x-1/2 text-white hover:text-white transition-colors z-10 drop-shadow-lg" style={{ top: 'calc(52px + env(safe-area-inset-top) + 16px)' }}
+          className="fixed left-1/2 -translate-x-1/2 text-white hover:text-white transition-colors z-10 drop-shadow-lg lg:left-[calc(50%+300px)] lg:top-24 lg:-translate-x-1/2"
+          style={{ top: 'calc(52px + env(safe-area-inset-top) + 16px)' }}
         >
-          <ChevronUp size={28} />
+          <ChevronUp size={28} className="lg:w-5 lg:h-5" />
         </button>
       )}
       {magazineSections.navigation_hints.visible && currentDossierIndex < dossiers.length - 1 && (
         <button
           onClick={() => setCurrentDossierIndex(currentDossierIndex + 1)}
-          className="fixed bottom-20 left-4 text-white hover:text-white transition-colors z-10 drop-shadow-lg"
+          className="fixed bottom-20 left-4 text-white hover:text-white transition-colors z-10 drop-shadow-lg lg:left-[calc(50%+300px)] lg:bottom-20 lg:-translate-x-1/2"
         >
-          <ChevronDown size={28} />
+          <ChevronDown size={28} className="lg:w-5 lg:h-5" />
         </button>
       )}
 
       {/* Dossier indicators */}
-      {magazineSections.dossier_indicators.visible && <div className="fixed right-3 flex flex-col gap-1 z-10 overflow-hidden" style={{ top: 'calc(52px + env(safe-area-inset-top) + 100px)', maxHeight: 'calc(100vh - 52px - env(safe-area-inset-top) - 180px)' }}>
-        {dossiers.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrentDossierIndex(idx)}
-            className={`w-1 rounded-full transition-all flex-shrink-0 ${
-              idx === currentDossierIndex ? 'bg-red-600 h-4' : 'bg-white/60 h-1.5'
-            }`}
-          />
-        ))}
-      </div>}
+      {magazineSections.dossier_indicators.visible && (
+        <div
+          className="fixed right-3 flex flex-col gap-1 z-10 overflow-hidden lg:right-auto lg:left-[calc(50%+300px)] lg:-translate-x-1/2 lg:gap-0.5"
+          style={{ top: 'calc(52px + env(safe-area-inset-top) + 100px)', maxHeight: 'calc(100vh - 52px - env(safe-area-inset-top) - 180px)' }}
+        >
+          {dossiers.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentDossierIndex(idx)}
+              className={`w-1 rounded-full transition-all flex-shrink-0 lg:w-0.5 ${
+                idx === currentDossierIndex ? 'bg-red-600 h-4 lg:h-3' : 'bg-white/60 h-1.5 lg:h-1'
+              }`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Subscribers-only access prompt */}
       {lockedDossier && (
