@@ -13,8 +13,6 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "supabase:schema": "node scripts/generate-supabase-schema.mjs",
-    "base44:audit-data": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/audit-base44-data.ps1",
-    "base44:prepare-import": "node scripts/prepare-base44-import.mjs",
     "supabase:prepare-functions": "node scripts/prepare-supabase-functions.mjs"
   },
   "dependencies": {
@@ -95,7 +93,7 @@
     "baseline-browser-mapping": "^2.8.32",
     "eslint": "^9.19.0",
     "eslint-plugin-react": "^7.37.4",
-    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.18",
     "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^15.14.0",
