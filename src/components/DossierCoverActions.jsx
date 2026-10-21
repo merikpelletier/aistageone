@@ -14,18 +14,20 @@ export default function DossierCoverActions({ dossierId }) {
   const [avgRating, setAvgRating] = useState(0);
   const [ratingCount, setRatingCount] = useState(0);
   const [currentCommentPage, setCurrentCommentPage] = useState(0);
+  const [ratingError, setRatingError] = useState('');
+  const [commentError, setCommentError] = useState('');
 
-  const handleRating = async (value, e) => {
-    e?.stopPropagation();
-    setRating(value);
-    setSubmitting(true);
+  const fetchRating = async () => {
     try {
-      await base44.functions.invoke('addDossierRating', { dossierId, rating: value });
-      await fetchRating();
+      const res = await base44.functions.invoke('getDossierRating', { dossierId });
+      setAvgRating(res.data?.avg || 0);
+      setRatingCount(res.data?.count || 0);
+      setRating(res.data?.myRating || 0);
+      setRatingError('');
     } catch (error) {
-      console.error('Error submitting rating:', error);
+      console.error('Error fetching rating:', error);
+      setRatingError(error?.message || 'Unable to load ratings.');
     }
-    setSubmitting(false);
   };
 
   const fetchComments = async () => {
@@ -33,34 +35,45 @@ export default function DossierCoverActions({ dossierId }) {
     try {
       const res = await base44.functions.invoke('getDossierComments', { dossierId });
       setComments(res.data?.comments || []);
+      setCommentError('');
     } catch (error) {
       console.error('Error fetching comments:', error);
+      setCommentError(error?.message || 'Unable to load comments.');
     }
     setLoading(false);
+  };
+
+  const handleRating = async (value, e) => {
+    e?.stopPropagation();
+    const previousRating = rating;
+    setRating(value);
+    setRatingError('');
+    setSubmitting(true);
+    try {
+      await base44.functions.invoke('addDossierRating', { dossierId, rating: value });
+      await fetchRating();
+    } catch (error) {
+      setRating(previousRating);
+      console.error('Error submitting rating:', error);
+      setRatingError(error?.message || 'Unable to save your rating. Please sign in and try again.');
+    }
+    setSubmitting(false);
   };
 
   const handleCommentSubmit = async (e) => {
     e?.stopPropagation();
     if (!comment.trim()) return;
+    setCommentError('');
     setSubmitting(true);
     try {
-      await base44.functions.invoke('addDossierComment', { dossierId, comment });
+      await base44.functions.invoke('addDossierComment', { dossierId, comment: comment.trim() });
       setComment('');
       await fetchComments();
     } catch (error) {
       console.error('Error submitting comment:', error);
+      setCommentError(error?.message || 'Unable to post your comment. Please sign in and try again.');
     }
     setSubmitting(false);
-  };
-
-  const fetchRating = async () => {
-    try {
-      const res = await base44.functions.invoke('getDossierRating', { dossierId });
-      setAvgRating(res.data?.avg || 0);
-      setRatingCount(res.data?.count || 0);
-    } catch (error) {
-      console.error('Error fetching rating:', error);
-    }
   };
 
   const handleShowComments = async (e) => {
@@ -77,8 +90,15 @@ export default function DossierCoverActions({ dossierId }) {
   const hasNextPage = (currentCommentPage + 1) * commentsPerPage < comments.length;
   const hasPrevPage = currentCommentPage > 0;
 
-  React.useEffect(() => {
+  useEffect(() => {
+    if (!dossierId) return;
+    setRating(0);
+    setComments([]);
+    setCurrentCommentPage(0);
+    setRatingError('');
+    setCommentError('');
     fetchRating();
+    fetchComments();
   }, [dossierId]);
 
   return (
@@ -93,6 +113,7 @@ export default function DossierCoverActions({ dossierId }) {
             onClick={(e) => handleRating(star, e)}
             className="p-0.5 hover:scale-110 transition-transform lg:p-0"
             disabled={submitting}
+            aria-label={`Rate ${star} star${star === 1 ? '' : 's'}`}
           >
             <Star
               size={18}
@@ -106,6 +127,7 @@ export default function DossierCoverActions({ dossierId }) {
       <button
         onClick={handleShowComments}
         className="bg-black/60 backdrop-blur-sm rounded-full p-2.5 hover:bg-black/80 transition-colors relative lg:p-1.5"
+        aria-label="Open comments"
       >
         <MessageCircle size={18} className="text-white lg:w-3.5 lg:h-3.5" />
         {comments.length > 0 && (
@@ -120,6 +142,13 @@ export default function DossierCoverActions({ dossierId }) {
         <div className="bg-black/60 backdrop-blur-sm rounded-xl px-2 py-1.5 flex flex-col items-center gap-0.5 lg:px-1.5 lg:py-1 lg:rounded-md">
           <Star size={14} className="fill-yellow-400 text-yellow-400 lg:w-3 lg:h-3" />
           <span className="text-white text-xs font-light lg:text-[10px]">{avgRating}</span>
+          <span className="text-white/55 text-[9px] leading-none">{ratingCount}</span>
+        </div>
+      )}
+
+      {ratingError && (
+        <div className="absolute left-full ml-2 top-0 w-56 bg-red-950/95 border border-red-500/40 text-red-200 text-xs p-2 z-50">
+          {ratingError}
         </div>
       )}
 
@@ -135,10 +164,18 @@ export default function DossierCoverActions({ dossierId }) {
               <X size={20} className="lg:w-4 lg:h-4" />
             </button>
           </div>
+
+          {commentError && (
+            <div className="mb-3 border border-red-500/35 bg-red-950/50 px-3 py-2 text-xs text-red-200">
+              {commentError}
+            </div>
+          )}
           
           {/* Comments List with Navigation */}
           {comments.length === 0 ? (
-            <div className="text-white text-base text-center py-12 flex-1 flex items-center justify-center lg:text-sm lg:py-8">No comments yet</div>
+            <div className="text-white text-base text-center py-12 flex-1 flex items-center justify-center lg:text-sm lg:py-8">
+              {loading ? 'Loading...' : 'No comments yet'}
+            </div>
           ) : (
             <>
               <div className="flex-1 mb-4 flex flex-col overflow-y-auto lg:mb-3">
@@ -148,7 +185,7 @@ export default function DossierCoverActions({ dossierId }) {
                   <div className="space-y-3 lg:space-y-2">
                     {displayedComments.map((c) => (
                       <div key={c.id} className="bg-white/15 rounded p-3 border border-white/10 lg:p-2">
-                        <div className="text-white/80 font-medium text-sm lg:text-xs">{c.user_name}</div>
+                        <div className="text-white/80 font-medium text-sm lg:text-xs">{c.user_name || 'Member'}</div>
                         <div className="text-white/90 text-sm mt-2 leading-relaxed lg:text-xs lg:mt-1.5">{c.content}</div>
                       </div>
                     ))}
