@@ -246,7 +246,7 @@ export default function Salons() {
             className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white relative whitespace-nowrap flex items-center gap-2"
           >
             <Heart size={24} className="text-white" strokeWidth={2} />
-            <span className="hidden sm:inline">PRIVATE</span>
+            <span className="hidden sm:inline">MESSAGE</span>
             {unreadCount > 0 && activeSalon !== 'messages' && (
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full animate-pulse" />
             )}
