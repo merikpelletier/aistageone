@@ -81,6 +81,7 @@ function AssetPicker({
   const [search, setSearch] = useState('');
   const pattern = purposePattern(picker.purpose);
   const initialCategoryId = useMemo(() => {
+    if (picker.purpose === 'look') return 'all';
     if (picker.purpose === 'costume') return categories.find((item) => pattern.test(categoryText(item)))?.id || 'all';
     return categories.find((item) => item.key === 'actor')?.id || categories.find((item) => item.key === 'character')?.id || 'all';
   }, [categories, pattern, picker.purpose]);
@@ -116,7 +117,7 @@ function AssetPicker({
         <header className="flex items-center justify-between border-b border-white/10 p-5">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.24em] text-amber-300">Choose a source</p>
-            <h3 className="mt-1 text-2xl font-black text-white">{picker.purpose === 'costume' ? 'Find a costume' : picker.purpose === 'sheet' ? 'Choose a complete reference sheet' : `Add ${picker.label}`}</h3>
+            <h3 className="mt-1 text-2xl font-black text-white">{picker.purpose === 'look' ? 'Add to character look' : picker.purpose === 'costume' ? 'Find a costume' : picker.purpose === 'sheet' ? 'Choose a complete reference sheet' : `Add ${picker.label}`}</h3>
           </div>
           <button type="button" onClick={onClose} className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20"><X size={19} /></button>
         </header>
@@ -226,7 +227,7 @@ const PROMPT_TEMPLATES = [
   {
     key: 'full_look',
     label: 'Full Look Transformation',
-    prompt: 'Use the STEP 3 reference image as the visual design reference.\nPreserve the character’s core identity and body proportions.\nApply the reference look, styling, wardrobe, hair, and visual details consistently across all views.',
+    prompt: 'Use the STEP 3 reference images as the visual design references.\nPreserve the character’s core identity and body proportions.\nCombine the selected clothing, hair, footwear, accessories, makeup and styling details into one coherent look and apply it consistently across all views.',
   },
 ];
 
@@ -254,12 +255,16 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
     source: initial.design.source_sheet_source || 'vault',
     sourceAssetId: initial.design.source_sheet_asset_id || null,
   } : null);
-  const [costume, setCostume] = useState(initial.design.costume_url ? {
-    url: initial.design.costume_url,
-    title: initial.design.costume_title || 'Selected costume',
-    source: initial.design.costume_source || 'vault',
-    sourceAssetId: initial.design.costume_source_asset_id || null,
-  } : null);
+  const [lookReferences, setLookReferences] = useState(() => {
+    if (Array.isArray(initial.design.look_references) && initial.design.look_references.length) return initial.design.look_references.filter((item) => item?.url);
+    if (initial.design.costume_url) return [{
+      url: initial.design.costume_url,
+      title: initial.design.costume_title || 'Selected look reference',
+      source: initial.design.costume_source || 'vault',
+      sourceAssetId: initial.design.costume_source_asset_id || null,
+    }];
+    return [];
+  });
   const [accessories, setAccessories] = useState(initial.design.accessories || sheet?.notes || '');
   const [characterDescription, setCharacterDescription] = useState(initial.design.character_description || '');
   const [transformationPrompt, setTransformationPrompt] = useState(initial.design.transformation_prompt || '');
@@ -358,7 +363,12 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const photoCount = PHOTO_SLOTS.filter(({ key }) => photos[key]).length;
   const hasCharacterSource = sourceMode === 'sheet' ? Boolean(sourceSheet?.url) : sourceMode === 'description' ? Boolean(characterDescription.trim()) : photoCount > 0;
   const preview = generatedSheet || sourceSheet?.url || photos.front || photos.portrait || Object.values(photos)[0] || null;
-  const completion = [Boolean(name.trim()), hasCharacterSource, Boolean(costume || accessories.trim() || transformationPrompt.trim()), Boolean(generatedSheet)].filter(Boolean).length;
+  const completion = [Boolean(name.trim()), hasCharacterSource, Boolean(lookReferences.length || accessories.trim() || transformationPrompt.trim()), Boolean(generatedSheet)].filter(Boolean).length;
+
+  const addLookReference = (asset) => {
+    if (!asset?.url) return;
+    setLookReferences((current) => current.some((item) => item.url === asset.url) ? current : [...current, asset]);
+  };
 
   const uploadImage = async (event, target) => {
     const file = event.target.files?.[0];
@@ -366,7 +376,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
     setUploading(target);
     try {
       const { file_url: url } = await base44.integrations.Core.UploadFile({ file });
-      if (target === 'costume') setCostume({ url, title: file.name, source: 'upload', sourceAssetId: null });
+      if (target === 'look') addLookReference({ url, title: file.name, source: 'upload', sourceAssetId: null });
       else if (target === 'sourceSheet') {
         setSourceSheet({ url, title: file.name, source: 'upload', sourceAssetId: null });
         setSourceMode('sheet');
@@ -385,7 +395,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   };
 
   const selectAsset = (asset) => {
-    if (picker.purpose === 'costume') setCostume(asset);
+    if (picker.purpose === 'look') addLookReference(asset);
     else if (picker.purpose === 'sheet') {
       setSourceSheet(asset);
       setSourceMode('sheet');
@@ -438,13 +448,14 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
     try {
       const angleUrls = PHOTO_SLOTS.map(({ key }) => photos[key]).filter(Boolean);
       const primarySourceUrls = sourceMode === 'sheet' ? [sourceSheet.url] : angleUrls;
-      const additionalReferenceUrls = [costume?.url].filter(Boolean);
+      const lookReferenceUrls = lookReferences.map((item) => item.url).filter(Boolean);
       const response = await base44.functions.invoke('generateCharacterSheet', {
         source_mode: sourceMode,
         reference_sheet_url: sourceMode === 'sheet' ? sourceSheet.url : null,
         angle_urls: sourceMode === 'angles' ? angleUrls : [],
-        image_urls: [...primarySourceUrls, ...additionalReferenceUrls],
-        costume_url: costume?.url || null,
+        image_urls: [...primarySourceUrls, ...lookReferenceUrls],
+        costume_url: lookReferenceUrls[0] || null,
+        look_reference_urls: lookReferenceUrls,
         aspect_ratio: aspectRatio,
         reference_layout_url: referenceLayout,
         accessories,
@@ -467,6 +478,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
     if (!preview) return toast.error('Add at least one image');
     setSaving(true);
     try {
+      const firstLookReference = lookReferences[0] || null;
       const design = {
         photo_sources: photoSources,
         source_mode: sourceMode,
@@ -474,10 +486,11 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
         source_sheet_title: sourceSheet?.title || null,
         source_sheet_source: sourceSheet?.source || null,
         source_sheet_asset_id: sourceSheet?.sourceAssetId || null,
-        costume_url: costume?.url || null,
-        costume_title: costume?.title || null,
-        costume_source: costume?.source || null,
-        costume_source_asset_id: costume?.sourceAssetId || null,
+        look_references: lookReferences,
+        costume_url: firstLookReference?.url || null,
+        costume_title: firstLookReference?.title || null,
+        costume_source: firstLookReference?.source || null,
+        costume_source_asset_id: firstLookReference?.sourceAssetId || null,
         reference_layout_url: referenceLayout,
         accessories,
         transformation_prompt: transformationPrompt.trim(),
@@ -560,7 +573,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                 <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-cyan-300 transition-all" style={{ width: `${completion * 25}%` }} /></div>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[10px] font-black uppercase tracking-wider">
                   <span className="rounded-xl bg-white/[0.05] px-2 py-2 text-white/55">{sourceMode === 'sheet' ? (sourceSheet ? 'Full sheet' : 'No sheet') : `${photoCount} angles`}</span>
-                  <span className="rounded-xl bg-white/[0.05] px-2 py-2 text-white/55">{costume ? 'Costume' : 'No costume'}</span>
+                  <span className="rounded-xl bg-white/[0.05] px-2 py-2 text-white/55">{lookReferences.length ? `${lookReferences.length} look refs` : 'No look refs'}</span>
                   <span className="rounded-xl bg-white/[0.05] px-2 py-2 text-white/55">{aspectRatio}</span>
                 </div>
               </div>
@@ -597,45 +610,51 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
             </section>
 
             <section className="rounded-[28px] border border-white/10 bg-[#121214] p-5 sm:p-7">
-              <StepTitle number="3" title="Character design" description="Build your character look" />
-              <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
-                <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-black/35">
-                  {costume ? (
-                    <><img src={costume.url} alt={costume.title} className="h-full w-full object-cover" /><button type="button" onClick={() => setCostume(null)} className="absolute right-2 top-2 rounded-full bg-black/75 p-1.5"><X size={14} /></button><div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black p-3 pt-10"><p className="truncate text-xs font-black">{costume.title}</p></div></>
-                  ) : <div className="flex h-full flex-col items-center justify-center"><Shirt size={32} className="text-white/20" /><p className="mt-2 text-xs font-bold text-white/35">Optional costume</p></div>}
-                </div>
-                <div>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-3 text-xs font-black hover:border-white/35"><Upload size={15} />Upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event, 'costume')} /></label>
-                    <SourceButton icon={Library} label="My Vault" tone="vault" onClick={() => setPicker({ purpose: 'costume', label: 'costume', source: 'vault' })} />
-                    <SourceButton icon={Store} label="Assets Shop" tone="shop" onClick={() => setPicker({ purpose: 'costume', label: 'costume', source: 'shop' })} />
-                  </div>
-                  <label className="mt-4 block text-xs font-black uppercase tracking-wider text-white/60">Accessories and styling<textarea value={accessories} onChange={(event) => setAccessories(event.target.value)} placeholder="Silver earrings, worn leather boots, black gloves..." rows={3} className="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm font-semibold normal-case tracking-normal text-white outline-none placeholder:text-white/20 focus:border-amber-300/60" /></label>
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <p className="text-xs font-black uppercase tracking-wider text-white/60">Transformation prompt</p>
-                    <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <button type="button" onClick={() => setTemplateMenuOpen((value) => !value)} className="rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white">Templates</button>
-                        {templateMenuOpen && (
-                          <div className="absolute right-0 z-10 mt-2 w-64 overflow-hidden rounded-xl border border-white/15 bg-[#161618] shadow-2xl">
-                            {PROMPT_TEMPLATES.map((template) => (
-                              <button
-                                type="button"
-                                key={template.key}
-                                onClick={() => { setTransformationPrompt(template.prompt); setTemplateMenuOpen(false); }}
-                                className="block w-full px-4 py-3 text-left text-xs font-bold text-white/80 hover:bg-white/10 hover:text-white"
-                              >
-                                {template.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
+              <StepTitle number="3" title="Character design" description="Combine multiple references into one character look" />
+              <div className="space-y-4">
+                {lookReferences.length ? (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {lookReferences.map((item, index) => (
+                      <div key={`${item.url}-${index}`} className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/35">
+                        <div className="aspect-[4/3] bg-black"><img src={item.url} alt={item.title || `Look reference ${index + 1}`} className="h-full w-full object-contain" /></div>
+                        <button type="button" onClick={() => setLookReferences((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute right-2 top-2 rounded-full bg-black/80 p-1.5 text-white"><X size={14} /></button>
+                        <div className="p-3"><p className="truncate text-xs font-black text-white">{item.title || `Look reference ${index + 1}`}</p><p className="mt-1 text-[10px] uppercase tracking-wider text-white/35">Reference {index + 1}</p></div>
                       </div>
-                      <button type="button" onClick={() => setReplacePreset((value) => !value)} className={`rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${replacePreset ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white/60'}`}>{replacePreset ? 'Custom prompt' : 'Add to preset'}</button>
-                    </div>
+                    ))}
                   </div>
-                  <textarea value={transformationPrompt} onChange={(event) => setTransformationPrompt(event.target.value)} placeholder={replacePreset ? 'Write the complete transformation instruction...' : 'Describe how you want to transform the character...'} rows={3} className="mt-2 w-full resize-none rounded-2xl border border-cyan-300/20 bg-black/35 px-4 py-3.5 text-sm font-semibold text-white outline-none placeholder:text-white/20 focus:border-cyan-300/60" />
+                ) : (
+                  <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-black/25 px-6 text-center"><Shirt size={32} className="text-white/20" /><p className="mt-3 text-sm font-black text-white">Build a combined look</p><p className="mt-1 text-xs text-white/35">Add clothing, shoes, hair, accessories, makeup or other visual references.</p></div>
+                )}
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-3 text-xs font-black hover:border-white/35"><Upload size={15} />Add upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event, 'look')} /></label>
+                  <SourceButton icon={Library} label="Add from Vault" tone="vault" onClick={() => setPicker({ purpose: 'look', label: 'look reference', source: 'vault' })} />
+                  <SourceButton icon={Store} label="Add from Assets Shop" tone="shop" onClick={() => setPicker({ purpose: 'look', label: 'look reference', source: 'shop' })} />
                 </div>
+                <label className="block text-xs font-black uppercase tracking-wider text-white/60">Accessories and styling<textarea value={accessories} onChange={(event) => setAccessories(event.target.value)} placeholder="Explain how to combine the selected references — e.g. use the dress from reference 1, shoes from reference 2, hairstyle from reference 3..." rows={3} className="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm font-semibold normal-case tracking-normal text-white outline-none placeholder:text-white/20 focus:border-amber-300/60" /></label>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-black uppercase tracking-wider text-white/60">Transformation prompt</p>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <button type="button" onClick={() => setTemplateMenuOpen((value) => !value)} className="rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white">Templates</button>
+                      {templateMenuOpen && (
+                        <div className="absolute right-0 z-10 mt-2 w-64 overflow-hidden rounded-xl border border-white/15 bg-[#161618] shadow-2xl">
+                          {PROMPT_TEMPLATES.map((template) => (
+                            <button
+                              type="button"
+                              key={template.key}
+                              onClick={() => { setTransformationPrompt(template.prompt); setTemplateMenuOpen(false); }}
+                              className="block w-full px-4 py-3 text-left text-xs font-bold text-white/80 hover:bg-white/10 hover:text-white"
+                            >
+                              {template.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button type="button" onClick={() => setReplacePreset((value) => !value)} className={`rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${replacePreset ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white/60'}`}>{replacePreset ? 'Custom prompt' : 'Add to preset'}</button>
+                  </div>
+                </div>
+                <textarea value={transformationPrompt} onChange={(event) => setTransformationPrompt(event.target.value)} placeholder={replacePreset ? 'Write the complete transformation instruction...' : 'Describe how you want to transform the character...'} rows={3} className="w-full resize-none rounded-2xl border border-cyan-300/20 bg-black/35 px-4 py-3.5 text-sm font-semibold text-white outline-none placeholder:text-white/20 focus:border-cyan-300/60" />
               </div>
             </section>
 
