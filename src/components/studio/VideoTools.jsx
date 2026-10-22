@@ -300,7 +300,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
         },
         required: ['estimated_total_duration', 'shots'],
       };
-      const instructions = `You are the assistant director for AISTAGE.ONE Shoot. Break the complete scene into practical AI-video shots. Each shot MUST be 3 to 15 seconds. Dialogue must fit the duration: assume roughly 2.2 spoken English words per second, with additional time for pauses and reactions. Prefer separate speaker close-ups, over-the-shoulders, reactions and inserts instead of making multiple speaking characters talk in one generated image. Keep cast names EXACTLY as supplied. Keep set continuity. Reference order is fixed: Image 1 is the set when supplied; following images are cast references in cast order. Never merge, replace or swap character identities. Do not invent dialogue.`;
+      const instructions = `You are the assistant director for AISTAGE.ONE Shoot. Break the complete scene into practical AI-video shots. Each shot MUST be 3 to 15 seconds. Dialogue must fit the duration: assume roughly 2.2 spoken English words per second, with additional time for pauses and reactions. Prefer separate speaker close-ups, over-the-shoulders, reactions and inserts instead of making multiple speaking characters talk in one generated image. Keep cast names EXACTLY as supplied. For every over-the-shoulder shot, the characters array MUST include both visible performers: the foreground shoulder character and the character being viewed. Keep set continuity. Reference order is fixed: Image 1 is the set when supplied; following images are cast references in cast order. Never merge, replace or swap character identities. Do not invent dialogue.`;
       const prompt = `ASPECT RATIO: ${aspectRatio}\nSET: ${setReference.name || 'not named'} — ${setReference.description || 'no description'}\nCAST ORDER:\n${castSummary}\n\nSCENE:\n${sceneText}\n\nPropose the most cinematic and practical shot plan. Return only structured JSON.`;
       const response = await invokeSceneAnalysis(prompt, instructions, schema);
       const rawShots = Array.isArray(response?.shots) ? response.shots : [];
@@ -334,9 +334,17 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
   const shotCast = (shot) => {
     const requested = new Set((shot.characters || []).map((name) => String(name).trim().toLowerCase()));
-    return requested.size
+    const selected = requested.size
       ? cast.filter((member) => requested.has(member.name.trim().toLowerCase()))
       : [];
+    const isOverShoulder = /over[-\s]the[-\s]shoulder|\bots\b/i.test(String(shot.framing || ''));
+    if (!isOverShoulder) return selected;
+    if (selected.length >= 2) return selected;
+    if (selected.length === 1) {
+      const second = cast.find((member) => member.id !== selected[0].id && member.reference_url);
+      return second ? [second, selected[0]] : selected;
+    }
+    return cast.filter((member) => member.reference_url).slice(0, 2);
   };
 
   const shotReferenceUrls = (shot) => [
