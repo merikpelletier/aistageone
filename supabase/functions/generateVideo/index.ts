@@ -33,6 +33,7 @@ serveWithCors(async (req) => {
       resolution = '720p',
       aspect_ratio = '16:9',
       use_as_reference = false,
+      generate_audio = false,
       engine = 'video',
       transformation_prompt = null,
       model_key = null
@@ -53,6 +54,7 @@ serveWithCors(async (req) => {
     }
 
     const mode = resolution === '480p' ? 'standard' : 'pro';
+    const audioEnabled = engine === 'kling_morph' ? true : Boolean(generate_audio);
     const quoteInput = {
       prompt,
       image_url,
@@ -62,7 +64,7 @@ serveWithCors(async (req) => {
       resolution,
       mode,
       aspect_ratio,
-      generate_audio: engine === 'kling_morph',
+      generate_audio: audioEnabled,
     };
     const dynamicQuote = await quoteAiService(
       billing.service,
@@ -129,7 +131,7 @@ serveWithCors(async (req) => {
         duration: Math.max(3, Math.min(15, Number(duration) || 5)),
         mode,
         aspect_ratio,
-        generate_audio: false,
+        generate_audio: audioEnabled,
       };
 
       if (references.length) {
