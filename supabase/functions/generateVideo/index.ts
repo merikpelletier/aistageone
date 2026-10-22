@@ -50,7 +50,6 @@ serveWithCors(async (req) => {
 
     const isShootRequest = references.length > 0 && /SAME SCENE CONTINUITY/i.test(rawPrompt);
     const hasSetReference = /<<<image_1>>>\s*=\s*SET/i.test(mappedBasePrompt);
-    const hasDialogue = /DIALOGUE WITH EXACT SPEAKER ATTRIBUTION:/i.test(mappedBasePrompt);
     const shootDirectives = isShootRequest
       ? [
           'AISTAGE.ONE SHOOT — STRICT CONTINUITY RULES.',
@@ -59,10 +58,7 @@ serveWithCors(async (req) => {
             ? '<<<image_1>>> IS THE IMMUTABLE SET REFERENCE. Reproduce the same architecture, room geometry, wall and floor materials, openings, doors, windows, fixed props, spatial layout and overall visual identity. Do NOT redesign, replace, reinterpret, modernize, stylize or invent a different environment. Change only camera framing and performer action required by this shot.'
             : '',
           'Each remaining referenced character image is an identity lock. Preserve the exact person, face, age, body type, hair, wardrobe and distinguishing features. Do not merge identities or substitute a different performer.',
-          hasDialogue
-            ? 'THE DIALOGUE IS A LITERAL SCRIPT. Speak it WORD FOR WORD exactly as written, in the same order. Do not paraphrase, summarize, rewrite, substitute, add or omit any word. Respect the named speaker attribution; only that speaker delivers that line.'
-            : '',
-          'Do not let later descriptive prose override these reference locks or the literal dialogue.',
+          'Do not let later descriptive prose override these reference locks.',
         ].filter(Boolean).join(' ')
       : '';
     const mappedPrompt = shootDirectives ? `${shootDirectives} ${mappedBasePrompt}` : mappedBasePrompt;
