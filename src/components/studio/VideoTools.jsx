@@ -240,10 +240,10 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     }).map((member) => member.name);
   };
 
-  const addShot = () => {
+  const addShot = async () => {
     if (selectedScenePassage === null || !scenePassages[selectedScenePassage]) {
       toast.error('Select a Scene passage first.');
-      return null;
+      return;
     }
     const source = cleanScenePassage(scenePassages[selectedScenePassage]);
     const isDialogue = /^[^:\n]{1,80}:\s*/.test(source);
@@ -259,7 +259,12 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setActiveShotId(shot.id);
     setApproved(false);
     setStep('plan');
-    return nextShots;
+    try {
+      await saveScene({ shot_plan: nextShots, status: 'planned' });
+      toast.success(`${shot.label} added`);
+    } catch (error) {
+      toast.error(error.message || 'Shot could not be saved.');
+    }
   };
 
   const startManualCuts = async () => {
@@ -511,7 +516,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
           </div>}
 
           {step === 'plan' && <div className="space-y-4">
-            <section className="border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Scene source</p><p className="text-xs text-white/45">Select the exact passage you want to turn into a shot. The Scene itself is never changed.</p></div><button type="button" onClick={addShot} disabled={selectedScenePassage === null} className="flex items-center gap-1 bg-[#23c7be] px-4 py-2 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-30"><Plus size={13} /> Add Shot</button></div><div className="space-y-2">{scenePassages.map((passage, index) => <button key={`${index}-${passage.slice(0, 24)}`} type="button" onClick={() => setSelectedScenePassage(index)} className={`w-full border p-3 text-left text-sm leading-6 ${selectedScenePassage === index ? 'border-[#23c7be] bg-[#23c7be]/10 text-white' : 'border-white/10 bg-black/20 text-white/75'}`}><span className="mr-2 text-[10px] font-black text-[#8ee9e4]">{index + 1}</span>{cleanScenePassage(passage)}</button>)}</div></section>
+            <section className="border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Scene source</p><p className="text-xs text-white/45">Select the exact passage you want to turn into a shot. The Scene itself is never changed.</p></div><button type="button" onClick={addShot} className="flex items-center gap-1 bg-[#23c7be] px-4 py-2 text-xs font-black text-black"><Plus size={13} /> Add Shot</button></div><div className="space-y-2">{scenePassages.map((passage, index) => <button key={`${index}-${passage.slice(0, 24)}`} type="button" onClick={() => setSelectedScenePassage(index)} className={`w-full border p-3 text-left text-sm leading-6 ${selectedScenePassage === index ? 'border-[#23c7be] bg-[#23c7be]/10 text-white' : 'border-white/10 bg-black/20 text-white/75'}`}><span className="mr-2 text-[10px] font-black text-[#8ee9e4]">{index + 1}</span>{cleanScenePassage(passage)}</button>)}</div></section>
             <div className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-[#17191d] p-4"><div><p className="text-sm font-black">Your shot plan</p><p className="text-xs text-white/45">{shotPlan.length} shots · approximately {allShotDuration}s total. You control every cut.</p></div><button type="button" onClick={approvePlan} disabled={!shotPlan.length} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black disabled:opacity-30">Approve & Shoot</button></div>
             <div className="space-y-3">{shotPlan.map((shot, index) => {
               const speechSeconds = estimatedSpeechSeconds(shot.dialogue);
