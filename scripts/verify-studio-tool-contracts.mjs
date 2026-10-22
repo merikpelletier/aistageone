@@ -45,9 +45,10 @@ for (const marker of [
 ]) requireMarker('Replicate tools', replicateGenerate, marker);
 
 const generateVideo = read('supabase/functions/generateVideo/index.ts');
-for (const marker of ["replicate.run('kwaivgi/kling-v2.6'", "replicate.run('kwaivgi/kling-v1.6-standard'", "replicate.run('bytedance/seedance-1-lite'"]) {
-  requireMarker('AI Video baseline', generateVideo, marker);
+for (const marker of ["replicate.run('kwaivgi/kling-v2.6'", "replicate.run('kwaivgi/kling-v1.6-standard'", "replicate.run('kwaivgi/kling-v3-omni-video'"]) {
+  requireMarker('Shoot video baseline', generateVideo, marker);
 }
+requireMarker('Studio Shoot label', studio, "{ key: 'ai_video', label: 'Shoot'");
 forbidMarker('Video Reference', generateVideo, 'wan-video/');
 const guardPosition = generateVideo.indexOf('Video Reference is temporarily unavailable');
 const billingPosition = generateVideo.indexOf('creditCharge = await reserveCredits');
