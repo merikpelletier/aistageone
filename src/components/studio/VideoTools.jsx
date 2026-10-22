@@ -373,14 +373,15 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const guide = [];
     let imageNumber = 1;
     if (setReference.url) {
-      guide.push(`Image ${imageNumber} = SET ${setReference.name || 'reference'}. Use it as the exact environment anchor.`);
+      guide.push(`Image ${imageNumber} = SET ${setReference.name || 'reference'}. ABSOLUTE SET LOCK: reproduce this exact environment. Do not redesign, reinterpret, simplify, extend or replace it. Preserve the exact architecture, room proportions, walls, doors, windows, openings, stairs, floors, ceilings, fixed furniture, movable furniture, props, materials, colors, textures, wear, decoration, practical lights and the precise position and orientation of every visible set element. Camera angle, framing, lens perspective, performers and performer actions may change; the physical set itself may not.`);
       imageNumber += 1;
     }
     shotCast(shot).filter((member) => member.reference_url).slice(0, Math.max(0, 7 - (setReference.url ? 1 : 0))).forEach((member) => {
       guide.push(`Image ${imageNumber} = ${member.name}. Preserve this exact identity and appearance. Voice/sound: ${member.voice_or_sound || 'natural for the character'}. Performance manner: ${member.manner || 'natural performance'}.`);
       imageNumber += 1;
     });
-    return `${guide.join(' ')} SAME SCENE CONTINUITY. ${shot.framing}. Camera: ${shot.camera || 'stable cinematic coverage'}. Action: ${shot.action || 'perform the scripted beat'}. ${shot.dialogue ? `DIALOGUE WITH EXACT SPEAKER ATTRIBUTION: ${shot.dialogue}. Only the character whose line is being spoken moves their mouth; all others react silently until their own line.` : ''} ${shot.sound ? `AMBIENT / CHARACTER SOUND: ${shot.sound}.` : ''} ${shot.prompt || ''} Preserve cast identity, wardrobe, set geography, eyelines and screen direction. Duration ${shot.duration} seconds.`;
+    const setLock = setReference.url ? ' SET CONTINUITY IS NON-NEGOTIABLE: Image 1 is the physical location master. Match it exactly from shot to shot. Never invent, move, remove, resize, recolor or substitute architectural features, furniture, props, materials or lighting fixtures. Do not create unseen new areas unless camera framing merely reveals a plausible continuation without contradicting Image 1.' : '';
+    return `${guide.join(' ')}${setLock} SAME SCENE CONTINUITY. ${shot.framing}. Camera: ${shot.camera || 'stable cinematic coverage'}. Action: ${shot.action || 'perform the scripted beat'}. ${shot.dialogue ? `DIALOGUE WITH EXACT SPEAKER ATTRIBUTION: ${shot.dialogue}. Only the character whose line is being spoken moves their mouth; all others react silently until their own line.` : ''} ${shot.sound ? `AMBIENT / CHARACTER SOUND: ${shot.sound}.` : ''} ${shot.prompt || ''} Preserve cast identity, wardrobe, exact set geography, eyelines and screen direction. Duration ${shot.duration} seconds.`;
   };
 
   const generateShot = async (shot) => {
