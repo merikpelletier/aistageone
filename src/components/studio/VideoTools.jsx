@@ -132,6 +132,9 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [vaultVideoUrl, setVaultVideoUrl] = useState(null);
   const [userEmail, setUserEmail] = useState(user?.email || null);
+  const [showMyScenes, setShowMyScenes] = useState(false);
+  const [savedScenes, setSavedScenes] = useState([]);
+  const [loadingScenes, setLoadingScenes] = useState(false);
 
   useEffect(() => {
     if (user?.email) {
@@ -140,6 +143,51 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     }
     supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email || null)).catch(() => {});
   }, [user?.email]);
+
+  const loadMyScenes = async () => {
+    setLoadingScenes(true);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const ownerId = authData.user?.id;
+      if (!ownerId) throw new Error('You must be signed in to open My Scenes.');
+      const { data, error } = await supabase
+        .from('shoot_scene')
+        .select('*')
+        .eq('user_id', ownerId)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      setSavedScenes(data || []);
+    } catch (error) {
+      toast.error(error?.message || 'My Scenes could not load.');
+    } finally {
+      setLoadingScenes(false);
+    }
+  };
+
+  const openMyScenes = async () => {
+    const nextOpen = !showMyScenes;
+    setShowMyScenes(nextOpen);
+    if (nextOpen) await loadMyScenes();
+  };
+
+  const restoreScene = (scene) => {
+    const restoredShots = Array.isArray(scene?.shot_plan) ? scene.shot_plan : [];
+    const restoredStatus = scene?.status || 'setup';
+    const canShoot = ['approved', 'shooting', 'completed'].includes(restoredStatus);
+    setSceneId(scene.id);
+    setTitle(scene.title || 'Untitled scene');
+    setAspectRatio(scene.aspect_ratio || '16:9');
+    setCast(Array.isArray(scene.cast_data) ? scene.cast_data : []);
+    setSetReference(scene.set_reference || { name: '', url: '', description: '' });
+    setSceneText(scene.scene_text || '');
+    setShotPlan(restoredShots);
+    setApproved(canShoot);
+    setActiveShotId(restoredShots[0]?.id || null);
+    setStep(restoredStatus === 'planned' ? 'plan' : (canShoot ? 'shoot' : 'setup'));
+    setShowMyScenes(false);
+    toast.success('Scene restored');
+  };
 
   const activeShot = shotPlan.find((shot) => shot.id === activeShotId) || shotPlan[0] || null;
   const quoteService = 'generateVideo:video';
@@ -386,10 +434,18 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
               <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Scene Production</p><h3 className="text-xl font-black">Shoot</h3><p className="text-xs text-white/45">Build the scene, approve the cuts, then shoot it shot by shot.</p></div>
             </div>
             <div className="flex gap-2">
+              <button type="button" onClick={openMyScenes} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${showMyScenes ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.05]'}`}><Folder size={14} /> My Scenes</button>
               <button type="button" onClick={() => saveScene().then(() => toast.success('Shoot scene saved')).catch((error) => toast.error(error.message))} className="flex items-center gap-2 border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold"><Save size={14} /> Save</button>
               {!embedded && <button type="button" onClick={onClose} className="p-2"><X size={19} /></button>}
             </div>
           </header>
+
+          {showMyScenes && <section className="mb-5 border border-white/10 bg-[#17191d] p-4">
+            <div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">My Scenes</p><p className="text-xs text-white/45">Open one of your saved Shoot scenes.</p></div><button type="button" onClick={loadMyScenes} disabled={loadingScenes} className="bg-white/10 px-3 py-2 text-xs font-bold disabled:opacity-50">Refresh</button></div>
+            {loadingScenes ? <div className="flex min-h-24 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div>
+              : savedScenes.length ? <div className="grid gap-2 md:grid-cols-2">{savedScenes.map((scene) => <button key={scene.id} type="button" onClick={() => restoreScene(scene)} className="border border-white/10 bg-black/20 p-3 text-left hover:border-[#23c7be]"><div className="flex items-center justify-between gap-3"><span className="truncate text-sm font-black">{scene.title || 'Untitled scene'}</span><span className="text-[10px] font-bold uppercase text-[#8ee9e4]">{scene.status || 'setup'}</span></div><p className="mt-1 text-[10px] text-white/40">{scene.aspect_ratio || '16:9'} · {Array.isArray(scene.shot_plan) ? scene.shot_plan.length : 0} shots</p></button>)}</div>
+                : <div className="border border-white/10 bg-black/20 p-4 text-sm text-white/45">No saved scenes yet.</div>}
+          </section>}
 
           {showContext && <ProductionContextInfo productionMethod={productionMethod} block={block} character={character} referenceMedia={referenceMedia} />}
 
