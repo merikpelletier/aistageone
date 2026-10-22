@@ -17,6 +17,7 @@ import '@/styles/studio-workspace-scroll.css'
 import '@/styles/studio-selects.css'
 import '@/styles/dossier-media-ratios.css'
 import '@/styles/dossier-upload-icons.css'
+import '@/styles/shoot-editor-timeline.css'
 import { registerServiceWorker } from '@/lib/registerServiceWorker'
 import { installIPadMediaGuard } from '@/lib/ipadMediaGuard'
 
