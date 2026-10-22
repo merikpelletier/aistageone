@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Film, X, Loader2, Type, CheckCircle2, Image as ImageIcon, Sparkles, Upload, Video, Play, Folder, ShoppingBag } from 'lucide-react';
+import { Camera, CheckCircle2, Folder, Image as ImageIcon, Loader2, Plus, Save, ShoppingBag, Sparkles, Trash2, Upload, Users, Video, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import { toast } from 'sonner';
 import ProductionContextInfo from '@/components/ProductionContextInfo';
@@ -12,19 +11,20 @@ import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const RATIOS = [
-  { id: '16:9', label: 'Landscape', icon: '🎬' },
-  { id: '9:16', label: 'Portrait', icon: '📱' },
-  { id: '1:1', label: 'Square', icon: '🖼️' },
+  { id: '16:9', label: 'Landscape' },
+  { id: '9:16', label: 'Portrait' },
+  { id: '1:1', label: 'Square' },
 ];
 
-const DURATIONS = [
-  { id: 5, label: '5s' },
-  { id: 10, label: '10s' },
-];
-
-const RESOLUTIONS = [
-  { id: '480p', label: '480p', quality: 'Fast' },
-  { id: '720p', label: '720p', quality: 'HD' },
+const SHOT_TYPES = [
+  'Wide shot',
+  'Medium shot',
+  'Medium close-up',
+  'Close-up',
+  'Two-shot',
+  'Over-the-shoulder',
+  'Insert / detail',
+  'Reverse angle',
 ];
 
 const catalogImages = (asset) => [...new Set([
@@ -32,7 +32,25 @@ const catalogImages = (asset) => [...new Set([
   ...(Array.isArray(asset?.preview_images) ? asset.preview_images : []),
 ].filter(Boolean))];
 
-function AiVideoAssetsShopPicker({ onSelect, onClose, embedded = false }) {
+const newCastMember = (index = 0) => ({
+  id: crypto.randomUUID(),
+  name: `Character ${index + 1}`,
+  type: 'human',
+  reference_url: '',
+  voice_or_sound: '',
+  manner: '',
+  description: '',
+});
+
+const spokenWordCount = (dialogue = '') => String(dialogue)
+  .replace(/(^|\s)[A-Za-zÀ-ÿ0-9 _'-]+:\s*/g, ' ')
+  .trim()
+  .split(/\s+/)
+  .filter(Boolean).length;
+
+const estimatedSpeechSeconds = (dialogue = '') => spokenWordCount(dialogue) / 2.2;
+
+function AssetsShopPicker({ onSelect, onClose, embedded = false }) {
   const [search, setSearch] = useState('');
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +58,6 @@ function AiVideoAssetsShopPicker({ onSelect, onClose, embedded = false }) {
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
     supabase
       .from('catalog_asset')
       .select('id,title,description,featured_image,preview_images,creator_name,tags')
@@ -51,11 +68,9 @@ function AiVideoAssetsShopPicker({ onSelect, onClose, embedded = false }) {
         if (!active) return;
         if (loadError) throw loadError;
         setAssets((data || []).filter((asset) => catalogImages(asset).length));
-        setError('');
       })
       .catch((loadError) => {
         if (!active) return;
-        setAssets([]);
         setError(loadError?.message || 'Assets Shop could not load.');
       })
       .finally(() => { if (active) setLoading(false); });
@@ -74,233 +89,370 @@ function AiVideoAssetsShopPicker({ onSelect, onClose, embedded = false }) {
     : 'fixed inset-0';
 
   return (
-    <motion.div className={`${frameClass} z-[99999] flex items-center justify-center bg-black/90 p-3 backdrop-blur-md`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-      <motion.div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[4px] border border-white/10 bg-[#17191d] shadow-2xl" initial={{ y: 20 }} animate={{ y: 0 }} exit={{ y: 20 }} onClick={(event) => event.stopPropagation()}>
+    <motion.div className={`${frameClass} z-[99999] flex items-center justify-center bg-black/90 p-3`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={onClose}>
+      <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden border border-white/10 bg-[#17191d]" onClick={(event) => event.stopPropagation()}>
         <header className="flex items-center justify-between border-b border-white/10 p-5">
-          <div><p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#23c7be]">Assets Shop</p><h3 className="mt-1 text-xl font-black text-white">Choose an image reference</h3></div>
-          <button type="button" onClick={onClose} className="rounded-[3px] border border-white/10 bg-white/[0.05] p-2 text-white"><X size={18} /></button>
+          <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Assets Shop</p><h3 className="text-xl font-black text-white">Choose a reference image</h3></div>
+          <button type="button" onClick={onClose} className="p-2 text-white"><X size={18} /></button>
         </header>
-        <div className="border-b border-white/10 p-4"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Assets Shop" className="w-full rounded-[3px] border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" /></div>
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-          {loading ? <div className="flex min-h-56 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div> : error ? <div className="border border-red-400/20 bg-red-400/10 p-6 text-sm text-red-100">{error}</div> : filtered.length ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((asset) => catalogImages(asset).map((url, index) => (
-                <button key={`${asset.id}-${index}`} type="button" onClick={() => onSelect(url)} className="overflow-hidden rounded-[3px] border border-white/10 bg-black text-left hover:border-[#23c7be]/60">
-                  <div className="aspect-[4/3] bg-[#0b0d0f]"><img src={url} alt={asset.title || 'Asset'} className="h-full w-full object-contain" /></div>
-                  <div className="p-3"><p className="truncate text-xs font-black text-white">{asset.title || 'Untitled asset'}</p><p className="mt-1 text-[10px] text-white/35">Image {index + 1} of {catalogImages(asset).length}</p></div>
+        <div className="border-b border-white/10 p-4"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Assets Shop" className="w-full border border-white/10 bg-black/30 px-4 py-3 text-sm text-white" /></div>
+        <div className="flex-1 overflow-y-auto p-4">
+          {loading ? <div className="flex min-h-56 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div>
+            : error ? <div className="border border-red-400/25 bg-red-400/10 p-4 text-sm text-red-200">{error}</div>
+              : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{filtered.flatMap((asset) => catalogImages(asset).map((url, index) => (
+                <button key={`${asset.id}-${index}`} type="button" onClick={() => onSelect(url, asset.title)} className="overflow-hidden border border-white/10 bg-black text-left hover:border-[#23c7be]">
+                  <div className="aspect-[4/3]"><img src={url} alt="" className="h-full w-full object-contain" /></div>
+                  <div className="p-2"><p className="truncate text-xs font-bold text-white">{asset.title}</p><p className="text-[9px] text-white/35">Image {index + 1} of {catalogImages(asset).length}</p></div>
                 </button>
-              )))}
-            </div>
-          ) : <div className="flex min-h-56 items-center justify-center border border-dashed border-white/15 text-sm text-white/40">No matching image assets.</div>}
+              )))}</div>}
         </div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 }
 
-export default function VideoTools({ onComplete, onClose, recommendedTools = [], referenceMedia = [], productionMethod = null, block = null, character = null, initialMode = null, episodePageId, blockId, user, embedded = false }) {
+export default function VideoTools({ onClose, referenceMedia = [], productionMethod = null, block = null, character = null, user, embedded = false }) {
   const showContext = productionMethod && block;
-  const [mode, setMode] = useState(initialMode || 'text');
-  const [prompt, setPrompt] = useState('');
-  const [imagePreview, setImagePreview] = useState(null);
-  const [videoPreview, setVideoPreview] = useState(null);
+  const [step, setStep] = useState('setup');
+  const [sceneId, setSceneId] = useState(null);
+  const [title, setTitle] = useState('Untitled scene');
+  const [cast, setCast] = useState([newCastMember(0), newCastMember(1)]);
+  const [setReference, setSetReference] = useState({ name: '', url: '', description: '' });
+  const [sceneText, setSceneText] = useState('');
   const [aspectRatio, setAspectRatio] = useState('16:9');
-  const [duration, setDuration] = useState(5);
-  const [resolution, setResolution] = useState('480p');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [result, setResult] = useState(null);
-  const [showVaultPicker, setShowVaultPicker] = useState(false);
-  const [vaultPickerTarget, setVaultPickerTarget] = useState(null);
-  const [showAssetShopPicker, setShowAssetShopPicker] = useState(false);
-  const [showSaveVault, setShowSaveVault] = useState(false);
-  const [userEmail, setUserEmail] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [shotPlan, setShotPlan] = useState([]);
+  const [approved, setApproved] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [activeShotId, setActiveShotId] = useState(null);
+  const [showVaultPicker, setShowVaultPicker] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState(null);
+  const [showAssetsShop, setShowAssetsShop] = useState(false);
+  const [showSaveVault, setShowSaveVault] = useState(false);
+  const [vaultVideoUrl, setVaultVideoUrl] = useState(null);
+  const [userEmail, setUserEmail] = useState(user?.email || null);
 
-  const quoteService = 'generateVideo:seedance';
-  const pricingInput = { duration, resolution, aspect_ratio: aspectRatio, prompt, image_url: imagePreview || undefined, video_url: videoPreview || undefined };
+  useEffect(() => {
+    if (user?.email) {
+      setUserEmail(user.email);
+      return;
+    }
+    supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email || null)).catch(() => {});
+  }, [user?.email]);
+
+  const activeShot = shotPlan.find((shot) => shot.id === activeShotId) || shotPlan[0] || null;
+  const quoteService = 'generateVideo:video';
+  const pricingInput = useMemo(() => ({
+    duration: Math.max(3, Math.min(15, Number(activeShot?.duration || 5))),
+    mode: 'pro',
+    aspect_ratio: aspectRatio,
+    prompt: activeShot?.prompt || sceneText || 'Scene shot',
+    reference_images: [setReference.url, ...cast.map((member) => member.reference_url)].filter(Boolean).slice(0, 7),
+    generate_audio: true,
+  }), [activeShot, aspectRatio, cast, sceneText, setReference.url]);
+
   const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({ service: quoteService, kind: 'video', input: pricingInput });
-  const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
-  const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({ service: quoteService, kind: 'video', input: pricingInput, modelKey: effectiveModel });
+  const effectiveModel = selectedModel || modelOptions.find((item) => item.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const { quote: priceQuote } = useAiPriceQuote({ service: quoteService, kind: 'video', input: pricingInput, modelKey: effectiveModel });
 
-  useEffect(() => {
-    base44.auth.me().then(u => setUserEmail(u?.email)).catch(() => {});
-  }, []);
+  const updateCast = (id, patch) => setCast((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
+  const updateShot = (id, patch) => setShotPlan((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
 
-  useEffect(() => {
-    if (recommendedTools.length > 0) {
-      if (recommendedTools.includes('text_to_video')) setMode('text');
-      else if (recommendedTools.includes('image_to_video')) setMode('image');
-      else if (recommendedTools.includes('video_reference')) setMode('video');
-    }
-  }, [recommendedTools]);
-
-  const handleImageUpload = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => setImagePreview(e.target.result);
-    reader.readAsDataURL(file);
+  const uploadImage = async (file, target) => {
+    if (!file) return;
+    const { data: authData } = await supabase.auth.getUser();
+    const owner = authData.user?.id || 'public';
+    const extension = file.name?.split('.').pop() || 'jpg';
+    const path = `${owner}/shoot/${crypto.randomUUID()}.${extension}`;
+    const { error } = await supabase.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false });
+    if (error) throw error;
+    const { data } = supabase.storage.from('media').getPublicUrl(path);
+    applyPickedImage(data.publicUrl, file.name, target);
   };
 
-  const handleVideoUpload = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => setVideoPreview(e.target.result);
-    reader.readAsDataURL(file);
+  const applyPickedImage = (url, name, target = pickerTarget) => {
+    if (!url || !target) return;
+    if (target.type === 'cast') updateCast(target.id, { reference_url: url });
+    if (target.type === 'set') setSetReference((value) => ({ ...value, url, name: value.name || name || 'Set' }));
+    setShowVaultPicker(false);
+    setShowAssetsShop(false);
+    setPickerTarget(null);
   };
 
-  const handleGenerate = async () => {
-    if (mode === 'text' && !prompt.trim()) return;
-    if (mode === 'image' && !imagePreview) return;
-    if (mode === 'video' && !videoPreview) return;
+  const buildScenePayload = (overrides = {}) => ({
+    title: title.trim() || 'Untitled scene',
+    aspect_ratio: aspectRatio,
+    cast_data: cast,
+    set_reference: setReference.url ? setReference : null,
+    scene_text: sceneText,
+    shot_plan: shotPlan,
+    status: approved ? 'approved' : (shotPlan.length ? 'planned' : 'setup'),
+    updated_at: new Date().toISOString(),
+    ...overrides,
+  });
 
-    setIsGenerating(true);
-    try {
-      const response = await base44.functions.invoke('generateVideo', {
-        prompt: prompt || (mode === 'image' ? 'Animate this image' : 'Use as reference'),
-        image_url: (mode === 'image' || mode === 'video') ? imagePreview : null,
-        video_url: mode === 'video' ? videoPreview : null,
-        duration,
-        aspect_ratio: aspectRatio,
-        resolution,
-        model_key: effectiveModel || undefined,
-      });
-      if (response.data?.file_url) setResult(response.data.file_url);
-    } catch (error) {
-      const msg = error.response?.data?.message || error.response?.data?.error;
-      toast.error(msg?.includes('Insufficient tokens') ? 'Not enough tokens. Please buy more.' : (msg || 'Failed to generate video'));
-    } finally {
-      setIsGenerating(false);
-    }
+  const saveScene = async (overrides = {}) => {
+    const payload = buildScenePayload(overrides);
+    const query = sceneId
+      ? supabase.from('shoot_scene').update(payload).eq('id', sceneId).select('*').single()
+      : supabase.from('shoot_scene').insert(payload).select('*').single();
+    const { data, error } = await query;
+    if (error) throw error;
+    setSceneId(data.id);
+    return data;
   };
 
-  const handleComplete = () => result && onComplete(result);
-  const handleUseVideo = () => {
-    if (!result) return;
-    if (!user?.email) { handleComplete(); return; }
-    setShowSaveVault(true);
-  };
-
-  const handleVaultSaved = async () => {
-    setShowSaveVault(false);
-    if (episodePageId && blockId && user?.email) {
-      setIsSaving(true);
+  const invokeSceneAnalysis = async (prompt, instructions, schema) => {
+    const { data, error } = await supabase.functions.invoke('invoke-llm', {
+      body: { prompt, instructions, response_json_schema: schema },
+      headers: { 'x-idempotency-key': crypto.randomUUID() },
+    });
+    if (error) {
+      let message = error.message || 'Scene analysis failed';
       try {
-        const timelines = await base44.entities.UserTimeline.filter({ episode_page_id: episodePageId, user_email: user.email });
-        let timeline = timelines[0];
-        if (!timeline) {
-          await base44.entities.UserTimeline.create({ episode_page_id: episodePageId, user_email: user.email, block_overrides: [{ block_id: blockId, user_media_url: result, status: 'uploaded' }] });
-        } else {
-          const existingOverrides = timeline.block_overrides || [];
-          const otherBlocks = existingOverrides.filter(b => b.block_id !== blockId);
-          await base44.entities.UserTimeline.update(timeline.id, { block_overrides: [...otherBlocks, { block_id: blockId, user_media_url: result, status: 'uploaded' }] });
+        if (error.context && typeof error.context.json === 'function' && !error.context.bodyUsed) {
+          const details = await error.context.json();
+          message = details?.error || details?.message || message;
         }
-        toast.success('Video saved to your Vault & episode!');
-      } catch (err) {
-        console.error('Error attaching video to episode:', err);
-        toast.error('Saved to Vault, but failed to attach to episode');
-      } finally {
-        setIsSaving(false);
-      }
+      } catch {}
+      throw new Error(message);
     }
-    handleComplete();
+    return data;
   };
 
-  const activeButton = 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]';
-  const idleButton = 'border-white/10 bg-white/[0.04] text-white/65 hover:bg-white/[0.08]';
+  const analyzeScene = async () => {
+    if (!sceneText.trim()) return toast.error('Enter the scene first.');
+    if (!cast.length) return toast.error('Add at least one cast member.');
+    setBusy(true);
+    try {
+      const castSummary = cast.map((member, index) => `${index + 1}. ${member.name} — ${member.type}; voice/sound: ${member.voice_or_sound || 'not specified'}; manner: ${member.manner || 'not specified'}; description: ${member.description || 'not specified'}`).join('\n');
+      const schema = {
+        type: 'object',
+        properties: {
+          estimated_total_duration: { type: 'number' },
+          shots: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                label: { type: 'string' },
+                duration: { type: 'number' },
+                framing: { type: 'string' },
+                characters: { type: 'array', items: { type: 'string' } },
+                dialogue: { type: 'string' },
+                action: { type: 'string' },
+                camera: { type: 'string' },
+                sound: { type: 'string' },
+                prompt: { type: 'string' },
+              },
+              required: ['label', 'duration', 'framing', 'characters', 'dialogue', 'action', 'camera', 'sound', 'prompt'],
+            },
+          },
+        },
+        required: ['estimated_total_duration', 'shots'],
+      };
+      const instructions = `You are the assistant director for AISTAGE.ONE Shoot. Break the complete scene into practical AI-video shots. Each shot MUST be 3 to 15 seconds. Dialogue must fit the duration: assume roughly 2.2 spoken English words per second, with additional time for pauses and reactions. Prefer separate speaker close-ups, over-the-shoulders, reactions and inserts instead of making multiple speaking characters talk in one generated image. Keep cast names EXACTLY as supplied. Keep set continuity. Reference order is fixed: Image 1 is the set when supplied; following images are cast references in cast order. Never merge, replace or swap character identities. Do not invent dialogue.`;
+      const prompt = `ASPECT RATIO: ${aspectRatio}\nSET: ${setReference.name || 'not named'} — ${setReference.description || 'no description'}\nCAST ORDER:\n${castSummary}\n\nSCENE:\n${sceneText}\n\nPropose the most cinematic and practical shot plan. Return only structured JSON.`;
+      const response = await invokeSceneAnalysis(prompt, instructions, schema);
+      const rawShots = Array.isArray(response?.shots) ? response.shots : [];
+      if (!rawShots.length) throw new Error('No shots were proposed.');
+      const nextShots = rawShots.map((shot, index) => ({
+        id: crypto.randomUUID(),
+        order: index + 1,
+        label: shot.label || `Shot ${index + 1}`,
+        duration: Math.max(3, Math.min(15, Math.round(Number(shot.duration) || 5))),
+        framing: SHOT_TYPES.includes(shot.framing) ? shot.framing : (shot.framing || 'Medium shot'),
+        characters: Array.isArray(shot.characters) ? shot.characters : [],
+        dialogue: shot.dialogue || '',
+        action: shot.action || '',
+        camera: shot.camera || '',
+        sound: shot.sound || '',
+        prompt: shot.prompt || '',
+        result_url: '',
+      }));
+      setShotPlan(nextShots);
+      setActiveShotId(nextShots[0]?.id || null);
+      setApproved(false);
+      setStep('plan');
+      await saveScene({ shot_plan: nextShots, status: 'planned' });
+      toast.success(`${nextShots.length} shots proposed`);
+    } catch (error) {
+      toast.error(error?.message || 'Scene analysis failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const shotCast = (shot) => {
+    const requested = new Set((shot.characters || []).map((name) => String(name).trim().toLowerCase()));
+    return requested.size
+      ? cast.filter((member) => requested.has(member.name.trim().toLowerCase()))
+      : [];
+  };
+
+  const shotReferenceUrls = (shot) => [
+    setReference.url,
+    ...shotCast(shot).map((member) => member.reference_url),
+  ].filter(Boolean).slice(0, 7);
+
+  const buildShotPrompt = (shot) => {
+    const guide = [];
+    let imageNumber = 1;
+    if (setReference.url) {
+      guide.push(`Image ${imageNumber} = SET ${setReference.name || 'reference'}. Use it as the exact environment anchor.`);
+      imageNumber += 1;
+    }
+    shotCast(shot).filter((member) => member.reference_url).slice(0, Math.max(0, 7 - (setReference.url ? 1 : 0))).forEach((member) => {
+      guide.push(`Image ${imageNumber} = ${member.name}. Preserve this exact identity and appearance. Voice/sound: ${member.voice_or_sound || 'natural for the character'}. Performance manner: ${member.manner || 'natural performance'}.`);
+      imageNumber += 1;
+    });
+    return `${guide.join(' ')} SAME SCENE CONTINUITY. ${shot.framing}. Camera: ${shot.camera || 'stable cinematic coverage'}. Action: ${shot.action || 'perform the scripted beat'}. ${shot.dialogue ? `DIALOGUE WITH EXACT SPEAKER ATTRIBUTION: ${shot.dialogue}. Only the character whose line is being spoken moves their mouth; all others react silently until their own line.` : ''} ${shot.sound ? `AMBIENT / CHARACTER SOUND: ${shot.sound}.` : ''} ${shot.prompt || ''} Preserve cast identity, wardrobe, set geography, eyelines and screen direction. Duration ${shot.duration} seconds.`;
+  };
+
+  const generateShot = async (shot) => {
+    if (!sceneId) {
+      try { await saveScene({ status: 'approved' }); } catch (error) { return toast.error(error.message); }
+    }
+    const speechSeconds = estimatedSpeechSeconds(shot.dialogue);
+    if (speechSeconds > Number(shot.duration || 0)) {
+      return toast.error(`Dialogue needs about ${Math.ceil(speechSeconds)}s but this shot is ${shot.duration}s. Increase duration or shorten the line.`);
+    }
+    setBusy(true);
+    setActiveShotId(shot.id);
+    try {
+      const refs = shotReferenceUrls(shot);
+      const { data, error } = await supabase.functions.invoke('generateVideo', {
+        body: {
+          prompt: buildShotPrompt(shot),
+          reference_image_urls: refs,
+          duration: Math.max(3, Math.min(15, Number(shot.duration) || 5)),
+          aspect_ratio: aspectRatio,
+          resolution: '720p',
+          generate_audio: true,
+          engine: 'video',
+          model_key: effectiveModel || undefined,
+        },
+        headers: { 'x-idempotency-key': crypto.randomUUID() },
+      });
+      if (error) {
+        let message = error.message || 'Shot generation failed';
+        try {
+          if (error.context && typeof error.context.json === 'function' && !error.context.bodyUsed) {
+            const details = await error.context.json();
+            message = details?.error || details?.message || message;
+          }
+        } catch {}
+        throw new Error(message);
+      }
+      const url = data?.file_url;
+      if (!url) throw new Error('No video returned.');
+      const nextShots = shotPlan.map((item) => item.id === shot.id ? { ...item, result_url: url } : item);
+      setShotPlan(nextShots);
+      const currentScene = sceneId || (await saveScene({ shot_plan: nextShots, status: 'shooting' })).id;
+      const { error: updateError } = await supabase.from('shoot_scene').update({ shot_plan: nextShots, status: 'shooting', updated_at: new Date().toISOString() }).eq('id', currentScene);
+      if (updateError) throw updateError;
+      toast.success(`${shot.label} generated`);
+    } catch (error) {
+      toast.error(error?.message || 'Shot generation failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const approvePlan = async () => {
+    setApproved(true);
+    setStep('shoot');
+    try {
+      await saveScene({ shot_plan: shotPlan, status: 'approved' });
+      toast.success('Shot plan approved');
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const allShotDuration = shotPlan.reduce((sum, shot) => sum + Number(shot.duration || 0), 0);
+  const completedCount = shotPlan.filter((shot) => shot.result_url).length;
 
   return (
     <div className={`fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] overflow-y-auto bg-[#202328]' : 'inset-0 flex items-center justify-center bg-black/80 p-4'}`}>
-      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className={embedded ? 'min-h-full w-full overflow-y-auto bg-[#202328] p-5 pb-28 text-white md:p-8 md:pb-28 lg:pb-32' : 'max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[4px] border border-white/10 bg-[#202328] p-6 text-white'}>
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-5 flex items-center justify-between border-b border-white/10 bg-[#17191d] px-4 py-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={embedded ? 'min-h-full w-full bg-[#202328] p-5 pb-28 text-white md:p-8' : 'max-h-[92vh] w-full max-w-6xl overflow-y-auto border border-white/10 bg-[#202328] p-6 text-white'}>
+        <div className="mx-auto max-w-7xl">
+          <header className="mb-5 flex items-center justify-between border-b border-white/10 bg-[#17191d] px-4 py-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Sparkles size={19} /></div>
-              <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Image & Video</p><h3 className="text-xl font-black text-white">AI Video</h3><p className="text-xs text-white/45">Generate from text, image, or reference video</p></div>
+              <div className="flex h-10 w-10 items-center justify-center border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Camera size={20} /></div>
+              <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Scene Production</p><h3 className="text-xl font-black">Shoot</h3><p className="text-xs text-white/45">Build the scene, approve the cuts, then shoot it shot by shot.</p></div>
             </div>
-            {!embedded && <button onClick={onClose} className="rounded-[3px] border border-white/10 bg-white/[0.04] p-2 text-white hover:bg-white/10"><X size={20} /></button>}
-          </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => saveScene().then(() => toast.success('Shoot scene saved')).catch((error) => toast.error(error.message))} className="flex items-center gap-2 border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold"><Save size={14} /> Save</button>
+              {!embedded && <button type="button" onClick={onClose} className="p-2"><X size={19} /></button>}
+            </div>
+          </header>
 
           {showContext && <ProductionContextInfo productionMethod={productionMethod} block={block} character={character} referenceMedia={referenceMedia} />}
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="space-y-4">
-              {!initialMode && recommendedTools.length === 0 && (
-                <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-                  <p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Start with</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[['text','Text only',Type],['image','Add image reference',ImageIcon],['video','Add video reference',Video]].map(([id,label,Icon]) => <button key={id} onClick={() => setMode(id)} className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-[3px] border p-3 text-xs font-black transition ${mode === id ? activeButton : idleButton}`}><Icon size={20} />{label}</button>)}
-                  </div>
-                </section>
-              )}
-
-              {recommendedTools.length > 0 && (
-                <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-                  <p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Recommended inputs for this block</p>
-                  <div className="grid gap-2 sm:grid-cols-3">{recommendedTools.map(tool => {
-                    const active = (tool === 'text_to_video' && mode === 'text') || (tool === 'image_to_video' && mode === 'image') || (tool === 'video_reference' && mode === 'video');
-                    const Icon = tool === 'text_to_video' ? Type : tool === 'image_to_video' ? ImageIcon : Video;
-                    const label = tool === 'text_to_video' ? 'Text only' : tool === 'image_to_video' ? 'Add image reference' : 'Add video reference';
-                    return <button key={tool} onClick={() => setMode(tool === 'text_to_video' ? 'text' : tool === 'image_to_video' ? 'image' : 'video')} className={`flex items-center gap-2 rounded-[3px] border px-3 py-2.5 text-xs font-black ${active ? activeButton : idleButton}`}><Icon size={16} />{label}</button>;
-                  })}</div>
-                </section>
-              )}
-
-              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-                <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Type size={14} className="text-[#23c7be]" /> {mode === 'text' ? 'Video Prompt' : 'Video Instructions'}</p>
-                <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={mode === 'text' ? 'Describe your video scene in detail...' : mode === 'image' ? 'Describe exactly how this image should move, what the subject should do, and how the camera should behave...' : 'Describe how the reference video should be used and what the generated video should do...'} className="min-h-[130px] w-full resize-none rounded-[3px] border border-white/15 bg-black/25 p-4 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" maxLength={1000} />
-                <p className="mt-2 text-right text-[10px] text-white/35">{prompt.length}/1000 characters</p>
-              </section>
-
-              {mode === 'image' && (
-                <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-                  <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><ImageIcon size={14} className="text-[#23c7be]" /> Image Reference</p>
-                  {imagePreview ? <div className="relative overflow-hidden rounded-[4px] border border-white/10 bg-black"><img src={imagePreview} alt="Preview" className="max-h-[430px] w-full object-contain" /><button onClick={() => setImagePreview(null)} className="absolute right-2 top-2 rounded-[3px] bg-black/75 p-2"><X size={15} /></button></div> : <div className="rounded-[4px] border border-dashed border-white/20 bg-black/20 p-8 text-center"><Upload size={30} className="mx-auto mb-3 text-[#23c7be]" /><p className="mb-3 text-sm text-white/70">Add an image reference</p><input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} className="hidden" id="image-upload" /><div className="flex flex-wrap justify-center gap-2"><label htmlFor="image-upload" className="inline-flex cursor-pointer items-center gap-2 rounded-[3px] bg-[#23c7be] px-4 py-2 text-sm font-black text-black"><Upload size={14} /> Upload</label><button type="button" onClick={() => { setVaultPickerTarget('image'); setShowVaultPicker(true); }} className="inline-flex items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-white"><Folder size={14} /> Vault</button><button type="button" onClick={() => setShowAssetShopPicker(true)} className="inline-flex items-center gap-2 rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 px-4 py-2 text-sm font-bold text-[#8ee9e4]"><ShoppingBag size={14} /> Assets Shop</button></div></div>}
-                </section>
-              )}
-
-              {mode === 'video' && (
-                <div className="space-y-4">
-                  <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-                    <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><ImageIcon size={14} className="text-[#23c7be]" /> Subject Image <span className="normal-case font-normal">(optional if supported by the selected model)</span></p>
-                    {imagePreview ? <div className="relative overflow-hidden rounded-[4px] border border-white/10 bg-black"><img src={imagePreview} alt="Preview" className="max-h-[330px] w-full object-contain" /><button onClick={() => setImagePreview(null)} className="absolute right-2 top-2 rounded-[3px] bg-black/75 p-2"><X size={15} /></button></div> : <div className="rounded-[4px] border border-dashed border-white/20 bg-black/20 p-6 text-center"><ImageIcon size={28} className="mx-auto mb-3 text-[#23c7be]" /><p className="mb-3 text-sm text-white/55">Add a subject image</p><div className="flex flex-wrap justify-center gap-2"><input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} className="hidden" id="image-upload-vref" /><label htmlFor="image-upload-vref" className="inline-flex cursor-pointer items-center gap-2 rounded-[3px] bg-[#23c7be] px-4 py-2 text-sm font-black text-black"><Upload size={14} /> Upload</label><button type="button" onClick={() => { setVaultPickerTarget('image'); setShowVaultPicker(true); }} className="inline-flex items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-white"><Folder size={14} /> Vault</button><button type="button" onClick={() => setShowAssetShopPicker(true)} className="inline-flex items-center gap-2 rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 px-4 py-2 text-sm font-bold text-[#8ee9e4]"><ShoppingBag size={14} /> Assets Shop</button></div></div>}
-                  </section>
-
-                  <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-                    <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Video size={14} className="text-[#23c7be]" /> Video Reference</p>
-                    {videoPreview ? <div className="relative overflow-hidden rounded-[4px] border border-white/10 bg-black"><video src={videoPreview} controls className="max-h-[330px] w-full object-contain" /><button onClick={() => setVideoPreview(null)} className="absolute right-2 top-2 rounded-[3px] bg-black/75 p-2"><X size={15} /></button></div> : <div className="space-y-3">
-                      {referenceMedia.filter(url => url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)).length > 0 && <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/40">From Series</p><div className="grid grid-cols-3 gap-2">{referenceMedia.filter(url => url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)).map((url,i) => <button key={i} onClick={() => setVideoPreview(url)} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/10"><video src={url} className="h-full w-full object-cover" muted /><div className="absolute inset-0 flex items-center justify-center bg-black/20"><Play size={16} className="fill-white text-white" /></div></button>)}</div></div>}
-                      <div className="rounded-[4px] border border-dashed border-white/20 bg-black/20 p-6 text-center"><Video size={28} className="mx-auto mb-3 text-[#23c7be]" /><p className="mb-3 text-sm text-white/55">Add a video reference</p><div className="flex justify-center gap-2"><input type="file" accept="video/*" onChange={(e) => e.target.files?.[0] && handleVideoUpload(e.target.files[0])} className="hidden" id="video-upload" /><label htmlFor="video-upload" className="inline-flex cursor-pointer items-center gap-2 rounded-[3px] bg-[#23c7be] px-4 py-2 text-sm font-black text-black"><Upload size={14} /> Upload</label><button onClick={() => { setVaultPickerTarget('video'); setShowVaultPicker(true); }} className="inline-flex items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-white"><Folder size={14} /> Vault</button></div></div>
-                    </div>}
-                  </section>
-                </div>
-              )}
-
-              {referenceMedia.length > 0 && mode !== 'video' && (
-                <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Available References</p><div className="grid grid-cols-3 gap-2">{referenceMedia.map((url,i) => <button key={i} onClick={() => { if (url.match(/\.(mp4|webm|ogg|mov)$/i)) { setVideoPreview(url); setImagePreview(null); setMode('video'); } else { setImagePreview(url); setVideoPreview(null); setMode('image'); } }} className="relative aspect-square overflow-hidden rounded-[3px] border border-white/10 hover:border-[#23c7be]/50">{url.match(/\.(mp4|webm|ogg|mov)$/i) ? <video src={url} className="h-full w-full object-cover" /> : <img src={url} alt="" className="h-full w-full object-cover" />}</button>)}</div></section>
-              )}
-            </div>
-
-            <aside className="space-y-4">
-              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">AI Model</p>
-                <select value={effectiveModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={modelsLoading || modelOptions.length === 0} className="w-full rounded-[3px] border border-white/15 bg-black/25 px-3 py-3 text-sm font-bold text-white outline-none focus:border-[#23c7be] disabled:opacity-50">{modelsLoading && <option value="">Loading models…</option>}{!modelsLoading && modelOptions.length === 0 && <option value="">No model available</option>}{modelOptions.map(m => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}</select>
-              </section>
-
-              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Aspect Ratio</p><div className="grid grid-cols-3 gap-2">{RATIOS.map(ratio => <button key={ratio.id} onClick={() => setAspectRatio(ratio.id)} className={`rounded-[3px] border p-2 text-center ${aspectRatio === ratio.id ? activeButton : idleButton}`}><p className="text-lg">{ratio.icon}</p><p className="text-[10px] font-bold">{ratio.label}</p><p className="mt-1 text-[10px] font-black">{ratio.id}</p></button>)}</div></section>
-
-              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Duration</p><div className="grid grid-cols-2 gap-2">{DURATIONS.map(d => <button key={d.id} onClick={() => setDuration(d.id)} className={`rounded-[3px] border p-2.5 text-center ${duration === d.id ? activeButton : idleButton}`}><p className="font-black">{d.label}</p><p className="text-[9px] opacity-60">{duration === d.id ? (priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Automatic price') : 'Auto price'}</p></button>)}</div></section>
-
-              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Resolution</p><div className="grid grid-cols-2 gap-2">{RESOLUTIONS.map(r => <button key={r.id} onClick={() => setResolution(r.id)} className={`rounded-[3px] border p-2.5 text-center ${resolution === r.id ? activeButton : idleButton}`}><p className="font-black">{r.label}</p><p className="text-[9px] opacity-60">{r.quality}</p></button>)}</div></section>
-
-              {!result ? <Button onClick={handleGenerate} disabled={isGenerating || (mode === 'text' && !prompt.trim()) || (mode === 'image' && !imagePreview) || (mode === 'video' && (!imagePreview || !videoPreview))} className="w-full rounded-[3px] bg-[#23c7be] py-4 font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.05] disabled:text-white/30 disabled:opacity-100">{isGenerating ? <><Loader2 size={20} className="mr-2 animate-spin" /> Generating…</> : <><Film size={20} className="mr-2" /> Generate Video{priceQuote?.credits ? ` · ${priceQuote.credits} credits` : ''}</>}</Button> : <Button onClick={handleUseVideo} disabled={isSaving} className="w-full rounded-[3px] bg-[#23c7be] py-4 font-black text-[#071211] hover:bg-[#35d8cf] disabled:opacity-50">{isSaving ? <><Loader2 size={20} className="mr-2 animate-spin" /> Saving…</> : <><CheckCircle2 size={20} className="mr-2" /> Use This Video</>}</Button>}
-            </aside>
+          <div className="mb-5 grid grid-cols-3 border border-white/10 bg-[#17191d] text-center text-xs font-black">
+            <button type="button" onClick={() => setStep('setup')} className={`p-3 ${step === 'setup' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>1 · Setup</button>
+            <button type="button" onClick={() => shotPlan.length && setStep('plan')} className={`p-3 ${step === 'plan' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>2 · Cuts</button>
+            <button type="button" onClick={() => approved && setStep('shoot')} className={`p-3 ${step === 'shoot' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>3 · Shoot</button>
           </div>
 
-          {result && <section className="mt-4 rounded-[4px] border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-black text-white">Video Generated</p><p className="text-xs text-white/40">{duration}s · {resolution} · {aspectRatio}</p></div><CheckCircle2 className="text-[#23c7be]" size={20} /></div><video src={result} controls className="w-full rounded-[3px] bg-black" /></section>}
+          {step === 'setup' && <div className="space-y-5">
+            <section className="grid gap-3 md:grid-cols-[1fr_300px]">
+              <input value={title} onChange={(event) => setTitle(event.target.value)} className="border border-white/10 bg-[#17191d] px-4 py-3 text-sm font-bold" placeholder="Scene title" />
+              <div className="grid grid-cols-3 gap-2">{RATIOS.map((ratio) => <button key={ratio.id} type="button" onClick={() => setAspectRatio(ratio.id)} className={`border p-2 text-xs font-bold ${aspectRatio === ratio.id ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 text-white/55'}`}>{ratio.label}<br /><span className="font-black">{ratio.id}</span></button>)}</div>
+            </section>
+
+            <section className="border border-white/10 bg-[#17191d] p-4">
+              <div className="mb-3 flex items-center justify-between"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Cast</p><p className="text-xs text-white/45">One separate reference per performer. This is what lets Shoot know exactly who is speaking.</p></div><button type="button" onClick={() => setCast((items) => [...items, newCastMember(items.length)])} className="flex items-center gap-1 bg-white/10 px-3 py-2 text-xs font-bold"><Plus size={13} /> Cast</button></div>
+              <div className="space-y-3">{cast.map((member) => <div key={member.id} className="grid gap-3 border border-white/10 p-3 lg:grid-cols-[120px_1fr_1fr_1fr_40px]">
+                <div className="space-y-2"><div className="aspect-square overflow-hidden border border-white/10 bg-black">{member.reference_url ? <img src={member.reference_url} alt="" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-white/25"><Users /></div>}</div><div className="grid grid-cols-3 gap-1"><label className="cursor-pointer bg-white/10 p-1 text-center"><Upload size={11} className="mx-auto" /><input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event.target.files?.[0], { type: 'cast', id: member.id }).catch((error) => toast.error(error.message))} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'cast', id: member.id }); setShowVaultPicker(true); }} className="bg-white/10 p-1"><Folder size={11} className="mx-auto" /></button><button type="button" onClick={() => { setPickerTarget({ type: 'cast', id: member.id }); setShowAssetsShop(true); }} className="bg-white/10 p-1"><ShoppingBag size={11} className="mx-auto" /></button></div></div>
+                <div className="space-y-2"><input value={member.name} onChange={(event) => updateCast(member.id, { name: event.target.value })} className="w-full bg-black/30 p-2 text-sm font-bold" placeholder="Name" /><select value={member.type} onChange={(event) => updateCast(member.id, { type: event.target.value })} className="w-full bg-black/30 p-2 text-xs"><option value="human">Human</option><option value="animal">Animal</option><option value="creature">Creature / being</option><option value="robot">Robot / synthetic</option></select></div>
+                <textarea value={member.voice_or_sound} onChange={(event) => updateCast(member.id, { voice_or_sound: event.target.value })} className="min-h-24 bg-black/30 p-2 text-xs" placeholder={member.type === 'human' ? 'Voice: age, tone, accent, texture…' : 'Sound / vocalization…'} />
+                <div className="space-y-2"><textarea value={member.manner} onChange={(event) => updateCast(member.id, { manner: event.target.value })} className="min-h-11 w-full bg-black/30 p-2 text-xs" placeholder="Manner / performance" /><textarea value={member.description} onChange={(event) => updateCast(member.id, { description: event.target.value })} className="min-h-11 w-full bg-black/30 p-2 text-xs" placeholder="Character notes" /></div>
+                <button type="button" onClick={() => setCast((items) => items.filter((item) => item.id !== member.id))} className="text-white/45"><Trash2 size={15} /></button>
+              </div>)}</div>
+            </section>
+
+            <section className="border border-white/10 bg-[#17191d] p-4">
+              <p className="mb-3 text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Set</p>
+              <div className="grid gap-3 md:grid-cols-[180px_1fr]"><div><div className="aspect-video overflow-hidden border border-white/10 bg-black">{setReference.url ? <img src={setReference.url} alt="" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-white/25"><ImageIcon /></div>}</div><div className="mt-2 grid grid-cols-3 gap-1"><label className="cursor-pointer bg-white/10 p-2 text-center"><Upload size={13} className="mx-auto" /><input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event.target.files?.[0], { type: 'set' }).catch((error) => toast.error(error.message))} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'set' }); setShowVaultPicker(true); }} className="bg-white/10"><Folder size={13} className="mx-auto" /></button><button type="button" onClick={() => { setPickerTarget({ type: 'set' }); setShowAssetsShop(true); }} className="bg-white/10"><ShoppingBag size={13} className="mx-auto" /></button></div></div><div className="space-y-2"><input value={setReference.name} onChange={(event) => setSetReference((value) => ({ ...value, name: event.target.value }))} className="w-full bg-black/30 p-3 text-sm font-bold" placeholder="Set name" /><textarea value={setReference.description} onChange={(event) => setSetReference((value) => ({ ...value, description: event.target.value }))} className="min-h-28 w-full bg-black/30 p-3 text-xs" placeholder="Set continuity notes, time of day, lighting, important geography…" /></div></div>
+            </section>
+
+            <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Scene</p><textarea value={sceneText} onChange={(event) => setSceneText(event.target.value)} className="min-h-[260px] w-full bg-black/30 p-4 text-sm leading-6" placeholder={'Enter the full scene here — action and dialogue.\n\nExample:\nTheo enters the room.\nTheo: "What are you doing here?"\nBaroness: "Waiting for you."'} /></section>
+
+            <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Video model</p><select value={effectiveModel || ''} onChange={(event) => setSelectedModel(event.target.value || null)} disabled={modelsLoading || !modelOptions.length} className="w-full border border-white/10 bg-black/30 p-3 text-sm text-white">{modelsLoading && <option>Loading models…</option>}{modelOptions.map((item) => <option key={item.model_key} value={item.model_key}>{item.name || item.model_key}{item.recommended ? ' — Recommended' : ''}</option>)}</select></section>
+
+            <div className="grid gap-2 md:grid-cols-2"><Button onClick={() => saveScene().then(() => toast.success('Scene setup saved')).catch((error) => toast.error(error.message))} className="bg-white/10 text-white"><Save size={16} className="mr-2" /> Save Scene Setup</Button><Button onClick={analyzeScene} disabled={busy || !sceneText.trim()} className="bg-[#23c7be] font-black text-black">{busy ? <Loader2 className="mr-2 animate-spin" /> : <Sparkles className="mr-2" />} Analyze Scene & Propose Cuts</Button></div>
+          </div>}
+
+          {step === 'plan' && <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-[#17191d] p-4"><div><p className="text-sm font-black">Proposed shot plan</p><p className="text-xs text-white/45">{shotPlan.length} shots · approximately {allShotDuration}s total. Edit anything before approval.</p></div><div className="flex gap-2"><button type="button" onClick={analyzeScene} disabled={busy} className="bg-white/10 px-3 py-2 text-xs font-bold">Re-analyze</button><button type="button" onClick={approvePlan} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black">Approve & Shoot</button></div></div>
+            <div className="space-y-3">{shotPlan.map((shot, index) => {
+              const speechSeconds = estimatedSpeechSeconds(shot.dialogue);
+              const timingProblem = speechSeconds > Number(shot.duration || 0);
+              return <div key={shot.id} className={`border bg-[#17191d] p-4 ${timingProblem ? 'border-red-400/60' : 'border-white/10'}`}>
+                <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-3"><span className="flex h-7 w-7 items-center justify-center bg-[#23c7be]/10 text-xs font-black text-[#8ee9e4]">{index + 1}</span><input value={shot.label} onChange={(event) => updateShot(shot.id, { label: event.target.value })} className="bg-transparent text-sm font-black" /></div><button type="button" onClick={() => setShotPlan((items) => items.filter((item) => item.id !== shot.id))} className="text-white/40"><Trash2 size={14} /></button></div>
+                <div className="grid gap-2 md:grid-cols-4"><label className="text-[10px] text-white/45">Duration<input type="number" min="3" max="15" value={shot.duration} onChange={(event) => updateShot(shot.id, { duration: Math.max(3, Math.min(15, Number(event.target.value) || 3)) })} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" /></label><label className="text-[10px] text-white/45">Framing<select value={shot.framing} onChange={(event) => updateShot(shot.id, { framing: event.target.value })} className="mt-1 w-full bg-black/30 p-2 text-xs text-white">{SHOT_TYPES.map((type) => <option key={type}>{type}</option>)}</select></label><label className="text-[10px] text-white/45 md:col-span-2">Characters<input value={(shot.characters || []).join(', ')} onChange={(event) => updateShot(shot.id, { characters: event.target.value.split(',').map((value) => value.trim()).filter(Boolean) })} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" /></label></div>
+                <div className="mt-2 grid gap-2 md:grid-cols-2"><textarea value={shot.dialogue} onChange={(event) => updateShot(shot.id, { dialogue: event.target.value })} className="min-h-20 bg-black/30 p-2 text-xs" placeholder="Dialogue with speaker names" /><textarea value={shot.action} onChange={(event) => updateShot(shot.id, { action: event.target.value })} className="min-h-20 bg-black/30 p-2 text-xs" placeholder="Action" /><textarea value={shot.camera} onChange={(event) => updateShot(shot.id, { camera: event.target.value })} className="min-h-16 bg-black/30 p-2 text-xs" placeholder="Camera" /><textarea value={shot.sound} onChange={(event) => updateShot(shot.id, { sound: event.target.value })} className="min-h-16 bg-black/30 p-2 text-xs" placeholder="Sound / ambience" /></div>
+                {timingProblem && <p className="mt-2 text-xs font-bold text-red-300">Timing conflict: dialogue needs about {Math.ceil(speechSeconds)}s, but the shot is {shot.duration}s.</p>}
+              </div>;
+            })}</div>
+          </div>}
+
+          {step === 'shoot' && <div className="grid gap-4 lg:grid-cols-[330px_1fr]">
+            <aside className="space-y-2 border border-white/10 bg-[#17191d] p-3"><div className="mb-3"><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Shot list</p><p className="text-[10px] text-white/45">{completedCount}/{shotPlan.length} generated</p></div>{shotPlan.map((shot, index) => <button key={shot.id} type="button" onClick={() => setActiveShotId(shot.id)} className={`w-full border p-3 text-left ${activeShot?.id === shot.id ? 'border-[#23c7be] bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}><div className="flex items-center justify-between"><span className="text-xs font-black">{index + 1}. {shot.label}</span>{shot.result_url && <CheckCircle2 size={14} className="text-[#23c7be]" />}</div><p className="mt-1 text-[10px] text-white/45">{shot.duration}s · {shot.framing}</p></button>)}</aside>
+            <main className="space-y-4">{activeShot && <>
+              <section className="border border-white/10 bg-[#17191d] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black">{activeShot.label}</p><p className="text-xs text-white/45">{activeShot.duration}s · {activeShot.framing} · {(activeShot.characters || []).join(', ') || 'No cast specified'}</p></div><span className="text-xs font-bold text-[#8ee9e4]">{priceQuote?.credits ? `${priceQuote.credits} credits` : ''}</span></div><div className="mt-4 grid gap-3 md:grid-cols-2"><div><p className="mb-1 text-[10px] font-black uppercase text-white/40">Dialogue</p><p className="text-sm">{activeShot.dialogue || '—'}</p></div><div><p className="mb-1 text-[10px] font-black uppercase text-white/40">Action / Camera</p><p className="text-sm">{activeShot.action} {activeShot.camera}</p></div></div></section>
+              <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase text-white/40">References sent for this shot</p><div className="flex flex-wrap gap-2">{shotReferenceUrls(activeShot).map((url, index) => <div key={`${url}-${index}`} className="w-24"><div className="aspect-square overflow-hidden bg-black"><img src={url} alt="" className="h-full w-full object-contain" /></div><p className="mt-1 truncate text-[9px] text-white/40">Image {index + 1}</p></div>)}</div></section>
+              {activeShot.result_url ? <section className="border border-white/10 bg-black p-3"><video src={activeShot.result_url} controls className="max-h-[60vh] w-full" /><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => generateShot(activeShot)} disabled={busy} className="bg-white/10 py-3 text-xs font-bold">Regenerate Shot</button><button type="button" onClick={() => { setVaultVideoUrl(activeShot.result_url); setShowSaveVault(true); }} className="bg-[#23c7be] py-3 text-xs font-black text-black">Save Shot to Vault</button></div></section>
+                : <Button onClick={() => generateShot(activeShot)} disabled={busy || modelsLoading} className="w-full bg-[#23c7be] py-5 font-black text-black">{busy ? <Loader2 className="mr-2 animate-spin" /> : <Video className="mr-2" />} Generate This Shot</Button>}
+            </>}</main>
+          </div>}
         </div>
 
-        {showSaveVault && <SaveToVaultModal userEmail={user?.email} imageUrl={result} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={handleVaultSaved} />}
-        {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} onSelect={(url) => { if (vaultPickerTarget === 'video') setVideoPreview(url); else setImagePreview(url); setShowVaultPicker(false); setVaultPickerTarget(null); }} onClose={() => { setShowVaultPicker(false); setVaultPickerTarget(null); }} embedded={embedded} />}
-        {showAssetShopPicker && <AiVideoAssetsShopPicker embedded={embedded} onSelect={(url) => { setImagePreview(url); setShowAssetShopPicker(false); }} onClose={() => setShowAssetShopPicker(false)} />}
+        {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} onSelect={(url) => applyPickedImage(url, 'Vault reference')} onClose={() => { setShowVaultPicker(false); setPickerTarget(null); }} embedded={embedded} />}
+        {showAssetsShop && <AssetsShopPicker embedded={embedded} onSelect={(url, name) => applyPickedImage(url, name)} onClose={() => { setShowAssetsShop(false); setPickerTarget(null); }} />}
+        {showSaveVault && vaultVideoUrl && userEmail && <SaveToVaultModal userEmail={userEmail} imageUrl={vaultVideoUrl} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={() => { setShowSaveVault(false); toast.success('Shot saved to Vault'); }} />}
       </motion.div>
     </div>
   );
