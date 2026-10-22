@@ -64,6 +64,7 @@ const spokenWordCount = (dialogue = '') => String(dialogue)
 
 const estimatedSpeechSeconds = (dialogue = '') => spokenWordCount(dialogue) / 2.2;
 const fittedDuration = (dialogue = '') => Math.max(3, Math.min(15, Math.ceil(estimatedSpeechSeconds(dialogue) + 1)));
+const cleanScenePassage = (value = '') => String(value).replace(/\*\*/g, '').trim();
 
 function AssetsShopPicker({ onSelect, onClose, embedded = false }) {
   const [search, setSearch] = useState('');
@@ -151,6 +152,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const [savedScenes, setSavedScenes] = useState([]);
   const [loadingScenes, setLoadingScenes] = useState(false);
   const [promptEdits, setPromptEdits] = useState({});
+  const [selectedScenePassage, setSelectedScenePassage] = useState(null);
 
   useEffect(() => {
     if (user?.email) {
@@ -159,6 +161,11 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     }
     supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email || null)).catch(() => {});
   }, [user?.email]);
+
+  const scenePassages = useMemo(() => String(sceneText || '')
+    .split(/\n\s*\n/)
+    .map((value) => value.trim())
+    .filter(Boolean), [sceneText]);
 
   const loadMyScenes = async () => {
     setLoadingScenes(true);
@@ -201,6 +208,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setApproved(canShoot);
     setActiveShotId(restoredShots[0]?.id || null);
     setPromptEdits({});
+    setSelectedScenePassage(null);
     setStep(restoredStatus === 'planned' ? 'plan' : (canShoot ? 'shoot' : 'setup'));
     setShowMyScenes(false);
     toast.success('Scene restored');
@@ -224,8 +232,28 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const updateCast = (id, patch) => setCast((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
   const updateShot = (id, patch) => setShotPlan((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
 
+  const charactersForPassage = (passage) => {
+    const clean = cleanScenePassage(passage).toLowerCase();
+    return cast.filter((member, index) => {
+      const labels = [member.name, `Character ${index + 1}`].filter(Boolean).map((value) => value.toLowerCase());
+      return labels.some((label) => clean.includes(label));
+    }).map((member) => member.name);
+  };
+
   const addShot = () => {
-    const shot = newShot(shotPlan.length);
+    if (selectedScenePassage === null || !scenePassages[selectedScenePassage]) {
+      toast.error('Select a Scene passage first.');
+      return null;
+    }
+    const source = cleanScenePassage(scenePassages[selectedScenePassage]);
+    const isDialogue = /^[^:\n]{1,80}:\s*/.test(source);
+    const shot = {
+      ...newShot(shotPlan.length),
+      characters: charactersForPassage(source),
+      dialogue: isDialogue ? source : '',
+      action: isDialogue ? '' : source,
+      duration: isDialogue ? fittedDuration(source) : 5,
+    };
     const nextShots = [...shotPlan, shot];
     setShotPlan(nextShots);
     setActiveShotId(shot.id);
@@ -235,16 +263,15 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   };
 
   const startManualCuts = async () => {
-    const firstShot = newShot(0);
-    const nextShots = [firstShot];
-    setShotPlan(nextShots);
-    setActiveShotId(firstShot.id);
+    setShotPlan([]);
+    setActiveShotId(null);
     setApproved(false);
     setPromptEdits({});
+    setSelectedScenePassage(null);
     setStep('plan');
     try {
-      await saveScene({ shot_plan: nextShots, status: 'planned' });
-      toast.success('Old shots removed. Start with your Shot 1.');
+      await saveScene({ shot_plan: [], status: 'planned' });
+      toast.success('Old shot plan removed. Select a Scene passage to create your first shot.');
     } catch (error) {
       toast.error(error.message);
     }
@@ -450,7 +477,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
           <div className="mb-5 grid grid-cols-3 border border-white/10 bg-[#17191d] text-center text-xs font-black">
             <button type="button" onClick={() => setStep('setup')} className={`p-3 ${step === 'setup' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>1 · Setup</button>
-            <button type="button" onClick={() => shotPlan.length && setStep('plan')} className={`p-3 ${step === 'plan' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>2 · Cuts</button>
+            <button type="button" onClick={() => sceneText.trim() && setStep('plan')} className={`p-3 ${step === 'plan' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>2 · Cuts</button>
             <button type="button" onClick={() => approved && setStep('shoot')} className={`p-3 ${step === 'shoot' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>3 · Shoot</button>
           </div>
 
@@ -484,7 +511,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
           </div>}
 
           {step === 'plan' && <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-[#17191d] p-4"><div><p className="text-sm font-black">Your shot plan</p><p className="text-xs text-white/45">{shotPlan.length} shots · approximately {allShotDuration}s total. You control every cut.</p></div><div className="flex gap-2"><button type="button" onClick={addShot} className="flex items-center gap-1 bg-white/10 px-3 py-2 text-xs font-bold"><Plus size={13} /> Add Shot</button><button type="button" onClick={approvePlan} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black">Approve & Shoot</button></div></div>
+            <section className="border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Scene source</p><p className="text-xs text-white/45">Select the exact passage you want to turn into a shot. The Scene itself is never changed.</p></div><button type="button" onClick={addShot} disabled={selectedScenePassage === null} className="flex items-center gap-1 bg-[#23c7be] px-4 py-2 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-30"><Plus size={13} /> Add Shot</button></div><div className="space-y-2">{scenePassages.map((passage, index) => <button key={`${index}-${passage.slice(0, 24)}`} type="button" onClick={() => setSelectedScenePassage(index)} className={`w-full border p-3 text-left text-sm leading-6 ${selectedScenePassage === index ? 'border-[#23c7be] bg-[#23c7be]/10 text-white' : 'border-white/10 bg-black/20 text-white/75'}`}><span className="mr-2 text-[10px] font-black text-[#8ee9e4]">{index + 1}</span>{cleanScenePassage(passage)}</button>)}</div></section>
+            <div className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-[#17191d] p-4"><div><p className="text-sm font-black">Your shot plan</p><p className="text-xs text-white/45">{shotPlan.length} shots · approximately {allShotDuration}s total. You control every cut.</p></div><button type="button" onClick={approvePlan} disabled={!shotPlan.length} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black disabled:opacity-30">Approve & Shoot</button></div>
             <div className="space-y-3">{shotPlan.map((shot, index) => {
               const speechSeconds = estimatedSpeechSeconds(shot.dialogue);
               const timingProblem = speechSeconds > Number(shot.duration || 0);
