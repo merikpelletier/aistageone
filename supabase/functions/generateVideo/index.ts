@@ -70,6 +70,7 @@ serveWithCors(async (req) => {
       aspect_ratio,
       generate_audio: audioEnabled,
     };
+
     const dynamicQuote = await quoteAiService(
       billing.service,
       `generateVideo:${engine}`,
@@ -77,6 +78,7 @@ serveWithCors(async (req) => {
       model_key || null,
       'video'
     );
+
     creditCharge = await reserveCredits({
       ...billing,
       toolId: 'ai_video',
@@ -86,94 +88,126 @@ serveWithCors(async (req) => {
     });
 
     const replicate = new Replicate({ auth: TOKEN });
+    const encoder = new TextEncoder();
 
     const resolveOutputUrl = (output: any): string =>
       typeof output === 'string' ? output :
       typeof output?.url === 'function' ? output.url() :
       output?.url || String(output);
 
-    let videoOutputUrl: string;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        let closed = false;
+        const heartbeat = setInterval(() => {
+          if (!closed) controller.enqueue(encoder.encode(' '.repeat(2048)));
+        }, 20000);
 
-    if (engine === 'kling_morph') {
-      if (!image_url) throw new Error('image_url is required for kling_morph');
-      const stylePrompt = (transformation_prompt || '').trim();
-      const actionPrompt = mappedPrompt.trim();
-      const combinedPrompt = [stylePrompt, actionPrompt].filter(Boolean).join(' ');
-      if (!combinedPrompt) throw new Error('transformation_prompt or prompt is required for kling_morph');
-      const morphOutput: any = await replicate.run('kwaivgi/kling-v2.6', {
-        input: {
-          prompt: combinedPrompt,
-          start_image: image_url,
-          duration: [5, 10].includes(duration) ? duration : 5,
-          generate_audio: true,
-          negative_prompt: 'blurry, distorted face, deformed, low quality, watermark',
-        },
-      });
-      videoOutputUrl = resolveOutputUrl(morphOutput);
-    } else if (engine === 'kling') {
-      const klingInput: any = {
-        prompt: mappedPrompt,
-        duration: [5, 10].includes(duration) ? duration : 5,
-        cfg_scale: 0.85,
-        negative_prompt: 'blurry, distorted face, deformed, low quality, watermark',
-      };
-      if (image_url) {
-        if (use_as_reference) {
-          klingInput.reference_images = [image_url];
-          klingInput.aspect_ratio = aspect_ratio;
-        } else {
-          klingInput.start_image = image_url;
-        }
-      } else {
-        klingInput.aspect_ratio = aspect_ratio;
-      }
-      const output = await replicate.run('kwaivgi/kling-v1.6-standard', { input: klingInput });
-      videoOutputUrl = resolveOutputUrl(output);
-    } else {
-      const input: any = {
-        prompt: mappedPrompt,
-        duration: Math.max(3, Math.min(15, Number(duration) || 5)),
-        mode,
-        aspect_ratio,
-        generate_audio: audioEnabled,
-      };
+        (async () => {
+          try {
+            let videoOutputUrl: string;
 
-      if (references.length) {
-        input.reference_images = references;
-      } else if (image_url) {
-        if (use_as_reference) input.reference_images = [image_url];
-        else input.start_image = image_url;
-      }
+            if (engine === 'kling_morph') {
+              if (!image_url) throw new Error('image_url is required for kling_morph');
+              const stylePrompt = (transformation_prompt || '').trim();
+              const actionPrompt = mappedPrompt.trim();
+              const combinedPrompt = [stylePrompt, actionPrompt].filter(Boolean).join(' ');
+              if (!combinedPrompt) throw new Error('transformation_prompt or prompt is required for kling_morph');
+              const morphOutput: any = await replicate.run('kwaivgi/kling-v2.6', {
+                input: {
+                  prompt: combinedPrompt,
+                  start_image: image_url,
+                  duration: [5, 10].includes(duration) ? duration : 5,
+                  generate_audio: true,
+                  negative_prompt: 'blurry, distorted face, deformed, low quality, watermark',
+                },
+              });
+              videoOutputUrl = resolveOutputUrl(morphOutput);
+            } else if (engine === 'kling') {
+              const klingInput: any = {
+                prompt: mappedPrompt,
+                duration: [5, 10].includes(duration) ? duration : 5,
+                cfg_scale: 0.85,
+                negative_prompt: 'blurry, distorted face, deformed, low quality, watermark',
+              };
+              if (image_url) {
+                if (use_as_reference) {
+                  klingInput.reference_images = [image_url];
+                  klingInput.aspect_ratio = aspect_ratio;
+                } else {
+                  klingInput.start_image = image_url;
+                }
+              } else {
+                klingInput.aspect_ratio = aspect_ratio;
+              }
+              const output = await replicate.run('kwaivgi/kling-v1.6-standard', { input: klingInput });
+              videoOutputUrl = resolveOutputUrl(output);
+            } else {
+              const input: any = {
+                prompt: mappedPrompt,
+                duration: Math.max(3, Math.min(15, Number(duration) || 5)),
+                mode,
+                aspect_ratio,
+                generate_audio: audioEnabled,
+              };
 
-      const output = await replicate.run('kwaivgi/kling-v3-omni-video', { input });
-      videoOutputUrl = resolveOutputUrl(output);
-    }
+              if (references.length) {
+                input.reference_images = references;
+              } else if (image_url) {
+                if (use_as_reference) input.reference_images = [image_url];
+                else input.start_image = image_url;
+              }
 
-    const videoRes = await fetch(videoOutputUrl);
-    if (!videoRes.ok) throw new Error('Failed to fetch video');
-    const blob = await videoRes.blob();
-    const file = new File([blob], 'video.mp4', { type: 'video/mp4' });
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+              const output = await replicate.run('kwaivgi/kling-v3-omni-video', { input });
+              videoOutputUrl = resolveOutputUrl(output);
+            }
 
-    const lineageInputs = [image_url, ...references, video_url].filter((value) => typeof value === 'string' && value.length > 0);
-    if (lineageInputs.length > 0) {
-      const { error: lineageError } = await billing.service.rpc('inherit_media_product_placements', {
-        p_output_url: file_url,
-        p_input_urls: [...new Set(lineageInputs)],
-      });
-      if (lineageError) console.error('Product placement lineage propagation failed:', lineageError.message);
-    }
+            const videoRes = await fetch(videoOutputUrl);
+            if (!videoRes.ok) throw new Error('Failed to fetch video');
+            const blob = await videoRes.blob();
+            const file = new File([blob], 'video.mp4', { type: 'video/mp4' });
+            const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
-    await completeCreditCharge(billing.service, creditCharge);
+            const lineageInputs = [image_url, ...references, video_url].filter((value) => typeof value === 'string' && value.length > 0);
+            if (lineageInputs.length > 0) {
+              const { error: lineageError } = await billing!.service.rpc('inherit_media_product_placements', {
+                p_output_url: file_url,
+                p_input_urls: [...new Set(lineageInputs)],
+              });
+              if (lineageError) console.error('Product placement lineage propagation failed:', lineageError.message);
+            }
 
-    return Response.json({
-      file_url,
-      credit_cost: creditCharge.cost,
-      balance_after: creditCharge.balanceAfter,
+            await completeCreditCharge(billing!.service, creditCharge!);
+
+            controller.enqueue(encoder.encode(JSON.stringify({
+              file_url,
+              credit_cost: creditCharge!.cost,
+              balance_after: creditCharge!.balanceAfter,
+            })));
+          } catch (error) {
+            if (billing) await refundCreditCharge(billing.service, creditCharge, error);
+            console.error('Video generation error:', error instanceof Error ? error.message : String(error));
+            controller.enqueue(encoder.encode(JSON.stringify({
+              error: error instanceof Error ? error.message : 'Video generation failed',
+            })));
+          } finally {
+            closed = true;
+            clearInterval(heartbeat);
+            controller.close();
+          }
+        })();
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no',
+      },
     });
   } catch (error) {
     if (billing) await refundCreditCharge(billing.service, creditCharge, error);
-    console.error('Video generation error:', error.message);
+    console.error('Video generation error:', error instanceof Error ? error.message : String(error));
     throw error;
   }
 });
