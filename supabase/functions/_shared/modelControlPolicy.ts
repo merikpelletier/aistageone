@@ -1,6 +1,6 @@
 export const MODEL_OWNER='fd3ceec1-0d99-4d7e-9793-284e342efe90';
 export const BLOCKED_MODEL='bytedance/seedream-4.5';
-export function serviceKey(slug:string,body:any){return slug==='replicateGenerate'?`${slug}:${body?.method||'missing'}`:slug==='generateVideo'?`${slug}:${body?.engine||'seedance'}`:slug;}
+export function serviceKey(slug:string,body:any){return slug==='replicateGenerate'?`${slug}:${body?.method||'missing'}`:slug==='generateVideo'?`${slug}:${body?.engine||'video'}`:slug;}
 export function routeKey(service:string,model:string){return `${service}|${model.toLowerCase()}`;}
 export function fail(message:string,status=409):never{throw Object.assign(new Error(message),{status});}
 export function validateChoice(assignment:any,model:any){
