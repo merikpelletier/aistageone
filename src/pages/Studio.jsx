@@ -61,7 +61,7 @@ const STUDIO_TOOL_SECTIONS = [
     key: 'image_video',
     label: 'Image & Video',
     tools: [
-      { key: 'ai_video', label: 'AI Video', icon: Camera, action: 'ai_video' },
+      { key: 'ai_video', label: 'Shoot', icon: Camera, action: 'ai_video' },
       { key: 'lip_sync', label: 'Lip Sync', icon: Mic, action: 'lip_sync' },
     ],
   },
