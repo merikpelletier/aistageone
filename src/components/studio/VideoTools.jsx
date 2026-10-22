@@ -124,6 +124,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const [approved, setApproved] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [regeneratingShotId, setRegeneratingShotId] = useState(null);
   const [activeShotId, setActiveShotId] = useState(null);
   const [showVaultPicker, setShowVaultPicker] = useState(false);
   const [pickerTarget, setPickerTarget] = useState(null);
@@ -318,6 +319,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       return toast.error(`Dialogue needs about ${Math.ceil(speechSeconds)}s but this shot is ${shot.duration}s. Increase duration or shorten the line.`);
     }
     setBusy(true);
+    setRegeneratingShotId(shot.result_url ? shot.id : null);
     setActiveShotId(shot.id);
     try {
       const refs = shotReferenceUrls(shot);
@@ -355,6 +357,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     } catch (error) {
       toast.error(error?.message || 'Shot generation failed');
     } finally {
+      setRegeneratingShotId(null);
       setBusy(false);
     }
   };
@@ -444,7 +447,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
             <main className="space-y-4">{activeShot && <>
               <section className="border border-white/10 bg-[#17191d] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black">{activeShot.label}</p><p className="text-xs text-white/45">{activeShot.duration}s · {activeShot.framing} · {(activeShot.characters || []).join(', ') || 'No cast specified'}</p></div><span className="text-xs font-bold text-[#8ee9e4]">{priceQuote?.credits ? `${priceQuote.credits} credits` : ''}</span></div><div className="mt-4 grid gap-3 md:grid-cols-2"><div><p className="mb-1 text-[10px] font-black uppercase text-white/40">Dialogue</p><p className="text-sm">{activeShot.dialogue || '—'}</p></div><div><p className="mb-1 text-[10px] font-black uppercase text-white/40">Action / Camera</p><p className="text-sm">{activeShot.action} {activeShot.camera}</p></div></div></section>
               <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase text-white/40">References sent for this shot</p><div className="flex flex-wrap gap-2">{shotReferenceUrls(activeShot).map((url, index) => <div key={`${url}-${index}`} className="w-24"><div className="aspect-square overflow-hidden bg-black"><img src={url} alt="" className="h-full w-full object-contain" /></div><p className="mt-1 truncate text-[9px] text-white/40">Image {index + 1}</p></div>)}</div></section>
-              {activeShot.result_url ? <section className="border border-white/10 bg-black p-3"><video src={activeShot.result_url} controls className="max-h-[60vh] w-full" /><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => generateShot(activeShot)} disabled={busy} className="bg-white/10 py-3 text-xs font-bold">Regenerate Shot</button><button type="button" onClick={() => { setVaultVideoUrl(activeShot.result_url); setShowSaveVault(true); }} className="bg-[#23c7be] py-3 text-xs font-black text-black">Save Shot to Vault</button></div></section>
+              {activeShot.result_url ? <section className="border border-white/10 bg-black p-3"><video src={activeShot.result_url} controls className="max-h-[60vh] w-full" /><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => generateShot(activeShot)} disabled={busy} className="flex items-center justify-center bg-white/10 py-3 text-xs font-bold disabled:opacity-60">{regeneratingShotId === activeShot.id ? <><Loader2 size={14} className="mr-2 animate-spin" /> Regenerating…</> : 'Regenerate Shot'}</button><button type="button" onClick={() => { setVaultVideoUrl(activeShot.result_url); setShowSaveVault(true); }} disabled={regeneratingShotId === activeShot.id} className="bg-[#23c7be] py-3 text-xs font-black text-black disabled:opacity-50">Save Shot to Vault</button></div></section>
                 : <Button onClick={() => generateShot(activeShot)} disabled={busy || modelsLoading} className="w-full bg-[#23c7be] py-5 font-black text-black">{busy ? <Loader2 className="mr-2 animate-spin" /> : <Video className="mr-2" />} Generate This Shot</Button>}
             </>}</main>
           </div>}
