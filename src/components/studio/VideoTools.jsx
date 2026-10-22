@@ -235,10 +235,16 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   };
 
   const startManualCuts = async () => {
-    const nextShots = shotPlan.length ? shotPlan : addShot();
+    const firstShot = newShot(0);
+    const nextShots = [firstShot];
+    setShotPlan(nextShots);
+    setActiveShotId(firstShot.id);
+    setApproved(false);
+    setPromptEdits({});
     setStep('plan');
     try {
       await saveScene({ shot_plan: nextShots, status: 'planned' });
+      toast.success('Old shots removed. Start with your Shot 1.');
     } catch (error) {
       toast.error(error.message);
     }
