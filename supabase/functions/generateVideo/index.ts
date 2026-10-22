@@ -43,7 +43,11 @@ serveWithCors(async (req) => {
       ? [...new Set(reference_image_urls.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()))].slice(0, 7)
       : [];
 
-    if (!prompt && !image_url && !references.length && !video_url) {
+    const mappedPrompt = references.length
+      ? String(prompt || '').replace(/\bImage\s+([1-7])\b/gi, '<<<image_$1>>>')
+      : String(prompt || '');
+
+    if (!mappedPrompt && !image_url && !references.length && !video_url) {
       return Response.json({ error: 'Prompt or image reference is required' }, { status: 400 });
     }
 
@@ -56,7 +60,7 @@ serveWithCors(async (req) => {
     const mode = resolution === '480p' ? 'standard' : 'pro';
     const audioEnabled = engine === 'kling_morph' ? true : Boolean(generate_audio);
     const quoteInput = {
-      prompt,
+      prompt: mappedPrompt,
       image_url,
       reference_images: references.length ? references : undefined,
       video_url,
@@ -93,7 +97,7 @@ serveWithCors(async (req) => {
     if (engine === 'kling_morph') {
       if (!image_url) throw new Error('image_url is required for kling_morph');
       const stylePrompt = (transformation_prompt || '').trim();
-      const actionPrompt = (prompt || '').trim();
+      const actionPrompt = mappedPrompt.trim();
       const combinedPrompt = [stylePrompt, actionPrompt].filter(Boolean).join(' ');
       if (!combinedPrompt) throw new Error('transformation_prompt or prompt is required for kling_morph');
       const morphOutput: any = await replicate.run('kwaivgi/kling-v2.6', {
@@ -108,7 +112,7 @@ serveWithCors(async (req) => {
       videoOutputUrl = resolveOutputUrl(morphOutput);
     } else if (engine === 'kling') {
       const klingInput: any = {
-        prompt: prompt || '',
+        prompt: mappedPrompt,
         duration: [5, 10].includes(duration) ? duration : 5,
         cfg_scale: 0.85,
         negative_prompt: 'blurry, distorted face, deformed, low quality, watermark',
@@ -127,7 +131,7 @@ serveWithCors(async (req) => {
       videoOutputUrl = resolveOutputUrl(output);
     } else {
       const input: any = {
-        prompt: prompt || '',
+        prompt: mappedPrompt,
         duration: Math.max(3, Math.min(15, Number(duration) || 5)),
         mode,
         aspect_ratio,
