@@ -17,6 +17,7 @@ const RATIOS = [
 ];
 
 const SHOT_TYPES = [
+  'Establishing shot',
   'Wide shot',
   'Medium shot',
   'Medium close-up',
@@ -48,7 +49,7 @@ const newShot = (index = 0) => ({
   label: `Shot ${index + 1}`,
   duration: 5,
   framing: 'Medium shot',
-  characters: [],
+  character_ids: [],
   dialogue: '',
   action: '',
   camera: '',
@@ -167,6 +168,18 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     .map((value) => value.trim())
     .filter(Boolean), [sceneText]);
 
+  const normalizeShotCastIds = (shot, castData = cast) => {
+    if (Array.isArray(shot?.character_ids)) return shot.character_ids.filter((id) => castData.some((member) => member.id === id));
+    if (!Array.isArray(shot?.characters)) return [];
+    const legacyNames = new Set(shot.characters.map((value) => String(value).trim().toLowerCase()));
+    return castData.filter((member) => legacyNames.has(String(member.name || '').trim().toLowerCase())).map((member) => member.id);
+  };
+
+  const migrateShotPlan = (shots, castData) => (Array.isArray(shots) ? shots : []).map((shot) => {
+    const { characters, ...rest } = shot;
+    return { ...rest, character_ids: normalizeShotCastIds(shot, castData) };
+  });
+
   const loadMyScenes = async () => {
     setLoadingScenes(true);
     try {
@@ -195,13 +208,14 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   };
 
   const restoreScene = (scene) => {
-    const restoredShots = Array.isArray(scene?.shot_plan) ? scene.shot_plan : [];
+    const restoredCast = Array.isArray(scene.cast_data) ? scene.cast_data : [];
+    const restoredShots = migrateShotPlan(scene?.shot_plan, restoredCast);
     const restoredStatus = scene?.status || 'setup';
     const canShoot = ['approved', 'shooting', 'completed'].includes(restoredStatus);
     setSceneId(scene.id);
     setTitle(scene.title || 'Untitled scene');
     setAspectRatio(scene.aspect_ratio || '16:9');
-    setCast(Array.isArray(scene.cast_data) ? scene.cast_data : []);
+    setCast(restoredCast);
     setSetReference(scene.set_reference || { name: '', url: '', description: '' });
     setSceneText(scene.scene_text || '');
     setShotPlan(restoredShots);
@@ -215,13 +229,18 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   };
 
   const activeShot = shotPlan.find((shot) => shot.id === activeShotId) || shotPlan[0] || null;
+  const shotCast = (shot) => {
+    const ids = normalizeShotCastIds(shot);
+    return ids.map((id) => cast.find((member) => member.id === id)).filter(Boolean);
+  };
+
   const quoteService = 'generateVideo:video';
   const pricingInput = useMemo(() => ({
     duration: Math.max(3, Math.min(15, Number(activeShot?.duration || 5))),
     mode: 'pro',
     aspect_ratio: aspectRatio,
     prompt: `${activeShot?.framing || 'Medium shot'}. ${activeShot?.action || ''} ${activeShot?.dialogue || ''}`.trim(),
-    reference_images: [setReference.url, ...cast.map((member) => member.reference_url)].filter(Boolean).slice(0, 7),
+    reference_images: [setReference.url, ...(activeShot ? shotCast(activeShot).map((member) => member.reference_url) : [])].filter(Boolean).slice(0, 7),
     generate_audio: true,
   }), [activeShot, aspectRatio, cast, setReference.url]);
 
@@ -232,12 +251,12 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const updateCast = (id, patch) => setCast((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
   const updateShot = (id, patch) => setShotPlan((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
 
-  const charactersForPassage = (passage) => {
+  const characterIdsForPassage = (passage) => {
     const clean = cleanScenePassage(passage).toLowerCase();
     return cast.filter((member, index) => {
       const labels = [member.name, `Character ${index + 1}`].filter(Boolean).map((value) => value.toLowerCase());
       return labels.some((label) => clean.includes(label));
-    }).map((member) => member.name);
+    }).map((member) => member.id);
   };
 
   const addShot = async () => {
@@ -249,7 +268,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const isDialogue = /^[^:\n]{1,80}:\s*/.test(source);
     const shot = {
       ...newShot(shotPlan.length),
-      characters: charactersForPassage(source),
+      character_ids: characterIdsForPassage(source),
       dialogue: isDialogue ? source : '',
       action: isDialogue ? '' : source,
       duration: isDialogue ? fittedDuration(source) : 5,
@@ -282,14 +301,12 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     }
   };
 
-  const toggleShotCharacter = async (shot, memberName) => {
-    const current = Array.isArray(shot.characters) ? shot.characters : [];
-    const exists = current.some((name) => name.trim().toLowerCase() === memberName.trim().toLowerCase());
-    const nextCharacters = exists
-      ? current.filter((name) => name.trim().toLowerCase() !== memberName.trim().toLowerCase())
-      : [...current, memberName];
+  const toggleShotCharacter = async (shot, memberId) => {
+    const current = normalizeShotCastIds(shot);
+    const exists = current.includes(memberId);
+    const nextCharacterIds = exists ? current.filter((id) => id !== memberId) : [...current, memberId];
     const previousShots = shotPlan;
-    const nextShots = shotPlan.map((item) => item.id === shot.id ? { ...item, characters: nextCharacters } : item);
+    const nextShots = shotPlan.map((item) => item.id === shot.id ? { ...item, character_ids: nextCharacterIds } : item);
     setShotPlan(nextShots);
     if (!sceneId) return;
     const { error } = await supabase.from('shoot_scene').update({ shot_plan: nextShots, updated_at: new Date().toISOString() }).eq('id', sceneId);
@@ -343,19 +360,11 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     return data;
   };
 
-  const shotCast = (shot) => {
-    const requested = new Set((shot.characters || []).map((name) => String(name).trim().toLowerCase()));
-    return requested.size
-      ? cast.filter((member) => requested.has(member.name.trim().toLowerCase()))
-      : [];
-  };
-
   const shotReferences = (shot) => {
     const refs = [];
-    if (setReference.url) refs.push({ role: 'SET REFERENCE', name: setReference.name || 'Set', url: setReference.url });
-    shotCast(shot).filter((member) => member.reference_url).forEach((member) => {
-      const castIndex = cast.findIndex((item) => item.id === member.id);
-      refs.push({ role: `CHARACTER ${castIndex + 1} REFERENCE`, name: member.name, url: member.reference_url });
+    if (setReference.url) refs.push({ role: 'SET REFERENCE', name: setReference.name || 'Set', url: setReference.url, member: null });
+    shotCast(shot).filter((member) => member.reference_url).forEach((member, index) => {
+      refs.push({ role: `CHARACTER ${index + 1} REFERENCE`, name: member.name, url: member.reference_url, member });
     });
     return refs.slice(0, 7);
   };
@@ -364,14 +373,20 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
   const buildShotPrompt = (shot) => {
     const refs = shotReferences(shot);
+    const characterRefs = refs.filter((ref) => ref.member);
     const referenceRules = refs.map((ref, index) => {
-      if (ref.role === 'SET REFERENCE') {
+      if (!ref.member) {
         return `${ref.role} = Image ${index + 1}. Use this exact set as the physical location master. Do not redesign, reinterpret, move, remove, resize, recolor or substitute architecture, furniture, props, materials or lighting fixtures.`;
       }
-      return `${ref.role} = Image ${index + 1} (${ref.name}). Use this exact person/character reference. Do not invent or redescribe appearance, face, hair, body, wardrobe or accessories. The image is authoritative.`;
+      const member = ref.member;
+      const voice = member.voice_or_sound ? ` VOICE / SOUND: ${member.voice_or_sound}.` : '';
+      const manner = member.manner ? ` PERFORMANCE: ${member.manner}.` : '';
+      const notes = member.description ? ` CHARACTER NOTES: ${member.description}.` : '';
+      return `${ref.role} = Image ${index + 1}. Use this exact character reference. Do not invent or redescribe appearance, face, hair, body, wardrobe or accessories. The image is authoritative.${voice}${manner}${notes}`;
     }).join(' ');
+    const noCharacterRule = characterRefs.length === 0 ? ' NO CHARACTERS ARE PRESENT IN THIS SHOT. Do not invent, add or imply any person, animal, creature or performer.' : '';
     const framingRule = `FRAMING LOCK: ${shot.framing} is mandatory. Execute this exact selected shot type. Do not substitute a different shot size, angle or composition. Camera notes may refine movement or placement but may not override the selected framing.`;
-    return `${referenceRules} ${framingRule} ACTION: ${shot.action || 'No additional action specified.'} ${shot.dialogue ? `DIALOGUE: ${shot.dialogue}. Preserve exact speaker attribution. Only the speaking character moves their mouth; other visible characters react silently.` : ''} ${shot.camera ? `CAMERA NOTES: ${shot.camera}.` : ''} ${shot.sound ? `SOUND: ${shot.sound}.` : ''} Preserve exact reference identities, exact set continuity, wardrobe, eyelines and screen direction. Duration ${shot.duration} seconds.`;
+    return `${referenceRules}${noCharacterRule} ${framingRule} ACTION: ${shot.action || 'No additional action specified.'} ${shot.dialogue ? `DIALOGUE: ${shot.dialogue}. Preserve exact speaker attribution according to the selected CHARACTER references. Only the speaking character moves their mouth; other visible characters react silently.` : ''} ${shot.camera ? `CAMERA NOTES: ${shot.camera}.` : ''} ${shot.sound ? `SOUND: ${shot.sound}.` : ''} Preserve exact reference identities, exact set continuity, wardrobe, eyelines and screen direction. Duration ${shot.duration} seconds.`;
   };
 
   const finalPromptForShot = (shot) => promptEdits[shot.id] ?? buildShotPrompt(shot);
@@ -454,6 +469,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
   const allShotDuration = shotPlan.reduce((sum, shot) => sum + Number(shot.duration || 0), 0);
   const completedCount = shotPlan.filter((shot) => shot.result_url).length;
+  const activeShotNames = activeShot ? shotCast(activeShot).map((member) => member.name) : [];
 
   return (
     <div className={`fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] overflow-y-auto bg-[#202328]' : 'inset-0 flex items-center justify-center bg-black/80 p-4'}`}>
@@ -512,19 +528,20 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
             <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Video model</p><select value={effectiveModel || ''} onChange={(event) => setSelectedModel(event.target.value || null)} disabled={modelsLoading || !modelOptions.length} className="w-full border border-white/10 bg-black/30 p-3 text-sm text-white">{modelsLoading && <option>Loading models…</option>}{modelOptions.map((item) => <option key={item.model_key} value={item.model_key}>{item.name || item.model_key}{item.recommended ? ' — Recommended' : ''}</option>)}</select></section>
 
-            <div className="grid gap-2 md:grid-cols-2"><Button onClick={() => saveScene().then(() => toast.success('Scene setup saved')).catch((error) => toast.error(error.message))} className="bg-white/10 text-white"><Save size={16} className="mr-2" /> Save Scene Setup</Button><Button onClick={startManualCuts} className="bg-[#23c7be] font-black text-black"><Plus className="mr-2" /> Create Shots</Button></div>
+            <div className="grid gap-2 md:grid-cols-2"><Button onClick={() => saveScene().then(() => toast.success('Scene setup saved')).catch((error) => toast.error(error.message))} className="bg-white/10 text-white hover:bg-white/15 hover:text-white"><Save size={16} className="mr-2" /> Save Scene Setup</Button><Button onClick={startManualCuts} className="bg-[#23c7be] font-black text-black hover:bg-[#8ee9e4] hover:text-black"><Plus className="mr-2" /> Create Shots</Button></div>
           </div>}
 
           {step === 'plan' && <div className="space-y-4">
-            <section className="border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Scene source</p><p className="text-xs text-white/45">Select the exact passage you want to turn into a shot. The Scene itself is never changed.</p></div><button type="button" onClick={addShot} className="flex items-center gap-1 bg-[#23c7be] px-4 py-2 text-xs font-black text-black"><Plus size={13} /> Add Shot</button></div><div className="space-y-2">{scenePassages.map((passage, index) => <button key={`${index}-${passage.slice(0, 24)}`} type="button" onClick={() => setSelectedScenePassage(index)} className={`w-full border p-3 text-left text-sm leading-6 ${selectedScenePassage === index ? 'border-[#23c7be] bg-[#23c7be]/10 text-white' : 'border-white/10 bg-black/20 text-white/75'}`}><span className="mr-2 text-[10px] font-black text-[#8ee9e4]">{index + 1}</span>{cleanScenePassage(passage)}</button>)}</div></section>
-            <div className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-[#17191d] p-4"><div><p className="text-sm font-black">Your shot plan</p><p className="text-xs text-white/45">{shotPlan.length} shots · approximately {allShotDuration}s total. You control every cut.</p></div><button type="button" onClick={approvePlan} disabled={!shotPlan.length} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black disabled:opacity-30">Approve & Shoot</button></div>
+            <section className="border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Scene source</p><p className="text-xs text-white/45">Select the exact passage you want to turn into a shot. The Scene itself is never changed.</p></div><button type="button" onClick={addShot} className="flex items-center gap-1 bg-[#23c7be] px-4 py-2 text-xs font-black text-black hover:bg-[#8ee9e4]"><Plus size={13} /> Add Shot</button></div><div className="space-y-2">{scenePassages.map((passage, index) => <button key={`${index}-${passage.slice(0, 24)}`} type="button" onClick={() => setSelectedScenePassage(index)} className={`w-full border p-3 text-left text-sm leading-6 ${selectedScenePassage === index ? 'border-[#23c7be] bg-[#23c7be]/10 text-white' : 'border-white/10 bg-black/20 text-white/75'}`}><span className="mr-2 text-[10px] font-black text-[#8ee9e4]">{index + 1}</span>{cleanScenePassage(passage)}</button>)}</div></section>
+            <div className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-[#17191d] p-4"><div><p className="text-sm font-black">Your shot plan</p><p className="text-xs text-white/45">{shotPlan.length} shots · approximately {allShotDuration}s total. You control every cut.</p></div><button type="button" onClick={approvePlan} disabled={!shotPlan.length} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black hover:bg-[#8ee9e4] disabled:opacity-30">Approve & Shoot</button></div>
             <div className="space-y-3">{shotPlan.map((shot, index) => {
               const speechSeconds = estimatedSpeechSeconds(shot.dialogue);
               const timingProblem = speechSeconds > Number(shot.duration || 0);
+              const selectedIds = normalizeShotCastIds(shot);
               return <div key={shot.id} className={`border bg-[#17191d] p-4 ${timingProblem ? 'border-red-400/60' : 'border-white/10'}`}>
                 <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-3"><span className="flex h-7 w-7 items-center justify-center bg-[#23c7be]/10 text-xs font-black text-[#8ee9e4]">{index + 1}</span><input value={shot.label} onChange={(event) => updateShot(shot.id, { label: event.target.value })} className="bg-transparent text-sm font-black" /></div><button type="button" onClick={() => setShotPlan((items) => items.filter((item) => item.id !== shot.id))} className="text-white/40"><Trash2 size={14} /></button></div>
-                <div className="grid gap-2 md:grid-cols-4"><label className="text-[10px] text-white/45">Duration<div className="mt-1 flex gap-1"><input type="number" min="3" max="15" value={shot.duration} onChange={(event) => updateShot(shot.id, { duration: Math.max(3, Math.min(15, Number(event.target.value) || 3)) })} className="min-w-0 flex-1 bg-black/30 p-2 text-xs text-white" /><button type="button" onClick={() => updateShot(shot.id, { duration: fittedDuration(shot.dialogue) })} className="bg-white/10 px-2 text-[9px] font-bold">Fit</button></div></label><label className="text-[10px] text-white/45">Framing<select value={shot.framing} onChange={(event) => updateShot(shot.id, { framing: event.target.value })} className="mt-1 w-full bg-black/30 p-2 text-xs text-white">{SHOT_TYPES.map((type) => <option key={type}>{type}</option>)}</select></label><label className="text-[10px] text-white/45 md:col-span-2">Characters<input value={(shot.characters || []).join(', ')} onChange={(event) => updateShot(shot.id, { characters: event.target.value.split(',').map((value) => value.trim()).filter(Boolean) })} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" /></label></div>
-                <div className="mt-2 grid gap-2 md:grid-cols-2"><textarea value={shot.dialogue} onChange={(event) => updateShot(shot.id, { dialogue: event.target.value })} className="min-h-20 bg-black/30 p-2 text-xs" placeholder="Dialogue with speaker names" /><textarea value={shot.action} onChange={(event) => updateShot(shot.id, { action: event.target.value })} className="min-h-20 bg-black/30 p-2 text-xs" placeholder="Action — describe only what happens, not appearance" /><textarea value={shot.camera} onChange={(event) => updateShot(shot.id, { camera: event.target.value })} className="min-h-16 bg-black/30 p-2 text-xs" placeholder="Camera movement / placement — framing above remains authoritative" /><textarea value={shot.sound} onChange={(event) => updateShot(shot.id, { sound: event.target.value })} className="min-h-16 bg-black/30 p-2 text-xs" placeholder="Sound / ambience" /></div>
+                <div className="grid gap-2 md:grid-cols-4"><label className="text-[10px] text-white/45">Duration<div className="mt-1 flex gap-1"><input type="number" min="3" max="15" value={shot.duration} onChange={(event) => updateShot(shot.id, { duration: Math.max(3, Math.min(15, Number(event.target.value) || 3)) })} className="min-w-0 flex-1 bg-black/30 p-2 text-xs text-white" /><button type="button" onClick={() => updateShot(shot.id, { duration: fittedDuration(shot.dialogue) })} className="bg-white/10 px-2 text-[9px] font-bold">Fit</button></div></label><label className="text-[10px] text-white/45">Framing<select value={shot.framing} onChange={(event) => updateShot(shot.id, { framing: event.target.value })} className="mt-1 w-full bg-black/30 p-2 text-xs text-white">{SHOT_TYPES.map((type) => <option key={type}>{type}</option>)}</select></label><div className="md:col-span-2"><p className="text-[10px] text-white/45">Characters — optional</p><div className="mt-1 flex min-h-9 flex-wrap gap-1 bg-black/20 p-1">{cast.map((member) => { const selected = selectedIds.includes(member.id); return <button key={member.id} type="button" onClick={() => toggleShotCharacter(shot, member.id)} className={`border px-2 py-1 text-[10px] font-bold ${selected ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.04] text-white/55'}`}>{selected ? '✓ ' : '+ '}{member.name}</button>; })}</div></div></div>
+                <div className="mt-2 grid gap-2 md:grid-cols-2"><textarea value={shot.dialogue} onChange={(event) => updateShot(shot.id, { dialogue: event.target.value })} className="min-h-20 bg-black/30 p-2 text-xs" placeholder="Dialogue with speaker names for the creator" /><textarea value={shot.action} onChange={(event) => updateShot(shot.id, { action: event.target.value })} className="min-h-20 bg-black/30 p-2 text-xs" placeholder="Action — describe only what happens, not appearance" /><textarea value={shot.camera} onChange={(event) => updateShot(shot.id, { camera: event.target.value })} className="min-h-16 bg-black/30 p-2 text-xs" placeholder="Camera movement / placement — framing above remains authoritative" /><textarea value={shot.sound} onChange={(event) => updateShot(shot.id, { sound: event.target.value })} className="min-h-16 bg-black/30 p-2 text-xs" placeholder="Sound / ambience" /></div>
                 {timingProblem && <p className="mt-2 text-xs font-bold text-red-300">Timing conflict: dialogue needs about {Math.ceil(speechSeconds)}s, but the shot is {shot.duration}s.</p>}
               </div>;
             })}</div>
@@ -533,11 +550,11 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
           {step === 'shoot' && <div className="grid gap-4 lg:grid-cols-[330px_1fr]">
             <aside className="space-y-2 border border-white/10 bg-[#17191d] p-3"><div className="mb-3"><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Shot list</p><p className="text-[10px] text-white/45">{completedCount}/{shotPlan.length} generated</p></div>{shotPlan.map((shot, index) => <button key={shot.id} type="button" onClick={() => setActiveShotId(shot.id)} className={`w-full border p-3 text-left ${activeShot?.id === shot.id ? 'border-[#23c7be] bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}><div className="flex items-center justify-between"><span className="text-xs font-black">{index + 1}. {shot.label}</span>{shot.result_url && <CheckCircle2 size={14} className="text-[#23c7be]" />}</div><p className="mt-1 text-[10px] text-white/45">{shot.duration}s · {shot.framing}</p></button>)}</aside>
             <main className="space-y-4">{activeShot && <>
-              <section className="border border-white/10 bg-[#17191d] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black">{activeShot.label}</p><p className="text-xs text-white/45">{activeShot.duration}s · {activeShot.framing} · {(activeShot.characters || []).join(', ') || 'No cast specified'}</p></div><span className="text-xs font-bold text-[#8ee9e4]">{priceQuote?.credits ? `${priceQuote.credits} credits` : ''}</span></div><div className="mt-4 grid gap-3 md:grid-cols-2"><div><p className="mb-1 text-[10px] font-black uppercase text-white/40">Dialogue</p><p className="text-sm">{activeShot.dialogue || '—'}</p></div><div><p className="mb-1 text-[10px] font-black uppercase text-white/40">Action / Camera</p><p className="text-sm">{activeShot.action} {activeShot.camera}</p></div></div><div className="mt-4 border-t border-white/10 pt-3"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/40">Characters in this shot</p><div className="flex flex-wrap gap-2">{cast.map((member) => { const selected = (activeShot.characters || []).some((name) => name.trim().toLowerCase() === member.name.trim().toLowerCase()); return <button key={member.id} type="button" onClick={() => toggleShotCharacter(activeShot, member.name)} className={`border px-3 py-2 text-xs font-bold ${selected ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.04] text-white/55'}`}>{selected ? '✓ ' : '+ '}{member.name}</button>; })}</div>{activeShot.result_url && <p className="mt-2 text-[10px] text-white/35">Character changes apply when this shot is regenerated.</p>}</div></section>
-              <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase text-white/40">Exact references sent for this shot</p><div className="flex flex-wrap gap-2">{shotReferences(activeShot).map((ref, index) => <div key={`${ref.url}-${index}`} className="w-28"><div className="aspect-square overflow-hidden bg-black"><img src={ref.url} alt="" className="h-full w-full object-contain" /></div><p className="mt-1 text-[9px] font-bold text-[#8ee9e4]">{ref.role}</p><p className="truncate text-[9px] text-white/40">Image {index + 1} · {ref.name}</p></div>)}</div></section>
+              <section className="border border-white/10 bg-[#17191d] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black">{activeShot.label}</p><p className="text-xs text-white/45">{activeShot.duration}s · {activeShot.framing} · {activeShotNames.join(', ') || 'No characters'}</p></div><span className="text-xs font-bold text-[#8ee9e4]">{priceQuote?.credits ? `${priceQuote.credits} credits` : ''}</span></div><div className="mt-4 grid gap-3 md:grid-cols-2"><div><p className="mb-1 text-[10px] font-black uppercase text-white/40">Dialogue</p><p className="text-sm">{activeShot.dialogue || '—'}</p></div><div><p className="mb-1 text-[10px] font-black uppercase text-white/40">Action / Camera</p><p className="text-sm">{activeShot.action} {activeShot.camera}</p></div></div><div className="mt-4 border-t border-white/10 pt-3"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/40">Characters in this shot — optional</p><div className="flex flex-wrap gap-2">{cast.map((member) => { const selected = normalizeShotCastIds(activeShot).includes(member.id); return <button key={member.id} type="button" onClick={() => toggleShotCharacter(activeShot, member.id)} className={`border px-3 py-2 text-xs font-bold ${selected ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.04] text-white/55'}`}>{selected ? '✓ ' : '+ '}{member.name}</button>; })}</div>{activeShot.result_url && <p className="mt-2 text-[10px] text-white/35">Character changes apply when this shot is regenerated.</p>}</div></section>
+              <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase text-white/40">Exact references sent for this shot</p><div className="flex flex-wrap gap-2">{shotReferences(activeShot).map((ref, index) => <div key={`${ref.url}-${index}`} className="w-28"><div className="aspect-square overflow-hidden bg-black"><img src={ref.url} alt="" className="h-full w-full object-contain" /></div><p className="mt-1 text-[9px] font-bold text-[#8ee9e4]">{ref.role}</p><p className="truncate text-[9px] text-white/40">Image {index + 1}{ref.member ? ` · ${ref.name}` : ' · Set'}</p></div>)}</div></section>
               <section className="border border-[#23c7be]/30 bg-[#17191d] p-4"><div className="mb-2 flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Final prompt sent to video model</p><p className="text-[10px] text-white/40">Review and correct anything before generating.</p></div>{promptEdits[activeShot.id] !== undefined && <button type="button" onClick={() => setPromptEdits((current) => { const next = { ...current }; delete next[activeShot.id]; return next; })} className="bg-white/10 px-3 py-2 text-[10px] font-bold">Reset</button>}</div><textarea value={finalPromptForShot(activeShot)} onChange={(event) => setPromptEdits((current) => ({ ...current, [activeShot.id]: event.target.value }))} className="min-h-52 w-full border border-white/10 bg-black/30 p-3 text-xs leading-5 text-white" /></section>
               {activeShot.result_url ? <section className="border border-white/10 bg-black p-3"><video src={activeShot.result_url} controls className="max-h-[60vh] w-full" /><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => generateShot(activeShot)} disabled={busy} className="flex items-center justify-center bg-white/10 py-3 text-xs font-bold disabled:opacity-60">{regeneratingShotId === activeShot.id ? <><Loader2 size={14} className="mr-2 animate-spin" /> Regenerating…</> : 'Regenerate With This Prompt'}</button><button type="button" onClick={() => { setVaultVideoUrl(activeShot.result_url); setShowSaveVault(true); }} disabled={regeneratingShotId === activeShot.id} className="bg-[#23c7be] py-3 text-xs font-black text-black disabled:opacity-50">Save Shot to Vault</button></div></section>
-                : <Button onClick={() => generateShot(activeShot)} disabled={busy || modelsLoading} className="w-full bg-[#23c7be] py-5 font-black text-black">{busy ? <Loader2 className="mr-2 animate-spin" /> : <Video className="mr-2" />} Generate With This Prompt</Button>}
+                : <Button onClick={() => generateShot(activeShot)} disabled={busy || modelsLoading} className="w-full bg-[#23c7be] py-5 font-black text-black hover:bg-[#8ee9e4] hover:text-black">{busy ? <Loader2 className="mr-2 animate-spin" /> : <Video className="mr-2" />} Generate With This Prompt</Button>}
             </>}</main>
           </div>}
         </div>
