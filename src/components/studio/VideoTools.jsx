@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Camera, CheckCircle2, Folder, Image as ImageIcon, Loader2, Plus, Save, ShoppingBag, Trash2, Upload, Users, Video, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -112,6 +112,12 @@ const fittedDuration = (dialogue = '') => Math.max(3, Math.min(15, Math.ceil(est
 const cleanScenePassage = (value = '') => String(value).replace(/\*\*/g, '').trim();
 const shotDialogueText = (shot) => (Array.isArray(shot?.lines) ? shot.lines : []).map((line) => line.dialogue || '').filter(Boolean).join(' ');
 
+const ratioSize = (ratio) => {
+  if (ratio === '9:16') return { width: 720, height: 1280 };
+  if (ratio === '1:1') return { width: 1080, height: 1080 };
+  return { width: 1280, height: 720 };
+};
+
 function AssetsShopPicker({ onSelect, onClose, embedded = false }) {
   const [search, setSearch] = useState('');
   const [assets, setAssets] = useState([]);
@@ -199,6 +205,12 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const [loadingScenes, setLoadingScenes] = useState(false);
   const [promptEdits, setPromptEdits] = useState({});
   const [selectedScenePassage, setSelectedScenePassage] = useState(null);
+  const [editClips, setEditClips] = useState([]);
+  const [selectedEditClipId, setSelectedEditClipId] = useState(null);
+  const [editRatio, setEditRatio] = useState('16:9');
+  const [editMusic, setEditMusic] = useState({ url: '', name: '', volume: 0.55 });
+  const [exportingEdit, setExportingEdit] = useState(false);
+  const editPreviewRef = useRef(null);
 
   useEffect(() => {
     if (user?.email) {
@@ -302,6 +314,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setActiveShotId(restoredShots[0]?.id || null);
     setPromptEdits({});
     setSelectedScenePassage(null);
+    setEditClips([]);
+    setSelectedEditClipId(null);
     setStep(restoredStatus === 'planned' ? 'plan' : (canShoot ? 'shoot' : 'setup'));
     setShowMyScenes(false);
     toast.success('Scene restored');
@@ -381,6 +395,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setApproved(false);
     setPromptEdits({});
     setSelectedScenePassage(null);
+    setEditClips([]);
+    setSelectedEditClipId(null);
     setStep('plan');
     try {
       await saveScene({ shot_plan: [], status: 'planned' });
@@ -483,6 +499,10 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setActiveShotId(null);
     setPromptEdits({});
     setSelectedScenePassage(null);
+    setEditClips([]);
+    setSelectedEditClipId(null);
+    setEditMusic({ url: '', name: '', volume: 0.55 });
+    setEditRatio('16:9');
     setShowMyScenes(false);
     setStep('setup');
     toast.success(hasCurrentScene ? 'Scene saved. New scene ready.' : 'New scene ready.');
@@ -594,6 +614,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       if (!url) throw new Error('No video returned.');
       const nextShots = shotPlan.map((item) => item.id === shot.id ? { ...item, result_url: url } : item);
       setShotPlan(nextShots);
+      setEditClips([]);
+      setSelectedEditClipId(null);
       const currentScene = sceneId || (await saveScene({ shot_plan: nextShots, status: 'shooting' })).id;
       const { error: updateError } = await supabase.from('shoot_scene').update({ shot_plan: nextShots, status: 'shooting', updated_at: new Date().toISOString() }).eq('id', currentScene);
       if (updateError) throw updateError;
@@ -621,6 +643,212 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const allShotDuration = shotPlan.reduce((sum, shot) => sum + Number(shot.duration || 0), 0);
   const completedCount = shotPlan.filter((shot) => shot.result_url).length;
 
+  const buildDefaultEditorClips = () => shotPlan.filter((shot) => shot.result_url).map((shot) => ({
+    id: crypto.randomUUID(),
+    shot_id: shot.id,
+    label: shot.label,
+    url: shot.result_url,
+    source_duration: Math.max(0.1, Number(shot.duration || 5)),
+    trim_start: 0,
+    trim_end: Math.max(0.1, Number(shot.duration || 5)),
+    scale: 1,
+    x: 0,
+    y: 0,
+    volume: 1,
+    muted: false,
+  }));
+
+  const openEditor = () => {
+    if (!shotPlan.some((shot) => shot.result_url)) return toast.error('Generate at least one shot before editing.');
+    const savedTimeline = Array.isArray(shotPlan[0]?.editor_timeline) ? shotPlan[0].editor_timeline.filter((clip) => clip?.url) : [];
+    const next = savedTimeline.length ? savedTimeline : buildDefaultEditorClips();
+    setEditClips(next);
+    setSelectedEditClipId(next[0]?.id || null);
+    setEditRatio(shotPlan[0]?.editor_ratio || aspectRatio || '16:9');
+    setEditMusic(shotPlan[0]?.editor_music || { url: '', name: '', volume: 0.55 });
+    setStep('edit');
+  };
+
+  const selectedEditClip = editClips.find((clip) => clip.id === selectedEditClipId) || editClips[0] || null;
+  const updateEditClip = (id, patch) => setEditClips((items) => items.map((clip) => clip.id === id ? { ...clip, ...patch } : clip));
+
+  const moveEditClip = (id, direction) => setEditClips((items) => {
+    const index = items.findIndex((clip) => clip.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= items.length) return items;
+    const next = [...items];
+    [next[index], next[target]] = [next[target], next[index]];
+    return next;
+  });
+
+  const splitEditClip = () => {
+    const clip = selectedEditClip;
+    const video = editPreviewRef.current;
+    if (!clip || !video) return;
+    const at = Number(video.currentTime || 0);
+    if (at <= Number(clip.trim_start) + 0.05 || at >= Number(clip.trim_end) - 0.05) return toast.error('Move the playhead inside the trimmed clip before splitting.');
+    const left = { ...clip, id: crypto.randomUUID(), trim_end: at, label: `${clip.label} A` };
+    const right = { ...clip, id: crypto.randomUUID(), trim_start: at, label: `${clip.label} B` };
+    setEditClips((items) => {
+      const index = items.findIndex((item) => item.id === clip.id);
+      return [...items.slice(0, index), left, right, ...items.slice(index + 1)];
+    });
+    setSelectedEditClipId(right.id);
+  };
+
+  const uploadEditorMusic = async (file) => {
+    if (!file) return;
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const owner = authData.user?.id || 'public';
+      const extension = file.name?.split('.').pop() || 'mp3';
+      const path = `${owner}/shoot/music/${crypto.randomUUID()}.${extension}`;
+      const { error } = await supabase.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
+      if (error) throw error;
+      const { data } = supabase.storage.from('media').getPublicUrl(path);
+      setEditMusic((value) => ({ ...value, url: data.publicUrl, name: file.name }));
+      toast.success('Music added');
+    } catch (error) {
+      toast.error(error.message || 'Music upload failed.');
+    }
+  };
+
+  const saveEditor = async () => {
+    if (!shotPlan.length) return;
+    const nextShots = shotPlan.map((shot, index) => index === 0 ? { ...shot, editor_timeline: editClips, editor_music: editMusic, editor_ratio: editRatio } : shot);
+    setShotPlan(nextShots);
+    try {
+      if (sceneId) {
+        const { error } = await supabase.from('shoot_scene').update({ shot_plan: nextShots, updated_at: new Date().toISOString() }).eq('id', sceneId);
+        if (error) throw error;
+      } else {
+        await saveScene({ shot_plan: nextShots });
+      }
+      toast.success('Edit saved');
+    } catch (error) {
+      toast.error(error.message || 'Edit could not be saved.');
+    }
+  };
+
+  const drawVideoFrame = (ctx, canvas, video, clip) => {
+    const vw = Number(video.videoWidth || canvas.width);
+    const vh = Number(video.videoHeight || canvas.height);
+    const base = Math.max(canvas.width / vw, canvas.height / vh);
+    const scale = base * Math.max(0.25, Number(clip.scale || 1));
+    const width = vw * scale;
+    const height = vh * scale;
+    const x = (canvas.width - width) / 2 + (Number(clip.x || 0) / 100) * (canvas.width / 2);
+    const y = (canvas.height - height) / 2 + (Number(clip.y || 0) / 100) * (canvas.height / 2);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, x, y, width, height);
+  };
+
+  const exportEditor = async () => {
+    if (!editClips.length) return toast.error('There are no clips to export.');
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return toast.error('This browser cannot render the edit locally.');
+    setExportingEdit(true);
+    let canvasStream;
+    let audioContext;
+    let musicElement;
+    let exportVideo;
+    try {
+      const { width, height } = ratioSize(editRatio);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      canvasStream = canvas.captureStream(30);
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      await audioContext.resume();
+      const audioDestination = audioContext.createMediaStreamDestination();
+      exportVideo = document.createElement('video');
+      exportVideo.crossOrigin = 'anonymous';
+      exportVideo.playsInline = true;
+      exportVideo.preload = 'auto';
+      const videoSource = audioContext.createMediaElementSource(exportVideo);
+      const videoGain = audioContext.createGain();
+      videoSource.connect(videoGain).connect(audioDestination);
+      if (editMusic.url) {
+        musicElement = document.createElement('audio');
+        musicElement.crossOrigin = 'anonymous';
+        musicElement.src = editMusic.url;
+        musicElement.loop = true;
+        musicElement.preload = 'auto';
+        const musicSource = audioContext.createMediaElementSource(musicElement);
+        const musicGain = audioContext.createGain();
+        musicGain.gain.value = Math.max(0, Math.min(1, Number(editMusic.volume || 0)));
+        musicSource.connect(musicGain).connect(audioDestination);
+        await musicElement.play();
+      }
+      const combinedStream = new MediaStream([...canvasStream.getVideoTracks(), ...audioDestination.stream.getAudioTracks()]);
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+      const recorder = new MediaRecorder(combinedStream, { mimeType, videoBitsPerSecond: 8000000 });
+      const chunks = [];
+      recorder.ondataavailable = (event) => { if (event.data?.size) chunks.push(event.data); };
+      const stopped = new Promise((resolve) => { recorder.onstop = resolve; });
+      recorder.start(500);
+
+      const loadVideo = (url) => new Promise((resolve, reject) => {
+        const onReady = () => { cleanup(); resolve(); };
+        const onError = () => { cleanup(); reject(new Error('A clip could not be loaded for export.')); };
+        const cleanup = () => {
+          exportVideo.removeEventListener('loadedmetadata', onReady);
+          exportVideo.removeEventListener('error', onError);
+        };
+        exportVideo.addEventListener('loadedmetadata', onReady);
+        exportVideo.addEventListener('error', onError);
+        exportVideo.src = url;
+        exportVideo.load();
+      });
+
+      for (const clip of editClips) {
+        await loadVideo(clip.url);
+        const trimStart = Math.max(0, Number(clip.trim_start || 0));
+        const mediaDuration = Number.isFinite(exportVideo.duration) ? exportVideo.duration : Number(clip.source_duration || 5);
+        const trimEnd = Math.max(trimStart + 0.05, Math.min(Number(clip.trim_end || mediaDuration), mediaDuration));
+        exportVideo.currentTime = Math.min(trimStart, Math.max(0, mediaDuration - 0.05));
+        await new Promise((resolve) => exportVideo.addEventListener('seeked', resolve, { once: true }));
+        videoGain.gain.value = clip.muted ? 0 : Math.max(0, Math.min(1, Number(clip.volume ?? 1)));
+        await exportVideo.play();
+        await new Promise((resolve) => {
+          const render = () => {
+            drawVideoFrame(ctx, canvas, exportVideo, clip);
+            if (exportVideo.currentTime >= trimEnd || exportVideo.ended) {
+              exportVideo.pause();
+              resolve();
+              return;
+            }
+            requestAnimationFrame(render);
+          };
+          render();
+        });
+      }
+
+      recorder.stop();
+      await stopped;
+      if (musicElement) musicElement.pause();
+      const blob = new Blob(chunks, { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${(title || 'scene').replace(/[^a-z0-9_-]+/gi, '_')}_edit.webm`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      toast.success('Scene exported');
+    } catch (error) {
+      toast.error(error.message || 'Export failed. Some video hosts may block browser-side rendering.');
+    } finally {
+      try { exportVideo?.pause(); } catch {}
+      try { musicElement?.pause(); } catch {}
+      try { canvasStream?.getTracks().forEach((track) => track.stop()); } catch {}
+      try { await audioContext?.close(); } catch {}
+      setExportingEdit(false);
+    }
+  };
+
   const renderCharacterData = (shot) => {
     const members = shotCast(shot);
     if (!members.length) return <p className="mt-2 text-[10px] text-white/35">No character references linked to this shot.</p>;
@@ -642,15 +870,15 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={embedded ? 'min-h-full w-full bg-[#202328] p-5 pb-28 text-white md:p-8' : 'max-h-[92vh] w-full max-w-6xl overflow-y-auto border border-white/10 bg-[#202328] p-6 text-white'}>
         <div className="mx-auto max-w-7xl">
           <header className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 bg-[#17191d] px-4 py-4">
-            <div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Camera size={20} /></div><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Scene Production</p><div className="flex flex-wrap items-center gap-3"><h3 className="text-xl font-black">Shoot</h3><input value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Scene name" className="min-w-[220px] max-w-[420px] flex-1 border border-white/10 bg-black/25 px-3 py-1.5 text-sm font-black text-white outline-none focus:border-[#23c7be]" placeholder="Scene name" /></div><p className="mt-1 text-xs text-white/45">Build technical shots. Review the exact final prompt before generation.</p></div></div>
-            <div className="flex flex-wrap gap-2"><button type="button" onClick={startNewScene} disabled={busy} className="flex items-center gap-2 border border-[#23c7be]/30 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] hover:bg-[#23c7be]/20 disabled:opacity-50"><Plus size={14} /> New Scene</button><button type="button" onClick={openMyScenes} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${showMyScenes ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.05]'}`}><Folder size={14} /> My Scenes</button><button type="button" onClick={() => saveScene().then(() => toast.success('Shoot scene saved')).catch((error) => toast.error(error.message))} className="flex items-center gap-2 border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold"><Save size={14} /> Save</button>{!embedded && <button type="button" onClick={onClose} className="p-2"><X size={19} /></button>}</div>
+            <div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Camera size={20} /></div><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Scene Production</p><div className="flex flex-wrap items-center gap-3"><h3 className="text-xl font-black">Shoot</h3><input value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Scene name" className="min-w-[220px] max-w-[420px] flex-1 border border-white/10 bg-black/25 px-3 py-1.5 text-sm font-black text-white outline-none focus:border-[#23c7be]" placeholder="Scene name" /></div><p className="mt-1 text-xs text-white/45">Build technical shots, generate them, then finish the scene in Edit.</p></div></div>
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={startNewScene} disabled={busy || exportingEdit} className="flex items-center gap-2 border border-[#23c7be]/30 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] hover:bg-[#23c7be]/20 disabled:opacity-50"><Plus size={14} /> New Scene</button><button type="button" onClick={openMyScenes} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${showMyScenes ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.05]'}`}><Folder size={14} /> My Scenes</button><button type="button" onClick={() => saveScene().then(() => toast.success('Shoot scene saved')).catch((error) => toast.error(error.message))} className="flex items-center gap-2 border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold"><Save size={14} /> Save</button>{!embedded && <button type="button" onClick={onClose} className="p-2"><X size={19} /></button>}</div>
           </header>
 
           {showMyScenes && <section className="mb-5 border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">My Scenes</p><p className="text-xs text-white/45">Open one of your saved Shoot scenes.</p></div><button type="button" onClick={loadMyScenes} disabled={loadingScenes} className="bg-white/10 px-3 py-2 text-xs font-bold disabled:opacity-50">Refresh</button></div>{loadingScenes ? <div className="flex min-h-24 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div> : savedScenes.length ? <div className="grid gap-2 md:grid-cols-2">{savedScenes.map((scene) => <button key={scene.id} type="button" onClick={() => restoreScene(scene)} className="border border-white/10 bg-black/20 p-3 text-left hover:border-[#23c7be]"><div className="flex items-center justify-between gap-3"><span className="truncate text-sm font-black">{scene.title || 'Untitled scene'}</span><span className="text-[10px] font-bold uppercase text-[#8ee9e4]">{scene.status || 'setup'}</span></div><p className="mt-1 text-[10px] text-white/40">{scene.aspect_ratio || '16:9'} · {Array.isArray(scene.shot_plan) ? scene.shot_plan.length : 0} shots</p></button>)}</div> : <div className="border border-white/10 bg-black/20 p-4 text-sm text-white/45">No saved scenes yet.</div>}</section>}
 
           {showContext && <ProductionContextInfo productionMethod={productionMethod} block={block} character={character} referenceMedia={referenceMedia} />}
 
-          <div className="mb-5 grid grid-cols-3 border border-white/10 bg-[#17191d] text-center text-xs font-black"><button type="button" onClick={() => setStep('setup')} className={`p-3 ${step === 'setup' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>1 · Setup</button><button type="button" onClick={() => sceneText.trim() && setStep('plan')} className={`p-3 ${step === 'plan' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>2 · Cuts</button><button type="button" onClick={() => approved && setStep('shoot')} className={`p-3 ${step === 'shoot' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>3 · Shoot</button></div>
+          <div className="mb-5 grid grid-cols-4 border border-white/10 bg-[#17191d] text-center text-xs font-black"><button type="button" onClick={() => setStep('setup')} className={`p-3 ${step === 'setup' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>1 · Setup</button><button type="button" onClick={() => sceneText.trim() && setStep('plan')} className={`p-3 ${step === 'plan' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>2 · Cuts</button><button type="button" onClick={() => approved && setStep('shoot')} className={`p-3 ${step === 'shoot' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>3 · Shoot</button><button type="button" onClick={openEditor} className={`p-3 ${step === 'edit' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>4 · Edit</button></div>
 
           {step === 'setup' && <div className="space-y-5">
             <section className="grid gap-3 md:grid-cols-[1fr_300px]"><input value={title} onChange={(event) => setTitle(event.target.value)} className="border border-white/10 bg-[#17191d] px-4 py-3 text-sm font-bold" placeholder="Scene title" /><div className="grid grid-cols-3 gap-2">{RATIOS.map((ratio) => <button key={ratio.id} type="button" onClick={() => setAspectRatio(ratio.id)} className={`border p-2 text-xs font-bold ${aspectRatio === ratio.id ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 text-white/55'}`}>{ratio.label}<br /><span className="font-black">{ratio.id}</span></button>)}</div></section>
@@ -687,7 +915,22 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
               <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase text-white/40">Exact references sent for this shot</p><div className="flex flex-wrap gap-2">{shotReferences(activeShot).map((ref, index) => <div key={`${ref.url}-${index}`} className="w-28"><div className="aspect-square overflow-hidden bg-black"><img src={ref.url} alt="" className="h-full w-full object-contain" /></div><p className="mt-1 text-[9px] font-bold text-[#8ee9e4]">{ref.role}</p><p className="truncate text-[9px] text-white/40">Image {index + 1}</p></div>)}</div></section>
               <section className="border border-[#23c7be]/30 bg-[#17191d] p-4"><div className="mb-2 flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Final prompt sent to video model</p><p className="text-[10px] text-white/40">This is the exact prompt. Review and correct it before generating.</p></div>{promptEdits[activeShot.id] !== undefined && <button type="button" onClick={() => setPromptEdits((current) => { const next = { ...current }; delete next[activeShot.id]; return next; })} className="bg-white/10 px-3 py-2 text-[10px] font-bold">Reset</button>}</div><textarea value={finalPromptForShot(activeShot)} onChange={(event) => setPromptEdits((current) => ({ ...current, [activeShot.id]: event.target.value }))} className="min-h-64 w-full border border-white/10 bg-black/30 p-3 text-xs leading-5 text-white" /></section>
               {activeShot.result_url ? <section className="border border-white/10 bg-black p-3"><video src={activeShot.result_url} controls className="max-h-[60vh] w-full" /><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => generateShot(activeShot)} disabled={busy} className="flex items-center justify-center bg-white/10 py-3 text-xs font-bold disabled:opacity-60">{regeneratingShotId === activeShot.id ? <><Loader2 size={14} className="mr-2 animate-spin" /> Regenerating…</> : 'Regenerate With This Prompt'}</button><button type="button" onClick={() => { setVaultVideoUrl(activeShot.result_url); setShowSaveVault(true); }} disabled={regeneratingShotId === activeShot.id} className="bg-[#23c7be] py-3 text-xs font-black text-black hover:bg-[#8ee9e4] disabled:opacity-50">Save Shot to Vault</button></div></section> : <Button onClick={() => generateShot(activeShot)} disabled={busy || modelsLoading} className="w-full bg-[#23c7be] py-5 font-black text-black hover:bg-[#8ee9e4] hover:text-black">{busy ? <Loader2 className="mr-2 animate-spin" /> : <Video className="mr-2" />} Generate With This Prompt</Button>}
+              {completedCount > 0 && <button type="button" onClick={openEditor} className="w-full border border-[#23c7be]/30 bg-[#23c7be]/10 py-4 text-sm font-black text-[#8ee9e4] hover:bg-[#23c7be]/20">Open Scene Editor</button>}
             </>}</main>
+          </div>}
+
+          {step === 'edit' && <div className="space-y-4">
+            <section className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-[#17191d] p-4"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Scene Editor</p><p className="text-xs text-white/45">Assemble generated shots, trim, split, reframe, mix music and export.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={saveEditor} className="bg-white/10 px-4 py-2 text-xs font-bold"><Save size={13} className="mr-1 inline" /> Save Edit</button><button type="button" onClick={exportEditor} disabled={exportingEdit || !editClips.length} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black hover:bg-[#8ee9e4] disabled:opacity-40">{exportingEdit ? <><Loader2 size={13} className="mr-1 inline animate-spin" /> Rendering…</> : 'Export Scene'}</button></div></section>
+
+            <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+              <section className="border border-white/10 bg-black p-3"><div className={`mx-auto overflow-hidden bg-black ${editRatio === '9:16' ? 'aspect-[9/16] max-h-[620px]' : editRatio === '1:1' ? 'aspect-square max-h-[620px]' : 'aspect-video'}`}>{selectedEditClip ? <video key={selectedEditClip.id} ref={editPreviewRef} src={selectedEditClip.url} controls crossOrigin="anonymous" onLoadedMetadata={(event) => { const duration = Number(event.currentTarget.duration || selectedEditClip.source_duration || 5); updateEditClip(selectedEditClip.id, { source_duration: duration, trim_end: Math.min(Number(selectedEditClip.trim_end || duration), duration) }); event.currentTarget.currentTime = Math.min(Number(selectedEditClip.trim_start || 0), Math.max(0, duration - 0.05)); }} onTimeUpdate={(event) => { if (event.currentTarget.currentTime >= Number(selectedEditClip.trim_end || selectedEditClip.source_duration)) event.currentTarget.pause(); }} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `translate(${Number(selectedEditClip.x || 0)}%, ${Number(selectedEditClip.y || 0)}%) scale(${Number(selectedEditClip.scale || 1)})`, transformOrigin: 'center center' }} /> : <div className="flex h-full min-h-64 items-center justify-center text-sm text-white/30">No generated shots in the editor.</div>}</div></section>
+
+              <aside className="space-y-3 border border-white/10 bg-[#17191d] p-4"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Output</p><div className="mt-2 grid grid-cols-3 gap-1">{RATIOS.map((ratio) => <button key={ratio.id} type="button" onClick={() => setEditRatio(ratio.id)} className={`border p-2 text-[10px] font-bold ${editRatio === ratio.id ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 text-white/45'}`}>{ratio.id}</button>)}</div></div>{selectedEditClip && <><div className="border-t border-white/10 pt-3"><div className="mb-2 flex items-center justify-between"><p className="text-xs font-black">{selectedEditClip.label}</p><button type="button" onClick={splitEditClip} className="bg-white/10 px-2 py-1 text-[10px] font-bold">Split at playhead</button></div><div className="grid grid-cols-2 gap-2"><label className="text-[10px] text-white/45">Trim start<input type="number" min="0" step="0.05" value={selectedEditClip.trim_start} onChange={(event) => updateEditClip(selectedEditClip.id, { trim_start: Math.max(0, Math.min(Number(event.target.value) || 0, Number(selectedEditClip.trim_end) - 0.05)) })} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" /></label><label className="text-[10px] text-white/45">Trim end<input type="number" min="0.05" step="0.05" value={selectedEditClip.trim_end} onChange={(event) => updateEditClip(selectedEditClip.id, { trim_end: Math.max(Number(selectedEditClip.trim_start) + 0.05, Math.min(Number(event.target.value) || 0.05, Number(selectedEditClip.source_duration || 999))) })} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" /></label></div></div><label className="block text-[10px] text-white/45">Zoom · {Number(selectedEditClip.scale || 1).toFixed(2)}×<input type="range" min="1" max="2.5" step="0.05" value={selectedEditClip.scale} onChange={(event) => updateEditClip(selectedEditClip.id, { scale: Number(event.target.value) })} className="mt-1 w-full" /></label><label className="block text-[10px] text-white/45">Position X · {selectedEditClip.x}%<input type="range" min="-100" max="100" step="1" value={selectedEditClip.x} onChange={(event) => updateEditClip(selectedEditClip.id, { x: Number(event.target.value) })} className="mt-1 w-full" /></label><label className="block text-[10px] text-white/45">Position Y · {selectedEditClip.y}%<input type="range" min="-100" max="100" step="1" value={selectedEditClip.y} onChange={(event) => updateEditClip(selectedEditClip.id, { y: Number(event.target.value) })} className="mt-1 w-full" /></label><label className="block text-[10px] text-white/45">Clip volume · {Math.round(Number(selectedEditClip.volume || 0) * 100)}%<input type="range" min="0" max="1" step="0.05" value={selectedEditClip.volume} onChange={(event) => updateEditClip(selectedEditClip.id, { volume: Number(event.target.value) })} className="mt-1 w-full" /></label><button type="button" onClick={() => updateEditClip(selectedEditClip.id, { muted: !selectedEditClip.muted })} className={`w-full border p-2 text-xs font-bold ${selectedEditClip.muted ? 'border-[#23c7be] text-[#8ee9e4]' : 'border-white/10 text-white/60'}`}>{selectedEditClip.muted ? 'Muted' : 'Clip audio on'}</button></>}</aside>
+            </div>
+
+            <section className="border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Timeline</p><p className="text-[10px] text-white/35">Select a segment. Use ← / → to change its order.</p></div><p className="text-xs font-bold text-white/55">{editClips.reduce((sum, clip) => sum + Math.max(0, Number(clip.trim_end) - Number(clip.trim_start)), 0).toFixed(1)}s</p></div><div className="flex gap-2 overflow-x-auto pb-2">{editClips.map((clip, index) => <div key={clip.id} className={`min-w-[190px] border p-2 ${selectedEditClip?.id === clip.id ? 'border-[#23c7be] bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}><button type="button" onClick={() => setSelectedEditClipId(clip.id)} className="w-full text-left"><div className="aspect-video overflow-hidden bg-black"><video src={clip.url} muted preload="metadata" className="h-full w-full object-cover" /></div><p className="mt-2 truncate text-xs font-black">{index + 1}. {clip.label}</p><p className="text-[9px] text-white/35">{Number(clip.trim_start).toFixed(1)}s → {Number(clip.trim_end).toFixed(1)}s</p></button><div className="mt-2 grid grid-cols-3 gap-1"><button type="button" disabled={index === 0} onClick={() => moveEditClip(clip.id, -1)} className="bg-white/10 py-1 text-xs disabled:opacity-25">←</button><button type="button" onClick={() => { setEditClips((items) => items.filter((item) => item.id !== clip.id)); if (selectedEditClipId === clip.id) setSelectedEditClipId(editClips.find((item) => item.id !== clip.id)?.id || null); }} className="bg-white/10 py-1 text-[10px]">Remove</button><button type="button" disabled={index === editClips.length - 1} onClick={() => moveEditClip(clip.id, 1)} className="bg-white/10 py-1 text-xs disabled:opacity-25">→</button></div></div>)}</div></section>
+
+            <section className="border border-white/10 bg-[#17191d] p-4"><div className="grid gap-3 md:grid-cols-[1fr_220px]"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Music track</p><div className="mt-2 flex flex-wrap items-center gap-2"><label className="cursor-pointer bg-white/10 px-3 py-2 text-xs font-bold"><Upload size={12} className="mr-1 inline" /> Add Music<input type="file" accept="audio/*" className="hidden" onChange={(event) => uploadEditorMusic(event.target.files?.[0])} /></label>{editMusic.url && <><span className="max-w-sm truncate text-xs text-white/65">{editMusic.name || 'Music'}</span><button type="button" onClick={() => setEditMusic({ url: '', name: '', volume: 0.55 })} className="bg-white/10 px-2 py-2 text-[10px]">Remove</button></>}</div>{editMusic.url && <audio src={editMusic.url} controls className="mt-3 w-full" />}</div><label className="text-[10px] text-white/45">Music volume · {Math.round(Number(editMusic.volume || 0) * 100)}%<input type="range" min="0" max="1" step="0.05" value={editMusic.volume} onChange={(event) => setEditMusic((value) => ({ ...value, volume: Number(event.target.value) }))} className="mt-2 w-full" /></label></div></section>
           </div>}
         </div>
 
