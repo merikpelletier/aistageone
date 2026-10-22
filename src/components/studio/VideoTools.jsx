@@ -407,6 +407,33 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     return data;
   };
 
+  const startNewScene = async () => {
+    const hasCurrentScene = Boolean(sceneId || title.trim() !== 'Untitled scene' || sceneText.trim() || shotPlan.length || setReference.url || cast.some((member) => member.reference_url || member.voice_or_sound || member.manner || member.description));
+    if (hasCurrentScene) {
+      const completed = shotPlan.length > 0 && shotPlan.every((shot) => shot.result_url);
+      try {
+        await saveScene({ status: completed ? 'completed' : (approved ? 'approved' : (shotPlan.length ? 'planned' : 'setup')) });
+      } catch (error) {
+        toast.error(error.message || 'Current scene could not be saved.');
+        return;
+      }
+    }
+    setSceneId(null);
+    setTitle('Untitled scene');
+    setCast([newCastMember(0), newCastMember(1)]);
+    setSetReference({ name: '', url: '', description: '' });
+    setSceneText('');
+    setAspectRatio('16:9');
+    setShotPlan([]);
+    setApproved(false);
+    setActiveShotId(null);
+    setPromptEdits({});
+    setSelectedScenePassage(null);
+    setShowMyScenes(false);
+    setStep('setup');
+    toast.success(hasCurrentScene ? 'Scene saved. New scene ready.' : 'New scene ready.');
+  };
+
   const shotReferences = (shot) => {
     const refs = [];
     if (setReference.url) refs.push({ role: 'SET REFERENCE', url: setReference.url, member: null });
@@ -538,9 +565,9 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     <div className={`fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] overflow-y-auto bg-[#202328]' : 'inset-0 flex items-center justify-center bg-black/80 p-4'}`}>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={embedded ? 'min-h-full w-full bg-[#202328] p-5 pb-28 text-white md:p-8' : 'max-h-[92vh] w-full max-w-6xl overflow-y-auto border border-white/10 bg-[#202328] p-6 text-white'}>
         <div className="mx-auto max-w-7xl">
-          <header className="mb-5 flex items-center justify-between border-b border-white/10 bg-[#17191d] px-4 py-4">
-            <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Camera size={20} /></div><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Scene Production</p><h3 className="text-xl font-black">Shoot</h3><p className="text-xs text-white/45">Build technical shots. Review the exact final prompt before generation.</p></div></div>
-            <div className="flex gap-2"><button type="button" onClick={openMyScenes} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${showMyScenes ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.05]'}`}><Folder size={14} /> My Scenes</button><button type="button" onClick={() => saveScene().then(() => toast.success('Shoot scene saved')).catch((error) => toast.error(error.message))} className="flex items-center gap-2 border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold"><Save size={14} /> Save</button>{!embedded && <button type="button" onClick={onClose} className="p-2"><X size={19} /></button>}</div>
+          <header className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 bg-[#17191d] px-4 py-4">
+            <div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Camera size={20} /></div><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Scene Production</p><div className="flex flex-wrap items-center gap-3"><h3 className="text-xl font-black">Shoot</h3><input value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Scene name" className="min-w-[220px] max-w-[420px] flex-1 border border-white/10 bg-black/25 px-3 py-1.5 text-sm font-black text-white outline-none focus:border-[#23c7be]" placeholder="Scene name" /></div><p className="mt-1 text-xs text-white/45">Build technical shots. Review the exact final prompt before generation.</p></div></div>
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={startNewScene} disabled={busy} className="flex items-center gap-2 border border-[#23c7be]/30 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] hover:bg-[#23c7be]/20 disabled:opacity-50"><Plus size={14} /> New Scene</button><button type="button" onClick={openMyScenes} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${showMyScenes ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.05]'}`}><Folder size={14} /> My Scenes</button><button type="button" onClick={() => saveScene().then(() => toast.success('Shoot scene saved')).catch((error) => toast.error(error.message))} className="flex items-center gap-2 border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold"><Save size={14} /> Save</button>{!embedded && <button type="button" onClick={onClose} className="p-2"><X size={19} /></button>}</div>
           </header>
 
           {showMyScenes && <section className="mb-5 border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">My Scenes</p><p className="text-xs text-white/45">Open one of your saved Shoot scenes.</p></div><button type="button" onClick={loadMyScenes} disabled={loadingScenes} className="bg-white/10 px-3 py-2 text-xs font-bold disabled:opacity-50">Refresh</button></div>{loadingScenes ? <div className="flex min-h-24 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div> : savedScenes.length ? <div className="grid gap-2 md:grid-cols-2">{savedScenes.map((scene) => <button key={scene.id} type="button" onClick={() => restoreScene(scene)} className="border border-white/10 bg-black/20 p-3 text-left hover:border-[#23c7be]"><div className="flex items-center justify-between gap-3"><span className="truncate text-sm font-black">{scene.title || 'Untitled scene'}</span><span className="text-[10px] font-bold uppercase text-[#8ee9e4]">{scene.status || 'setup'}</span></div><p className="mt-1 text-[10px] text-white/40">{scene.aspect_ratio || '16:9'} · {Array.isArray(scene.shot_plan) ? scene.shot_plan.length : 0} shots</p></button>)}</div> : <div className="border border-white/10 bg-black/20 p-4 text-sm text-white/45">No saved scenes yet.</div>}</section>}
