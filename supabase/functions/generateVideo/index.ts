@@ -24,7 +24,7 @@ serveWithCors(async (req) => {
     const TOKEN = Deno.env.get('REPLICATE_API_TOKEN');
     if (!TOKEN) throw new Error('REPLICATE_API_TOKEN not set');
 
-    const { 
+    const {
       prompt,
       image_url = null,
       video_url = null,
@@ -32,7 +32,7 @@ serveWithCors(async (req) => {
       resolution = '720p',
       aspect_ratio = '16:9',
       use_as_reference = false,
-      engine = 'seedance',
+      engine = 'video',
       transformation_prompt = null,
       model_key = null
     } = await req.json();
@@ -47,12 +47,14 @@ serveWithCors(async (req) => {
       }, { status: 409 });
     }
 
+    const mode = resolution === '480p' ? 'standard' : 'pro';
     const quoteInput = {
       prompt,
       image_url,
       video_url,
       duration,
-      resolution: use_as_reference ? '720p' : resolution,
+      resolution,
+      mode,
       aspect_ratio,
       generate_audio: engine === 'kling_morph',
     };
@@ -81,13 +83,6 @@ serveWithCors(async (req) => {
     let videoOutputUrl: string;
 
     if (engine === 'kling_morph') {
-      // Single-pass Kling v2.6 generation with NATIVE audio: the user's photo
-      // is the start frame (so their real face is preserved), the prompt drives
-      // the on-screen transformation (drink potion → transform into a drag
-      // queen), and generate_audio produces the synchronized "I am stunning!"
-      // dialogue + sound effects in the same pass — no separate audio step.
-      // (kwaivgi/kling-v2.6 on Replicate does not support end_image, so we do
-      // not pre-restyle with Kontext — that also keeps identity intact.)
       if (!image_url) throw new Error('image_url is required for kling_morph');
       const stylePrompt = (transformation_prompt || '').trim();
       const actionPrompt = (prompt || '').trim();
@@ -104,9 +99,6 @@ serveWithCors(async (req) => {
       });
       videoOutputUrl = resolveOutputUrl(morphOutput);
     } else if (engine === 'kling') {
-      // Kling v1.6 Standard — strong identity preservation from a start frame
-      // plus high prompt adherence for styling transformations (e.g. drag queen).
-      // aspect_ratio is ignored when start_image is provided, so callers pre-crop.
       const klingInput: any = {
         prompt: prompt || '',
         duration: [5, 10].includes(duration) ? duration : 5,
@@ -115,10 +107,6 @@ serveWithCors(async (req) => {
       };
       if (image_url) {
         if (use_as_reference) {
-          // Pass the photo as a scene-element reference so the model composes a
-          // NEW scene from the prompt (allowing wardrobe/makeup/wig changes)
-          // while keeping the subject's identity — instead of locking the
-          // photo as the literal first frame, which blocks restyling.
           klingInput.reference_images = [image_url];
           klingInput.aspect_ratio = aspect_ratio;
         } else {
@@ -130,36 +118,26 @@ serveWithCors(async (req) => {
       const output = await replicate.run('kwaivgi/kling-v1.6-standard', { input: klingInput });
       videoOutputUrl = resolveOutputUrl(output);
     } else {
-      // Seedance 1.5 Lite — fast, affordable video generation.
-      // Reference-image mode (identity-guided scene generation) requires 720p:
-      // 480p is rejected as invalid input, 1080p disallows reference images.
-      const effResolution = use_as_reference ? '720p' : resolution;
       const input: any = {
         prompt: prompt || '',
-        duration,
-        resolution: effResolution,
+        duration: Math.max(3, Math.min(15, Number(duration) || 5)),
+        mode,
         aspect_ratio,
+        generate_audio: false,
       };
 
       if (image_url) {
         if (use_as_reference) {
-          // Pass as a reference image so the model composes a NEW scene from the
-          // prompt while keeping the subject's identity — instead of merely
-          // animating the photo as a first frame. (Not compatible with 1080p.)
-          if (resolution !== '1080p') {
-            input.reference_images = [image_url];
-          } else {
-            input.image = image_url;
-          }
+          input.reference_images = [image_url];
         } else {
-          input.image = image_url;
+          input.start_image = image_url;
         }
       }
-      const output = await replicate.run('bytedance/seedance-1-lite', { input });
+
+      const output = await replicate.run('kwaivgi/kling-v3-omni-video', { input });
       videoOutputUrl = resolveOutputUrl(output);
     }
 
-    // Download and re-upload to Base44 storage
     const videoRes = await fetch(videoOutputUrl);
     if (!videoRes.ok) throw new Error('Failed to fetch video');
     const blob = await videoRes.blob();
