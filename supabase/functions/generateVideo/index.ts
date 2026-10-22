@@ -27,6 +27,7 @@ serveWithCors(async (req) => {
     const {
       prompt,
       image_url = null,
+      reference_image_urls = [],
       video_url = null,
       duration = 5,
       resolution = '720p',
@@ -37,8 +38,12 @@ serveWithCors(async (req) => {
       model_key = null
     } = await req.json();
 
-    if (!prompt && !image_url && !video_url) {
-      return Response.json({ error: 'Prompt, image_url, or video_url is required' }, { status: 400 });
+    const references = Array.isArray(reference_image_urls)
+      ? [...new Set(reference_image_urls.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()))].slice(0, 7)
+      : [];
+
+    if (!prompt && !image_url && !references.length && !video_url) {
+      return Response.json({ error: 'Prompt or image reference is required' }, { status: 400 });
     }
 
     if (video_url) {
@@ -51,6 +56,7 @@ serveWithCors(async (req) => {
     const quoteInput = {
       prompt,
       image_url,
+      reference_images: references.length ? references : undefined,
       video_url,
       duration,
       resolution,
@@ -126,12 +132,11 @@ serveWithCors(async (req) => {
         generate_audio: false,
       };
 
-      if (image_url) {
-        if (use_as_reference) {
-          input.reference_images = [image_url];
-        } else {
-          input.start_image = image_url;
-        }
+      if (references.length) {
+        input.reference_images = references;
+      } else if (image_url) {
+        if (use_as_reference) input.reference_images = [image_url];
+        else input.start_image = image_url;
       }
 
       const output = await replicate.run('kwaivgi/kling-v3-omni-video', { input });
@@ -144,7 +149,7 @@ serveWithCors(async (req) => {
     const file = new File([blob], 'video.mp4', { type: 'video/mp4' });
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
-    const lineageInputs = [image_url, video_url].filter((value) => typeof value === 'string' && value.length > 0);
+    const lineageInputs = [image_url, ...references, video_url].filter((value) => typeof value === 'string' && value.length > 0);
     if (lineageInputs.length > 0) {
       const { error: lineageError } = await billing.service.rpc('inherit_media_product_placements', {
         p_output_url: file_url,
