@@ -43,9 +43,29 @@ serveWithCors(async (req) => {
       ? [...new Set(reference_image_urls.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()))].slice(0, 7)
       : [];
 
-    const mappedPrompt = references.length
-      ? String(prompt || '').replace(/\bImage\s+([1-7])\b/gi, '<<<image_$1>>>')
-      : String(prompt || '');
+    const rawPrompt = String(prompt || '');
+    const mappedBasePrompt = references.length
+      ? rawPrompt.replace(/\bImage\s+([1-7])\b/gi, '<<<image_$1>>>')
+      : rawPrompt;
+
+    const isShootRequest = references.length > 0 && /SAME SCENE CONTINUITY/i.test(rawPrompt);
+    const hasSetReference = /<<<image_1>>>\s*=\s*SET/i.test(mappedBasePrompt);
+    const hasDialogue = /DIALOGUE WITH EXACT SPEAKER ATTRIBUTION:/i.test(mappedBasePrompt);
+    const shootDirectives = isShootRequest
+      ? [
+          'AISTAGE.ONE SHOOT — STRICT CONTINUITY RULES.',
+          'REFERENCE IMAGES OVERRIDE EVERY TEXTUAL DESCRIPTION IF THERE IS ANY CONFLICT.',
+          hasSetReference
+            ? '<<<image_1>>> IS THE IMMUTABLE SET REFERENCE. Reproduce the same architecture, room geometry, wall and floor materials, openings, doors, windows, fixed props, spatial layout and overall visual identity. Do NOT redesign, replace, reinterpret, modernize, stylize or invent a different environment. Change only camera framing and performer action required by this shot.'
+            : '',
+          'Each remaining referenced character image is an identity lock. Preserve the exact person, face, age, body type, hair, wardrobe and distinguishing features. Do not merge identities or substitute a different performer.',
+          hasDialogue
+            ? 'THE DIALOGUE IS A LITERAL SCRIPT. Speak it WORD FOR WORD exactly as written, in the same order. Do not paraphrase, summarize, rewrite, substitute, add or omit any word. Respect the named speaker attribution; only that speaker delivers that line.'
+            : '',
+          'Do not let later descriptive prose override these reference locks or the literal dialogue.',
+        ].filter(Boolean).join(' ')
+      : '';
+    const mappedPrompt = shootDirectives ? `${shootDirectives} ${mappedBasePrompt}` : mappedBasePrompt;
 
     if (!mappedPrompt && !image_url && !references.length && !video_url) {
       return Response.json({ error: 'Prompt or image reference is required' }, { status: 400 });
