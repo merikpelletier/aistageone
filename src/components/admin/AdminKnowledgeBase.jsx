@@ -33,7 +33,7 @@ export default function AdminKnowledgeBase() {
 
   const { data: entries = [] } = useQuery({
     queryKey: ['knowledgeEntries'],
-    queryFn: () => base44.entities.KnowledgeEntry.list('category'),
+    queryFn: () => base44.entities.KnowledgeEntry.listAll('category'),
   });
 
   const createMutation = useMutation({
