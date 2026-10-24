@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import ReactMarkdown from 'react-markdown';
 import { Bot, Loader2, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/api/base44Client';
@@ -26,6 +27,28 @@ async function readInvokeError(invokeError) {
   }
 
   return invokeError?.message || 'Assistant request failed.';
+}
+
+function AssistantMarkdown({ children }) {
+  return (
+    <ReactMarkdown
+      components={{
+        h1: ({ children }) => <h1 className="mt-3 mb-2 text-lg font-bold leading-snug first:mt-0">{children}</h1>,
+        h2: ({ children }) => <h2 className="mt-3 mb-2 text-base font-bold leading-snug first:mt-0">{children}</h2>,
+        h3: ({ children }) => <h3 className="mt-3 mb-1.5 text-sm font-bold leading-snug first:mt-0">{children}</h3>,
+        p: ({ children }) => <p className="my-2 leading-6 first:mt-0 last:mb-0">{children}</p>,
+        ul: ({ children }) => <ul className="my-2 list-disc space-y-1 pl-5">{children}</ul>,
+        ol: ({ children }) => <ol className="my-2 list-decimal space-y-1 pl-5">{children}</ol>,
+        li: ({ children }) => <li className="pl-0.5 leading-6">{children}</li>,
+        strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+        hr: () => <hr className="my-3 border-white/15" />,
+        blockquote: ({ children }) => <blockquote className="my-2 border-l-2 border-teal-400/60 pl-3 text-white/75">{children}</blockquote>,
+        code: ({ children }) => <code className="rounded-sm bg-black/35 px-1 py-0.5 text-[0.92em] text-teal-200">{children}</code>,
+      }}
+    >
+      {children}
+    </ReactMarkdown>
+  );
 }
 
 export default function StudioAIAssistant() {
@@ -166,8 +189,10 @@ export default function StudioAIAssistant() {
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.map((message, index) => (
               <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[88%] px-3 py-2 text-sm leading-6 whitespace-pre-wrap ${message.role === 'user' ? 'bg-teal-500 text-black' : 'bg-white/7 border border-white/10 text-white/90'}`}>
-                  {message.content}
+                <div className={`max-w-[88%] px-3 py-2 text-sm leading-6 ${message.role === 'user' ? 'bg-teal-500 text-black whitespace-pre-wrap' : 'bg-white/7 border border-white/10 text-white/90'}`}>
+                  {message.role === 'assistant'
+                    ? <AssistantMarkdown>{message.content}</AssistantMarkdown>
+                    : message.content}
                 </div>
               </div>
             ))}
