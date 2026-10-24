@@ -13,6 +13,13 @@ const assistantModes = [
   { value: 'production', label: 'Production' },
 ];
 
+const modeGuidance = {
+  hybrid: 'Combine factual AISTAGE.ONE guidance with creative and production help. Knowledge is the source of truth for platform facts, but it must not limit original creative ideas or practical production suggestions.',
+  guide: 'Prioritize factual AISTAGE.ONE guidance from Knowledge and current Studio context. Explain documented tools, limits, and workflows without inventing platform behavior.',
+  creative: 'Act as an imaginative creative collaborator for story, dialogue, visual concepts, prompts, characters, sets, marketing, presentation, and artistic problem-solving. Knowledge defines platform facts but does not limit creative proposals.',
+  production: 'Focus on practical next steps for the active Studio task. Use Knowledge for real AISTAGE.ONE capabilities and provide concrete production preparation, prompts, structure, and workflow recommendations.',
+};
+
 const starter = {
   role: 'assistant',
   content: 'I’m connected to your AI Stage One Studio context. Tell me what you are working on and I’ll help you prepare the next step.',
@@ -95,7 +102,9 @@ export default function StudioAIAssistant() {
     pathname: location.pathname,
     search: location.search,
     title: document?.title || '',
-  }), [appContext, location.pathname, location.search]);
+    assistant_mode: mode,
+    assistant_mode_guidance: modeGuidance[mode] || modeGuidance.hybrid,
+  }), [appContext, location.pathname, location.search, mode]);
 
   const send = async () => {
     const text = draft.trim();
