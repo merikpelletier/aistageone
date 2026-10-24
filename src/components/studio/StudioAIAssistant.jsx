@@ -6,6 +6,13 @@ import { useLocation } from 'react-router-dom';
 import { supabase } from '@/api/base44Client';
 import { useAppContext } from '@/lib/AppContext';
 
+const assistantModes = [
+  { value: 'hybrid', label: 'Hybrid' },
+  { value: 'guide', label: 'Guide' },
+  { value: 'creative', label: 'Creative' },
+  { value: 'production', label: 'Production' },
+];
+
 const starter = {
   role: 'assistant',
   content: 'I’m connected to your AI Stage One Studio context. Tell me what you are working on and I’ll help you prepare the next step.',
@@ -63,6 +70,7 @@ export default function StudioAIAssistant() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [model, setModel] = useState('');
+  const [mode, setMode] = useState('hybrid');
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -106,6 +114,7 @@ export default function StudioAIAssistant() {
           message: text,
           history,
           context,
+          mode,
         },
       });
 
@@ -181,8 +190,26 @@ export default function StudioAIAssistant() {
           </div>
 
           <div className="px-4 py-3 border-b border-white/10 bg-black/20 text-[11px] leading-5 text-white/55 flex-shrink-0">
-            Context: <span className="text-white/80">{appContext?.section || appContext?.page || 'Studio'}</span>
-            {model ? <span className="ml-2 text-teal-300">· {model}</span> : null}
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 truncate">
+                Context: <span className="text-white/80">{appContext?.section || appContext?.page || 'Studio'}</span>
+                {model ? <span className="ml-2 text-teal-300">· {model}</span> : null}
+              </div>
+              <label className="flex flex-shrink-0 items-center gap-2 text-white/45">
+                <span>Mode</span>
+                <select
+                  value={mode}
+                  onChange={(event) => setMode(event.target.value)}
+                  disabled={sending}
+                  className="h-7 border border-white/15 bg-[#17191d] px-2 text-[11px] font-semibold text-white/85 outline-none focus:border-teal-400 disabled:opacity-50"
+                  aria-label="Assistant mode"
+                >
+                  {assistantModes.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <div className="mt-1 text-white/35">Read / advise / prepare only. Execution permissions are not enabled yet.</div>
           </div>
 
