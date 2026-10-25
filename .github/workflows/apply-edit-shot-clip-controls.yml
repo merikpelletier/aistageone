@@ -1,0 +1,21 @@
+name: Apply Edit Shot clip controls
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/apply-edit-shot-clip-controls.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .tmp/edit-shot-clip-controls.py
+      - run: npm install --no-package-lock --no-audit --no-fund && npm run build
+      - run: |
+          git config user.name "AISTAGE automation"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .tmp/edit-shot-clip-controls.py .github/workflows/apply-edit-shot-clip-controls.yml
+          git add src/components/studio/VideoTools.jsx
+          git commit -m "Improve Edit Shot clip selection and controls"
+          git push origin HEAD:main
