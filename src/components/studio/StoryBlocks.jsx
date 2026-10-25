@@ -40,7 +40,7 @@ export default function StoryBlocks({ user, onBack }) {
     const fallback = DEFAULT_FOTOPLAY_VIEW_DEFAULTS[key] || {};
     return { visible: true, ...fallback, ...(configured || {}) };
   };
-  const [view, setView] = useState('gateway'); // gateway → unified author workspace
+  const [view, setView] = useState('author'); // gateway → unified author workspace
   const [themes, setThemes] = useState([]);
   const [allTopics, setAllTopics] = useState([]);
   const [allCharacters, setAllCharacters] = useState([]);
