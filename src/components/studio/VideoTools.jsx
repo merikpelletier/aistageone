@@ -652,7 +652,11 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const openEditor = () => {
     if (!shotPlan.some((shot) => shot.result_url)) return toast.error('Generate at least one shot before editing.');
     const savedTimeline = Array.isArray(shotPlan[0]?.editor_timeline) ? shotPlan[0].editor_timeline.filter((clip) => clip?.url) : [];
-    const next = savedTimeline.length ? savedTimeline : buildDefaultEditorClips();
+    const syncedTimeline = savedTimeline.map((clip) => {
+      const sourceShot = shotPlan.find((shot) => shot.id === clip.shot_id);
+      return sourceShot?.result_url && sourceShot.result_url !== clip.url ? { ...clip, url: sourceShot.result_url } : clip;
+    });
+    const next = syncedTimeline.length ? syncedTimeline : buildDefaultEditorClips();
     setEditClips(next);
     setSelectedEditClipId(next[0]?.id || null);
     setEditPlayhead(0);
