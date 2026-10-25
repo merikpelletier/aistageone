@@ -1,0 +1,47 @@
+name: Correct Edit Shot undo hotkey state
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aistage-edit-shot-undo-hotkey-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: true
+
+      - name: Correct hotkey state dependency
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path('src/components/studio/VideoTools.jsx')
+          text = path.read_text(encoding='utf-8')
+          old = "    return () => window.removeEventListener('keydown', handleUndoKey);\n  }, [step]);"
+          new = "    return () => window.removeEventListener('keydown', handleUndoKey);\n  }, [step, editUndoStack, editClips, selectedEditClipId]);"
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected one hotkey dependency block, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Install dependencies
+        run: npm install --no-package-lock --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit scoped correction and remove temporary workflow
+        run: |
+          git config user.name "AISTAGE automation"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/aistage-edit-shot-undo-hotkey-fix.yml
+          git add src/components/studio/VideoTools.jsx
+          git diff --cached --stat
+          git commit -m "Correct Edit Shot undo hotkey state"
+          git push origin HEAD:main
