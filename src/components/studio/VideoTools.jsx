@@ -625,6 +625,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const editClipDuration = (clip) => Math.max(0.05, Number(clip?.trim_end || 0) - Number(clip?.trim_start || 0));
   const editTimelineDuration = editClips.reduce((sum, clip) => sum + editClipDuration(clip), 0);
   const editTimelineTick = editTimelineZoom >= 3 ? 0.25 : editTimelineZoom >= 2 ? 0.5 : 1;
+  const editTimelinePixelsPerSecond = 44 * editTimelineZoom;
+  const editTimelineWidth = Math.max(720, editTimelineDuration * editTimelinePixelsPerSecond);
   const editClipStart = (id) => {
     let total = 0;
     for (const clip of editClips) {
