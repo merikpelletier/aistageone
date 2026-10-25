@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
-import { Bot, Loader2, Send, Sparkles, Trash2, X } from 'lucide-react';
+import { BookmarkPlus, Bot, Check, Loader2, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/api/base44Client';
 import { useAppContext } from '@/lib/AppContext';
@@ -43,6 +43,14 @@ async function readInvokeError(invokeError) {
   return invokeError?.message || 'Assistant request failed.';
 }
 
+function journalTitle(content) {
+  return content
+    .replace(/[#*_`>\-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80) || 'Journal note';
+}
+
 function AssistantMarkdown({ children }) {
   return (
     <ReactMarkdown
@@ -78,6 +86,9 @@ export default function StudioAIAssistant() {
   const [error, setError] = useState('');
   const [model, setModel] = useState('');
   const [mode, setMode] = useState('hybrid');
+  const [savingJournalIndex, setSavingJournalIndex] = useState(null);
+  const [savedJournalIndex, setSavedJournalIndex] = useState(null);
+  const [journalError, setJournalError] = useState('');
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -106,6 +117,48 @@ export default function StudioAIAssistant() {
     assistant_mode_guidance: modeGuidance[mode] || modeGuidance.hybrid,
   }), [appContext, location.pathname, location.search, mode]);
 
+  const saveToJournal = async (message, index, event) => {
+    if (savingJournalIndex !== null) return;
+
+    const bubble = event.currentTarget.closest('[data-assistant-message]');
+    const selection = window.getSelection();
+    const selectionInsideBubble = selection
+      && selection.rangeCount > 0
+      && bubble
+      && bubble.contains(selection.anchorNode)
+      && bubble.contains(selection.focusNode);
+    const selectedText = selectionInsideBubble ? selection.toString().trim() : '';
+    const content = selectedText || message.content;
+
+    setSavingJournalIndex(index);
+    setJournalError('');
+
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError || !auth?.user) throw new Error('You must be signed in to save to Journal.');
+
+      const { error: insertError } = await supabase
+        .from('creator_journal_entry')
+        .insert({
+          user_id: auth.user.id,
+          title: journalTitle(content),
+          content,
+          use_with_ai: true,
+          studio_context: context,
+        });
+
+      if (insertError) throw insertError;
+
+      selection?.removeAllRanges();
+      setSavedJournalIndex(index);
+      window.setTimeout(() => setSavedJournalIndex((current) => current === index ? null : current), 2200);
+    } catch (err) {
+      setJournalError(err instanceof Error ? err.message : 'Could not save to Journal.');
+    } finally {
+      setSavingJournalIndex(null);
+    }
+  };
+
   const send = async () => {
     const text = draft.trim();
     if (!text || sending) return;
@@ -127,17 +180,9 @@ export default function StudioAIAssistant() {
         },
       });
 
-      if (invokeError) {
-        throw new Error(await readInvokeError(invokeError));
-      }
-
-      if (data?.error || data?.ok === false) {
-        throw new Error(data?.error || 'Assistant request failed.');
-      }
-
-      if (!data?.text) {
-        throw new Error('Assistant returned no response.');
-      }
+      if (invokeError) throw new Error(await readInvokeError(invokeError));
+      if (data?.error || data?.ok === false) throw new Error(data?.error || 'Assistant request failed.');
+      if (!data?.text) throw new Error('Assistant returned no response.');
 
       setModel(data?.model || '');
       setMessages((current) => [...current, { role: 'assistant', content: data.text }]);
@@ -152,6 +197,7 @@ export default function StudioAIAssistant() {
     setMessages([starter]);
     setError('');
     setModel('');
+    setJournalError('');
   };
 
   if (!visible) return null;
@@ -225,10 +271,33 @@ export default function StudioAIAssistant() {
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.map((message, index) => (
               <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[88%] px-3 py-2 text-sm leading-6 ${message.role === 'user' ? 'bg-teal-500 text-black whitespace-pre-wrap' : 'bg-white/7 border border-white/10 text-white/90'}`}>
+                <div
+                  data-assistant-message={message.role === 'assistant' ? index : undefined}
+                  className={`max-w-[88%] px-3 py-2 text-sm leading-6 ${message.role === 'user' ? 'bg-teal-500 text-black whitespace-pre-wrap' : 'bg-white/7 border border-white/10 text-white/90'}`}
+                >
                   {message.role === 'assistant'
                     ? <AssistantMarkdown>{message.content}</AssistantMarkdown>
                     : message.content}
+                  {message.role === 'assistant' && index > 0 && (
+                    <div className="mt-2 border-t border-white/10 pt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={(event) => saveToJournal(message, index, event)}
+                        disabled={savingJournalIndex !== null}
+                        className="flex items-center gap-1.5 text-[11px] font-semibold text-white/45 hover:text-teal-300 disabled:opacity-40"
+                        title="Select text in this reply to save only that section. With no selection, the whole reply is saved."
+                      >
+                        {savingJournalIndex === index ? (
+                          <><Loader2 size={12} className="animate-spin" /> Saving…</>
+                        ) : savedJournalIndex === index ? (
+                          <><Check size={12} /> Saved to Journal</>
+                        ) : (
+                          <><BookmarkPlus size={12} /> Save to Journal</>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -239,9 +308,8 @@ export default function StudioAIAssistant() {
                 </div>
               </div>
             )}
-            {error && (
-              <div className="border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-5 text-red-200">{error}</div>
-            )}
+            {error && <div className="border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-5 text-red-200">{error}</div>}
+            {journalError && <div className="border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-5 text-red-200">Journal: {journalError}</div>}
           </div>
 
           <div className="p-3 border-t border-white/10 bg-[#202328] flex-shrink-0">
