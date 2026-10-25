@@ -1,0 +1,30 @@
+name: Edit Shot zoom 200
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/edit-shot-zoom-200.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply exact zoom fix
+        run: |
+          sed -i "s/Math.min(8, Number((value + 0.5).toFixed(1)))/Math.min(2, Number((value + 0.5).toFixed(1)))/" src/components/studio/VideoTools.jsx
+          sed -i "s/editTimelineZoom >= 8/editTimelineZoom >= 2/" src/components/studio/VideoTools.jsx
+          sed -i 's/style={{ width: `${editTimelineZoom \* 100}%`, minWidth: '\''720px'\'' }}/style={{ width: `${editTimelineWidth}px` }}/' src/components/studio/VideoTools.jsx
+          sed -i 's/style={{ left: `${editTimelineDuration ? (second \/ editTimelineDuration) \* 100 : 0}%` }}/style={{ left: `${second * editTimelinePixelsPerSecond}px` }}/' src/components/studio/VideoTools.jsx
+          sed -i 's/style={{ flex: `0 0 ${editTimelineDuration ? (duration \/ editTimelineDuration) \* 100 : 0}%` }}/style={{ flex: `0 0 ${duration * editTimelinePixelsPerSecond}px` }}/' src/components/studio/VideoTools.jsx
+          sed -i 's/style={{ left: `${editTimelineDuration > 0 ? Math.min(100, (editPlayhead \/ editTimelineDuration) \* 100) : 0}%` }}/style={{ left: `${editPlayhead * editTimelinePixelsPerSecond}px` }}/' src/components/studio/VideoTools.jsx
+      - name: Build
+        run: npm install --no-package-lock --no-audit --no-fund && npm run build
+      - name: Commit
+        run: |
+          git config user.name "AISTAGE automation"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/edit-shot-zoom-200.yml
+          git add src/components/studio/VideoTools.jsx
+          git commit -m "Fix Edit Shot real zoom and cap at 200%"
+          git push origin HEAD:main
