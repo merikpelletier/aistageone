@@ -16,4 +16,4 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: Make establishing and insert characters optional
-          file_pattern: src/components/studio/VideoTools.jsx .tmp/clear-optional-shot-characters.py .github/workflows/apply-optional-shot-characters.yml
+          file_pattern: src/components/studio/VideoTools.jsx
