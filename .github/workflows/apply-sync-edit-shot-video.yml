@@ -1,0 +1,21 @@
+name: Apply Edit Shot video source sync
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/apply-sync-edit-shot-video.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .tmp/sync-edit-shot-video.py
+      - run: npm install --no-package-lock --no-audit --no-fund && npm run build
+      - run: |
+          git config user.name "AISTAGE automation"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .tmp/sync-edit-shot-video.py .github/workflows/apply-sync-edit-shot-video.yml
+          git add src/components/studio/VideoTools.jsx
+          git commit -m "Sync Edit Shot cuts with current shot video"
+          git push origin HEAD:main
