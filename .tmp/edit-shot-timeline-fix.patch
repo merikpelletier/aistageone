@@ -1,0 +1,63 @@
+*** Begin Patch
+*** Update File: src/components/studio/VideoTools.jsx
+@@
+   const [editMusic, setEditMusic] = useState({ url: '', name: '', volume: 0.55 });
+   const [editPlayhead, setEditPlayhead] = useState(0);
+   const [editTimelineZoom, setEditTimelineZoom] = useState(1);
++  const [editPlaying, setEditPlaying] = useState(false);
+   const [editUndoStack, setEditUndoStack] = useState([]);
+@@
+     setEditPlayhead(0);
+     setEditTimelineZoom(1);
++    setEditPlaying(false);
+     setEditUndoStack([]);
+@@
+     setEditPlayhead(0);
+     setEditTimelineZoom(1);
++    setEditPlaying(false);
+     setEditUndoStack([]);
+@@
+   useEffect(() => {
+     if (step !== 'edit') return undefined;
+@@
+   }, [step, editUndoStack, editClips, selectedEditClipId]);
++
++  useEffect(() => {
++    const video = editPreviewRef.current;
++    if (!video || !selectedEditClip) return undefined;
++    video.muted = Boolean(selectedEditClip.muted);
++    video.volume = Math.max(0, Math.min(1, Number(selectedEditClip.volume ?? 1)));
++    if (!editPlaying) return undefined;
++    const play = () => video.play().catch(() => setEditPlaying(false));
++    if (video.readyState >= 2) play();
++    else video.addEventListener('canplay', play, { once: true });
++    return () => video.removeEventListener('canplay', play);
++  }, [editPlaying, selectedEditClipId, selectedEditClip?.muted, selectedEditClip?.volume]);
+@@
+   const seekEditorPlayhead = (time) => {
+@@
+   };
++
++  const playEditTimeline = () => {
++    if (!editClips.length) return;
++    if (editPlayhead >= editTimelineDuration - 0.02) seekEditorPlayhead(0);
++    setEditPlaying(true);
++  };
++
++  const pauseEditTimeline = () => {
++    editPreviewRef.current?.pause();
++    setEditPlaying(false);
++  };
++
++  const advanceEditTimeline = (clip) => {
++    const index = editClips.findIndex((item) => item.id === clip.id);
++    const next = editClips[index + 1];
++    if (!editPlaying || !next) {
++      setEditPlaying(false);
++      if (!next) setEditPlayhead(editTimelineDuration);
++      return;
++    }
++    setEditPlayhead(editClipStart(next.id));
++    setSelectedEditClipId(next.id);
++  };
+*** End Patch
