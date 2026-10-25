@@ -114,7 +114,7 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
 
   if (view === 'dashboard') return <AuthorDashboard
     projects={projects} loading={loading} onBack={onBack}
-    onNew={() => setView('start')} onOpen={openProject}
+    onNew={() => { setProject(emptyProject()); setView('setup'); }} onOpen={openProject}
     onDelete={async (id) => { if (!window.confirm('Delete this private author project?')) return; try { await base44.entities.AuthorStoryProject.delete(id); setProjects((rows) => rows.filter((row) => row.id !== id)); } catch (error) { toast.error(error.message); } }}
   />;
 
