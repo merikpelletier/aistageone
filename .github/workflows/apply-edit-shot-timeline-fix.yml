@@ -1,0 +1,30 @@
+name: Apply Edit Shot timeline fix
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/apply-edit-shot-timeline-fix.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          patch = Path('.tmp/edit-shot-timeline-fix.patch').read_text()
+          import subprocess
+          p = subprocess.run(['apply_patch'], input=patch, text=True)
+          raise SystemExit(p.returncode)
+          PY
+      - run: npm install --no-package-lock --no-audit --no-fund
+      - run: npm run build
+      - run: |
+          git config user.name "AISTAGE automation"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .tmp/edit-shot-timeline-fix.patch .github/workflows/apply-edit-shot-timeline-fix.yml
+          git add src/components/studio/VideoTools.jsx
+          git diff --cached --stat
+          git commit -m "Fix Edit Shot zoom playback and mute"
+          git push origin HEAD:main
