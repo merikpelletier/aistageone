@@ -1,24 +1,20 @@
-/* Shoot > Edit timeline only.
-   Keep the full edited scene accessible on desktop while preserving horizontal
-   access on smaller screens. This targets the unique ruler + clip-track structure
-   inside the Shoot editor timeline and does not alter any editing logic. */
+/* Shoot > Edit timeline only. The timeline width is controlled by VideoTools.jsx:
+   100% fits the full edit, while 150%/200% create horizontal overflow. */
 
-.overflow-x-auto.border.border-white\/10.bg-black\/30
-  > .relative[style*="width"]:has(
-    > .relative.h-7.border-b.border-white\/10
-    + .relative.flex.h-32.overflow-hidden
-  ) {
-  width: 100% !important;
-  min-width: 0 !important;
+.overflow-x-auto.border.border-white\/10.bg-black\/30 {
+  scrollbar-width: auto;
+  scrollbar-color: rgba(255, 255, 255, 0.45) rgba(255, 255, 255, 0.08);
 }
 
-@media (max-width: 760px) {
-  .overflow-x-auto.border.border-white\/10.bg-black\/30
-    > .relative[style*="width"]:has(
-      > .relative.h-7.border-b.border-white\/10
-      + .relative.flex.h-32.overflow-hidden
-    ) {
-    width: 720px !important;
-    min-width: 720px !important;
-  }
+.overflow-x-auto.border.border-white\/10.bg-black\/30::-webkit-scrollbar {
+  height: 12px;
+}
+
+.overflow-x-auto.border.border-white\/10.bg-black\/30::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.overflow-x-auto.border.border-white\/10.bg-black\/30::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.45);
+  border: 2px solid #17191d;
 }
