@@ -669,7 +669,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     };
     window.addEventListener('keydown', handleUndoKey);
     return () => window.removeEventListener('keydown', handleUndoKey);
-  }, [step]);
+  }, [step, editUndoStack, editClips, selectedEditClipId]);
 
   const moveEditClip = (id, direction) => {
     rememberEdit();
