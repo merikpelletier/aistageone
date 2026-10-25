@@ -1,0 +1,112 @@
+name: Apply Edit Shot timeline patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aistage-edit-shot-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: true
+
+      - name: Apply scoped Edit Shot patch
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('src/components/studio/VideoTools.jsx')
+          text = path.read_text(encoding='utf-8')
+
+          def replace_once(old, new):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one match, found {count}: {old[:120]!r}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              "  const [editPlayhead, setEditPlayhead] = useState(0);\n  const [exportingEdit, setExportingEdit] = useState(false);",
+              "  const [editPlayhead, setEditPlayhead] = useState(0);\n  const [editTimelineZoom, setEditTimelineZoom] = useState(1);\n  const [editUndoStack, setEditUndoStack] = useState([]);\n  const [exportingEdit, setExportingEdit] = useState(false);"
+          )
+
+          replace_once(
+              "    setEditMusic({ url: '', name: '', volume: 0.55 });\n    setEditPlayhead(0);\n    setEditRatio('16:9');",
+              "    setEditMusic({ url: '', name: '', volume: 0.55 });\n    setEditPlayhead(0);\n    setEditTimelineZoom(1);\n    setEditUndoStack([]);\n    setEditRatio('16:9');"
+          )
+
+          replace_once(
+              "    setSelectedEditClipId(next[0]?.id || null);\n    setEditPlayhead(0);\n    setEditRatio(shotPlan[0]?.editor_ratio || aspectRatio || '16:9');",
+              "    setSelectedEditClipId(next[0]?.id || null);\n    setEditPlayhead(0);\n    setEditTimelineZoom(1);\n    setEditUndoStack([]);\n    setEditRatio(shotPlan[0]?.editor_ratio || aspectRatio || '16:9');"
+          )
+
+          replace_once(
+              "  const selectedEditClip = editClips.find((clip) => clip.id === selectedEditClipId) || editClips[0] || null;\n  const updateEditClip = (id, patch) => setEditClips((items) => items.map((clip) => clip.id === id ? { ...clip, ...patch } : clip));\n\n  const moveEditClip = (id, direction) => setEditClips((items) => {\n    const index = items.findIndex((clip) => clip.id === id);\n    const target = index + direction;\n    if (index < 0 || target < 0 || target >= items.length) return items;\n    const next = [...items];\n    [next[index], next[target]] = [next[target], next[index]];\n    return next;\n  });",
+              "  const selectedEditClip = editClips.find((clip) => clip.id === selectedEditClipId) || editClips[0] || null;\n  const rememberEdit = () => setEditUndoStack((stack) => [...stack.slice(-49), { clips: editClips.map((clip) => ({ ...clip })), selectedId: selectedEditClipId }]);\n  const updateEditClip = (id, patch, remember = true) => { if (remember) rememberEdit(); setEditClips((items) => items.map((clip) => clip.id === id ? { ...clip, ...patch } : clip)); };\n  const undoEdit = () => setEditUndoStack((stack) => {\n    if (!stack.length) return stack;\n    const previous = stack[stack.length - 1];\n    setEditClips(previous.clips);\n    setSelectedEditClipId(previous.selectedId || previous.clips[0]?.id || null);\n    setEditPlayhead((value) => Math.min(value, previous.clips.reduce((sum, clip) => sum + editClipDuration(clip), 0)));\n    return stack.slice(0, -1);\n  });\n\n  useEffect(() => {\n    if (step !== 'edit') return undefined;\n    const handleUndoKey = (event) => {\n      if (!(event.ctrlKey || event.metaKey) || event.shiftKey || event.key.toLowerCase() !== 'z') return;\n      const target = event.target;\n      if (target?.matches?.('input, textarea, select') || target?.isContentEditable) return;\n      event.preventDefault();\n      undoEdit();\n    };\n    window.addEventListener('keydown', handleUndoKey);\n    return () => window.removeEventListener('keydown', handleUndoKey);\n  }, [step]);\n\n  const moveEditClip = (id, direction) => {\n    rememberEdit();\n    setEditClips((items) => {\n      const index = items.findIndex((clip) => clip.id === id);\n      const target = index + direction;\n      if (index < 0 || target < 0 || target >= items.length) return items;\n      const next = [...items];\n      [next[index], next[target]] = [next[target], next[index]];\n      return next;\n    });\n  };"
+          )
+
+          replace_once(
+              "    const right = { ...clip, id: crypto.randomUUID(), trim_start: at, label: `${clip.label} B` };\n    setEditClips((items) => {",
+              "    const right = { ...clip, id: crypto.randomUUID(), trim_start: at, label: `${clip.label} B` };\n    rememberEdit();\n    setEditClips((items) => {"
+          )
+
+          replace_once(
+              "  const editTimelineDuration = editClips.reduce((sum, clip) => sum + editClipDuration(clip), 0);",
+              "  const editTimelineDuration = editClips.reduce((sum, clip) => sum + editClipDuration(clip), 0);\n  const editTimelineTick = editTimelineZoom >= 3 ? 0.25 : editTimelineZoom >= 2 ? 0.5 : 1;"
+          )
+
+          replace_once(
+              "updateEditClip(selectedEditClip.id, { source_duration: duration, trim_end: Math.min(Number(selectedEditClip.trim_end || duration), duration) });",
+              "updateEditClip(selectedEditClip.id, { source_duration: duration, trim_end: Math.min(Number(selectedEditClip.trim_end || duration), duration) }, false);"
+          )
+
+          replace_once(
+              "<div className=\"flex flex-wrap gap-2\"><button type=\"button\" onClick={saveEditor}",
+              "<div className=\"flex flex-wrap gap-2\"><button type=\"button\" onClick={undoEdit} disabled={!editUndoStack.length} className=\"bg-white/10 px-4 py-2 text-xs font-bold disabled:opacity-30\">↶ Undo</button><button type=\"button\" onClick={saveEditor}"
+          )
+
+          replace_once(
+              "<section className=\"border border-white/10 bg-[#17191d] p-4\"><div className=\"mb-3 flex items-center justify-between\"><div><p className=\"text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]\">Timeline</p><p className=\"text-[10px] text-white/35\">Scrub directly over the clips. Their widths now represent the real edited duration.</p></div><p className=\"text-xs font-bold text-white/55\">{editPlayhead.toFixed(2)}s / {editTimelineDuration.toFixed(2)}s</p></div>",
+              "<section className=\"border border-white/10 bg-[#17191d] p-4\"><div className=\"mb-3 flex flex-wrap items-center justify-between gap-3\"><div><p className=\"text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]\">Timeline</p><p className=\"text-[10px] text-white/35\">Scrub directly over the clips. Their widths now represent the real edited duration.</p></div><div className=\"flex items-center gap-2\"><div className=\"flex items-center border border-white/10\"><button type=\"button\" onClick={() => setEditTimelineZoom((value) => Math.max(1, Number((value - 0.5).toFixed(1))))} disabled={editTimelineZoom <= 1} className=\"px-2 py-1 text-xs font-black disabled:opacity-25\">−</button><span className=\"min-w-[118px] px-2 text-center text-[9px] font-bold text-white/55\">Timeline Zoom · {Math.round(editTimelineZoom * 100)}%</span><button type=\"button\" onClick={() => setEditTimelineZoom((value) => Math.min(4, Number((value + 0.5).toFixed(1))))} disabled={editTimelineZoom >= 4} className=\"px-2 py-1 text-xs font-black disabled:opacity-25\">+</button></div><p className=\"text-xs font-bold text-white/55\">{editPlayhead.toFixed(2)}s / {editTimelineDuration.toFixed(2)}s</p></div></div>"
+          )
+
+          replace_once(
+              "style={{ width: `${Math.max(720, editTimelineDuration * 90)}px` }}",
+              "style={{ width: `${Math.max(720, editTimelineDuration * 90 * editTimelineZoom)}px` }}"
+          )
+
+          replace_once(
+              "{Array.from({ length: Math.floor(editTimelineDuration) + 1 }, (_, second) => <div key={second} className=\"absolute inset-y-0 border-l border-white/15\" style={{ left: `${editTimelineDuration ? (second / editTimelineDuration) * 100 : 0}%` }}><span className=\"absolute left-1 top-1 text-[8px] text-white/35\">{second}s</span></div>)}",
+              "{Array.from({ length: Math.floor(editTimelineDuration / editTimelineTick) + 1 }, (_, index) => { const second = index * editTimelineTick; return <div key={second} className=\"absolute inset-y-0 border-l border-white/15\" style={{ left: `${editTimelineDuration ? (second / editTimelineDuration) * 100 : 0}%` }}><span className=\"absolute left-1 top-1 text-[8px] text-white/35\">{second.toFixed(editTimelineTick === 1 ? 0 : editTimelineTick === 0.5 ? 1 : 2)}s</span></div>; })}"
+          )
+
+          replace_once(
+              "<button type=\"button\" onClick={() => { setEditClips((items) => items.filter((item) => item.id !== clip.id)); if (selectedEditClipId === clip.id) setSelectedEditClipId(editClips.find((item) => item.id !== clip.id)?.id || null); }} className=\"bg-black/70 px-1.5 py-1 text-[8px]\">×</button>",
+              "<button type=\"button\" onClick={() => { rememberEdit(); setEditClips((items) => items.filter((item) => item.id !== clip.id)); if (selectedEditClipId === clip.id) setSelectedEditClipId(editClips.find((item) => item.id !== clip.id)?.id || null); }} className=\"bg-black/70 px-1.5 py-1 text-[8px]\">×</button>"
+          )
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Install dependencies
+        run: npm install --no-package-lock --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit scoped change and remove temporary workflow
+        run: |
+          git config user.name "AISTAGE automation"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/aistage-edit-shot-patch.yml
+          git add src/components/studio/VideoTools.jsx
+          git diff --cached --stat
+          git commit -m "Add Edit Shot timeline zoom and undo"
+          git push origin HEAD:main
