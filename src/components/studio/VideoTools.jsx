@@ -351,8 +351,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
   const setShotMode = (shot, mode) => {
     const patch = { mode };
-    if (mode === 'establishing') patch.framing = 'Establishing shot';
-    if (mode === 'insert') patch.framing = 'Insert / detail';
+    if (mode === 'establishing') { patch.framing = 'Establishing shot'; patch.character_ids = []; }
+    if (mode === 'insert') { patch.framing = 'Insert / detail'; patch.character_ids = []; }
     if (mode === 'standard' && !STANDARD_SHOT_TYPES.includes(shot.framing)) patch.framing = 'Medium shot';
     updateShot(shot.id, patch);
   };
