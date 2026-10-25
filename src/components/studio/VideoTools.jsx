@@ -702,25 +702,40 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     return () => video.removeEventListener('canplay', play);
   }, [editPlaying, selectedEditClipId, selectedEditClip?.muted, selectedEditClip?.volume]);
 
+  const persistEditorTimeline = async (clips) => {
+    if (!shotPlan.length) return;
+    const nextShots = shotPlan.map((shot, index) => index === 0 ? { ...shot, editor_timeline: clips, editor_music: editMusic, editor_ratio: editRatio } : shot);
+    setShotPlan(nextShots);
+    try {
+      if (sceneId) {
+        const { error } = await supabase.from('shoot_scene').update({ shot_plan: nextShots, updated_at: new Date().toISOString() }).eq('id', sceneId);
+        if (error) throw error;
+      } else await saveScene({ shot_plan: nextShots });
+    } catch (error) {
+      toast.error(error.message || 'Timeline could not be saved.');
+    }
+  };
+
   const deleteEditClip = (id) => {
     const index = editClips.findIndex((clip) => clip.id === id);
     if (index < 0) return;
     rememberEdit();
     const nextSelectedId = editClips[index + 1]?.id || editClips[index - 1]?.id || null;
-    setEditClips((items) => items.filter((item) => item.id !== id));
+    const next = editClips.filter((item) => item.id !== id);
+    setEditClips(next);
+    void persistEditorTimeline(next);
     if (selectedEditClipId === id) setSelectedEditClipId(nextSelectedId);
   };
 
   const moveEditClip = (id, direction) => {
+    const index = editClips.findIndex((clip) => clip.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= editClips.length) return;
     rememberEdit();
-    setEditClips((items) => {
-      const index = items.findIndex((clip) => clip.id === id);
-      const target = index + direction;
-      if (index < 0 || target < 0 || target >= items.length) return items;
-      const next = [...items];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
+    const next = [...editClips];
+    [next[index], next[target]] = [next[target], next[index]];
+    setEditClips(next);
+    void persistEditorTimeline(next);
   };
 
   const seekEditorPlayhead = (time) => {
@@ -777,10 +792,10 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const left = { ...clip, id: crypto.randomUUID(), trim_end: at, label: `${clip.label} A` };
     const right = { ...clip, id: crypto.randomUUID(), trim_start: at, label: `${clip.label} B` };
     rememberEdit();
-    setEditClips((items) => {
-      const index = items.findIndex((item) => item.id === clip.id);
-      return [...items.slice(0, index), left, right, ...items.slice(index + 1)];
-    });
+    const index = editClips.findIndex((item) => item.id === clip.id);
+    const next = [...editClips.slice(0, index), left, right, ...editClips.slice(index + 1)];
+    setEditClips(next);
+    void persistEditorTimeline(next);
     setSelectedEditClipId(right.id);
   };
 
