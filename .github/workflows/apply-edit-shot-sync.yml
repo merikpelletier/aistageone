@@ -1,0 +1,17 @@
+name: Apply Edit Shot sync patch
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/apply-edit-shot-sync.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .tmp/sync-new-generated-shots.py
+      - run: npm install --no-package-lock --no-audit --no-fund && npm run build
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Add newly generated shots to Edit Shot timeline
