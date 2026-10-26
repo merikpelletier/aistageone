@@ -34,6 +34,7 @@ const styleHandle = (handle, edge) => {
     margin: '0',
     background: 'rgba(35, 199, 190, 0.12)',
     opacity: '0.72',
+    touchAction: 'none',
   });
   handle.style[edge === 'left' ? 'borderLeft' : 'borderRight'] = '2px solid #23c7be';
   handle.addEventListener('mouseenter', () => {
@@ -49,6 +50,8 @@ const styleHandle = (handle, edge) => {
 const startTrimDrag = (event, clipElement, edge) => {
   event.preventDefault();
   event.stopPropagation();
+  const handle = event.currentTarget;
+  handle.setPointerCapture?.(event.pointerId);
   clipElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
   requestAnimationFrame(() => {
@@ -63,6 +66,8 @@ const startTrimDrag = (event, clipElement, edge) => {
     const startX = event.clientX;
 
     const onMove = (moveEvent) => {
+      moveEvent.preventDefault();
+      moveEvent.stopPropagation();
       const deltaSeconds = (moveEvent.clientX - startX) / Math.max(0.01, pixelsPerSecond);
       if (edge === 'left') {
         const nextStart = Math.max(0, Math.min(initialEnd - MIN_DURATION, initialStart + deltaSeconds));
@@ -73,13 +78,18 @@ const startTrimDrag = (event, clipElement, edge) => {
       }
     };
 
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
+    const finish = (finishEvent) => {
+      finishEvent?.preventDefault?.();
+      finishEvent?.stopPropagation?.();
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup', finish);
+      handle.removeEventListener('pointercancel', finish);
+      try { handle.releasePointerCapture?.(event.pointerId); } catch {}
     };
 
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp, { once: true });
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', finish, { once: true });
+    handle.addEventListener('pointercancel', finish, { once: true });
   });
 };
 
