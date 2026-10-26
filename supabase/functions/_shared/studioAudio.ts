@@ -119,7 +119,7 @@ export function audioHandler(tool: 'music' | 'sound_fx') {
       ? { ...assignment, model_key: selectedModelKey, input_mapping: option?.input_mapping ?? assignment?.input_mapping ?? {}, defaults: option?.defaults ?? assignment?.defaults ?? {}, enabled: true }
       : assignment;
     validateChoice(choice, model);
-    adaptInput(input, choice, model);
+    const providerInput = tool === 'music' ? adaptInput(input, choice, model) : input;
 
     const dynamicQuote = await quoteAiService(
       db,
@@ -156,9 +156,10 @@ export function audioHandler(tool: 'music' | 'sound_fx') {
     const webhook = new URL(`${Deno.env.get('SUPABASE_URL')}/functions/v1/${AUDIO_TOOLS[tool].service}`);
     webhook.searchParams.set('callback', job.callback_token);
     try {
-      const response = await fetch(`${API}/models/${AUDIO_TOOLS[tool].model}/predictions`, {
+      const providerModel = tool === 'music' ? selectedModelKey : AUDIO_TOOLS[tool].model;
+      const response = await fetch(`${API}/models/${providerModel}/predictions`, {
         method: 'POST', headers: providerHeaders, signal: AbortSignal.timeout(25000),
-        body: JSON.stringify({ input, webhook: webhook.href, webhook_events_filter: ['completed'] }),
+        body: JSON.stringify({ input: providerInput, webhook: webhook.href, webhook_events_filter: ['completed'] }),
       });
       if (!response.ok) {
         // A 5xx is ambiguous: never submit a second paid request automatically.

@@ -20,11 +20,13 @@ export function audioInput(tool, body) {
   if (body.mode === 'lyrics' && !lyrics) bad('Enter your lyrics');
   if (lyrics.length > 3500) bad('Lyrics: maximum 3500 characters');
   if (body.mode !== 'lyrics' && !prompt) bad('Describe the music');
+  const duration = Number(body.duration ?? 30);
+  if (!Number.isFinite(duration) || duration < 5 || duration > 300) bad('Duration must be between 5 and 300 seconds');
   return {
     prompt, lyrics: body.mode === 'lyrics' ? lyrics : '',
     is_instrumental: body.mode === 'instrumental',
     lyrics_optimizer: body.mode === 'auto',
-    audio_format: format,
+    audio_format: format, duration, music_length_ms: Math.round(duration * 1000),
   };
 }
 export const publicAudioJob = job => ({

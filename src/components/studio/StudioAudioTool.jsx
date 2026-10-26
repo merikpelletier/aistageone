@@ -13,7 +13,7 @@ export default function StudioAudioTool({ tool, user }) {
   const [prompt, setPrompt] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [mode, setMode] = useState('instrumental');
-  const [duration, setDuration] = useState(3);
+  const [duration, setDuration] = useState(tool === 'music' ? 30 : 3);
   const [format, setFormat] = useState(tool === 'music' ? 'mp3' : 'wav');
   const [config, setConfig] = useState(null);
   const [job, setJob] = useState(null);
@@ -28,7 +28,7 @@ export default function StudioAudioTool({ tool, user }) {
   const mounted = useRef(true);
   const service = AUDIO_TOOLS[tool].service;
   const pricingInput = tool === 'music'
-    ? { prompt, lyrics: mode === 'lyrics' ? lyrics : '', is_instrumental: mode === 'instrumental', lyrics_optimizer: mode === 'auto', audio_format: format }
+    ? { prompt, lyrics: mode === 'lyrics' ? lyrics : '', is_instrumental: mode === 'instrumental', lyrics_optimizer: mode === 'auto', audio_format: format, duration, music_length_ms: duration * 1000 }
     : { prompt, duration, output_format: format };
   const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({
     service,
@@ -153,13 +153,22 @@ export default function StudioAudioTool({ tool, user }) {
         <input className={field} maxLength={120} value={title} onChange={e => setTitle(e.target.value)} placeholder={AUDIO_TOOLS[tool].label} disabled={busy} />
       </label>
       {tool === 'music' ? (
-        <label className="block">Music type
-          <select className={field + ' bg-black'} value={mode} onChange={e => setMode(e.target.value)} disabled={busy}>
-            <option className="bg-black" value="instrumental">Instrumental</option>
-            <option className="bg-black" value="lyrics">Song — my lyrics</option>
-            <option className="bg-black" value="auto">Song — generate lyrics</option>
-          </select>
-        </label>
+        <>
+          <label className="block">Music type
+            <select className={field + ' bg-black'} value={mode} onChange={e => setMode(e.target.value)} disabled={busy}>
+              <option className="bg-black" value="instrumental">Instrumental</option>
+              <option className="bg-black" value="lyrics">Song — my lyrics</option>
+              <option className="bg-black" value="auto">Song — generate lyrics</option>
+            </select>
+          </label>
+          <label className="block">Duration
+            <div className="flex items-center gap-3">
+              <input className={field} type="number" min="5" max="300" step="1" value={duration} onChange={e => setDuration(e.target.value === '' ? '' : Number(e.target.value))} disabled={busy} />
+              <span className="whitespace-nowrap text-white/70">seconds</span>
+            </div>
+            <span className="text-xs text-white/45">5–300 seconds</span>
+          </label>
+        </>
       ) : (
         <label className="block">Duration: {duration} seconds
           <input className="w-full accent-yellow-400" type="range" min="1" max="10" step="0.5" value={duration} onChange={e => setDuration(Number(e.target.value))} disabled={busy} />
