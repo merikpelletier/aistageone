@@ -1,5 +1,8 @@
 name: Apply Music duration fix
 on:
+  push:
+    paths:
+      - '.github/workflows/apply-music-duration-fix.yml'
   workflow_dispatch:
 permissions:
   contents: write
