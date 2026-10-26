@@ -1,0 +1,26 @@
+name: Apply Shoot music timeline
+on:
+  push:
+    paths:
+      - '.tmp/add-music-timeline.py'
+      - '.github/workflows/apply-music-timeline.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: python3 .tmp/add-music-timeline.py
+      - name: Verify diff
+        run: git diff --check && git diff --stat
+      - name: Build
+        run: npm install --no-package-lock --no-audit --no-fund && npm run build
+      - name: Remove temporary files
+        run: git rm .tmp/add-music-timeline.py .github/workflows/apply-music-timeline.yml
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Add editable music track to Shoot timeline
