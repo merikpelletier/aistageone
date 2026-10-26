@@ -658,7 +658,9 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       const sourceShot = shotPlan.find((shot) => shot.id === clip.shot_id);
       return sourceShot?.result_url && sourceShot.result_url !== clip.url ? { ...clip, url: sourceShot.result_url } : clip;
     });
-    const next = syncedTimeline.length ? syncedTimeline : buildDefaultEditorClips();
+    const existingShotIds = new Set(syncedTimeline.map((clip) => clip.shot_id).filter(Boolean));
+    const missingGeneratedClips = buildDefaultEditorClips().filter((clip) => !existingShotIds.has(clip.shot_id));
+    const next = syncedTimeline.length ? [...syncedTimeline, ...missingGeneratedClips] : missingGeneratedClips;
     setEditClips(next);
     setSelectedEditClipId(next[0]?.id || null);
     setEditPlayhead(0);
