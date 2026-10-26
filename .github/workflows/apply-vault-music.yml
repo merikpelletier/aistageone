@@ -1,0 +1,25 @@
+name: Apply Shoot Vault music patch
+on:
+  push:
+    paths:
+      - '.tmp/vault-music.patch'
+      - '.github/workflows/apply-vault-music.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: git apply --check .tmp/vault-music.patch && git apply .tmp/vault-music.patch
+      - name: Build
+        run: npm install --no-package-lock --no-audit --no-fund && npm run build
+      - name: Remove temporary files
+        run: git rm .tmp/vault-music.patch .github/workflows/apply-vault-music.yml
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Add Vault music picker to Shoot
