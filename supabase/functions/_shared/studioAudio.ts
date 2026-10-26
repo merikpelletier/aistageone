@@ -24,15 +24,12 @@ async function refund(db: any, job: any, message: string) {
   }
   return save(db, job.id, { status: 'failed', error: message });
 }
-// Only an authenticated owner or an unguessable per-job callback can reach this.
-// Always fetch the prediction from Replicate; never trust webhook output URLs.
 async function settle(db: any, job: any) {
   if (['succeeded', 'failed'].includes(job.status) || !job.prediction_id) return job;
   const response = await fetch(`${API}/predictions/${encodeURIComponent(job.prediction_id)}`, { headers: headers(), signal: AbortSignal.timeout(20000) });
   if (!response.ok) fail('Unable to check audio generation; retry status');
   const prediction = await response.json();
   if (!['succeeded', 'failed', 'canceled'].includes(prediction.status)) return job;
-  // Atomic claim prevents simultaneous polling/webhook from finalizing twice.
   const stale = new Date(Date.now() - 180000).toISOString();
   const claimed = check(await db.from(TABLE).update({ status: 'finalizing', updated_at: new Date().toISOString() })
     .eq('id', job.id).or(`status.eq.processing,status.eq.submitting,and(status.eq.finalizing,updated_at.lt.${stale})`).select().maybeSingle());
@@ -53,7 +50,6 @@ async function settle(db: any, job: any) {
     const path = `studio-audio/${claimed.user_id}/${claimed.id}.${claimed.format}`;
     check(await db.storage.from('media').upload(path, blob, { contentType: mime, upsert: true }));
     const { data } = db.storage.from('media').getPublicUrl(path);
-    // File is durable before charging is completed. Both operations are retryable.
     await completeCreditCharge(db, claimed.charge);
     return await save(db, claimed.id, { status: 'succeeded', file_url: data.publicUrl, error: null });
   } catch (error) {
@@ -71,8 +67,6 @@ export function audioHandler(tool: 'music' | 'sound_fx') {
       const job = check(await db.from(TABLE).select('*').eq('callback_token', callback).eq('tool', tool).maybeSingle());
       if (!job) fail('Unauthorized callback', 401);
       const payload = await req.json();
-      // Recover an accepted POST whose response was lost: the secret callback
-      // binds the result to this job; authenticate it with Replicate before use.
       if (!job.prediction_id) {
         if (typeof payload.id !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(payload.id)) fail('Invalid callback', 400);
         if (!job.charge) fail('Reservation not persisted yet');
@@ -89,15 +83,10 @@ export function audioHandler(tool: 'music' | 'sound_fx') {
     const body = await req.json();
     if (body.action === 'config') {
       const assignment = check(await db.from('ai_model_assignment').select('model_key,enabled,kind').eq('route_key', `${AUDIO_TOOLS[tool].service}|${AUDIO_TOOLS[tool].model}`).maybeSingle());
-      return Response.json({
-        model: assignment?.model_key || AUDIO_TOOLS[tool].model,
-        ready: Boolean(assignment?.enabled),
-        kind: assignment?.kind || 'audio',
-      });
+      return Response.json({ model: assignment?.model_key || AUDIO_TOOLS[tool].model, ready: Boolean(assignment?.enabled), kind: assignment?.kind || 'audio' });
     }
     if (body.action === 'list') {
-      const jobs = check(await db.from(TABLE).select('*').eq('user_id', billing.user.id).eq('tool', tool)
-        .order('created_at', { ascending: false }).limit(30));
+      const jobs = check(await db.from(TABLE).select('*').eq('user_id', billing.user.id).eq('tool', tool).order('created_at', { ascending: false }).limit(30));
       return Response.json({ jobs: jobs.map(publicAudioJob) });
     }
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.id || '')) fail('Invalid request ID', 400);
@@ -109,7 +98,6 @@ export function audioHandler(tool: 'music' | 'sound_fx') {
     if (body.action !== 'start') fail('Unknown action', 400);
     if (existing) return Response.json({ job: publicAudioJob(existing) });
     const input = audioInput(tool, body);
-    // Validate the selected model before reserving credits.
     const assignment = check(await db.from('ai_model_assignment').select('*').eq('route_key', `${AUDIO_TOOLS[tool].service}|${AUDIO_TOOLS[tool].model}`).maybeSingle());
     const requestedModel = String(body.model_key || '').trim().toLowerCase();
     const selectedModelKey = requestedModel || assignment?.model_key;
@@ -119,15 +107,9 @@ export function audioHandler(tool: 'music' | 'sound_fx') {
       ? { ...assignment, model_key: selectedModelKey, input_mapping: option?.input_mapping ?? assignment?.input_mapping ?? {}, defaults: option?.defaults ?? assignment?.defaults ?? {}, enabled: true }
       : assignment;
     validateChoice(choice, model);
-    adaptInput(input, choice, model);
+    const providerInput = adaptInput(input, choice, model);
 
-    const dynamicQuote = await quoteAiService(
-      db,
-      AUDIO_TOOLS[tool].service,
-      input,
-      selectedModelKey || null,
-      assignment?.kind || 'audio'
-    );
+    const dynamicQuote = await quoteAiService(db, AUDIO_TOOLS[tool].service, input, selectedModelKey || null, assignment?.kind || 'audio');
     const providerHeaders = headers();
     const format = input.audio_format || input.output_format;
     const record = {
@@ -156,27 +138,22 @@ export function audioHandler(tool: 'music' | 'sound_fx') {
     const webhook = new URL(`${Deno.env.get('SUPABASE_URL')}/functions/v1/${AUDIO_TOOLS[tool].service}`);
     webhook.searchParams.set('callback', job.callback_token);
     try {
-      const response = await fetch(`${API}/models/${AUDIO_TOOLS[tool].model}/predictions`, {
+      const response = await fetch(`${API}/models/${selectedModelKey}/predictions`, {
         method: 'POST', headers: providerHeaders, signal: AbortSignal.timeout(25000),
-        body: JSON.stringify({ input, webhook: webhook.href, webhook_events_filter: ['completed'] }),
+        body: JSON.stringify({ input: providerInput, webhook: webhook.href, webhook_events_filter: ['completed'] }),
       });
       if (!response.ok) {
-        // A 5xx is ambiguous: never submit a second paid request automatically.
         if (response.status >= 500) fail('Provider response uncertain. The saved request will be reconciled by its callback.');
         return Response.json({ job: publicAudioJob(await refund(db, job, 'Provider rejected the request. Credits refunded.')) });
       }
       const prediction = await response.json();
       if (!prediction.id) fail('Provider response missing its ID. Do not regenerate.');
-      // A fast callback may already have finished. Never reopen a completed
-      // or refunded job when the original POST response arrives afterwards.
       check(await db.from(TABLE).update({ prediction_id: prediction.id, status: 'processing', error: null, updated_at: new Date().toISOString() })
         .eq('id', job.id).eq('status', 'submitting'));
       job = check(await db.from(TABLE).select('*').eq('id', job.id).single());
       return Response.json({ job: publicAudioJob(await settle(db, job)) });
     } catch (error) {
-      // Model-control validation errors occur before provider submission.
       if ((error as any).status === 409) return Response.json({ job: publicAudioJob(await refund(db, job, (error as Error).message)) });
-      // Do not overwrite a callback that may already have saved the result.
       check(await db.from(TABLE).update({ error: 'Submission or saving pending. Check status; do not regenerate.' }).eq('id', job.id).in('status', ['submitting', 'processing']));
       throw error;
     }
