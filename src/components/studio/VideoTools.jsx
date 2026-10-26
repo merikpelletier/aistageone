@@ -537,7 +537,6 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       return `${ref.role} = Image ${index + 1}. Use this exact character reference. Do not invent or redescribe appearance, face, hair, body, wardrobe or accessories. The image is authoritative.${voice}${manner}${notes}`;
     }).join(' ');
     const framingRule = `FRAMING LOCK: ${shot.framing} is mandatory. Do not substitute a different shot size, angle or composition.`;
-    const noCharacterRule = characterRefs.length === 0 ? ' NO CHARACTERS ARE PRESENT IN THIS SHOT. Do not invent, add or imply any person, animal, creature or performer.' : '';
     let contentRule = '';
     if (shotMode(shot) === 'standard') {
       const beats = (shot.lines || []).map((line, index) => {
@@ -554,7 +553,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     }
     const transitionImageNumber = imageNumberByShotReferenceId.get(shot.transition_reference_id);
     const transitionRule = transitionImageNumber && String(shot.transition_instruction || '').trim() ? ` TRANSITION: After the listed shot action/beats, ${String(shot.transition_instruction).trim()} to Image ${transitionImageNumber}. Image ${transitionImageNumber} becomes the specified visual target; do not substitute another image.` : '';
-    return `${referenceRules}${noCharacterRule} ${framingRule} ${contentRule}${transitionRule} ${shot.camera ? `CAMERA NOTES: ${shot.camera}.` : ''} ${shot.sound ? `SOUND / AMBIENCE: ${shot.sound}.` : ''} Preserve exact reference identities, exact set continuity, wardrobe, eyelines and screen direction. Duration ${shot.duration} seconds.`;
+    return `${referenceRules} ${framingRule} ${contentRule}${transitionRule} ${shot.camera ? `CAMERA NOTES: ${shot.camera}.` : ''} ${shot.sound ? `SOUND / AMBIENCE: ${shot.sound}.` : ''} Preserve exact reference identities, exact set continuity, wardrobe, eyelines and screen direction. Duration ${shot.duration} seconds.`;
   };
 
   const finalPromptForShot = (shot) => promptEdits[shot.id] ?? buildShotPrompt(shot);
