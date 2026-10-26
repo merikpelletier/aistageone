@@ -208,7 +208,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const [editClips, setEditClips] = useState([]);
   const [selectedEditClipId, setSelectedEditClipId] = useState(null);
   const [editRatio, setEditRatio] = useState('16:9');
-  const [editMusic, setEditMusic] = useState({ url: '', name: '', volume: 0.55 });
+  const [editMusic, setEditMusic] = useState({ url: '', name: '', volume: 0.55, start: 0, trim_start: 0, trim_end: 0, duration: 0, loop: false, fade_in: 0, fade_out: 0 });
   const [editPlayhead, setEditPlayhead] = useState(0);
   const [editTimelineZoom, setEditTimelineZoom] = useState(1);
   const [editTimelineViewportWidth, setEditTimelineViewportWidth] = useState(0);
@@ -451,7 +451,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
         return { ...shot, shot_references: [...currentRefs, { id: crypto.randomUUID(), name: name || `Shot reference ${currentRefs.length + 1}`, url }] };
       }));
     }
-    if (target.type === 'music') setEditMusic((value) => ({ ...value, url, name: name || 'Vault music' }));
+    if (target.type === 'music') setEditMusic((value) => ({ ...value, url, name: name || 'Vault music', start: 0, trim_start: 0, trim_end: 0, duration: 0, loop: false, fade_in: 0, fade_out: 0 }));
     setShowVaultPicker(false);
     setShowAssetsShop(false);
     setPickerTarget(null);
@@ -502,7 +502,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setSelectedScenePassage(null);
     setEditClips([]);
     setSelectedEditClipId(null);
-    setEditMusic({ url: '', name: '', volume: 0.55 });
+    setEditMusic({ url: '', name: '', volume: 0.55, start: 0, trim_start: 0, trim_end: 0, duration: 0, loop: false, fade_in: 0, fade_out: 0 });
     setEditPlayhead(0);
     setEditTimelineZoom(1);
     setEditPlaying(false);
@@ -669,7 +669,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setEditPlaying(false);
     setEditUndoStack([]);
     setEditRatio(shotPlan[0]?.editor_ratio || aspectRatio || '16:9');
-    setEditMusic(shotPlan[0]?.editor_music || { url: '', name: '', volume: 0.55 });
+    setEditMusic({ url: '', name: '', volume: 0.55, start: 0, trim_start: 0, trim_end: 0, duration: 0, loop: false, fade_in: 0, fade_out: 0, ...(shotPlan[0]?.editor_music || {}) });
     setStep('edit');
   };
 
@@ -818,7 +818,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       const { error } = await supabase.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
       if (error) throw error;
       const { data } = supabase.storage.from('media').getPublicUrl(path);
-      setEditMusic((value) => ({ ...value, url: data.publicUrl, name: file.name }));
+      setEditMusic((value) => ({ ...value, url: data.publicUrl, name: file.name, start: 0, trim_start: 0, trim_end: 0, duration: 0, loop: false, fade_in: 0, fade_out: 0 }));
       toast.success('Music added');
     } catch (error) {
       toast.error(error.message || 'Music upload failed.');
@@ -879,17 +879,51 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       const videoSource = audioContext.createMediaElementSource(exportVideo);
       const videoGain = audioContext.createGain();
       videoSource.connect(videoGain).connect(audioDestination);
+      let musicGain = null;
+      let musicStartTimer = null;
       if (editMusic.url) {
         musicElement = document.createElement('audio');
         musicElement.crossOrigin = 'anonymous';
         musicElement.src = editMusic.url;
-        musicElement.loop = true;
+        musicElement.loop = Boolean(editMusic.loop);
         musicElement.preload = 'auto';
+        await new Promise((resolve, reject) => {
+          const ready = () => { cleanup(); resolve(); };
+          const failed = () => { cleanup(); reject(new Error('Music track could not be loaded for export.')); };
+          const cleanup = () => { musicElement.removeEventListener('loadedmetadata', ready); musicElement.removeEventListener('error', failed); };
+          musicElement.addEventListener('loadedmetadata', ready);
+          musicElement.addEventListener('error', failed);
+          musicElement.load();
+        });
         const musicSource = audioContext.createMediaElementSource(musicElement);
-        const musicGain = audioContext.createGain();
-        musicGain.gain.value = Math.max(0, Math.min(1, Number(editMusic.volume || 0)));
+        musicGain = audioContext.createGain();
+        musicGain.gain.value = 0;
         musicSource.connect(musicGain).connect(audioDestination);
-        await musicElement.play();
+        const trimStart = Math.max(0, Number(editMusic.trim_start || 0));
+        const trimEnd = Math.max(trimStart, Math.min(Number(editMusic.trim_end || musicElement.duration || 0), Number(musicElement.duration || 0)));
+        musicElement.currentTime = trimStart;
+        const trackStart = Math.max(0, Number(editMusic.start || 0));
+        const trackLength = Math.max(0, Math.min(editTimelineDuration - trackStart, editMusic.loop ? editTimelineDuration - trackStart : trimEnd - trimStart));
+        const baseVolume = Math.max(0, Math.min(1, Number(editMusic.volume || 0)));
+        const fadeIn = Math.max(0, Math.min(Number(editMusic.fade_in || 0), trackLength));
+        const fadeOut = Math.max(0, Math.min(Number(editMusic.fade_out || 0), trackLength));
+        const startMusic = async () => {
+          const now = audioContext.currentTime;
+          musicGain.gain.cancelScheduledValues(now);
+          musicGain.gain.setValueAtTime(fadeIn > 0 ? 0 : baseVolume, now);
+          if (fadeIn > 0) musicGain.gain.linearRampToValueAtTime(baseVolume, now + fadeIn);
+          if (fadeOut > 0) {
+            const fadeOutAt = Math.max(now, now + trackLength - fadeOut);
+            musicGain.gain.setValueAtTime(baseVolume, fadeOutAt);
+            musicGain.gain.linearRampToValueAtTime(0, now + trackLength);
+          }
+          await musicElement.play();
+          if (!editMusic.loop && trackLength > 0) setTimeout(() => musicElement.pause(), trackLength * 1000);
+        };
+        if (trackLength > 0) {
+          if (trackStart > 0) musicStartTimer = setTimeout(() => { void startMusic(); }, trackStart * 1000);
+          else await startMusic();
+        }
       }
       const combinedStream = new MediaStream([...canvasStream.getVideoTracks(), ...audioDestination.stream.getAudioTracks()]);
       const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
@@ -928,6 +962,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       recorder.stop();
       await stopped;
       if (musicElement) musicElement.pause();
+      if (musicStartTimer) clearTimeout(musicStartTimer);
       const blob = new Blob(chunks, { type: mimeType });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -943,6 +978,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     } finally {
       try { exportVideo?.pause(); } catch {}
       try { musicElement?.pause(); } catch {}
+      try { if (musicStartTimer) clearTimeout(musicStartTimer); } catch {}
       try { canvasStream?.getTracks().forEach((track) => track.stop()); } catch {}
       try { await audioContext?.close(); } catch {}
       setExportingEdit(false);
@@ -1030,7 +1066,9 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
             <section className="border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Timeline</p><p className="text-[10px] text-white/35">Scrub directly over the clips. Their widths now represent the real edited duration.</p></div><div className="flex items-center gap-2"><button type="button" onClick={editPlaying ? pauseEditTimeline : playEditTimeline} disabled={!editClips.length} className="border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-black disabled:opacity-30">{editPlaying ? '❚❚ Pause' : '▶ Play Timeline'}</button><div className="flex items-center border border-white/10"><button type="button" onClick={() => setEditTimelineZoom((value) => Math.max(1, Number((value - 0.5).toFixed(1))))} disabled={editTimelineZoom <= 1} className="px-2 py-1 text-xs font-black disabled:opacity-25">−</button><span className="min-w-[118px] px-2 text-center text-[9px] font-bold text-white/55">Timeline Zoom · {Math.round(editTimelineZoom * 100)}%</span><button type="button" onClick={() => setEditTimelineZoom((value) => Math.min(3, Number((value + 0.5).toFixed(1))))} disabled={editTimelineZoom >= 3} className="px-2 py-1 text-xs font-black disabled:opacity-25">+</button></div><p className="text-xs font-bold text-white/55">{editPlayhead.toFixed(2)}s / {editTimelineDuration.toFixed(2)}s</p></div></div><div ref={editTimelineViewportRef} className="overflow-x-auto border border-white/10 bg-black/30"><div className="relative" style={{ width: `${editTimelineWidth}px`, minWidth: '100%' }}><div className="relative h-7 border-b border-white/10">{Array.from({ length: Math.floor(editTimelineDuration / editTimelineTick) + 1 }, (_, index) => { const second = index * editTimelineTick; return <div key={second} className="absolute inset-y-0 border-l border-white/15" style={{ left: `${second * editTimelinePixelsPerSecond}px` }}><span className="absolute left-1 top-1 text-[8px] text-white/35">{second.toFixed(editTimelineTick === 1 ? 0 : editTimelineTick === 0.5 ? 1 : 2)}s</span></div>; })}</div><div className="relative flex h-32 cursor-ew-resize overflow-hidden" onPointerDown={(event) => { if (event.button !== 0) return; event.currentTarget.setPointerCapture?.(event.pointerId); const rect = event.currentTarget.getBoundingClientRect(); const ratio = rect.width > 0 ? Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) : 0; seekEditorPlayhead(ratio * editTimelineDuration); }} onPointerMove={(event) => { if ((event.buttons & 1) !== 1) return; const rect = event.currentTarget.getBoundingClientRect(); const ratio = rect.width > 0 ? Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) : 0; seekEditorPlayhead(ratio * editTimelineDuration); }}>{editClips.map((clip, index) => { const duration = editClipDuration(clip); return <div key={clip.id} onClick={() => setSelectedEditClipId(clip.id)} className={`relative h-full overflow-hidden border-r border-black/70 ${selectedEditClip?.id === clip.id ? 'z-10 ring-2 ring-inset ring-[#23c7be] bg-[#23c7be]/15' : 'bg-black/20'}`} style={{ flex: `0 0 ${duration * editTimelinePixelsPerSecond}px` }}><video src={clip.url} muted preload="metadata" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-65" /><div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" /><div className="pointer-events-none absolute bottom-2 left-2 right-2"><p className="truncate text-[10px] font-black">{index + 1}. {clip.label}</p><p className="text-[8px] text-white/55">{duration.toFixed(2)}s</p></div></div>; })}<div className="pointer-events-none absolute bottom-0 top-0 z-40 w-[2px] bg-[#23c7be]" style={{ left: `${editPlayhead * editTimelinePixelsPerSecond}px` }}><div className="absolute -left-[5px] top-0 h-0 w-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-[#23c7be]" /></div></div></div></div><div className="mt-2 flex justify-between text-[9px] text-white/35"><span>Click or drag over the timeline to seek</span><span>Split uses this playhead position</span></div></section>
 
-            <section className="border border-white/10 bg-[#17191d] p-4"><div className="grid gap-3 md:grid-cols-[1fr_220px]"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Music track</p><div className="mt-2 flex flex-wrap items-center gap-2"><label className="cursor-pointer bg-white/10 px-3 py-2 text-xs font-bold"><Upload size={12} className="mr-1 inline" /> Add Music<input type="file" accept="audio/*" className="hidden" onChange={(event) => uploadEditorMusic(event.target.files?.[0])} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'music' }); setShowVaultPicker(true); }} className="bg-white/10 px-3 py-2 text-xs font-bold"><Folder size={12} className="mr-1 inline" /> Vault</button>{editMusic.url && <><span className="max-w-sm truncate text-xs text-white/65">{editMusic.name || 'Music'}</span><button type="button" onClick={() => setEditMusic({ url: '', name: '', volume: 0.55 })} className="bg-white/10 px-2 py-2 text-[10px]">Remove</button></>}</div>{editMusic.url && <audio src={editMusic.url} controls className="mt-3 w-full" />}</div><label className="text-[10px] text-white/45">Music volume · {Math.round(Number(editMusic.volume || 0) * 100)}%<input type="range" min="0" max="1" step="0.05" value={editMusic.volume} onChange={(event) => setEditMusic((value) => ({ ...value, volume: Number(event.target.value) }))} className="mt-2 w-full" /></label></div></section>
+            <section className="border border-white/10 bg-[#17191d] p-4"><div className="grid gap-3 md:grid-cols-[1fr_220px]"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Music track</p><div className="mt-2 flex flex-wrap items-center gap-2"><label className="cursor-pointer bg-white/10 px-3 py-2 text-xs font-bold"><Upload size={12} className="mr-1 inline" /> Add Music<input type="file" accept="audio/*" className="hidden" onChange={(event) => uploadEditorMusic(event.target.files?.[0])} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'music' }); setShowVaultPicker(true); }} className="bg-white/10 px-3 py-2 text-xs font-bold"><Folder size={12} className="mr-1 inline" /> Vault</button>{editMusic.url && <><span className="max-w-sm truncate text-xs text-white/65">{editMusic.name || 'Music'}</span><button type="button" onClick={() => setEditMusic({ url: '', name: '', volume: 0.55, start: 0, trim_start: 0, trim_end: 0, duration: 0, loop: false, fade_in: 0, fade_out: 0 })} className="bg-white/10 px-2 py-2 text-[10px]">Remove</button></>}</div>{editMusic.url && <audio src={editMusic.url} controls className="mt-3 w-full" onLoadedMetadata={(event) => { const duration = Number(event.currentTarget.duration || 0); setEditMusic((value) => ({ ...value, duration, trim_end: value.trim_end > 0 ? Math.min(value.trim_end, duration) : duration })); }} />}</div><label className="text-[10px] text-white/45">Music volume · {Math.round(Number(editMusic.volume || 0) * 100)}%<input type="range" min="0" max="1" step="0.05" value={editMusic.volume} onChange={(event) => setEditMusic((value) => ({ ...value, volume: Number(event.target.value) }))} className="mt-2 w-full" /></label></div></section>
+            {editMusic.url && <section className="border border-white/10 bg-[#17191d] p-4"><div className="mb-2 flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Music timeline</p><p className="text-[10px] text-white/35">Visible audio track aligned to the scene timeline.</p></div><span className="text-[10px] text-white/45">{Number(editMusic.start || 0).toFixed(2)}s → {Math.min(editTimelineDuration, Number(editMusic.start || 0) + Math.max(0, (editMusic.loop ? editTimelineDuration : Number(editMusic.trim_end || editMusic.duration || 0) - Number(editMusic.trim_start || 0)))).toFixed(2)}s</span></div><div className="overflow-x-auto border border-white/10 bg-black/30"><div className="relative h-16" style={{ width: `${editTimelineWidth}px`, minWidth: '100%' }}><div className="absolute inset-y-2 border border-[#23c7be]/50 bg-[#23c7be]/15 px-2 py-1" style={{ left: `${Math.max(0, Number(editMusic.start || 0)) * editTimelinePixelsPerSecond}px`, width: `${Math.max(8, Math.min(Math.max(0, editTimelineDuration - Number(editMusic.start || 0)), editMusic.loop ? Math.max(0, editTimelineDuration - Number(editMusic.start || 0)) : Math.max(0, Number(editMusic.trim_end || editMusic.duration || 0) - Number(editMusic.trim_start || 0))) * editTimelinePixelsPerSecond)}px` }}><p className="truncate text-[10px] font-black text-[#8ee9e4]">♫ {editMusic.name || 'Music'}</p><p className="text-[8px] text-white/50">{editMusic.loop ? 'Loop' : 'Single play'}</p></div><div className="pointer-events-none absolute bottom-0 top-0 z-40 w-[2px] bg-[#23c7be]" style={{ left: `${editPlayhead * editTimelinePixelsPerSecond}px` }} /></div></div><div className="mt-3 grid gap-2 md:grid-cols-3"><label className="text-[10px] text-white/45">Start on timeline<input type="number" min="0" max={Math.max(0, editTimelineDuration)} step="0.05" value={editMusic.start || 0} onChange={(event) => setEditMusic((value) => ({ ...value, start: Math.max(0, Math.min(editTimelineDuration, Number(event.target.value) || 0)) }))} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" /></label><label className="text-[10px] text-white/45">Trim start<input type="number" min="0" max={Math.max(0, Number(editMusic.trim_end || editMusic.duration || 0))} step="0.05" value={editMusic.trim_start || 0} onChange={(event) => setEditMusic((value) => ({ ...value, trim_start: Math.max(0, Math.min(Number(event.target.value) || 0, Number(value.trim_end || value.duration || 0))) }))} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" /></label><label className="text-[10px] text-white/45">Trim end<input type="number" min={Number(editMusic.trim_start || 0)} max={Math.max(0, Number(editMusic.duration || 0))} step="0.05" value={editMusic.trim_end || 0} onChange={(event) => setEditMusic((value) => ({ ...value, trim_end: Math.max(Number(value.trim_start || 0), Math.min(Number(event.target.value) || 0, Number(value.duration || 0))) }))} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" /></label><label className="text-[10px] text-white/45">Fade in<input type="number" min="0" step="0.1" value={editMusic.fade_in || 0} onChange={(event) => setEditMusic((value) => ({ ...value, fade_in: Math.max(0, Number(event.target.value) || 0) }))} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" /></label><label className="text-[10px] text-white/45">Fade out<input type="number" min="0" step="0.1" value={editMusic.fade_out || 0} onChange={(event) => setEditMusic((value) => ({ ...value, fade_out: Math.max(0, Number(event.target.value) || 0) }))} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" /></label><button type="button" onClick={() => setEditMusic((value) => ({ ...value, loop: !value.loop }))} className={`self-end border p-2 text-xs font-bold ${editMusic.loop ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 text-white/60'}`}>{editMusic.loop ? 'Loop on' : 'Loop off'}</button></div></section>}
+
           </div>}
         </div>
 
