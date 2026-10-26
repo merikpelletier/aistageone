@@ -20,11 +20,9 @@ import '@/styles/dossier-upload-icons.css'
 import '@/styles/shoot-editor-timeline.css'
 import { registerServiceWorker } from '@/lib/registerServiceWorker'
 import { installIPadMediaGuard } from '@/lib/ipadMediaGuard'
-import { installShootTimelineTrimHandles } from '@/lib/installShootTimelineTrimHandles'
 
 registerServiceWorker()
 installIPadMediaGuard()
-installShootTimelineTrimHandles()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <>
