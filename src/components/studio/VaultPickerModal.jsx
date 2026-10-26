@@ -15,7 +15,7 @@ const folderColors = {
   pink: 'bg-pink-500/20 border-pink-500/40 text-pink-400',
 };
 
-export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUpload = false, embedded = false }) {
+export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUpload = false, embedded = false, mediaType = 'image' }) {
   const queryClient = useQueryClient();
   const [expandedFolders, setExpandedFolders] = useState({});
   const [uploading, setUploading] = useState(false);
@@ -73,8 +73,8 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail]);
 
-  const images = vaultAssets.filter(a => a.media_type === 'image');
-  const unfiledImages = images.filter(a => !a.folder_id);
+  const assets = vaultAssets.filter(a => a.media_type === mediaType);
+  const unfiledAssets = assets.filter(a => !a.folder_id);
 
   const toggleFolder = (folderId) => {
     setExpandedFolders(prev => ({ ...prev, [folderId]: !prev[folderId] }));
@@ -106,20 +106,20 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
 
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
         {/* Unfiled Images */}
-        {unfiledImages.length > 0 && (
+        {unfiledAssets.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-white text-xs uppercase tracking-wider">
               <Folder size={14} />
-              Unfiled ({unfiledImages.length})
+              Unfiled ({unfiledAssets.length})
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {unfiledImages.map(asset => (
+              {unfiledAssets.map(asset => (
                 <button
                   key={asset.id}
-                  onClick={() => onSelect(asset.url)}
+                  onClick={() => onSelect(asset.url, asset.name)}
                   className="aspect-square rounded-xl overflow-hidden bg-white/5 hover:ring-2 hover:ring-yellow-400 transition-all"
                 >
-                  <img src={asset.url} alt="" className="w-full h-full object-cover" />
+                  {mediaType === 'audio' ? <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs font-bold text-white">{asset.name || 'Audio'}</div> : <img src={asset.url} alt="" className="w-full h-full object-cover" />}
                 </button>
               ))}
             </div>
@@ -128,7 +128,7 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
 
         {/* Folders */}
         {folders.map((folder) => {
-          const folderImages = images.filter(a => a.folder_id === folder.id);
+          const folderImages = assets.filter(a => a.folder_id === folder.id);
           const isExpanded = expandedFolders[folder.id] ?? false;
 
           return (
@@ -150,10 +150,10 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
                   {folderImages.map(asset => (
                     <button
                       key={asset.id}
-                      onClick={() => onSelect(asset.url)}
+                      onClick={() => onSelect(asset.url, asset.name)}
                       className="aspect-square rounded-xl overflow-hidden bg-white/5 hover:ring-2 hover:ring-yellow-400 transition-all"
                     >
-                      <img src={asset.url} alt="" className="w-full h-full object-cover" />
+                      {mediaType === 'audio' ? <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs font-bold text-white">{asset.name || 'Audio'}</div> : <img src={asset.url} alt="" className="w-full h-full object-cover" />}
                     </button>
                   ))}
                 </div>
@@ -162,10 +162,10 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
           );
         })}
 
-        {images.length === 0 && (
+        {assets.length === 0 && (
           <div className="text-center py-16">
-            <p className="text-white text-sm">No images in your Vault yet.</p>
-            <p className="text-white/20 text-xs mt-1">Save images from dossiers first.</p>
+            <p className="text-white text-sm">No {mediaType === 'audio' ? 'audio' : 'images'} in your Vault yet.</p>
+            <p className="text-white/20 text-xs mt-1">Save {mediaType === 'audio' ? 'audio' : 'images'} to your Vault first.</p>
           </div>
         )}
       </div>
