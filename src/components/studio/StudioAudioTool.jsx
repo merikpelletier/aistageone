@@ -59,7 +59,7 @@ export default function StudioAudioTool({ tool, user }) {
       if (disposed) return;
       setConfig(settings.data);
       setHistory(listing.data.jobs);
-      setJob(listing.data.jobs[0] || null);
+      setJob(listing.data.jobs.find(item => !terminal(item)) || null);
     }).catch(err => { if (!disposed) setError(err.message); })
       .finally(() => { if (!disposed) setLoading(false); });
     return () => { disposed = true; mounted.current = false; };
@@ -89,8 +89,6 @@ export default function StudioAudioTool({ tool, user }) {
     setSending(true);
     setError('');
     const id = crypto.randomUUID();
-    // Keep the ID before sending; a lost HTTP response must not trigger another
-    // paid start. Poll this same ID instead.
     remember({ id, title: title || AUDIO_TOOLS[tool].label, status: 'submitting', format, created_at: new Date().toISOString() });
     try {
       const data = await invoke({ ...body, id, action: 'start' });
@@ -98,7 +96,6 @@ export default function StudioAudioTool({ tool, user }) {
     } catch (err) {
       if (mounted.current) {
         setError(err.message);
-        // Explicit preflight validation/auth failures cannot have started a job.
         if ([400, 401, 403, 409].includes(err.status)) {
           const latest = await invoke({ action: 'list' }).catch(() => null);
           if (mounted.current && latest) {
