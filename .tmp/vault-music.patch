@@ -1,0 +1,60 @@
+diff --git a/src/components/studio/VaultPickerModal.jsx b/src/components/studio/VaultPickerModal.jsx
+--- a/src/components/studio/VaultPickerModal.jsx
++++ b/src/components/studio/VaultPickerModal.jsx
+@@
+-export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUpload = false, embedded = false }) {
++export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUpload = false, embedded = false, mediaType = 'image' }) {
+@@
+-  const images = vaultAssets.filter(a => a.media_type === 'image');
+-  const unfiledImages = images.filter(a => !a.folder_id);
++  const assets = vaultAssets.filter(a => a.media_type === mediaType);
++  const unfiledAssets = assets.filter(a => !a.folder_id);
+@@
+-        {unfiledImages.length > 0 && (
++        {unfiledAssets.length > 0 && (
+@@
+-              Unfiled ({unfiledImages.length})
++              Unfiled ({unfiledAssets.length})
+@@
+-              {unfiledImages.map(asset => (
++              {unfiledAssets.map(asset => (
+@@
+-                  onClick={() => onSelect(asset.url)}
++                  onClick={() => onSelect(asset.url, asset.name)}
+@@
+-                  <img src={asset.url} alt="" className="w-full h-full object-cover" />
++                  {mediaType === 'audio' ? <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs font-bold text-white">{asset.name || 'Audio'}</div> : <img src={asset.url} alt="" className="w-full h-full object-cover" />}
+@@
+-          const folderImages = images.filter(a => a.folder_id === folder.id);
++          const folderImages = assets.filter(a => a.folder_id === folder.id);
+@@
+-                      onClick={() => onSelect(asset.url)}
++                      onClick={() => onSelect(asset.url, asset.name)}
+@@
+-                      <img src={asset.url} alt="" className="w-full h-full object-cover" />
++                      {mediaType === 'audio' ? <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs font-bold text-white">{asset.name || 'Audio'}</div> : <img src={asset.url} alt="" className="w-full h-full object-cover" />}
+@@
+-        {images.length === 0 && (
++        {assets.length === 0 && (
+@@
+-            <p className="text-white text-sm">No images in your Vault yet.</p>
+-            <p className="text-white/20 text-xs mt-1">Save images from dossiers first.</p>
++            <p className="text-white text-sm">No {mediaType === 'audio' ? 'audio' : 'images'} in your Vault yet.</p>
++            <p className="text-white/20 text-xs mt-1">Save {mediaType === 'audio' ? 'audio' : 'images'} to your Vault first.</p>
+diff --git a/src/components/studio/VideoTools.jsx b/src/components/studio/VideoTools.jsx
+--- a/src/components/studio/VideoTools.jsx
++++ b/src/components/studio/VideoTools.jsx
+@@
+     if (target.type === 'shot-reference') {
+       setShotPlan((items) => items.map((shot) => {
+@@
+       }));
+     }
++    if (target.type === 'music') setEditMusic((value) => ({ ...value, url, name: name || 'Vault music' }));
+     setShowVaultPicker(false);
+@@
+-            <section className="border border-white/10 bg-[#17191d] p-4"><div className="grid gap-3 md:grid-cols-[1fr_220px]"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Music track</p><div className="mt-2 flex flex-wrap items-center gap-2"><label className="cursor-pointer bg-white/10 px-3 py-2 text-xs font-bold"><Upload size={12} className="mr-1 inline" /> Add Music<input type="file" accept="audio/*" className="hidden" onChange={(event) => uploadEditorMusic(event.target.files?.[0])} /></label>{editMusic.url && <><span className="max-w-sm truncate text-xs text-white/65">{editMusic.name || 'Music'}</span><button type="button" onClick={() => setEditMusic({ url: '', name: '', volume: 0.55 })} className="bg-white/10 px-2 py-2 text-[10px]">Remove</button></>}</div>{editMusic.url && <audio src={editMusic.url} controls className="mt-3 w-full" />}</div><label className="text-[10px] text-white/45">Music volume · {Math.round(Number(editMusic.volume || 0) * 100)}%<input type="range" min="0" max="1" step="0.05" value={editMusic.volume} onChange={(event) => setEditMusic((value) => ({ ...value, volume: Number(event.target.value) }))} className="mt-2 w-full" /></label></div></section>
++            <section className="border border-white/10 bg-[#17191d] p-4"><div className="grid gap-3 md:grid-cols-[1fr_220px]"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Music track</p><div className="mt-2 flex flex-wrap items-center gap-2"><label className="cursor-pointer bg-white/10 px-3 py-2 text-xs font-bold"><Upload size={12} className="mr-1 inline" /> Add Music<input type="file" accept="audio/*" className="hidden" onChange={(event) => uploadEditorMusic(event.target.files?.[0])} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'music' }); setShowVaultPicker(true); }} className="bg-white/10 px-3 py-2 text-xs font-bold"><Folder size={12} className="mr-1 inline" /> Vault</button>{editMusic.url && <><span className="max-w-sm truncate text-xs text-white/65">{editMusic.name || 'Music'}</span><button type="button" onClick={() => setEditMusic({ url: '', name: '', volume: 0.55 })} className="bg-white/10 px-2 py-2 text-[10px]">Remove</button></>}</div>{editMusic.url && <audio src={editMusic.url} controls className="mt-3 w-full" />}</div><label className="text-[10px] text-white/45">Music volume · {Math.round(Number(editMusic.volume || 0) * 100)}%<input type="range" min="0" max="1" step="0.05" value={editMusic.volume} onChange={(event) => setEditMusic((value) => ({ ...value, volume: Number(event.target.value) }))} className="mt-2 w-full" /></label></div></section>
+@@
+-        {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} onSelect={(url) => applyPickedImage(url, 'Vault reference')} onClose={() => { setShowVaultPicker(false); setPickerTarget(null); }} embedded={embedded} />}
++        {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} mediaType={pickerTarget?.type === 'music' ? 'audio' : 'image'} onSelect={(url, name) => applyPickedImage(url, name || (pickerTarget?.type === 'music' ? 'Vault music' : 'Vault reference'))} onClose={() => { setShowVaultPicker(false); setPickerTarget(null); }} embedded={embedded} />}
