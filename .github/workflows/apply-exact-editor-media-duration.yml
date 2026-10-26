@@ -1,0 +1,22 @@
+name: Apply exact editor media duration
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-exact-editor-media-duration.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .tmp/use-exact-editor-media-duration.py
+      - run: git diff --check
+      - run: npm install --no-package-lock --no-audit --no-fund && npm run build
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/components/studio/VideoTools.jsx
+          git commit -m "Use exact media duration in Shoot editor"
+          git push
