@@ -6,3 +6,4 @@ new = "onPlay={(event) => { const start = Number(selectedEditClip.trim_start || 
 if t.count(old) != 1:
     raise SystemExit(f'Expected exactly one preview timeupdate handler, found {t.count(old)}')
 p.write_text(t.replace(old, new, 1))
+# trigger
