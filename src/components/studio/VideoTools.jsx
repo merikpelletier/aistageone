@@ -659,7 +659,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const syncedTimeline = savedTimeline.map((clip) => {
       const sourceShot = shotPlan.find((shot) => shot.id === clip.shot_id);
       return sourceShot?.result_url && sourceShot.result_url !== clip.url
-        ? { ...clip, url: sourceShot.result_url, source_duration: Math.max(0.1, Number(sourceShot.duration || 5)) }
+        ? { ...clip, url: sourceShot.result_url, source_duration: null }
         : clip;
     });
     const existingShotIds = new Set(syncedTimeline.map((clip) => clip.shot_id).filter(Boolean));
