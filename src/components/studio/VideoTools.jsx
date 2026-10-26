@@ -660,7 +660,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       const sourceShot = shotPlan.find((shot) => shot.id === clip.shot_id);
       return sourceShot?.result_url && sourceShot.result_url !== clip.url
         ? { ...clip, url: sourceShot.result_url, source_duration: null, expand_trim_to_source_on_load: Math.abs(Number(clip.trim_start || 0)) < 0.02 && Math.abs(Number(clip.trim_end || 0) - Number(clip.source_duration || clip.trim_end || 0)) < 0.02 }
-        : clip;
+        : (clip.source_duration == null ? { ...clip, expand_trim_to_source_on_load: true } : clip);
     });
     const existingShotIds = new Set(syncedTimeline.map((clip) => clip.shot_id).filter(Boolean));
     const missingGeneratedClips = buildDefaultEditorClips().filter((clip) => !existingShotIds.has(clip.shot_id));
