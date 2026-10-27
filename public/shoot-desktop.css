@@ -1,0 +1,39 @@
+@media (min-width: 1024px) {
+  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] {
+    grid-template-columns: minmax(0, 1fr) 300px !important;
+    align-items: start !important;
+  }
+
+  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] > section:first-child {
+    padding: 10px !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+  }
+
+  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] > section:first-child > [class~="aspect-[9/16]"] {
+    width: 100% !important;
+    max-width: 281px !important;
+    max-height: 500px !important;
+  }
+
+  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] > section:first-child > [class~="aspect-square"] {
+    width: 100% !important;
+    max-width: 500px !important;
+    max-height: 500px !important;
+  }
+
+  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] > section:first-child > [class~="aspect-video"] {
+    width: 100% !important;
+    max-width: 889px !important;
+    max-height: 500px !important;
+  }
+
+  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] > aside {
+    padding: 12px !important;
+  }
+
+  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] > aside > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 8px !important;
+  }
+}
