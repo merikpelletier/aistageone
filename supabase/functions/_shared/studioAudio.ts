@@ -120,6 +120,13 @@ export function audioHandler(tool: 'music' | 'sound_fx') {
       : assignment;
     validateChoice(choice, model);
     const providerInput = adaptInput(input, choice, model);
+    if (tool === 'music' && selectedModelKey === 'elevenlabs/music') {
+      if (body.mode === 'auto') {
+        providerInput.prompt = `${input.prompt}\n\nCreate and sing original lyrics for this song. The vocals must be clearly audible. Use a concise verse-and-chorus structure appropriate to the requested duration.`;
+      } else if (body.mode === 'lyrics') {
+        providerInput.prompt = `${input.prompt ? `${input.prompt}\n\n` : ''}Sing the following lyrics clearly and use these lyrics as the vocal content:\n${input.lyrics}`;
+      }
+    }
 
     const dynamicQuote = await quoteAiService(
       db,
