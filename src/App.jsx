@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -33,32 +35,78 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
 
 const StudioMobileUtilities = () => {
   const location = useLocation();
-  if (location.pathname.toLowerCase() !== '/studio') return null;
+  const [menuHost, setMenuHost] = useState(null);
+  const isStudio = location.pathname.toLowerCase() === '/studio';
+
+  useEffect(() => {
+    if (!isStudio) {
+      setMenuHost(null);
+      return undefined;
+    }
+
+    let mountedHost = null;
+    const locateMobileToolsMenu = () => {
+      const exitButton = Array.from(document.querySelectorAll('button'))
+        .find((button) => button.textContent?.trim() === 'Exit Studio');
+
+      if (!exitButton?.parentElement) {
+        setMenuHost(null);
+        return;
+      }
+
+      const container = exitButton.parentElement;
+      let host = container.querySelector('[data-studio-mobile-utilities-host]');
+      if (!host) {
+        host = document.createElement('div');
+        host.setAttribute('data-studio-mobile-utilities-host', 'true');
+        host.className = 'space-y-2 mb-2';
+        container.insertBefore(host, exitButton);
+      }
+
+      mountedHost = host;
+      setMenuHost(host);
+    };
+
+    locateMobileToolsMenu();
+    const observer = new MutationObserver(locateMobileToolsMenu);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+      mountedHost?.remove();
+      setMenuHost(null);
+    };
+  }, [isStudio]);
+
+  if (!isStudio || !menuHost) return null;
 
   const openLauncher = (ariaLabel) => {
     const trigger = document.querySelector(`button[aria-label="${ariaLabel}"]`);
     trigger?.click();
   };
 
-  return (
-    <div className="lg:hidden fixed z-[6250] left-3 right-3 bottom-[74px] flex items-center justify-between pointer-events-none">
+  return createPortal(
+    <>
       <button
         type="button"
         onClick={() => openLauncher('Open AI Assistant')}
-        className="pointer-events-auto h-11 px-3 bg-teal-500 text-black font-bold text-xs flex items-center gap-2 shadow-lg"
+        className="w-full min-h-[48px] flex items-center gap-3 px-3 bg-teal-500 hover:bg-teal-400 text-black font-bold text-sm"
         aria-label="Open AI Assistant on mobile"
       >
-        <Sparkles size={14} /> AI Assistant
+        <Sparkles size={18} />
+        AI Assistant
       </button>
       <button
         type="button"
         onClick={() => openLauncher('Open Studio Recorder')}
-        className="pointer-events-auto h-11 px-3 bg-red-600 text-white font-bold text-xs flex items-center gap-2 shadow-lg"
+        className="w-full min-h-[48px] flex items-center gap-3 px-3 bg-red-600 hover:bg-red-500 text-white font-bold text-sm"
         aria-label="Open Studio Recorder on mobile"
       >
-        <Circle size={11} fill="currentColor" /> Studio Recorder
+        <Circle size={14} fill="currentColor" />
+        Studio Recorder
       </button>
-    </div>
+    </>,
+    menuHost,
   );
 };
 
