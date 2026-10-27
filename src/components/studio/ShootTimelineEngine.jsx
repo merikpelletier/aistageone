@@ -69,7 +69,8 @@ const syncAudio = (audio, music, timelineTime, timelineDuration, shouldPlay) => 
   const local = timelineTime - start;
   const active = available > 0 && local >= 0 && (Boolean(music.loop) || local < available);
 
-  if (audio.src !== music.url) {
+  if (audio.dataset.musicUrl !== music.url) {
+    audio.dataset.musicUrl = music.url;
     audio.src = music.url;
     audio.preload = 'auto';
     audio.load();
@@ -226,6 +227,7 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({
     const start = fromTime >= duration - 0.01 ? 0 : clamp(Number(fromTime || 0), 0, duration);
     startTimelineRef.current = start;
     startedAtRef.current = performance.now();
+    syncAudio(audioRef.current, musicRef.current, start, duration, true);
     const ok = await syncToTimeline(start, true);
     if (!ok) return false;
     callbacksRef.current.onPlayhead?.(start);
