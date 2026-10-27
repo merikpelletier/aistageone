@@ -5,6 +5,7 @@ import AuthorProductionWorkspacePage from './AuthorProductionWorkspacePage';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const TOOL_WIDTH = 430;
+const isMobileViewport = () => window.innerWidth < 768;
 
 function findPageCanvas(root) {
   if (!root) return null;
@@ -71,6 +72,135 @@ function integrateDialogueTails(canvas) {
   });
 }
 
+const mobileStyles = `
+@media (max-width: 767px) {
+  [data-fotoplay-workspace="true"] > div > div:first-child {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    padding-bottom: 82px !important;
+  }
+
+  [data-fotoplay-workspace="true"] header {
+    display: grid !important;
+    grid-template-columns: 42px minmax(0, 1fr) !important;
+    gap: 8px !important;
+    padding: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  [data-fotoplay-workspace="true"] header > button:first-child {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  [data-fotoplay-workspace="true"] header > div:first-of-type {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+
+  [data-fotoplay-workspace="true"] header > button:not(:first-child),
+  [data-fotoplay-workspace="true"] header > a {
+    min-height: 38px !important;
+    padding: 7px 9px !important;
+    font-size: 10px !important;
+  }
+
+  [data-fotoplay-workspace="true"] [class*="grid-cols-9"] {
+    display: flex !important;
+    gap: 7px !important;
+    overflow-x: auto !important;
+    padding: 7px !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  [data-fotoplay-workspace="true"] [class*="grid-cols-9"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-fotoplay-workspace="true"] [class*="grid-cols-9"] > button {
+    flex: 0 0 42px !important;
+    width: 42px !important;
+    height: 40px !important;
+  }
+
+  [data-fotoplay-workspace="true"] [class*="h-[calc(100vh-230px)]"] {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  [data-fotoplay-workspace="true"] [class*="grid-cols-[62px_minmax(0,1fr)_62px]"] {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+  }
+
+  [data-fotoplay-workspace="true"] [class*="grid-cols-[62px_minmax(0,1fr)_62px]"] > aside {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+    width: 100% !important;
+    min-height: 56px !important;
+    padding: 6px !important;
+    overflow-x: auto !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  [data-fotoplay-workspace="true"] [class*="grid-cols-[62px_minmax(0,1fr)_62px]"] > aside::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-fotoplay-workspace="true"] [class*="grid-cols-[62px_minmax(0,1fr)_62px]"] > aside:first-child {
+    order: 1 !important;
+    border-bottom: 1px solid rgba(255,255,255,.1) !important;
+  }
+
+  [data-fotoplay-workspace="true"] [class*="grid-cols-[62px_minmax(0,1fr)_62px]"] > main {
+    order: 2 !important;
+    width: 100% !important;
+    min-height: 58dvh !important;
+    padding: 8px !important;
+    overflow: visible !important;
+  }
+
+  [data-fotoplay-workspace="true"] [class*="grid-cols-[62px_minmax(0,1fr)_62px]"] > aside:last-child {
+    order: 3 !important;
+    border-top: 1px solid rgba(255,255,255,.1) !important;
+  }
+
+  [data-fotoplay-workspace="true"] [class*="grid-cols-[62px_minmax(0,1fr)_62px]"] > aside button {
+    flex: 0 0 auto !important;
+  }
+
+  [data-fotoplay-workspace="true"] [class*="w-[430px]"][class*="absolute"] {
+    position: fixed !important;
+    inset: 56px 0 64px 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    z-index: 8000 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+  }
+
+  [data-fotoplay-workspace="true"] input,
+  [data-fotoplay-workspace="true"] textarea,
+  [data-fotoplay-workspace="true"] select {
+    font-size: 16px !important;
+  }
+
+  [data-fotoplay-page-zoom-tool="true"],
+  [data-fotoplay-zoom-panel="true"] {
+    display: none !important;
+  }
+}
+`;
+
 export default function AuthorProductionWorkspaceZoom(props) {
   const rootRef = useRef(null);
   const [zoom, setZoom] = useState(80);
@@ -91,6 +221,17 @@ export default function AuthorProductionWorkspaceZoom(props) {
     setToolSide(side);
 
     main.style.boxSizing = 'border-box';
+    if (isMobileViewport()) {
+      main.style.paddingLeft = '8px';
+      main.style.paddingRight = '8px';
+      main.style.transition = 'none';
+      if (drawer) {
+        drawer.style.boxShadow = 'none';
+        drawer.style.borderColor = 'rgba(255,255,255,.1)';
+      }
+      return;
+    }
+
     main.style.paddingLeft = side === 'left' ? `${TOOL_WIDTH + 24}px` : '16px';
     main.style.paddingRight = side === 'right' ? `${TOOL_WIDTH + 24}px` : '16px';
     main.style.transition = 'padding 160ms ease';
@@ -106,8 +247,31 @@ export default function AuthorProductionWorkspaceZoom(props) {
     const canvas = findPageCanvas(root);
     if (!root || !canvas) return;
     const main = canvas.closest('main');
-    const baseWidth = pageBaseWidth(canvas);
+
     canvas.dataset.fotoplayPageCanvas = 'true';
+    integrateDialogueTails(canvas);
+
+    if (isMobileViewport()) {
+      canvas.style.width = '100%';
+      canvas.style.maxWidth = '100%';
+      canvas.style.maxHeight = 'none';
+      canvas.style.flex = '0 0 auto';
+      canvas.style.zoom = '1';
+      canvas.style.transform = 'none';
+      canvas.style.transformOrigin = 'top center';
+      applyWorkspaceLayout();
+      if (main) {
+        main.style.overflow = 'visible';
+        main.style.justifyContent = 'flex-start';
+        main.style.alignItems = 'stretch';
+        main.style.scrollbarGutter = 'auto';
+        main.style.paddingTop = '8px';
+        main.style.paddingBottom = '18px';
+      }
+      return;
+    }
+
+    const baseWidth = pageBaseWidth(canvas);
     canvas.style.width = `${baseWidth}px`;
     canvas.style.maxWidth = 'none';
     canvas.style.maxHeight = 'none';
@@ -115,7 +279,6 @@ export default function AuthorProductionWorkspaceZoom(props) {
     canvas.style.zoom = String(value / 100);
     canvas.style.transform = 'none';
     canvas.style.transformOrigin = 'top center';
-    integrateDialogueTails(canvas);
     applyWorkspaceLayout();
     if (main) {
       main.style.overflow = 'auto';
@@ -128,6 +291,7 @@ export default function AuthorProductionWorkspaceZoom(props) {
   }, [applyWorkspaceLayout, zoom]);
 
   const fitPage = useCallback(() => {
+    if (isMobileViewport()) return;
     const root = rootRef.current;
     const canvas = findPageCanvas(root);
     if (!root || !canvas) return;
@@ -150,6 +314,7 @@ export default function AuthorProductionWorkspaceZoom(props) {
   }, [applyZoom]);
 
   const setManualZoom = useCallback((value) => {
+    if (isMobileViewport()) return;
     const next = clamp(value, 25, 150);
     setFitActive(false);
     setZoom(next);
@@ -170,14 +335,14 @@ export default function AuthorProductionWorkspaceZoom(props) {
       refreshRail();
       applyWorkspaceLayout();
       applyZoom(zoom);
-      if (fitActive) fitPage();
+      if (fitActive && !isMobileViewport()) fitPage();
     }));
     observer.observe(root, { childList: true, subtree: true });
 
     const onResize = () => {
       refreshRail();
       applyWorkspaceLayout();
-      if (fitActive) fitPage();
+      if (fitActive && !isMobileViewport()) fitPage();
       else applyZoom(zoom);
     };
     window.addEventListener('resize', onResize);
@@ -189,7 +354,7 @@ export default function AuthorProductionWorkspaceZoom(props) {
     };
   }, [applyWorkspaceLayout, applyZoom, fitActive, fitPage, zoom]);
 
-  const zoomToolButton = rightRail ? createPortal(
+  const zoomToolButton = rightRail && !isMobileViewport() ? createPortal(
     <button
       type="button"
       onClick={() => setZoomOpen((open) => !open)}
@@ -204,6 +369,7 @@ export default function AuthorProductionWorkspaceZoom(props) {
   ) : null;
 
   return <div ref={rootRef} className="relative" data-fotoplay-workspace="true">
+    <style>{mobileStyles}</style>
     <AuthorProductionWorkspacePage {...props} />
     {zoomToolButton}
     {zoomOpen && <div className="fixed right-[72px] top-[220px] z-[195] w-[250px] border border-white/15 bg-[#111418] p-4 text-white shadow-2xl" data-fotoplay-zoom-panel="true">
