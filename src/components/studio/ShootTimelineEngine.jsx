@@ -1,6 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Folder, Music2, Pause, Play, Scissors, Trash2, Undo2, Upload, Volume2, VolumeX, ZoomIn, ZoomOut } from 'lucide-react';
+import { Folder, Music2, Pause, Play, Scissors, Undo2, Upload, Volume2, VolumeX, ZoomIn, ZoomOut } from 'lucide-react';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const clipDuration = (clip) => Math.max(0.05, Number(clip?.trim_end || 0) - Number(clip?.trim_start || 0));
@@ -141,6 +141,7 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({ clips, mus
   callbacksRef.current = { onPlayhead, onPlayingChange, onActiveClip };
   const timelineDuration = useMemo(() => timelineDurationOf(clips), [clips, revision]);
   const selectedClip = clips.find((clip) => clip.id === selectedId) || clips.find((clip) => clip.id === activeClipIdRef.current) || clips[0] || null;
+  const selectedClipIndex = selectedClip ? clips.findIndex((clip) => clip.id === selectedClip.id) : -1;
   const pxPerSecond = 72 * zoom;
   const timelineWidth = Math.max(640, timelineDuration * pxPerSecond);
 
@@ -332,6 +333,19 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({ clips, mus
     void syncToTimeline(playhead, false);
   };
 
+  const updateTrimStart = (clip, rawValue) => {
+    const next = Math.max(0, Math.min(Number(rawValue) || 0, Number(clip.trim_end) - 0.05));
+    mutateClip(clip.id, { trim_start: next });
+    void seek(clipStart(clipsRef.current, clip.id), false);
+  };
+
+  const updateTrimEnd = (clip, rawValue) => {
+    const sourceDuration = Number(clip.source_duration || clip.trim_end || 999);
+    const next = Math.max(Number(clip.trim_start) + 0.05, Math.min(Number(rawValue) || 0.05, sourceDuration));
+    mutateClip(clip.id, { trim_end: next });
+    void seek(Math.min(playhead, timelineDurationOf(clipsRef.current)), false);
+  };
+
   const splitAtPlayhead = () => {
     const location = locateClip(clipsRef.current, playhead);
     if (!location?.clip) return;
@@ -366,24 +380,6 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({ clips, mus
     [clipsRef.current[index], clipsRef.current[target]] = [clipsRef.current[target], clipsRef.current[index]];
     force();
     void seek(clipStart(clipsRef.current, selectedClip.id), false);
-  };
-
-  const beginTrim = (event, clip, side) => {
-    event.stopPropagation();
-    event.preventDefault();
-    remember();
-    const startX = event.clientX;
-    const originalStart = Number(clip.trim_start || 0);
-    const originalEnd = Number(clip.trim_end || 0);
-    const move = (moveEvent) => {
-      const delta = (moveEvent.clientX - startX) / pxPerSecond;
-      if (side === 'left') clip.trim_start = clamp(originalStart + delta, 0, originalEnd - 0.05);
-      else clip.trim_end = clamp(originalEnd + delta, originalStart + 0.05, Math.max(originalEnd, Number(clip.source_duration || originalEnd)));
-      force();
-    };
-    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); void syncToTimeline(playhead, false); };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up, { once: true });
   };
 
   const beginMusicMove = (event) => {
@@ -455,15 +451,28 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({ clips, mus
         <div className="flex items-center gap-2"><button type="button" onClick={() => triggerLegacy((text) => text.includes('Export Scene'))} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black">Export Scene</button></div>
       </section>
 
-      <div className="grid gap-3 xl:grid-cols-[1fr_300px]">
+      <div className="grid gap-3 xl:grid-cols-[1fr_340px]">
         <section className="border border-white/10 bg-black p-2"><div className={`mx-auto overflow-hidden bg-black ${previewClass}`}>{preview}</div></section>
         <aside className="space-y-3 border border-white/10 bg-[#17191d] p-3">
           {selectedClip ? <>
-            <div className="flex items-center justify-between"><div><p className="text-xs font-black">{selectedClip.label}</p><p className="text-[9px] text-white/35">VIDEO CLIP</p></div><button type="button" onClick={deleteSelected} className="p-2 text-red-300"><Trash2 size={14} /></button></div>
-            <div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => moveSelected(-1)} className="border border-white/10 p-2 text-[10px] font-bold">← Earlier</button><button type="button" onClick={() => moveSelected(1)} className="border border-white/10 p-2 text-[10px] font-bold">Later →</button></div>
+            <div className="border-b border-white/10 pb-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div><p className="text-xs font-black">{selectedClip.label}</p><p className="text-[9px] text-white/35">VIDEO CLIP</p></div>
+                <button type="button" onClick={splitAtPlayhead} className="bg-white/10 px-2 py-1 text-[10px] font-bold">Split at playhead</button>
+              </div>
+              <div className="mb-3 grid grid-cols-3 gap-1">
+                <button type="button" disabled={selectedClipIndex <= 0} onClick={() => moveSelected(-1)} className="border border-white/10 bg-white/5 px-2 py-2 text-[10px] font-bold disabled:opacity-25">← Move left</button>
+                <button type="button" onClick={deleteSelected} className="border border-red-400/25 bg-red-400/10 px-2 py-2 text-[10px] font-bold text-red-200">Delete</button>
+                <button type="button" disabled={selectedClipIndex < 0 || selectedClipIndex >= clips.length - 1} onClick={() => moveSelected(1)} className="border border-white/10 bg-white/5 px-2 py-2 text-[10px] font-bold disabled:opacity-25">Move right →</button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-[10px] text-white/45">Trim start<input type="number" min="0" step="0.05" value={Number(selectedClip.trim_start || 0)} onChange={(event) => updateTrimStart(selectedClip, event.target.value)} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" /></label>
+                <label className="text-[10px] text-white/45">Trim end<input type="number" min="0.05" step="0.05" value={Number(selectedClip.trim_end || selectedClip.source_duration || 0)} onChange={(event) => updateTrimEnd(selectedClip, event.target.value)} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" /></label>
+              </div>
+            </div>
             <label className="block text-[10px] text-white/45">Scale · {Number(selectedClip.scale || 1).toFixed(2)}×<input type="range" min="1" max="2.5" step="0.05" value={selectedClip.scale || 1} onChange={(event) => mutateClip(selectedClip.id, { scale: Number(event.target.value) })} className="mt-1 w-full" /></label>
-            <label className="block text-[10px] text-white/45">Position X<input type="range" min="-100" max="100" step="1" value={selectedClip.x || 0} onChange={(event) => mutateClip(selectedClip.id, { x: Number(event.target.value) })} className="mt-1 w-full" /></label>
-            <label className="block text-[10px] text-white/45">Position Y<input type="range" min="-100" max="100" step="1" value={selectedClip.y || 0} onChange={(event) => mutateClip(selectedClip.id, { y: Number(event.target.value) })} className="mt-1 w-full" /></label>
+            <label className="block text-[10px] text-white/45">Position X · {Number(selectedClip.x || 0)}%<input type="range" min="-100" max="100" step="1" value={selectedClip.x || 0} onChange={(event) => mutateClip(selectedClip.id, { x: Number(event.target.value) })} className="mt-1 w-full" /></label>
+            <label className="block text-[10px] text-white/45">Position Y · {Number(selectedClip.y || 0)}%<input type="range" min="-100" max="100" step="1" value={selectedClip.y || 0} onChange={(event) => mutateClip(selectedClip.id, { y: Number(event.target.value) })} className="mt-1 w-full" /></label>
             <label className="block text-[10px] text-white/45">Clip volume · {Math.round(Number(selectedClip.volume ?? 1) * 100)}%<input type="range" min="0" max="1" step="0.05" value={selectedClip.volume ?? 1} onChange={(event) => mutateClip(selectedClip.id, { volume: Number(event.target.value) })} className="mt-1 w-full" /></label>
             <button type="button" onClick={() => mutateClip(selectedClip.id, { muted: !selectedClip.muted })} className="flex w-full items-center justify-center gap-2 border border-white/10 p-2 text-xs font-bold">{selectedClip.muted ? <VolumeX size={13} /> : <Volume2 size={13} />}{selectedClip.muted ? 'Muted' : 'Clip audio on'}</button>
           </> : null}
@@ -477,7 +486,7 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({ clips, mus
           <div className="border-r border-white/10 bg-[#17191d]"><div className="h-7 border-b border-white/10" /><div className="flex h-24 items-center px-2 text-[9px] font-black text-white/55">V1 · VIDEO</div><div className="flex h-16 items-center px-2 text-[9px] font-black text-white/55">A1 · MUSIC</div></div>
           <div className="overflow-x-auto"><div className="relative" style={{ width: `${timelineWidth}px`, minWidth: '100%' }}>
             <div className="relative h-7 border-b border-white/10" onPointerDown={(event) => { const rect = event.currentTarget.getBoundingClientRect(); void seek((event.clientX - rect.left) / pxPerSecond, playing); }}>{Array.from({ length: rulerMarks }, (_, index) => { const second = index * rulerStep; return <div key={second} className="absolute inset-y-0 border-l border-white/15" style={{ left: `${second * pxPerSecond}px` }}><span className="absolute left-1 top-1 text-[8px] text-white/35">{second.toFixed(rulerStep < 1 ? 1 : 0)}s</span></div>; })}</div>
-            <div className="relative h-24 border-b border-white/10 bg-black/30" onPointerDown={(event) => { const rect = event.currentTarget.getBoundingClientRect(); void seek((event.clientX - rect.left) / pxPerSecond, playing); }}>{clips.map((clip, index) => { const start = clipStart(clips, clip.id); const width = clipDuration(clip) * pxPerSecond; const selected = selectedClip?.id === clip.id; return <div key={clip.id} onPointerDown={(event) => { event.stopPropagation(); setSelectedId(clip.id); callbacksRef.current.onActiveClip?.(clip.id); void seek(start, false); }} className={`absolute inset-y-1 overflow-hidden border bg-[#20252c] ${selected ? 'z-20 border-[#23c7be] ring-1 ring-[#23c7be]' : 'z-10 border-white/15'}`} style={{ left: `${start * pxPerSecond}px`, width: `${Math.max(18, width)}px` }}><video src={clip.url} muted preload="metadata" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40" /><div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 to-transparent" /><div className="pointer-events-none absolute bottom-2 left-3 right-3"><p className="truncate text-[10px] font-black">{index + 1}. {clip.label}</p><p className="text-[8px] text-white/55">{clipDuration(clip).toFixed(2)}s</p></div><button type="button" onPointerDown={(event) => beginTrim(event, clip, 'left')} className="absolute inset-y-0 left-0 z-30 w-3 cursor-ew-resize bg-white/10"><span className="absolute left-1/2 top-1/2 h-7 w-[2px] -translate-x-1/2 -translate-y-1/2 bg-white/80" /></button><button type="button" onPointerDown={(event) => beginTrim(event, clip, 'right')} className="absolute inset-y-0 right-0 z-30 w-3 cursor-ew-resize bg-white/10"><span className="absolute left-1/2 top-1/2 h-7 w-[2px] -translate-x-1/2 -translate-y-1/2 bg-white/80" /></button></div>; })}</div>
+            <div className="relative h-24 border-b border-white/10 bg-black/30" onPointerDown={(event) => { const rect = event.currentTarget.getBoundingClientRect(); void seek((event.clientX - rect.left) / pxPerSecond, playing); }}>{clips.map((clip, index) => { const start = clipStart(clips, clip.id); const width = clipDuration(clip) * pxPerSecond; const selected = selectedClip?.id === clip.id; return <div key={clip.id} onPointerDown={(event) => { event.stopPropagation(); setSelectedId(clip.id); callbacksRef.current.onActiveClip?.(clip.id); void seek(start, false); }} className={`absolute inset-y-1 overflow-hidden border bg-[#20252c] ${selected ? 'z-20 border-[#23c7be] ring-1 ring-[#23c7be]' : 'z-10 border-white/15'}`} style={{ left: `${start * pxPerSecond}px`, width: `${Math.max(18, width)}px` }}><video src={clip.url} muted preload="metadata" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40" /><div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 to-transparent" /><div className="pointer-events-none absolute bottom-2 left-3 right-3"><p className="truncate text-[10px] font-black">{index + 1}. {clip.label}</p><p className="text-[8px] text-white/55">{clipDuration(clip).toFixed(2)}s</p></div></div>; })}</div>
             <div className="relative h-16 bg-black/30" onPointerDown={(event) => { const rect = event.currentTarget.getBoundingClientRect(); void seek((event.clientX - rect.left) / pxPerSecond, playing); }}>{!music.url ? <div className="absolute inset-2 flex items-center gap-2"><button type="button" onClick={(event) => { event.stopPropagation(); triggerLegacy((text) => text.includes('Add Music')); }} className="flex items-center gap-2 border border-dashed border-white/20 px-3 py-2 text-[10px] font-bold text-white/55"><Upload size={12} /> Add music</button><button type="button" onClick={(event) => { event.stopPropagation(); triggerLegacy((text) => text.trim() === 'Vault'); }} className="flex items-center gap-2 border border-white/10 px-3 py-2 text-[10px] font-bold text-white/55"><Folder size={12} /> Vault</button></div> : <div onPointerDown={beginMusicMove} className="absolute inset-y-2 cursor-grab overflow-hidden border border-[#23c7be]/60 bg-[#23c7be]/15" style={{ left: `${Number(music.start || 0) * pxPerSecond}px`, width: `${Math.max(24, musicVisible * pxPerSecond)}px` }}><div className="pointer-events-none absolute inset-0 flex items-center px-5"><div><p className="truncate text-[10px] font-black text-[#bff7f3]">♫ {music.name || 'Music'}</p><p className="text-[8px] text-white/55">{music.loop ? 'Loop' : `${musicLength.toFixed(2)}s`}</p></div></div><button type="button" onPointerDown={(event) => beginMusicTrim(event, 'left')} className="absolute inset-y-0 left-0 z-30 w-3 cursor-ew-resize bg-[#23c7be]/35" /><button type="button" onPointerDown={(event) => beginMusicTrim(event, 'right')} className="absolute inset-y-0 right-0 z-30 w-3 cursor-ew-resize bg-[#23c7be]/35" /></div>}</div>
             <div className="pointer-events-none absolute bottom-0 top-0 z-50 w-[2px] bg-[#23c7be]" style={{ left: `${playhead * pxPerSecond}px` }} />
           </div></div>
