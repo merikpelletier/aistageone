@@ -81,17 +81,24 @@ const mobileStyles = `
   }
 
   [data-fotoplay-workspace="true"] header {
-    display: grid !important;
-    grid-template-columns: 38px minmax(0, 1fr) !important;
+    display: flex !important;
+    align-items: center !important;
     gap: 6px !important;
     padding: 6px !important;
     margin-bottom: 6px !important;
-    align-items: center !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  [data-fotoplay-workspace="true"] header::-webkit-scrollbar {
+    display: none;
   }
 
   [data-fotoplay-workspace="true"] header > button:first-child {
-    grid-column: 1 !important;
-    grid-row: 1 !important;
+    flex: 0 0 38px !important;
     width: 38px !important;
     height: 38px !important;
     min-height: 38px !important;
@@ -99,9 +106,9 @@ const mobileStyles = `
   }
 
   [data-fotoplay-workspace="true"] header > div:first-of-type {
-    grid-column: 2 !important;
-    grid-row: 1 !important;
+    flex: 0 0 220px !important;
     min-width: 0 !important;
+    max-width: 220px !important;
   }
 
   [data-fotoplay-workspace="true"] header > div:first-of-type p {
@@ -122,6 +129,9 @@ const mobileStyles = `
 
   [data-fotoplay-workspace="true"] header > button:not(:first-child),
   [data-fotoplay-workspace="true"] header > a {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: max-content !important;
     min-height: 34px !important;
     padding: 5px 8px !important;
     font-size: 9px !important;
@@ -134,11 +144,6 @@ const mobileStyles = `
   [data-fotoplay-workspace="true"] header > a svg {
     width: 13px !important;
     height: 13px !important;
-  }
-
-  [data-fotoplay-workspace="true"] header > button:nth-of-type(n+2),
-  [data-fotoplay-workspace="true"] header > a {
-    grid-column: auto !important;
   }
 
   [data-fotoplay-workspace="true"] > div > div:nth-child(2) {
