@@ -1,39 +1,41 @@
 @media (min-width: 1024px) {
-  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] {
+  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) {
     grid-template-columns: minmax(0, 1fr) 300px !important;
     align-items: start !important;
   }
 
-  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] > section:first-child {
+  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) > section:first-child {
     padding: 10px !important;
     display: flex !important;
     align-items: flex-start !important;
     justify-content: center !important;
   }
 
-  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] > section:first-child > [class~="aspect-[9/16]"] {
-    width: 100% !important;
-    max-width: 281px !important;
+  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) > section:first-child > div[class*="aspect-[9/16]"] {
+    width: auto !important;
+    height: min(52vh, 500px) !important;
+    max-width: none !important;
     max-height: 500px !important;
   }
 
-  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] > section:first-child > [class~="aspect-square"] {
-    width: 100% !important;
+  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) > section:first-child > div.aspect-square {
+    width: min(52vh, 500px) !important;
+    height: min(52vh, 500px) !important;
     max-width: 500px !important;
     max-height: 500px !important;
   }
 
-  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] > section:first-child > [class~="aspect-video"] {
-    width: 100% !important;
-    max-width: 889px !important;
+  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) > section:first-child > div.aspect-video {
+    width: min(100%, 889px) !important;
+    height: auto !important;
     max-height: 500px !important;
   }
 
-  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] > aside {
+  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) > aside {
     padding: 12px !important;
   }
 
-  .studio-shell [class~="lg:grid-cols-[1fr_340px]"] > aside > :not([hidden]) ~ :not([hidden]) {
+  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) > aside > :not([hidden]) ~ :not([hidden]) {
     margin-top: 8px !important;
   }
 }
