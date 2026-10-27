@@ -81,24 +81,19 @@ const mobileStyles = `
   }
 
   [data-fotoplay-workspace="true"] header {
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
+    display: grid !important;
+    grid-template-columns: 38px repeat(3, minmax(0, 1fr)) !important;
+    gap: 5px !important;
     padding: 6px !important;
     margin-bottom: 6px !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    white-space: nowrap !important;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  [data-fotoplay-workspace="true"] header::-webkit-scrollbar {
-    display: none;
+    align-items: stretch !important;
+    overflow: visible !important;
+    white-space: normal !important;
   }
 
   [data-fotoplay-workspace="true"] header > button:first-child {
-    flex: 0 0 38px !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
     width: 38px !important;
     height: 38px !important;
     min-height: 38px !important;
@@ -106,9 +101,10 @@ const mobileStyles = `
   }
 
   [data-fotoplay-workspace="true"] header > div:first-of-type {
-    flex: 0 0 220px !important;
+    grid-column: 2 / 5 !important;
+    grid-row: 1 !important;
     min-width: 0 !important;
-    max-width: 220px !important;
+    align-self: center !important;
   }
 
   [data-fotoplay-workspace="true"] header > div:first-of-type p {
@@ -129,21 +125,23 @@ const mobileStyles = `
 
   [data-fotoplay-workspace="true"] header > button:not(:first-child),
   [data-fotoplay-workspace="true"] header > a {
-    flex: 0 0 auto !important;
-    width: auto !important;
-    min-width: max-content !important;
+    width: 100% !important;
+    min-width: 0 !important;
     min-height: 34px !important;
-    padding: 5px 8px !important;
-    font-size: 9px !important;
+    padding: 5px 4px !important;
+    font-size: 8.5px !important;
     line-height: 1.05 !important;
-    gap: 4px !important;
-    white-space: nowrap !important;
+    gap: 3px !important;
+    white-space: normal !important;
+    text-align: center !important;
+    justify-content: center !important;
   }
 
   [data-fotoplay-workspace="true"] header > button:not(:first-child) svg,
   [data-fotoplay-workspace="true"] header > a svg {
-    width: 13px !important;
-    height: 13px !important;
+    width: 12px !important;
+    height: 12px !important;
+    flex: 0 0 auto !important;
   }
 
   [data-fotoplay-workspace="true"] > div > div:nth-child(2) {
@@ -160,22 +158,17 @@ const mobileStyles = `
   }
 
   [data-fotoplay-workspace="true"] [class*="grid-cols-9"] {
-    display: flex !important;
-    gap: 5px !important;
-    overflow-x: auto !important;
+    display: grid !important;
+    grid-template-columns: repeat(9, minmax(28px, 1fr)) !important;
+    gap: 4px !important;
+    overflow: visible !important;
     padding: 5px !important;
     margin-bottom: 6px !important;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  [data-fotoplay-workspace="true"] [class*="grid-cols-9"]::-webkit-scrollbar {
-    display: none;
   }
 
   [data-fotoplay-workspace="true"] [class*="grid-cols-9"] > button {
-    flex: 0 0 34px !important;
-    width: 34px !important;
+    width: 100% !important;
+    min-width: 0 !important;
     height: 32px !important;
     font-size: 9px !important;
   }
@@ -193,22 +186,17 @@ const mobileStyles = `
   }
 
   [data-fotoplay-workspace="true"] [class*="grid-cols-[62px_minmax(0,1fr)_62px]"] > aside {
-    display: flex !important;
-    flex-direction: row !important;
+    display: grid !important;
+    grid-template-columns: repeat(6, 40px) !important;
+    justify-content: center !important;
     align-items: center !important;
     gap: 4px !important;
     width: 100% !important;
-    min-height: 46px !important;
+    min-height: 48px !important;
     padding: 4px !important;
-    overflow-x: auto !important;
+    overflow: visible !important;
     border-left: 0 !important;
     border-right: 0 !important;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  [data-fotoplay-workspace="true"] [class*="grid-cols-[62px_minmax(0,1fr)_62px]"] > aside::-webkit-scrollbar {
-    display: none;
   }
 
   [data-fotoplay-workspace="true"] [class*="grid-cols-[62px_minmax(0,1fr)_62px]"] > aside:first-child {
@@ -245,7 +233,6 @@ const mobileStyles = `
   }
 
   [data-fotoplay-workspace="true"] [class*="grid-cols-[62px_minmax(0,1fr)_62px]"] > aside button {
-    flex: 0 0 auto !important;
     width: 40px !important;
     height: 40px !important;
     min-height: 40px !important;
