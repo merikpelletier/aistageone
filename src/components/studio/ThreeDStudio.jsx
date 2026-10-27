@@ -217,15 +217,15 @@ function Generate3D() {
   }, [generationType, enabledForMode, selectedModel]);
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] min-h-0 overflow-y-auto bg-[#202328] pb-24 text-white">
-      <div className="mx-auto flex h-full min-h-0 max-w-[1600px] flex-col p-3 md:p-4 lg:p-5">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-[#202328] pb-24 text-white">
+      <div className="mx-auto flex max-w-[1600px] flex-col p-3 md:p-4 lg:p-5">
         <div className="mb-4 flex flex-shrink-0 items-start gap-3 border-b border-white/10 pb-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Box size={20} /></div>
           <div><p className="text-[9px] font-black uppercase tracking-[0.28em] text-[#23c7be]">AISTAGE.ONE · 3D Studio</p><h1 className="text-2xl font-black tracking-tight md:text-3xl">Generate 3D</h1><p className="mt-1 text-xs text-white/45 md:text-sm">One workspace for every 3D engine you enable in Admin.</p></div>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-[4px] border border-white/10 bg-[#17191d] xl:grid-cols-[280px_minmax(0,1fr)_300px]">
-          <aside className="min-h-0 overflow-y-auto border-b border-white/10 bg-[#17191d] p-3 xl:border-b-0 xl:border-r">
+        <div className="grid grid-cols-1 rounded-[4px] border border-white/10 bg-[#17191d] xl:grid-cols-[280px_minmax(0,1fr)_300px]">
+          <aside className="border-b border-white/10 bg-[#17191d] p-3 xl:border-b-0 xl:border-r">
             <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Input</p>
             <div className="space-y-2">
               {GENERATION_TYPES.map((item) => {
@@ -248,20 +248,20 @@ function Generate3D() {
             {showAdvanced && <div className="mt-3 space-y-2 text-xs">{(selected?.capabilities?.features || []).length ? (selected.capabilities.features || []).map((feature) => <div key={feature} className="rounded-[3px] border border-white/10 bg-white/[0.02] p-3"><div className="mb-1 text-white/35">Capability</div><div className="font-semibold">{String(feature).replaceAll('_', ' ')}</div></div>) : <div className="rounded-[3px] border border-white/10 p-3 text-white/45">Model-specific controls will appear here.</div>}</div>}
           </aside>
 
-          <section className="flex min-h-0 min-w-0 flex-col overflow-y-auto bg-[#202328] p-3 md:p-4">
-            <div className="relative flex min-h-[320px] flex-1 items-center justify-center overflow-hidden rounded-[4px] border border-white/10 bg-[#1d2126]">
+          <section className="flex min-w-0 flex-col bg-[#202328] p-3 md:p-4">
+            <div className="relative flex min-h-[420px] items-center justify-center overflow-hidden rounded-[4px] border border-white/10 bg-[#1d2126] md:min-h-[520px]">
               <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
               <div className="relative px-8 text-center"><div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Box size={40} strokeWidth={1.4} /></div><p className="text-lg font-black text-white">3D Preview Workspace</p><p className="mx-auto mt-2 max-w-md text-sm text-white/40">Generated GLB models will appear here with orbit, zoom and inspection controls.</p></div>
             </div>
 
-            <div className="mt-3 flex-shrink-0 rounded-[4px] border border-white/10 bg-[#17191d] p-3">
+            <div className="mt-3 rounded-[4px] border border-white/10 bg-[#17191d] p-3">
               {generationType === 'text' && <><label className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40">Prompt</label><textarea className="mt-2 min-h-[86px] w-full rounded-[3px] border border-white/15 bg-black/25 p-3 text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" placeholder="Describe the 3D character, accessory, prop or environment…" /></>}
               {generationType === 'image' && <div className="flex min-h-[110px] items-center justify-center rounded-[3px] border border-dashed border-white/15 bg-black/20 p-4 text-center"><div><Upload size={24} className="mx-auto mb-2 text-[#23c7be]" /><div className="font-bold">Add reference image</div><div className="mt-1 text-xs text-white/40">The active engine determines supported image formats.</div></div></div>}
               {generationType === 'multi' && <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{['Front', 'Back', 'Left', 'Right'].map((side) => <div key={side} className="flex aspect-[4/3] items-center justify-center rounded-[3px] border border-dashed border-white/15 bg-black/20 text-center"><div><Upload size={18} className="mx-auto mb-1 text-[#23c7be]" /><div className="text-xs font-bold">{side}</div></div></div>)}</div>}
             </div>
           </section>
 
-          <aside className="min-h-0 overflow-y-auto border-t border-white/10 bg-[#17191d] p-3 xl:border-l xl:border-t-0">
+          <aside className="border-t border-white/10 bg-[#17191d] p-3 xl:border-l xl:border-t-0">
             <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Output</p>
             <div className="space-y-2">
               {[['AI model', selected?.name || 'None enabled'], ['Input mode', mode?.label], ['Primary working format', 'GLB'], ['Storage destination', 'My 3D Assets'], ['Price', selected?.credit_cost != null ? `${selected.credit_cost} credits` : 'Calculated from Admin model settings']].map(([label, value]) => <div key={label} className="rounded-[3px] border border-white/10 bg-black/20 p-3"><div className="text-[11px] text-white/35">{label}</div><div className="mt-1 text-sm font-bold text-white">{value}</div></div>)}
