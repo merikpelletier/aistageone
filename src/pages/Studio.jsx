@@ -70,9 +70,7 @@ const STUDIO_TOOL_SECTIONS = [
     label: '3D',
     tools: [
       { key: 'generate_3d', label: 'Generate 3D', icon: Layers, action: 'workspace' },
-      { key: 'characters_3d', label: 'Characters', icon: Users, action: 'workspace' },
-      { key: 'clothing_3d', label: 'Clothing & Accessories', icon: ShoppingBag, action: 'workspace' },
-      { key: 'props_3d', label: 'Props & Sets', icon: Layers, action: 'workspace' },
+      { key: 'three_d_shop', label: '3D Shop', icon: ShoppingBag, action: 'workspace' },
       { key: 'my_3d_assets', label: 'My 3D Assets', icon: FolderOpen, action: 'workspace' },
     ],
   },
@@ -896,7 +894,7 @@ export default function Studio() {
         </div>
       )}
 
-      {['generate_3d', 'characters_3d', 'clothing_3d', 'props_3d', 'my_3d_assets'].includes(activeToolPanel) && <div className="absolute inset-0 z-20 bg-[#d8d8d3]"><ThreeDStudio mode={activeToolPanel} /></div>}
+      {['generate_3d', 'three_d_shop', 'my_3d_assets'].includes(activeToolPanel) && <div className="absolute inset-0 z-20 bg-[#d8d8d3]"><ThreeDStudio mode={activeToolPanel} /></div>}
 
       {activeToolPanel === 'ai_connections' && <div className="absolute inset-0 z-20 bg-zinc-950"><AiConnections embedded onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }} /></div>}
 
