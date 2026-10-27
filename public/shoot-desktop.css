@@ -1,41 +1,119 @@
 @media (min-width: 1024px) {
-  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) {
-    grid-template-columns: minmax(0, 1fr) 300px !important;
+  /* Shoot Scene Editor only */
+  div.space-y-4:has(> div.grid.gap-4 > aside) {
+    gap: 10px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > section {
+    padding: 10px 12px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > section:first-child {
+    min-height: 48px !important;
+    padding: 8px 12px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > section:first-child p:first-child {
+    font-size: 10px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > section:first-child p:last-child {
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) button {
+    min-height: 30px !important;
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) input[type="number"] {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) label {
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > div.grid.gap-4 {
+    gap: 10px !important;
+    grid-template-columns: minmax(0, 1fr) 280px !important;
     align-items: start !important;
   }
 
-  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) > section:first-child {
-    padding: 10px !important;
+  div.space-y-4:has(> div.grid.gap-4 > aside) > div.grid.gap-4 > section:first-child {
+    padding: 8px !important;
     display: flex !important;
     align-items: flex-start !important;
     justify-content: center !important;
   }
 
-  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) > section:first-child > div[class*="aspect-[9/16]"] {
+  div.space-y-4:has(> div.grid.gap-4 > aside) > div.grid.gap-4 > section:first-child > div[class*="aspect-[9/16]"] {
     width: auto !important;
-    height: min(52vh, 500px) !important;
+    height: min(46vh, 440px) !important;
     max-width: none !important;
-    max-height: 500px !important;
+    max-height: 440px !important;
   }
 
-  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) > section:first-child > div.aspect-square {
-    width: min(52vh, 500px) !important;
-    height: min(52vh, 500px) !important;
-    max-width: 500px !important;
-    max-height: 500px !important;
+  div.space-y-4:has(> div.grid.gap-4 > aside) > div.grid.gap-4 > section:first-child > div.aspect-square {
+    width: min(46vh, 440px) !important;
+    height: min(46vh, 440px) !important;
+    max-width: 440px !important;
+    max-height: 440px !important;
   }
 
-  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) > section:first-child > div.aspect-video {
-    width: min(100%, 889px) !important;
+  div.space-y-4:has(> div.grid.gap-4 > aside) > div.grid.gap-4 > section:first-child > div.aspect-video {
+    width: min(100%, 782px) !important;
     height: auto !important;
-    max-height: 500px !important;
+    max-height: 440px !important;
   }
 
-  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) > aside {
-    padding: 12px !important;
+  div.space-y-4:has(> div.grid.gap-4 > aside) > div.grid.gap-4 > aside {
+    padding: 10px !important;
   }
 
-  div.grid.gap-4:has(> section > div[class*="aspect-"]):has(> aside) > aside > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 8px !important;
+  div.space-y-4:has(> div.grid.gap-4 > aside) > div.grid.gap-4 > aside > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 6px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > div.grid.gap-4 > aside .pt-3 {
+    padding-top: 8px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > div.grid.gap-4 > aside .mb-3 {
+    margin-bottom: 8px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > div.grid.gap-4 > aside .mb-2 {
+    margin-bottom: 6px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > div.grid.gap-4 > aside .mt-2 {
+    margin-top: 6px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > div.grid.gap-4 > aside input[type="range"] {
+    margin-top: 2px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > section:last-of-type {
+    padding: 10px 12px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > section:last-of-type .mb-3 {
+    margin-bottom: 8px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > section:last-of-type div[class~="h-32"] {
+    height: 88px !important;
+  }
+
+  div.space-y-4:has(> div.grid.gap-4 > aside) > section:last-of-type div[class~="h-7"] {
+    height: 22px !important;
   }
 }
