@@ -7,6 +7,7 @@ import StudioRecorderLauncher from '@/components/studio/StudioRecorderLauncher'
 import StudioAIAssistant from '@/components/studio/StudioAIAssistant'
 import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Circle, Sparkles } from 'lucide-react';
 import PageNotFound from './lib/PageNotFound';
 import MembershipPage from './pages/Membership';
 import SoumettreePage from './pages/Soumettre';
@@ -29,6 +30,37 @@ const { Pages, Layout } = pagesConfig;
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
   : <>{children}</>;
+
+const StudioMobileUtilities = () => {
+  const location = useLocation();
+  if (location.pathname.toLowerCase() !== '/studio') return null;
+
+  const openLauncher = (ariaLabel) => {
+    const trigger = document.querySelector(`button[aria-label="${ariaLabel}"]`);
+    trigger?.click();
+  };
+
+  return (
+    <div className="lg:hidden fixed z-[6250] left-3 right-3 bottom-[74px] flex items-center justify-between pointer-events-none">
+      <button
+        type="button"
+        onClick={() => openLauncher('Open AI Assistant')}
+        className="pointer-events-auto h-11 px-3 bg-teal-500 text-black font-bold text-xs flex items-center gap-2 shadow-lg"
+        aria-label="Open AI Assistant on mobile"
+      >
+        <Sparkles size={14} /> AI Assistant
+      </button>
+      <button
+        type="button"
+        onClick={() => openLauncher('Open Studio Recorder')}
+        className="pointer-events-auto h-11 px-3 bg-red-600 text-white font-bold text-xs flex items-center gap-2 shadow-lg"
+        aria-label="Open Studio Recorder on mobile"
+      >
+        <Circle size={11} fill="currentColor" /> Studio Recorder
+      </button>
+    </div>
+  );
+};
 
 const PrivateRoute = ({ children }) => {
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
@@ -107,6 +139,7 @@ function App() {
             <NavigationTracker />
             <StudioRecorderLauncher />
             <StudioAIAssistant />
+            <StudioMobileUtilities />
             <AuthenticatedApp />
           </Router>
           <Toaster />
