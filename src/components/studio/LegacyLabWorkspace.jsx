@@ -626,7 +626,6 @@ export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoice
         .aistage-tool-surface.aistage-tool-text [class*="text-"] { color: var(--aistage-tool-text) !important; }
         .aistage-tool-surface.aistage-tool-icons svg { color: var(--aistage-tool-icon) !important; stroke: currentColor; }
       `}</style>
-      <div className="flex items-center justify-between bg-black rounded-2xl px-4 py-3"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center"><span className="text-black font-black text-lg">Ⓣ</span></div><div><p className="text-white text-xs font-bold uppercase tracking-wider">Token Balance</p><p className="text-yellow-400 text-2xl font-black">{balance !== null ? balance : '...'}</p></div></div></div>
       {!hideProjects && <AvailableProjectsPortal onJoinProject={onJoinProject} />}
       <AnimatePresence>
         {activeTool && (
