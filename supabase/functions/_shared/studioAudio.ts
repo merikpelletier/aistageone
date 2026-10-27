@@ -121,6 +121,7 @@ export function audioHandler(tool: 'music' | 'sound_fx') {
     validateChoice(choice, model);
     const providerInput = adaptInput(input, choice, model);
     if (tool === 'music' && selectedModelKey === 'elevenlabs/music') {
+      providerInput.is_instrumental = input.is_instrumental;
       if (body.mode === 'auto') {
         providerInput.prompt = `${input.prompt}\n\nCreate and sing original lyrics for this song. The vocals must be clearly audible. Use a concise verse-and-chorus structure appropriate to the requested duration.`;
       } else if (body.mode === 'lyrics') {
