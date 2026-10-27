@@ -1,7 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-
 const clipDuration = (clip) => Math.max(0.05, Number(clip?.trim_end || 0) - Number(clip?.trim_start || 0));
 
 const locateClip = (clips, timelineTime) => {
@@ -12,24 +11,18 @@ const locateClip = (clips, timelineTime) => {
     const duration = clipDuration(clip);
     const end = cursor + duration;
     if (safeTime < end || index === clips.length - 1) {
-      return {
-        clip,
-        index,
-        start: cursor,
-        end,
-        local: clamp(safeTime - cursor, 0, duration),
-        mediaTime: Number(clip.trim_start || 0) + clamp(safeTime - cursor, 0, duration),
-      };
+      const local = clamp(safeTime - cursor, 0, duration);
+      return { clip, index, start: cursor, end, local, mediaTime: Number(clip.trim_start || 0) + local };
     }
     cursor = end;
   }
   return null;
 };
 
-const setElementTime = (element, time) => {
+const setElementTime = (element, time, tolerance = 0.04) => {
   if (!element || !Number.isFinite(time)) return;
   try {
-    if (Math.abs(Number(element.currentTime || 0) - time) > 0.04) element.currentTime = time;
+    if (Math.abs(Number(element.currentTime || 0) - time) > tolerance) element.currentTime = time;
   } catch {}
 };
 
@@ -61,8 +54,14 @@ const prepareVideo = (element, clip, mediaTime, shouldPlay = false) => {
   });
 };
 
-const prepareAudio = (audio, music, timelineTime, timelineDuration, shouldPlay) => {
-  if (!audio || !music?.url) return;
+const syncAudio = (audio, music, timelineTime, timelineDuration, shouldPlay) => {
+  if (!audio) return;
+  if (!music?.url) {
+    audio.pause();
+    audio.removeAttribute('src');
+    return;
+  }
+
   const start = Math.max(0, Number(music.start || 0));
   const trimStart = Math.max(0, Number(music.trim_start || 0));
   const trimEnd = Math.max(trimStart, Number(music.trim_end || music.duration || 0));
@@ -70,19 +69,19 @@ const prepareAudio = (audio, music, timelineTime, timelineDuration, shouldPlay) 
   const local = timelineTime - start;
   const active = available > 0 && local >= 0 && (Boolean(music.loop) || local < available);
 
-  if (!active) {
-    audio.pause();
-    return;
-  }
-
   if (audio.src !== music.url) {
     audio.src = music.url;
     audio.preload = 'auto';
     audio.load();
   }
 
+  if (!active) {
+    audio.pause();
+    return;
+  }
+
   const sourceTime = trimStart + (music.loop ? (local % available) : local);
-  setElementTime(audio, Math.min(sourceTime, Math.max(trimStart, trimEnd - 0.01)));
+  setElementTime(audio, Math.min(sourceTime, Math.max(trimStart, trimEnd - 0.01)), 0.08);
 
   let gain = clamp(Number(music.volume ?? 0.55), 0, 1);
   const fadeIn = Math.max(0, Number(music.fade_in || 0));
@@ -92,8 +91,10 @@ const prepareAudio = (audio, music, timelineTime, timelineDuration, shouldPlay) 
   if (fadeOut > 0 && local > effectiveLength - fadeOut) gain *= clamp((effectiveLength - local) / fadeOut, 0, 1);
   audio.volume = clamp(gain, 0, 1);
   audio.loop = false;
-  if (shouldPlay) audio.play().catch(() => {});
-  else audio.pause();
+
+  if (shouldPlay) {
+    if (audio.paused) audio.play().catch(() => {});
+  } else audio.pause();
 };
 
 const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({
@@ -115,15 +116,24 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({
   const startTimelineRef = useRef(0);
   const activeDeckRef = useRef('a');
   const activeClipIdRef = useRef(null);
+  const clipsRef = useRef(clips);
+  const musicRef = useRef(music);
+  const durationRef = useRef(0);
+  const callbacksRef = useRef({ onPlayhead, onPlayingChange, onActiveClip });
   const [activeDeck, setActiveDeck] = useState('a');
 
   const timelineDuration = useMemo(() => clips.reduce((sum, clip) => sum + clipDuration(clip), 0), [clips]);
+  clipsRef.current = clips;
+  musicRef.current = music;
+  durationRef.current = timelineDuration;
+  callbacksRef.current = { onPlayhead, onPlayingChange, onActiveClip };
 
   const deck = (name) => (name === 'a' ? deckARef.current : deckBRef.current);
   const otherDeck = (name) => (name === 'a' ? deckBRef.current : deckARef.current);
 
   const preloadNext = (location, activeName) => {
-    const next = location && clips[location.index + 1];
+    const currentClips = clipsRef.current;
+    const next = location && currentClips[location.index + 1];
     const target = otherDeck(activeName);
     if (!target) return;
     if (!next) {
@@ -136,8 +146,10 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({
   };
 
   const syncToTimeline = async (timelineTime, shouldPlay, forceDeck = null) => {
-    const safe = clamp(Number(timelineTime || 0), 0, Math.max(0, timelineDuration));
-    const location = locateClip(clips, safe);
+    const currentClips = clipsRef.current;
+    const duration = durationRef.current;
+    const safe = clamp(Number(timelineTime || 0), 0, Math.max(0, duration));
+    const location = locateClip(currentClips, safe);
     if (!location) return false;
 
     let activeName = forceDeck || activeDeckRef.current;
@@ -155,17 +167,17 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({
 
     const ok = await prepareVideo(active, location.clip, location.mediaTime, shouldPlay);
     if (!ok && shouldPlay) {
-      onPlayingChange?.(false);
+      callbacksRef.current.onPlayingChange?.(false);
       return false;
     }
 
     if (activeClipIdRef.current !== location.clip.id) {
       activeClipIdRef.current = location.clip.id;
-      onActiveClip?.(location.clip.id);
+      callbacksRef.current.onActiveClip?.(location.clip.id);
     }
 
     preloadNext(location, activeName);
-    prepareAudio(audioRef.current, music, safe, timelineDuration, shouldPlay);
+    syncAudio(audioRef.current, musicRef.current, safe, duration, shouldPlay);
     return true;
   };
 
@@ -176,24 +188,32 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({
 
   const runClock = () => {
     const tick = () => {
+      const duration = durationRef.current;
       const elapsed = (performance.now() - startedAtRef.current) / 1000;
       const time = startTimelineRef.current + elapsed;
-      if (time >= timelineDuration - 0.005) {
+
+      if (time >= duration - 0.005) {
         stopFrame();
         deckARef.current?.pause();
         deckBRef.current?.pause();
         audioRef.current?.pause();
-        onPlayhead?.(timelineDuration);
-        onPlayingChange?.(false);
+        callbacksRef.current.onPlayhead?.(duration);
+        callbacksRef.current.onPlayingChange?.(false);
         return;
       }
-      const location = locateClip(clips, time);
+
+      const location = locateClip(clipsRef.current, time);
       const currentActive = deck(activeDeckRef.current);
       if (location && currentActive?.dataset.clipId !== String(location.clip.id)) {
         void syncToTimeline(time, true);
+      } else if (location && currentActive) {
+        setElementTime(currentActive, location.mediaTime, 0.12);
+        currentActive.muted = Boolean(location.clip.muted);
+        currentActive.volume = clamp(Number(location.clip.volume ?? 1), 0, 1);
       }
-      prepareAudio(audioRef.current, music, time, timelineDuration, true);
-      onPlayhead?.(time);
+
+      syncAudio(audioRef.current, musicRef.current, time, duration, true);
+      callbacksRef.current.onPlayhead?.(time);
       frameRef.current = requestAnimationFrame(tick);
     };
     stopFrame();
@@ -201,14 +221,15 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({
   };
 
   const play = async (fromTime = playhead) => {
-    if (!clips.length || timelineDuration <= 0) return false;
-    const start = fromTime >= timelineDuration - 0.01 ? 0 : clamp(Number(fromTime || 0), 0, timelineDuration);
+    const duration = durationRef.current;
+    if (!clipsRef.current.length || duration <= 0) return false;
+    const start = fromTime >= duration - 0.01 ? 0 : clamp(Number(fromTime || 0), 0, duration);
     startTimelineRef.current = start;
     startedAtRef.current = performance.now();
     const ok = await syncToTimeline(start, true);
     if (!ok) return false;
-    onPlayhead?.(start);
-    onPlayingChange?.(true);
+    callbacksRef.current.onPlayhead?.(start);
+    callbacksRef.current.onPlayingChange?.(true);
     runClock();
     return true;
   };
@@ -218,16 +239,16 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({
     deckARef.current?.pause();
     deckBRef.current?.pause();
     audioRef.current?.pause();
-    onPlayingChange?.(false);
+    callbacksRef.current.onPlayingChange?.(false);
   };
 
   const seek = async (time, resume = playing) => {
-    const safe = clamp(Number(time || 0), 0, Math.max(0, timelineDuration));
+    const safe = clamp(Number(time || 0), 0, Math.max(0, durationRef.current));
     stopFrame();
     deckARef.current?.pause();
     deckBRef.current?.pause();
     audioRef.current?.pause();
-    onPlayhead?.(safe);
+    callbacksRef.current.onPlayhead?.(safe);
     await syncToTimeline(safe, resume);
     if (resume) {
       startTimelineRef.current = safe;
@@ -236,13 +257,24 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({
     }
   };
 
-  useImperativeHandle(ref, () => ({ play, pause, seek, duration: () => timelineDuration }), [clips, music, playhead, playing, timelineDuration]);
+  useImperativeHandle(ref, () => ({ play, pause, seek, duration: () => durationRef.current }), [playhead, playing]);
 
   useEffect(() => {
     if (!clips.length) return undefined;
-    void syncToTimeline(playhead, false);
+    void syncToTimeline(playhead, Boolean(playing));
+    if (playing) {
+      startTimelineRef.current = playhead;
+      startedAtRef.current = performance.now();
+      runClock();
+    }
     return undefined;
   }, [clips]);
+
+  useEffect(() => {
+    if (playing) {
+      void seek(playhead, true);
+    } else syncAudio(audioRef.current, music, playhead, timelineDuration, false);
+  }, [music.url, music.volume, music.start, music.trim_start, music.trim_end, music.duration, music.loop, music.fade_in, music.fade_out]);
 
   useEffect(() => {
     if (!playing) {
