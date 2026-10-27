@@ -81,8 +81,9 @@ const mobileStyles = `
   }
 
   [data-fotoplay-workspace="true"] header {
+    position: relative !important;
     display: grid !important;
-    grid-template-columns: 38px repeat(3, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 5px !important;
     padding: 6px !important;
     margin-bottom: 6px !important;
@@ -94,6 +95,9 @@ const mobileStyles = `
   [data-fotoplay-workspace="true"] header > button:first-child {
     grid-column: 1 !important;
     grid-row: 1 !important;
+    justify-self: start !important;
+    align-self: center !important;
+    z-index: 2 !important;
     width: 38px !important;
     height: 38px !important;
     min-height: 38px !important;
@@ -101,10 +105,11 @@ const mobileStyles = `
   }
 
   [data-fotoplay-workspace="true"] header > div:first-of-type {
-    grid-column: 2 / 5 !important;
+    grid-column: 1 / 4 !important;
     grid-row: 1 !important;
     min-width: 0 !important;
     align-self: center !important;
+    padding-left: 46px !important;
   }
 
   [data-fotoplay-workspace="true"] header > div:first-of-type p {
@@ -127,9 +132,9 @@ const mobileStyles = `
   [data-fotoplay-workspace="true"] header > a {
     width: 100% !important;
     min-width: 0 !important;
-    min-height: 34px !important;
-    padding: 5px 4px !important;
-    font-size: 8.5px !important;
+    min-height: 38px !important;
+    padding: 6px 5px !important;
+    font-size: 9px !important;
     line-height: 1.05 !important;
     gap: 3px !important;
     white-space: normal !important;
