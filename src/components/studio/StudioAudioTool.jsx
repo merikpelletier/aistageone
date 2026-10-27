@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import SaveToVaultModal from './SaveToVaultModal';
+import AudioSimpleEditor from './AudioSimpleEditor';
 import { audioInput, AUDIO_TOOLS } from '../../../supabase/functions/_shared/studioAudioInput.js';
 import { toast } from 'sonner';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
@@ -24,6 +25,12 @@ export default function StudioAudioTool({ tool, user }) {
   const [downloading, setDownloading] = useState(false);
   const [vault, setVault] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [audioUploading, setAudioUploading] = useState(false);
+  const [showVaultAudio, setShowVaultAudio] = useState(false);
+  const [vaultAudioAssets, setVaultAudioAssets] = useState([]);
+  const [vaultAudioLoading, setVaultAudioLoading] = useState(false);
+  const [editorSource, setEditorSource] = useState(null);
+  const audioFileInput = useRef(null);
   const submission = useRef(false);
   const mounted = useRef(true);
   const service = AUDIO_TOOLS[tool].service;
@@ -126,9 +133,60 @@ export default function StudioAudioTool({ tool, user }) {
     } catch (err) { toast.error(err.message); }
     finally { setDownloading(false); }
   };
+
+  const openGeneratedEditor = () => {
+    const source = job?.status === 'succeeded' && job?.file_url
+      ? job
+      : history.find(item => item.status === 'succeeded' && item.file_url);
+    if (!source?.file_url) { toast.error('Generate a music track first.'); return; }
+    setEditorSource({ url: source.file_url, name: source.title || 'Generated music', source: 'generated' });
+  };
+  const openVaultAudio = async () => {
+    if (!user?.email) return;
+    setVaultAudioLoading(true);
+    setShowVaultAudio(true);
+    try {
+      const assets = await base44.entities.VaultAsset.filter({ user_email: user.email, media_type: 'audio' }, '-created_date', 100);
+      setVaultAudioAssets(assets || []);
+    } catch (err) { toast.error(err.message || 'Could not load audio from Vault.'); }
+    finally { setVaultAudioLoading(false); }
+  };
+  const uploadMusicFile = async (file) => {
+    if (!file) return;
+    if (!file.type?.startsWith('audio/')) { toast.error('Choose an audio file.'); return; }
+    setAudioUploading(true);
+    try {
+      const result = await base44.integrations.Core.UploadFile({ file });
+      setEditorSource({ url: result.file_url, name: file.name.replace(/\.[^.]+$/, '') || 'Uploaded music', source: 'upload' });
+      toast.success('Audio loaded into Music editor.');
+    } catch (err) { toast.error(err.message || 'Could not upload audio.'); }
+    finally { setAudioUploading(false); if (audioFileInput.current) audioFileInput.current.value = ''; }
+  };
+
   const busy = sending || !terminal(job);
   return (
     <div className="space-y-4 text-white">
+      {tool === 'music' ? (
+        <section className="studio-panel-secondary p-4 space-y-3">
+          <div>
+            <div className="studio-tool-eyebrow">Music source</div>
+            <p className="text-sm text-[var(--studio-text-muted)]">Generate a track here, upload your own audio, or bring one from your Vault.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button className="studio-button studio-button-secondary" onClick={openGeneratedEditor}>Generated</button>
+            <button className="studio-button studio-button-secondary" disabled={audioUploading} onClick={() => audioFileInput.current?.click()}>{audioUploading ? 'Uploading…' : 'Upload'}</button>
+            <input ref={audioFileInput} type="file" accept="audio/*" className="hidden" onChange={e => uploadMusicFile(e.target.files?.[0])} />
+            <button className="studio-button studio-button-secondary" onClick={openVaultAudio}>Vault</button>
+          </div>
+        </section>
+      ) : null}
+      {tool === 'music' && editorSource ? (
+        <AudioSimpleEditor
+          sourceUrl={editorSource.url}
+          sourceName={editorSource.name}
+          onSaveToVault={(url) => setVault({ file_url: url, title: `${editorSource.name} edited` })}
+        />
+      ) : null}
       <div className="space-y-2">
         <label className="block">AI Model
           <select className={field + ' bg-black'} value={effectiveModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={busy || modelsLoading || modelOptions.length === 0}>
@@ -198,6 +256,7 @@ export default function StudioAudioTool({ tool, user }) {
           <audio controls src={job.file_url} className="w-full" />
           <div className="flex gap-3 flex-wrap">
             <button className="rounded-xl bg-yellow-400 text-black font-bold px-4 py-2" onClick={() => setVault(job)}>Save to Vault</button>
+            {tool === 'music' ? <button className="rounded-xl border border-white/30 px-4 py-2" onClick={() => setEditorSource({ url: job.file_url, name: job.title || 'Generated music', source: 'generated' })}>Edit music</button> : null}
             <button className="rounded-xl border border-white/30 px-4 py-2" disabled={downloading} onClick={download}>{downloading ? 'Downloading…' : 'Download'}</button>
           </div>
         </div>
@@ -211,6 +270,29 @@ export default function StudioAudioTool({ tool, user }) {
       </details> : null}
       {tool === 'sound_fx' && (!config || config.model === 'sepal/audiogen') ? <p className="text-xs text-white/60">AudioGen model licence: non-commercial. Commercial authorization must be checked before commercial use.</p> : null}
       {vault ? <SaveToVaultModal userEmail={user?.email} imageUrl={vault.file_url} mediaType="audio" onClose={() => setVault(null)} onSaved={() => { setVault(null); toast.success('Audio saved to your Vault.'); }} /> : null}
+      {tool === 'music' && showVaultAudio ? (
+        <div className="fixed inset-0 z-[99998] bg-black/80 flex items-center justify-center p-4">
+          <div className="studio-panel w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="studio-tool-header flex items-center justify-between">
+              <div><div className="studio-tool-eyebrow">Vault</div><h3 className="studio-tool-title">Choose audio</h3></div>
+              <button className="studio-button studio-button-secondary !min-h-9" onClick={() => setShowVaultAudio(false)}>Close</button>
+            </div>
+            <div className="p-4 overflow-y-auto space-y-2">
+              {vaultAudioLoading ? <p className="text-sm text-[var(--studio-text-muted)]">Loading audio…</p> : null}
+              {!vaultAudioLoading && !vaultAudioAssets.length ? <p className="text-sm text-[var(--studio-text-muted)]">No audio files in your Vault.</p> : null}
+              {vaultAudioAssets.map(asset => (
+                <button key={asset.id} className="w-full text-left studio-panel-secondary p-3 flex items-center gap-3 hover:border-[var(--studio-accent)]" onClick={() => {
+                  setEditorSource({ url: asset.url, name: asset.name || 'Vault audio', source: 'vault' });
+                  setShowVaultAudio(false);
+                }}>
+                  <div className="min-w-0 flex-1"><div className="font-semibold truncate">{asset.name || 'Audio'}</div><div className="text-xs text-[var(--studio-text-faint)] truncate">{asset.url}</div></div>
+                  <span className="text-xs text-[var(--studio-accent)]">Open</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
