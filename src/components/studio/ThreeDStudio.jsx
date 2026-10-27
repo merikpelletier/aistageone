@@ -4,9 +4,7 @@ import { supabase } from '@/api/base44Client';
 
 const MODES = [
   { key: 'generate_3d', label: 'Generate 3D', icon: Sparkles },
-  { key: 'characters_3d', label: 'Characters', icon: Users },
-  { key: 'clothing_3d', label: 'Clothing & Accessories', icon: ShoppingBag },
-  { key: 'props_3d', label: 'Props & Sets', icon: Layers },
+  { key: 'three_d_shop', label: '3D Shop', icon: ShoppingBag },
   { key: 'my_3d_assets', label: 'My 3D Assets', icon: FolderOpen },
 ];
 
@@ -277,8 +275,6 @@ function Generate3D() {
 
 export default function ThreeDStudio({ mode = 'generate_3d' }) {
   if (mode === 'generate_3d') return <Generate3D />;
-  if (mode === 'characters_3d') return <LibraryCatalog title="Characters" description="Premium 3D characters from the AI Stage One library, prepared for Studio workflows." icon={Users} assetTypes={['character']} />;
-  if (mode === 'clothing_3d') return <LibraryCatalog title="Clothing & Accessories" description="Wardrobe and accessories sold directly by AISTAGE.ONE." icon={ShoppingBag} assetTypes={['clothing', 'accessory']} />;
-  if (mode === 'props_3d') return <LibraryCatalog title="Props & Sets" description="Props, furniture, environments and set pieces from the AISTAGE 3D library." icon={Layers} assetTypes={['prop', 'set']} />;
+  if (mode === 'three_d_shop') return <LibraryCatalog title="3D Shop" description="Browse all 3D characters, clothing, accessories, props and sets in one catalog." icon={ShoppingBag} assetTypes={['character', 'clothing', 'accessory', 'prop', 'set']} />;
   return <LibraryCatalog title="My 3D Assets" description="3D products already purchased by this member." icon={FolderOpen} assetTypes={['character', 'clothing', 'accessory', 'prop', 'set']} />;
 }
