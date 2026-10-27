@@ -182,6 +182,93 @@ export default function Layout({ children, currentPageName }) {
           html, body, #root { background: #202328 !important; }
           :root { --background: 216 11% 14%; --foreground: 0 0% 100%; }
         }
+
+        @media (max-width: 767px) {
+          .studio-page-content [class*="max-w-[1800px]"] {
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+            padding-bottom: 96px !important;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] > header {
+            display: grid !important;
+            grid-template-columns: 44px minmax(0,1fr) !important;
+            gap: 8px !important;
+            margin-bottom: 12px !important;
+            align-items: center !important;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] > header > button:first-child {
+            grid-column: 1 !important;
+            grid-row: 1 !important;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] > header > div:first-of-type {
+            grid-column: 2 !important;
+            grid-row: 1 !important;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] > header > button:not(:first-child),
+          .studio-page-content [class*="max-w-[1800px]"] > header > a {
+            min-height: 40px !important;
+            padding: 8px 10px !important;
+            border-radius: 12px !important;
+            font-size: 11px !important;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] > header > button:not(:first-child) {
+            grid-column: span 1 !important;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] > div:nth-of-type(1) {
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            padding: 8px !important;
+            border-radius: 16px !important;
+            scroll-snap-type: x proximity;
+            -webkit-overflow-scrolling: touch;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] > div:nth-of-type(1) > button {
+            scroll-snap-align: start;
+            min-width: max-content !important;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] section[class*="rounded-[2rem]"] {
+            border-radius: 18px !important;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] section[class*="rounded-[2rem]"] > div:first-child {
+            padding: 12px !important;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] section[class*="rounded-[2rem]"] > div:first-child > div:first-child {
+            display: grid !important;
+            grid-template-columns: 38px minmax(0,1fr) auto !important;
+            gap: 8px !important;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] section[class*="rounded-[2rem]"] > div:first-child > div:first-child > span:last-child {
+            padding: 8px !important;
+            font-size: 9px !important;
+            white-space: nowrap !important;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] [class*="grid-cols-9"] {
+            display: flex !important;
+            gap: 8px !important;
+            overflow-x: auto !important;
+            padding-bottom: 4px !important;
+            scroll-snap-type: x proximity;
+            -webkit-overflow-scrolling: touch;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] [class*="grid-cols-9"] > button {
+            flex: 0 0 42px !important;
+            width: 42px !important;
+            height: 42px !important;
+            padding: 0 !important;
+            scroll-snap-align: center;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] section[class*="rounded-[2rem]"] > div:last-child {
+            padding: 12px !important;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] textarea,
+          .studio-page-content [class*="max-w-[1800px]"] input,
+          .studio-page-content [class*="max-w-[1800px]"] select {
+            font-size: 16px !important;
+          }
+          .studio-page-content [class*="max-w-[1800px]"] button {
+            touch-action: manipulation;
+          }
+        }
         ` : ''}
 
         ${isSponsorRequestPage ? `
