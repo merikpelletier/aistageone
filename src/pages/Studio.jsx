@@ -326,10 +326,10 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
 function StudioWorkspaceTool({ title, children }) {
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-[#202328] text-white">
-      <div className="sticky top-14 z-30 h-12 flex items-center px-4 md:px-6 border-b border-white/10 bg-[#17191d]/95 backdrop-blur">
+      {title && <div className="sticky top-14 z-30 h-12 flex items-center px-4 md:px-6 border-b border-white/10 bg-[#17191d]/95 backdrop-blur">
         <div className="font-bold text-sm uppercase tracking-wide">{title}</div>
-      </div>
-      <div className="min-h-[calc(100vh-6.5rem)] overflow-y-auto">
+      </div>}
+      <div className={`${title ? 'min-h-[calc(100vh-6.5rem)]' : 'min-h-[calc(100vh-3.5rem)]'} overflow-y-auto`}>
         {children}
       </div>
     </div>
@@ -876,7 +876,7 @@ export default function Studio() {
 
       {activeToolPanel?.startsWith?.('lab:') && (
         <div className="absolute inset-0 z-20 bg-[#202328]">
-          <StudioWorkspaceTool title={STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeToolPanel.slice(4))?.label || 'Tool'}>
+          <StudioWorkspaceTool title={['music', 'sound_fx'].includes(activeToolPanel.slice(4)) ? null : (STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeToolPanel.slice(4))?.label || 'Tool')}>
             <div className="p-4 md:p-6">
               <LabWorkspace user={user} directTool={activeToolPanel.slice(4)} directMode={true} onOpenActor={() => { setActiveToolPanel(null); setEditingActor(false); }} onOpenSet={() => setActiveToolPanel('set')} onOpenVoiceRecorder={() => setShowVoiceRecorder(true)} onOpenAudioUploader={() => setShowAudioUploader(true)} onOpenDubbing={() => setShowDubbingStudio(true)} onOpenTTS={() => setShowTextToSpeech(true)} onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }} onOpenLipSync={() => setShowLipSync(true)} onOpenAnimateImage={() => { setVideoInitialMode('image'); setShowVideoTools(true); }} onJoinProject={handleJoinProject} onOpenFreeTimeline={() => setShowFreeTimeline(true)} onOpenLayout={() => setShowLayout(true)} hideProjects={true} />
             </div>
