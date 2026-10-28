@@ -4,6 +4,15 @@ import { serviceKey,routeKey,validateChoice,adaptInput,fail } from './modelContr
 const nativeFetch=globalThis.fetch.bind(globalThis);
 const contexts=new AsyncLocalStorage<any>();
 const db=()=>createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false},global:{fetch:nativeFetch}});
+const INCOMPATIBLE_REQUIRED_MEDIA=new Set(['image','image_url','input_image','start_image','end_image','last_frame_image','first_frame','video','video_url','base_video','reference_video','reference_videos','audio','reference_audios']);
+const shootCompatible=(model:any,mapping:any={})=>{
+ const input=model?.schema?.components?.schemas?.Input||{};
+ const props=input?.properties||{};
+ const sources=Object.keys(props).map((name)=>mapping?.[name]||name);
+ if(!sources.includes('prompt')||!sources.includes('reference_images'))return false;
+ const required=(input.required||[]).map((name:string)=>mapping?.[name]||name);
+ return !required.some((source:string)=>INCOMPATIBLE_REQUIRED_MEDIA.has(source));
+};
 export async function assertServiceEnabled(){
  const context=contexts.getStore();if(!context)fail('Contexte IA manquant');
  const body=await context.requestBody;
@@ -71,19 +80,15 @@ export function installModelControl(slug:string){
    if(!option&&!shootVideo)fail('Le modèle choisi n’est pas autorisé par Admin pour ce service',422);
 
    assignment=option?compatibleAssignments.find((item:any)=>item.route_key===option.route_key)||compatibleAssignments[0]:compatibleAssignments[0];
-   choice={
-     ...assignment,
-     model_key:requestedModel,
-     input_mapping:option?.input_mapping??assignment.input_mapping??{},
-     defaults:option?.defaults??assignment.defaults??{},
-     enabled:true,
-   };
+   choice={...assignment,model_key:requestedModel,input_mapping:option?.input_mapping??assignment.input_mapping??{},defaults:option?.defaults??assignment.defaults??{},enabled:true};
+   if(shootVideo&&!shootCompatible(requested,choice.input_mapping))fail('Ce modèle vidéo ne correspond pas au workflow Shoot prompt + références visuelles',422);
    model=requested;
   }else{
    if(!choice?.model_key)fail('Aucun modèle n’est configuré par Admin pour ce service',422);
    const {data:configured,error:ce}=await client.from('ai_model_catalog').select('*').eq('model_key',choice.model_key).eq('enabled',true).maybeSingle();
    if(ce)fail('Catalogue des modèles indisponible',503);
    if(!configured)fail('Le modèle configuré par Admin n’est pas actif',422);
+   if(service==='generateVideo:video'&&configured.kind==='video'&&!shootCompatible(configured,choice.input_mapping??{}))fail('Le modèle vidéo configuré ne correspond pas au workflow Shoot prompt + références visuelles',422);
    model=configured;
   }
 
