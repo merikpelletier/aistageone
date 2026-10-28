@@ -195,11 +195,19 @@ serveWithCors(async (req) => {
         else input.start_image = image_url;
       }
 
-      const versions: any = await replicate.models.versions.list('kwaivgi', 'kling-v3-omni-video');
-      const version = versions?.results?.[0]?.id;
-      if (!version) throw new Error('Unable to resolve Kling v3 Omni model version');
+      const predictionRes = await fetch('https://api.replicate.com/v1/models/kwaivgi/kling-v3-omni-video/predictions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ input }),
+      });
+      const prediction: any = await predictionRes.json().catch(() => ({}));
+      if (!predictionRes.ok || !prediction?.id) {
+        throw new Error(prediction?.detail || prediction?.error || 'Unable to start video generation');
+      }
 
-      const prediction: any = await replicate.predictions.create({ version, input });
       return Response.json({
         async: true,
         status: prediction.status,
