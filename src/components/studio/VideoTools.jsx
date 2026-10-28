@@ -119,6 +119,8 @@ const ratioSize = (ratio) => {
   return { width: 1280, height: 720 };
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function AssetsShopPicker({ onSelect, onClose, embedded = false }) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
@@ -582,6 +584,22 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
   const finalPromptForShot = (shot) => promptEdits[shot.id] ?? buildShotPrompt(shot);
 
+  const invokeGenerateVideo = async (body, headers = undefined) => {
+    const { data, error } = await supabase.functions.invoke('generateVideo', { body, ...(headers ? { headers } : {}) });
+    if (error) {
+      let message = error.message || 'Shot generation failed';
+      try {
+        if (error.context && typeof error.context.json === 'function' && !error.context.bodyUsed) {
+          const details = await error.context.json();
+          message = details?.error || details?.message || message;
+        }
+      } catch {}
+      throw new Error(message);
+    }
+    if (data?.error) throw new Error(data.error);
+    return data;
+  };
+
   const generateShot = async (shot) => {
     if (!sceneId) {
       try { await saveScene({ status: 'approved' }); } catch (error) { return toast.error(error.message); }
@@ -604,18 +622,35 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setActiveShotId(shot.id);
     try {
       const refs = shotReferenceUrls(shot);
-      const { data, error } = await supabase.functions.invoke('generateVideo', { body: { prompt: finalPrompt, reference_image_urls: refs, duration: Math.max(3, Math.min(15, Number(shot.duration) || 5)), aspect_ratio: aspectRatio, resolution: '720p', generate_audio: true, engine: 'video', model_key: effectiveModel || undefined }, headers: { 'x-idempotency-key': crypto.randomUUID() } });
-      if (error) {
-        let message = error.message || 'Shot generation failed';
-        try {
-          if (error.context && typeof error.context.json === 'function' && !error.context.bodyUsed) {
-            const details = await error.context.json();
-            message = details?.error || details?.message || message;
-          }
-        } catch {}
-        throw new Error(message);
+      const startData = await invokeGenerateVideo({
+        async_mode: true,
+        prompt: finalPrompt,
+        reference_image_urls: refs,
+        duration: Math.max(3, Math.min(15, Number(shot.duration) || 5)),
+        aspect_ratio: aspectRatio,
+        resolution: '720p',
+        generate_audio: true,
+        engine: 'video',
+        model_key: effectiveModel || undefined,
+      }, { 'x-idempotency-key': crypto.randomUUID() });
+
+      if (!startData?.prediction_id) throw new Error('Video job did not start.');
+
+      let statusData = startData;
+      while (statusData?.status !== 'succeeded') {
+        await sleep(5000);
+        statusData = await invokeGenerateVideo({
+          action: 'status',
+          prediction_id: startData.prediction_id,
+          credit_charge: startData.credit_charge,
+          lineage_inputs: startData.lineage_inputs,
+        });
+        if (['failed', 'canceled', 'aborted'].includes(statusData?.status)) {
+          throw new Error(statusData?.error || `Video generation ${statusData.status}`);
+        }
       }
-      const url = data?.file_url;
+
+      const url = statusData?.file_url;
       if (!url) throw new Error('No video returned.');
       const nextShots = shotPlan.map((item) => item.id === shot.id ? { ...item, result_url: url } : item);
       setShotPlan(nextShots);
