@@ -13,7 +13,15 @@ const PRIMARY_KIND:Record<string,string>={
   'replicateGenerate:compose_scene':'image',
   'replicateGenerate:text_to_video':'video',
 };
-
+const INCOMPATIBLE_REQUIRED_MEDIA=new Set(['image','image_url','input_image','start_image','end_image','last_frame_image','first_frame','video','video_url','base_video','reference_video','reference_videos','audio','reference_audios']);
+const shootCompatible=(model:any,mapping:any={})=>{
+  const input=model?.schema?.components?.schemas?.Input||{};
+  const props=input?.properties||{};
+  const sources=Object.keys(props).map((name)=>mapping?.[name]||name);
+  if(!sources.includes('prompt')||!sources.includes('reference_images'))return false;
+  const required=(input.required||[]).map((name:string)=>mapping?.[name]||name);
+  return !required.some((source:string)=>INCOMPATIBLE_REQUIRED_MEDIA.has(source));
+};
 const firstNumber=(input:any,keys:string[])=>{for(const k of keys){const n=Number(input?.[k]);if(Number.isFinite(n)&&n>0)return n;}return null;};
 const textLength=(input:any)=>{for(const k of ['text','prompt','input','script'])if(typeof input?.[k]==='string'&&input[k].length)return input[k].length;return null;};
 
@@ -48,8 +56,9 @@ export async function quoteAiService(serviceClient:any,service:string,rawInput:a
   const {data:model,error:modelError}=await serviceClient.from('ai_model_catalog').select('*').eq('model_key',selectedModelKey).eq('enabled',true).eq('kind',assignment.kind).maybeSingle();
   if(modelError||!model)throw new Error(modelError?.message||'Modèle tarifable introuvable');
   if(shootVideo&&!model.schema)throw new Error('Le schéma du modèle doit être importé avant utilisation');
-
   const mapping=explicitOption?.input_mapping??assignment.input_mapping??{};
+  if(shootVideo&&!shootCompatible(model,mapping))throw new Error('Ce modèle vidéo ne correspond pas au workflow Shoot prompt + références visuelles');
+
   const defaults=explicitOption?.defaults??assignment.defaults??{};
   const props=model.schema?.components?.schemas?.Input?.properties||{};
   const providerInput:any={...rawInput};
