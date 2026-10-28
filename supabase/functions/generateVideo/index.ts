@@ -230,6 +230,35 @@ serveWithCors(async (req) => {
       });
     }
 
+    if (async_mode && engine === 'kling_video_edit') {
+      if (!video_url) throw new Error('video_url is required for kling_video_edit');
+      const editPrompt = `${mappedPrompt} Keep everything else unchanged.`.trim();
+      const editPredictionRes = await fetch('https://api.replicate.com/v1/models/kwaivgi/kling-v4.0/predictions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          input: {
+            base_video: video_url,
+            prompt: editPrompt,
+          },
+        }),
+      });
+      const editPrediction: any = await editPredictionRes.json().catch(() => ({}));
+      if (!editPredictionRes.ok || !editPrediction?.id) {
+        throw new Error(editPrediction?.detail || editPrediction?.error || 'Unable to start video edit generation');
+      }
+      return Response.json({
+        async: true,
+        status: editPrediction.status,
+        prediction_id: editPrediction.id,
+        credit_charge: creditCharge,
+        lineage_inputs: [image_url, ...references, video_url].filter((value) => typeof value === 'string' && value.length > 0),
+      });
+    }
+
     const encoder = new TextEncoder();
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
