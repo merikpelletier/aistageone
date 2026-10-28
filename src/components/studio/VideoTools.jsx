@@ -10,7 +10,7 @@ import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 import ShootTimelineEngine from '@/components/studio/ShootTimelineEngine';
-import DynamicAiModelControls, { buildModelToolInput, getMappedModelField } from '@/components/studio/DynamicAiModelControls';
+import { buildModelToolInput, getMappedModelField } from '@/components/studio/DynamicAiModelControls';
 
 const RATIOS = [
   { id: '16:9', label: 'Landscape' },
@@ -96,6 +96,7 @@ const newShot = (index = 0) => ({
   character_ids: [],
   lines: [],
   shot_references: [],
+  shot_video_references: [],
   transition_reference_id: '',
   transition_instruction: '',
   description: '',
@@ -284,6 +285,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
         mode: shot.mode || (shot.framing === 'Establishing shot' ? 'establishing' : shot.framing === 'Insert / detail' ? 'insert' : 'standard'),
         character_ids: normalizeShotCastIds(shot, castData),
         shot_references: Array.isArray(shot.shot_references) ? shot.shot_references : [],
+        shot_video_references: Array.isArray(shot.shot_video_references) ? shot.shot_video_references : [],
         transition_reference_id: shot.transition_reference_id || '',
         transition_instruction: shot.transition_instruction || '',
       };
@@ -305,6 +307,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
         action: legacyAction,
       }] : [],
       shot_references: [],
+      shot_video_references: [],
       transition_reference_id: '',
       transition_instruction: '',
       description: legacyMode !== 'standard' ? (legacyAction || legacyDialogue) : '',
@@ -381,13 +384,25 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const modelAspectRatios = Array.isArray(aspectBinding?.schema?.enum) && aspectBinding.schema.enum.length ? aspectBinding.schema.enum.map(String) : RATIOS.map((ratio) => ratio.id);
   const referenceBinding = getMappedModelField(effectiveModelOption, 'reference_images');
   const modelReferenceMax = Number.isFinite(Number(referenceBinding?.schema?.maxItems)) ? Number(referenceBinding.schema.maxItems) : 7;
+  const resolutionBinding = getMappedModelField(effectiveModelOption, 'resolution');
+  const resolutionOptions = Array.isArray(resolutionBinding?.schema?.enum) ? resolutionBinding.schema.enum.map(String) : [];
+  const resolutionValue = resolutionBinding ? (modelParams[resolutionBinding.name] ?? resolutionBinding.schema?.default ?? resolutionOptions[0] ?? '') : '';
+  const audioBinding = getMappedModelField(effectiveModelOption, 'generate_audio');
+  const audioValue = audioBinding ? Boolean(modelParams[audioBinding.name] ?? audioBinding.schema?.default ?? false) : false;
+  const referenceVideoBinding = getMappedModelField(effectiveModelOption, 'reference_videos');
+  const referenceVideoMax = Number.isFinite(Number(referenceVideoBinding?.schema?.maxItems)) ? Number(referenceVideoBinding.schema.maxItems) : 5;
+  const activeVideoReferenceUrls = (Array.isArray(activeShot?.shot_video_references) ? activeShot.shot_video_references : []).map((ref) => ref?.url).filter(Boolean).slice(0, referenceVideoMax);
   const systemModelInput = useMemo(() => ({
     duration: normalizeVideoDuration(activeShot?.duration || 5),
     aspect_ratio: aspectRatio,
     prompt: modelDiscoveryInput.prompt,
     reference_images: modelDiscoveryInput.reference_images.slice(0, modelReferenceMax),
   }), [activeShot?.duration, aspectRatio, modelDiscoveryInput.prompt, modelDiscoveryInput.reference_images, modelDurationMin, modelDurationMax, modelReferenceMax]);
-  const pricingInput = useMemo(() => buildModelToolInput(effectiveModelOption, modelParams, systemModelInput), [effectiveModelOption, modelParams, systemModelInput]);
+  const pricingModelParams = useMemo(() => {
+    if (!referenceVideoBinding) return modelParams;
+    return { ...modelParams, [referenceVideoBinding.name]: activeVideoReferenceUrls };
+  }, [modelParams, referenceVideoBinding?.name, activeVideoReferenceUrls.join('|')]);
+  const pricingInput = useMemo(() => buildModelToolInput(effectiveModelOption, pricingModelParams, systemModelInput), [effectiveModelOption, pricingModelParams, systemModelInput]);
   const { quote: priceQuote } = useAiPriceQuote({ service: quoteService, kind: 'video', input: pricingInput, modelKey: effectiveModel });
 
   const updateCast = (id, patch) => setCast((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
@@ -481,6 +496,18 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     applyPickedImage(data.publicUrl, file.name, target);
   };
 
+  const uploadVideoReference = async (file, target) => {
+    if (!file) return;
+    const { data: authData } = await supabase.auth.getUser();
+    const owner = authData.user?.id || 'public';
+    const extension = file.name?.split('.').pop() || 'mp4';
+    const path = `${owner}/shoot/video-references/${crypto.randomUUID()}.${extension}`;
+    const { error } = await supabase.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
+    if (error) throw error;
+    const { data } = supabase.storage.from('media').getPublicUrl(path);
+    applyPickedVideoReference(data.publicUrl, file.name, target);
+  };
+
   const applyPickedImage = (url, name, target = pickerTarget) => {
     if (!url || !target) return;
     if (target.type === 'cast') updateCast(target.id, { reference_url: url });
@@ -497,6 +524,18 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     if (target.type === 'music') setEditMusic((value) => ({ ...value, url, name: name || 'Vault music', start: 0, trim_start: 0, trim_end: 0, duration: 0, loop: false, fade_in: 0, fade_out: 0 }));
     setShowVaultPicker(false);
     setShowAssetsShop(false);
+    setPickerTarget(null);
+  };
+
+  const applyPickedVideoReference = (url, name, target = pickerTarget) => {
+    if (!url || !target || target.type !== 'shot-video-reference') return;
+    setShotPlan((items) => items.map((shot) => {
+      if (shot.id !== target.shotId) return shot;
+      const currentRefs = Array.isArray(shot.shot_video_references) ? shot.shot_video_references : [];
+      if (!referenceVideoBinding || currentRefs.length >= referenceVideoMax) return shot;
+      return { ...shot, shot_video_references: [...currentRefs, { id: crypto.randomUUID(), name: name || `Video reference ${currentRefs.length + 1}`, url }] };
+    }));
+    setShowVaultPicker(false);
     setPickerTarget(null);
   };
 
@@ -640,7 +679,9 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setActiveShotId(shot.id);
     try {
       const refs = shotReferenceUrls(shot);
-      const effectiveInput = buildModelToolInput(effectiveModelOption, modelParams, {
+      const shotVideoUrls = (Array.isArray(shot.shot_video_references) ? shot.shot_video_references : []).map((ref) => ref?.url).filter(Boolean).slice(0, referenceVideoMax);
+      const generationModelParams = referenceVideoBinding ? { ...modelParams, [referenceVideoBinding.name]: shotVideoUrls } : modelParams;
+      const effectiveInput = buildModelToolInput(effectiveModelOption, generationModelParams, {
         duration: normalizeVideoDuration(shot.duration),
         aspect_ratio: aspectRatio,
         prompt: finalPrompt,
@@ -1050,12 +1091,13 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
   const renderShotReferences = (shot) => {
     const refs = Array.isArray(shot.shot_references) ? shot.shot_references : [];
+    const videoRefs = Array.isArray(shot.shot_video_references) ? shot.shot_video_references : [];
     const allRefs = shotReferences(shot);
     const imageNumberFor = (id) => {
       const index = allRefs.findIndex((ref) => ref.shotReference?.id === id);
       return index >= 0 ? index + 1 : null;
     };
-    return <div className="mt-4 border-t border-white/10 pt-3"><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Shot visual references</p><p className="text-[10px] text-white/35">Optional images used only by this shot. Their Image number is the real order sent to the model.</p></div><div className="flex gap-1"><label className="cursor-pointer bg-white/10 px-3 py-2 text-[10px] font-bold"><Upload size={11} className="mr-1 inline" /> Upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event.target.files?.[0], { type: 'shot-reference', shotId: shot.id }).catch((error) => toast.error(error.message))} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'shot-reference', shotId: shot.id }); setShowVaultPicker(true); }} className="bg-white/10 px-3 py-2 text-[10px] font-bold"><Folder size={11} className="mr-1 inline" /> Vault</button><button type="button" onClick={() => { setPickerTarget({ type: 'shot-reference', shotId: shot.id }); setShowAssetsShop(true); }} className="bg-white/10 px-3 py-2 text-[10px] font-bold"><ShoppingBag size={11} className="mr-1 inline" /> Assets</button></div></div>{refs.length ? <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{refs.map((ref) => <div key={ref.id} className="border border-white/10 bg-black/20 p-2"><div className="aspect-video overflow-hidden bg-black"><img src={ref.url} alt="" className="h-full w-full object-contain" /></div><div className="mt-2 flex items-center justify-between gap-2"><div className="min-w-0"><p className="truncate text-[10px] font-bold text-white">{ref.name || 'Shot reference'}</p><p className="text-[9px] font-black text-[#8ee9e4]">IMAGE {imageNumberFor(ref.id) || '—'}</p></div><button type="button" onClick={() => updateShot(shot.id, { shot_references: refs.filter((item) => item.id !== ref.id), transition_reference_id: shot.transition_reference_id === ref.id ? '' : shot.transition_reference_id })} className="text-white/35"><Trash2 size={12} /></button></div></div>)}</div> : <p className="text-[10px] text-white/35">No additional visual reference.</p>}{refs.length > 0 && <div className="mt-3 grid gap-2 md:grid-cols-[220px_1fr]"><label className="text-[10px] font-black uppercase text-white/40">Transition target<select value={shot.transition_reference_id || ''} onChange={(event) => updateShot(shot.id, { transition_reference_id: event.target.value })} className="mt-1 w-full bg-black/30 p-2 text-xs text-white"><option value="">No transition</option>{refs.map((ref) => <option key={ref.id} value={ref.id}>Image {imageNumberFor(ref.id)} — {ref.name || 'Shot reference'}</option>)}</select></label><label className="text-[10px] font-black uppercase text-white/40">Transition instruction<input value={shot.transition_instruction || ''} onChange={(event) => updateShot(shot.id, { transition_instruction: event.target.value })} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" placeholder="Example: dissolve smoothly / fade slowly / cut sharply" /></label></div>}</div>;
+    return <div className="mt-4 border-t border-white/10 pt-3"><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Shot visual references</p><p className="text-[10px] text-white/35">Optional images used only by this shot. Their Image number is the real order sent to the model.</p></div><div className="flex gap-1"><label className="cursor-pointer bg-white/10 px-3 py-2 text-[10px] font-bold"><Upload size={11} className="mr-1 inline" /> Upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event.target.files?.[0], { type: 'shot-reference', shotId: shot.id }).catch((error) => toast.error(error.message))} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'shot-reference', shotId: shot.id }); setShowVaultPicker(true); }} className="bg-white/10 px-3 py-2 text-[10px] font-bold"><Folder size={11} className="mr-1 inline" /> Vault</button><button type="button" onClick={() => { setPickerTarget({ type: 'shot-reference', shotId: shot.id }); setShowAssetsShop(true); }} className="bg-white/10 px-3 py-2 text-[10px] font-bold"><ShoppingBag size={11} className="mr-1 inline" /> Assets</button></div></div>{refs.length ? <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{refs.map((ref) => <div key={ref.id} className="border border-white/10 bg-black/20 p-2"><div className="aspect-video overflow-hidden bg-black"><img src={ref.url} alt="" className="h-full w-full object-contain" /></div><div className="mt-2 flex items-center justify-between gap-2"><div className="min-w-0"><p className="truncate text-[10px] font-bold text-white">{ref.name || 'Shot reference'}</p><p className="text-[9px] font-black text-[#8ee9e4]">IMAGE {imageNumberFor(ref.id) || '—'}</p></div><button type="button" onClick={() => updateShot(shot.id, { shot_references: refs.filter((item) => item.id !== ref.id), transition_reference_id: shot.transition_reference_id === ref.id ? '' : shot.transition_reference_id })} className="text-white/35"><Trash2 size={12} /></button></div></div>)}</div> : <p className="text-[10px] text-white/35">No additional visual reference.</p>}{refs.length > 0 && <div className="mt-3 grid gap-2 md:grid-cols-[220px_1fr]"><label className="text-[10px] font-black uppercase text-white/40">Transition target<select value={shot.transition_reference_id || ''} onChange={(event) => updateShot(shot.id, { transition_reference_id: event.target.value })} className="mt-1 w-full bg-black/30 p-2 text-xs text-white"><option value="">No transition</option>{refs.map((ref) => <option key={ref.id} value={ref.id}>Image {imageNumberFor(ref.id)} — {ref.name || 'Shot reference'}</option>)}</select></label><label className="text-[10px] font-black uppercase text-white/40">Transition instruction<input value={shot.transition_instruction || ''} onChange={(event) => updateShot(shot.id, { transition_instruction: event.target.value })} className="mt-1 w-full bg-black/30 p-2 text-xs text-white" placeholder="Example: dissolve smoothly / fade slowly / cut sharply" /></label></div>}<div className="mt-4 border-t border-white/10 pt-3"><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Video references</p><p className="text-[10px] text-white/35">Optional motion, camera or style references for models that support reference video input.</p></div>{referenceVideoBinding && <div className="flex gap-1"><label className="cursor-pointer bg-white/10 px-3 py-2 text-[10px] font-bold"><Upload size={11} className="mr-1 inline" /> Upload<input type="file" accept="video/mp4,video/quicktime,video/*" className="hidden" onChange={(event) => uploadVideoReference(event.target.files?.[0], { type: 'shot-video-reference', shotId: shot.id }).catch((error) => toast.error(error.message))} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'shot-video-reference', shotId: shot.id }); setShowVaultPicker(true); }} className="bg-white/10 px-3 py-2 text-[10px] font-bold"><Folder size={11} className="mr-1 inline" /> Vault</button></div>}</div>{!referenceVideoBinding ? <p className="text-[10px] text-white/35">The selected model does not support reference videos.</p> : videoRefs.length ? <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{videoRefs.map((ref, index) => <div key={ref.id} className="border border-white/10 bg-black/20 p-2"><div className="aspect-video overflow-hidden bg-black"><video src={ref.url} muted preload="metadata" className="h-full w-full object-contain" /></div><div className="mt-2 flex items-center justify-between gap-2"><div className="min-w-0"><p className="truncate text-[10px] font-bold text-white">{ref.name || `Video reference ${index + 1}`}</p><p className="text-[9px] font-black text-[#8ee9e4]">VIDEO {index + 1}</p></div><button type="button" onClick={() => updateShot(shot.id, { shot_video_references: videoRefs.filter((item) => item.id !== ref.id) })} className="text-white/35"><Trash2 size={12} /></button></div></div>)}</div> : <p className="text-[10px] text-white/35">No video reference.</p>}</div></div>;
   };
 
   return (
@@ -1074,11 +1116,10 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
           <div className="mb-5 grid grid-cols-4 border border-white/10 bg-[#17191d] text-center text-xs font-black"><button type="button" onClick={() => setStep('setup')} className={`p-3 ${step === 'setup' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>1 · Setup</button><button type="button" onClick={() => sceneText.trim() && setStep('plan')} className={`p-3 ${step === 'plan' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>2 · Cuts</button><button type="button" onClick={() => approved && setStep('shoot')} className={`p-3 ${step === 'shoot' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>3 · Shoot</button><button type="button" onClick={openEditor} className={`p-3 ${step === 'edit' ? 'bg-[#23c7be] text-black' : 'text-white/60'}`}>4 · Edit</button></div>
 
           {step === 'setup' && <div className="space-y-5">
-            <section className="grid gap-3 md:grid-cols-[1fr_300px]"><input value={title} onChange={(event) => setTitle(event.target.value)} className="border border-white/10 bg-[#17191d] px-4 py-3 text-sm font-bold" placeholder="Scene title" /><div className="grid grid-cols-3 gap-2">{modelAspectRatios.map((ratioId) => { const ratio = RATIOS.find((item) => item.id === ratioId); return <button key={ratioId} type="button" onClick={() => setAspectRatio(ratioId)} className={`border p-2 text-xs font-bold ${aspectRatio === ratioId ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 text-white/55'}`}>{ratio?.label || ratioId}<br /><span className="font-black">{ratioId}</span></button>; })}</div></section>
+            <section className="border border-white/10 bg-[#17191d] p-4"><div className="grid gap-3 md:grid-cols-[1fr_460px]"><input value={title} onChange={(event) => setTitle(event.target.value)} className="border border-white/10 bg-black/30 px-4 py-3 text-sm font-bold" placeholder="Scene title" /><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{modelAspectRatios.map((ratioId) => { const ratio = RATIOS.find((item) => item.id === ratioId); return <button key={ratioId} type="button" onClick={() => setAspectRatio(ratioId)} className={`border p-2 text-xs font-bold ${aspectRatio === ratioId ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 text-white/55'}`}>{ratio?.label || ratioId}<br /><span className="font-black">{ratioId}</span></button>; })}</div></div><div className="mt-3 grid gap-3 md:grid-cols-3"><label className="text-[10px] font-black uppercase tracking-[0.08em] text-white/55">Model<select value={effectiveModel || ''} onChange={(event) => setSelectedModel(event.target.value || null)} disabled={modelsLoading || !modelOptions.length} className="mt-1 w-full border border-white/10 bg-black/30 p-3 text-sm text-white">{modelsLoading && <option>Loading models…</option>}{modelOptions.map((item) => <option key={item.model_key} value={item.model_key}>{item.name || item.model_key}{item.recommended ? ' — Recommended' : ''}</option>)}</select></label>{resolutionBinding && resolutionOptions.length > 0 && <label className="text-[10px] font-black uppercase tracking-[0.08em] text-white/55">Resolution<select value={String(resolutionValue)} onChange={(event) => updateModelParam(resolutionBinding.name, event.target.value)} className="mt-1 w-full border border-white/10 bg-black/30 p-3 text-sm text-white">{resolutionOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>}{audioBinding && <label className="text-[10px] font-black uppercase tracking-[0.08em] text-white/55">Generate audio<button type="button" onClick={() => updateModelParam(audioBinding.name, !audioValue)} className={`mt-1 w-full border p-3 text-sm font-black ${audioValue ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-black/30 text-white/65'}`}>{audioValue ? 'On' : 'Off'}</button></label>}</div></section>
             <section className="border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Cast</p><p className="text-xs text-white/45">Master character references, voices and performance.</p></div><button type="button" onClick={() => setCast((items) => [...items, newCastMember(items.length)])} className="flex items-center gap-1 bg-white/10 px-3 py-2 text-xs font-bold"><Plus size={13} /> Cast</button></div><div className="space-y-3">{cast.map((member) => <div key={member.id} className="grid gap-3 border border-white/10 p-3 lg:grid-cols-[120px_1fr_1fr_1fr_40px]"><div className="space-y-2"><div className="aspect-square overflow-hidden border border-white/10 bg-black">{member.reference_url ? <img src={member.reference_url} alt="" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-white/25"><Users /></div>}</div><div className="grid grid-cols-3 gap-1"><label className="cursor-pointer bg-white/10 p-1 text-center"><Upload size={11} className="mx-auto" /><input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event.target.files?.[0], { type: 'cast', id: member.id }).catch((error) => toast.error(error.message))} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'cast', id: member.id }); setShowVaultPicker(true); }} className="bg-white/10 p-1"><Folder size={11} className="mx-auto" /></button><button type="button" onClick={() => { setPickerTarget({ type: 'cast', id: member.id }); setShowAssetsShop(true); }} className="bg-white/10 p-1"><ShoppingBag size={11} className="mx-auto" /></button></div></div><div className="space-y-2"><input value={member.name} onChange={(event) => updateCast(member.id, { name: event.target.value })} className="w-full bg-black/30 p-2 text-sm font-bold" placeholder="Name" /><select value={member.type} onChange={(event) => updateCast(member.id, { type: event.target.value })} className="w-full bg-black/30 p-2 text-xs"><option value="human">Human</option><option value="animal">Animal</option><option value="creature">Creature / being</option><option value="robot">Robot / synthetic</option></select></div><textarea value={member.voice_or_sound} onChange={(event) => updateCast(member.id, { voice_or_sound: event.target.value })} className="min-h-24 bg-black/30 p-2 text-xs" placeholder={member.type === 'human' ? 'Base voice: age, tone, accent, texture…' : 'Base sound / vocalization…'} /><div className="space-y-2"><textarea value={member.manner} onChange={(event) => updateCast(member.id, { manner: event.target.value })} className="min-h-11 w-full bg-black/30 p-2 text-xs" placeholder="Base manner / performance" /><textarea value={member.description} onChange={(event) => updateCast(member.id, { description: event.target.value })} className="min-h-11 w-full bg-black/30 p-2 text-xs" placeholder="Character notes" /></div><button type="button" onClick={() => setCast((items) => items.filter((item) => item.id !== member.id))} className="text-white/45"><Trash2 size={15} /></button></div>)}</div></section>
             <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-3 text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Set</p><div className="grid gap-3 md:grid-cols-[180px_1fr]"><div><div className="aspect-video overflow-hidden border border-white/10 bg-black">{setReference.url ? <img src={setReference.url} alt="" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-white/25"><ImageIcon /></div>}</div><div className="mt-2 grid grid-cols-3 gap-1"><label className="cursor-pointer bg-white/10 p-2 text-center"><Upload size={13} className="mx-auto" /><input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event.target.files?.[0], { type: 'set' }).catch((error) => toast.error(error.message))} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'set' }); setShowVaultPicker(true); }} className="bg-white/10"><Folder size={13} className="mx-auto" /></button><button type="button" onClick={() => { setPickerTarget({ type: 'set' }); setShowAssetsShop(true); }} className="bg-white/10"><ShoppingBag size={13} className="mx-auto" /></button></div></div><div className="space-y-2"><input value={setReference.name} onChange={(event) => setSetReference((value) => ({ ...value, name: event.target.value }))} className="w-full bg-black/30 p-3 text-sm font-bold" placeholder="Set name" /><textarea value={setReference.description} onChange={(event) => setSetReference((value) => ({ ...value, description: event.target.value }))} className="min-h-28 w-full bg-black/30 p-3 text-xs" placeholder="Continuity notes only — the image remains authoritative." /></div></div></section>
             <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Scene</p><textarea value={sceneText} onChange={(event) => setSceneText(event.target.value)} className="min-h-[260px] w-full bg-black/30 p-4 text-sm leading-6" placeholder="Keep the complete scene here as your source. You build the shots yourself in Cuts." /></section>
-            <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">Video model</p><select value={effectiveModel || ''} onChange={(event) => setSelectedModel(event.target.value || null)} disabled={modelsLoading || !modelOptions.length} className="w-full border border-white/10 bg-black/30 p-3 text-sm text-white">{modelsLoading && <option>Loading models…</option>}{modelOptions.map((item) => <option key={item.model_key} value={item.model_key}>{item.name || item.model_key}{item.recommended ? ' — Recommended' : ''}</option>)}</select><DynamicAiModelControls model={effectiveModelOption} values={modelParams} inheritedValues={{ duration: activeShot?.duration, aspect_ratio: aspectRatio, prompt: modelDiscoveryInput.prompt, reference_images: modelDiscoveryInput.reference_images.slice(0, modelReferenceMax) }} onChange={updateModelParam} /></section>
             <div className="grid gap-2 md:grid-cols-2"><Button onClick={() => saveScene().then(() => toast.success('Scene setup saved')).catch((error) => toast.error(error.message))} className="bg-white/10 text-white hover:bg-white/15 hover:text-white"><Save size={16} className="mr-2" /> Save Scene Setup</Button><Button onClick={startManualCuts} className="bg-[#23c7be] font-black text-black hover:bg-[#8ee9e4] hover:text-black"><Plus className="mr-2" /> Create Shots</Button></div>
           </div>}
 
@@ -1129,7 +1170,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
           </div>}
         </div>
 
-        {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} mediaType={pickerTarget?.type === 'music' ? 'audio' : 'image'} onSelect={(url, name) => applyPickedImage(url, name || (pickerTarget?.type === 'music' ? 'Vault music' : 'Vault reference'))} onClose={() => { setShowVaultPicker(false); setPickerTarget(null); }} embedded={embedded} />}
+        {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} mediaType={pickerTarget?.type === 'music' ? 'audio' : pickerTarget?.type === 'shot-video-reference' ? 'video' : 'image'} onSelect={(url, name) => pickerTarget?.type === 'shot-video-reference' ? applyPickedVideoReference(url, name || 'Vault video reference') : applyPickedImage(url, name || (pickerTarget?.type === 'music' ? 'Vault music' : 'Vault reference'))} onClose={() => { setShowVaultPicker(false); setPickerTarget(null); }} embedded={embedded} />}
         {showAssetsShop && <AssetsShopPicker embedded={embedded} onSelect={(url, name) => applyPickedImage(url, name)} onClose={() => { setShowAssetsShop(false); setPickerTarget(null); }} />}
         {showSaveVault && vaultVideoUrl && userEmail && <SaveToVaultModal userEmail={userEmail} imageUrl={vaultVideoUrl} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={() => { setShowSaveVault(false); toast.success('Shot saved to Vault'); }} />}
       </motion.div>
