@@ -121,22 +121,29 @@ const ratioSize = (ratio) => {
 
 function AssetsShopPicker({ onSelect, onClose, embedded = false }) {
   const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('all');
+  const [subcategory, setSubcategory] = useState('all');
   const [assets, setAssets] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let active = true;
-    supabase
-      .from('catalog_asset')
-      .select('id,title,description,featured_image,preview_images,creator_name,tags')
-      .eq('status', 'published')
-      .order('title', { ascending: true })
-      .limit(500)
-      .then(({ data, error: loadError }) => {
+    Promise.all([
+      supabase.from('catalog_asset').select('id,title,description,featured_image,preview_images,creator_name,tags,category_id,subcategory_id').eq('status', 'published').order('title', { ascending: true }).limit(500),
+      supabase.from('asset_category').select('id,key,label_en,label_fr').eq('is_active', true).order('display_order', { ascending: true }),
+      supabase.from('asset_subcategory').select('id,category_id,key,label_en,label_fr').eq('is_active', true).order('display_order', { ascending: true }),
+    ])
+      .then(([assetResult, categoryResult, subcategoryResult]) => {
         if (!active) return;
-        if (loadError) throw loadError;
-        setAssets((data || []).filter((asset) => catalogImages(asset).length));
+        if (assetResult.error) throw assetResult.error;
+        if (categoryResult.error) throw categoryResult.error;
+        if (subcategoryResult.error) throw subcategoryResult.error;
+        setAssets((assetResult.data || []).filter((asset) => catalogImages(asset).length));
+        setCategories(categoryResult.data || []);
+        setSubcategories(subcategoryResult.data || []);
       })
       .catch((loadError) => {
         if (!active) return;
@@ -146,8 +153,13 @@ function AssetsShopPicker({ onSelect, onClose, embedded = false }) {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => { setSubcategory('all'); }, [category]);
+
+  const availableSubcategories = category === 'all' ? subcategories : subcategories.filter((item) => item.category_id === category);
   const term = search.trim().toLowerCase();
   const filtered = assets.filter((asset) => {
+    if (category !== 'all' && asset.category_id !== category) return false;
+    if (subcategory !== 'all' && asset.subcategory_id !== subcategory) return false;
     if (!term) return true;
     const tags = Array.isArray(asset.tags) ? asset.tags.join(' ') : String(asset.tags || '');
     return `${asset.title || ''} ${asset.description || ''} ${asset.creator_name || ''} ${tags}`.toLowerCase().includes(term);
@@ -164,7 +176,17 @@ function AssetsShopPicker({ onSelect, onClose, embedded = false }) {
           <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Assets Shop</p><h3 className="text-xl font-black text-white">Choose a reference image</h3></div>
           <button type="button" onClick={onClose} className="p-2 text-white"><X size={18} /></button>
         </header>
-        <div className="border-b border-white/10 p-4"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Assets Shop" className="w-full border border-white/10 bg-black/30 px-4 py-3 text-sm text-white" /></div>
+        <div className="grid gap-2 border-b border-white/10 p-4 md:grid-cols-[minmax(0,1fr)_220px_220px]">
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Assets Shop" className="w-full border border-white/10 bg-black/30 px-4 py-3 text-sm text-white" />
+          <select value={category} onChange={(event) => setCategory(event.target.value)} className="w-full border border-white/10 bg-black/30 px-3 py-3 text-sm text-white">
+            <option value="all">All categories</option>
+            {categories.map((item) => <option key={item.id} value={item.id}>{item.label_en || item.label_fr || item.key}</option>)}
+          </select>
+          <select value={subcategory} onChange={(event) => setSubcategory(event.target.value)} className="w-full border border-white/10 bg-black/30 px-3 py-3 text-sm text-white">
+            <option value="all">All subcategories</option>
+            {availableSubcategories.map((item) => <option key={item.id} value={item.id}>{item.label_en || item.label_fr || item.key}</option>)}
+          </select>
+        </div>
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? <div className="flex min-h-56 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div>
             : error ? <div className="border border-red-400/25 bg-red-400/10 p-4 text-sm text-red-200">{error}</div>
