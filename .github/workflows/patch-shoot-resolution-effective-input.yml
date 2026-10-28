@@ -1,0 +1,30 @@
+name: Patch Shoot effective model input
+on:
+  push:
+    branches: [fix/shoot-resolution-effective-input]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/shoot-resolution-effective-input
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: python .github/scripts/patch-shoot-resolution-effective-input.py
+      - run: |
+          test "$(git diff --name-only | wc -l)" -eq 1
+          test "$(git diff --name-only)" = "src/components/studio/VideoTools.jsx"
+          git diff --check
+          grep -q "resolutionBinding && resolutionValue" src/components/studio/VideoTools.jsx
+      - run: npm install --no-package-lock
+      - run: npm run build
+      - run: |
+          git config user.name "Sckript"
+          git config user.email "88356362+merikpelletier@users.noreply.github.com"
+          git add src/components/studio/VideoTools.jsx
+          git commit -m "Send effective model defaults in Shoot"
+          git push origin HEAD:fix/shoot-resolution-effective-input
