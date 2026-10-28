@@ -399,9 +399,12 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     reference_images: modelDiscoveryInput.reference_images.slice(0, modelReferenceMax),
   }), [activeShot?.duration, aspectRatio, modelDiscoveryInput.prompt, modelDiscoveryInput.reference_images, modelDurationMin, modelDurationMax, modelReferenceMax]);
   const pricingModelParams = useMemo(() => {
-    if (!referenceVideoBinding) return modelParams;
-    return { ...modelParams, [referenceVideoBinding.name]: activeVideoReferenceUrls };
-  }, [modelParams, referenceVideoBinding?.name, activeVideoReferenceUrls.join('|')]);
+    const next = { ...modelParams };
+    if (resolutionBinding && resolutionValue) next[resolutionBinding.name] = resolutionValue;
+    if (audioBinding) next[audioBinding.name] = audioValue;
+    if (referenceVideoBinding) next[referenceVideoBinding.name] = activeVideoReferenceUrls;
+    return next;
+  }, [modelParams, resolutionBinding?.name, resolutionValue, audioBinding?.name, audioValue, referenceVideoBinding?.name, activeVideoReferenceUrls.join('|')]);
   const pricingInput = useMemo(() => buildModelToolInput(effectiveModelOption, pricingModelParams, systemModelInput), [effectiveModelOption, pricingModelParams, systemModelInput]);
   const { quote: priceQuote } = useAiPriceQuote({ service: quoteService, kind: 'video', input: pricingInput, modelKey: effectiveModel });
 
@@ -680,7 +683,10 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     try {
       const refs = shotReferenceUrls(shot);
       const shotVideoUrls = (Array.isArray(shot.shot_video_references) ? shot.shot_video_references : []).map((ref) => ref?.url).filter(Boolean).slice(0, referenceVideoMax);
-      const generationModelParams = referenceVideoBinding ? { ...modelParams, [referenceVideoBinding.name]: shotVideoUrls } : modelParams;
+      const generationModelParams = { ...modelParams };
+      if (resolutionBinding && resolutionValue) generationModelParams[resolutionBinding.name] = resolutionValue;
+      if (audioBinding) generationModelParams[audioBinding.name] = audioValue;
+      if (referenceVideoBinding) generationModelParams[referenceVideoBinding.name] = shotVideoUrls;
       const effectiveInput = buildModelToolInput(effectiveModelOption, generationModelParams, {
         duration: normalizeVideoDuration(shot.duration),
         aspect_ratio: aspectRatio,
