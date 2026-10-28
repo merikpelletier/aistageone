@@ -36,39 +36,49 @@ export function installModelControl(slug:string){
   const request=new Request(input,init);
   const context=contexts.getStore();if(!context)fail('Contexte du service IA manquant');
   if(context.failed)fail('La génération précédente a échoué. Aucun remplacement automatique autorisé.');
-  const body=await request.clone().json();const source=url.pathname.match(/\/models\/(.+)\/predictions$/)?.[1] || `version:${body.version}`;
-  const original=await context.requestBody;const service=serviceKey(slug,original);const key=routeKey(service,source);
+  const body=await request.clone().json();
+  const source=url.pathname.match(/\/models\/(.+)\/predictions$/)?.[1] || `version:${body.version}`;
+  const original=await context.requestBody;
+  const service=serviceKey(slug,original);
   const client=db();
-  const {data:assignment,error}=await client.from('ai_model_assignment').select('*').eq('route_key',key).maybeSingle();
-  if(error)fail('Contrôle des modèles indisponible',503);
+
+  const {data:assignments,error:ae}=await client.from('ai_model_assignment').select('*').eq('service',service).eq('enabled',true).limit(50);
+  if(ae)fail('Contrôle des modèles indisponible',503);
+  if(!assignments?.length)fail('Ce service attend le choix de modèle de Merik. Aucun modèle par défaut ne sera utilisé.');
+
+  const sourceKey=routeKey(service,source);
+  const sourceAssignment=assignments.find((item:any)=>item.route_key===sourceKey) || assignments[0];
+  const modelKeys=original?.model_keys&&typeof original.model_keys==='object'?original.model_keys:{};
   const requestedModel=String(
-    original?.model_keys?.[assignment?.kind]
-    || original?.model_key
+    original?.model_key
     || original?.ai_model_key
+    || modelKeys?.[sourceAssignment?.kind]
     || ''
   ).trim().toLowerCase();
-  let choice=assignment;
+
+  let assignment:any=sourceAssignment;
+  let choice:any=sourceAssignment;
   let selectedModel:any=null;
+
   if(requestedModel){
    const {data:requested,error:re}=await client.from('ai_model_catalog').select('*').eq('model_key',requestedModel).eq('enabled',true).maybeSingle();
    if(re)fail('Catalogue des modèles indisponible',503);
    if(!requested)fail('Le modèle choisi n’est pas actif dans le catalogue',422);
    selectedModel=requested;
-   // Apply the user's choice only to the matching creative route.
-   // Internal processing/transcription routes keep their own technical model.
-   if(assignment?.kind===requested.kind){
-    const {data:option,error:oe}=await client.from('ai_model_route_option').select('*').eq('route_key',key).eq('model_key',requestedModel).eq('enabled',true).maybeSingle();
-    if(oe)fail('Choix de modèle indisponible',503);
-    choice={...assignment,model_key:requestedModel,input_mapping:option?.input_mapping??assignment?.input_mapping??{},defaults:option?.defaults??assignment?.defaults??{},enabled:true};
-   }
+   assignment=assignments.find((item:any)=>item.kind===requested.kind) || null;
+   if(!assignment)fail('Le type du modèle choisi n’est pas raccordé à ce service',422);
+   const {data:option,error:oe}=await client.from('ai_model_route_option').select('*').eq('route_key',assignment.route_key).eq('model_key',requestedModel).eq('enabled',true).maybeSingle();
+   if(oe)fail('Choix de modèle indisponible',503);
+   choice={...assignment,model_key:requestedModel,input_mapping:option?.input_mapping??assignment?.input_mapping??{},defaults:option?.defaults??assignment?.defaults??{},enabled:true};
   }
+
   const {data:model,error:me}=selectedModel&&choice?.model_key===selectedModel.model_key
     ? {data:selectedModel,error:null}
     : choice?.model_key?await client.from('ai_model_catalog').select('*').eq('model_key',choice.model_key).maybeSingle():{data:null,error:null};
   if(me)fail('Catalogue des modèles indisponible',503);
   let providerInput;
   try{validateChoice(choice,model);providerInput=adaptInput(body.input,choice,model);}catch(e){context.failed=true;throw e;}
-  const {data:call,error:ce}=await client.from('ai_model_call').insert({route_key:key,request_id:context.id,model_key:model.model_key,assignment_revision:assignment?.revision??null,rate_snapshot:{billing_type:model.billing_type,unit_price_usd:model.unit_price_usd,output_unit_price_usd:model.output_unit_price_usd,source_url:model.cost_source_url},status:'starting'}).select('id').single();
+  const {data:call,error:ce}=await client.from('ai_model_call').insert({route_key:assignment.route_key,request_id:context.id,model_key:model.model_key,assignment_revision:assignment?.revision??null,rate_snapshot:{billing_type:model.billing_type,unit_price_usd:model.unit_price_usd,output_unit_price_usd:model.output_unit_price_usd,source_url:model.cost_source_url},status:'starting'}).select('id').single();
   if(ce)fail('Journal des appels indisponible; aucun appel envoyé',503);
   const target=model.version_id?'https://api.replicate.com/v1/predictions':`https://api.replicate.com/v1/models/${model.model_key}/predictions`;
   const payload={...body,input:providerInput};delete payload.version;if(model.version_id)payload.version=model.version_id;
