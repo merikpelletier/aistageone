@@ -28,15 +28,17 @@ export function adaptInput(input:any,assignment:any,model:any){
  const document=model.schema;const schema=resolve(document?.components?.schemas?.Input,document);
  if(!schema?.properties)fail('Le schéma du modèle doit être importé avant utilisation');
  const out:any={};
+ const required=new Set(schema.required||[]);
  for(const [key,field] of Object.entries(schema.properties)){
   const source=assignment.input_mapping?.[key]||key;
   let value=input?.[source];
   if(value===undefined)value=assignment.defaults?.[key];
   if(value===undefined)value=(field as any).default;
   if(value===undefined)continue;
+  if(value===null&&!required.has(key))continue;
   if(!valid(value,field,document))fail(`Paramètre incompatible avec le modèle choisi : ${key}`);
   out[key]=value;
  }
- for(const key of schema.required||[])if(out[key]===undefined)fail(`Le modèle choisi exige le paramètre « ${key} ». La correspondance doit être configurée par Merik.`);
+ for(const key of required)if(out[key]===undefined||out[key]===null)fail(`Le modèle choisi exige le paramètre « ${key} ». La correspondance doit être configurée par Merik.`);
  return out;
 }
