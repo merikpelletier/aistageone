@@ -1,0 +1,32 @@
+name: Patch Shoot model controls and video references
+on:
+  push:
+    branches: [fix/shoot-model-controls-video-refs-3]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/shoot-model-controls-video-refs-3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: python .github/scripts/patch-shoot-model-controls-video-refs.py
+      - run: |
+          test "$(git diff --name-only | wc -l)" -eq 1
+          test "$(git diff --name-only)" = "src/components/studio/VideoTools.jsx"
+          git diff --check
+          grep -q "Video references" src/components/studio/VideoTools.jsx
+          grep -q "Generate audio" src/components/studio/VideoTools.jsx
+          grep -q "referenceVideoBinding" src/components/studio/VideoTools.jsx
+      - run: npm install --no-package-lock
+      - run: npm run build
+      - run: |
+          git config user.name "Sckript"
+          git config user.email "88356362+merikpelletier@users.noreply.github.com"
+          git add src/components/studio/VideoTools.jsx
+          git commit -m "Integrate model controls and video references into Shoot"
+          git push origin HEAD:fix/shoot-model-controls-video-refs-3
