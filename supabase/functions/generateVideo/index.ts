@@ -180,12 +180,13 @@ serveWithCors(async (req) => {
     const mode = resolution === '480p' ? 'standard' : 'pro';
     const audioEnabled = engine === 'kling_morph' ? true : Boolean(generate_audio);
     const genericModelInput = model_input && typeof model_input === 'object' && !Array.isArray(model_input) ? { ...model_input } : {};
+    const hasGenericField = (key: string) => Object.prototype.hasOwnProperty.call(genericModelInput, key);
     const effectiveVideoInput = engine === 'video' ? {
       ...genericModelInput,
-      prompt: mappedPrompt,
-      duration: Number(duration) || 5,
-      aspect_ratio,
-      ...(references.length ? { reference_images: references } : {}),
+      ...(hasGenericField('prompt') ? { prompt: mappedPrompt } : {}),
+      ...(hasGenericField('duration') ? { duration: Number(duration) || genericModelInput.duration } : {}),
+      ...(hasGenericField('aspect_ratio') ? { aspect_ratio } : {}),
+      ...(hasGenericField('reference_images') ? { reference_images: references } : {}),
     } : {
       prompt: mappedPrompt,
       image_url,
