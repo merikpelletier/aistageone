@@ -52,7 +52,8 @@ serveWithCors(async (req) => {
       generate_audio = false,
       engine = 'video',
       transformation_prompt = null,
-      model_key = null
+      model_key = null,
+      model_input = null,
     } = body || {};
 
     const replicate = new Replicate({ auth: TOKEN });
@@ -62,6 +63,33 @@ serveWithCors(async (req) => {
       return typeof value === 'string' ? value :
         typeof value?.url === 'function' ? value.url() :
         value?.url || String(value || '');
+    };
+
+    const startControlledPrediction = async (input: any) => {
+      const predictionRes = await fetch('https://api.replicate.com/v1/predictions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ input }),
+      });
+      const prediction: any = await predictionRes.json().catch(() => ({}));
+      if (!predictionRes.ok || !prediction?.id) {
+        throw new Error(prediction?.detail || prediction?.error || 'Unable to start video generation');
+      }
+      return prediction;
+    };
+
+    const awaitControlledPrediction = async (input: any) => {
+      const started = await startControlledPrediction(input);
+      let prediction: any = started;
+      while (prediction?.status === 'starting' || prediction?.status === 'processing') {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        prediction = await replicate.predictions.get(String(started.id));
+      }
+      if (prediction?.status !== 'succeeded') throw new Error(prediction?.error || `Video generation ${prediction?.status || 'failed'}`);
+      return prediction;
     };
 
     if (action === 'status') {
@@ -116,12 +144,12 @@ serveWithCors(async (req) => {
     }
 
     const references = Array.isArray(reference_image_urls)
-      ? [...new Set(reference_image_urls.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()))].slice(0, 7)
+      ? [...new Set(reference_image_urls.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()))]
       : [];
 
     const rawPrompt = String(prompt || '');
     const mappedBasePrompt = references.length
-      ? rawPrompt.replace(/\bImage\s+([1-7])\b/gi, '<<<image_$1>>>')
+      ? rawPrompt.replace(/\bImage\s+(\d+)\b/gi, '<<<image_$1>>>')
       : rawPrompt;
 
     const isShootRequest = references.length > 0 && /SAME SCENE CONTINUITY/i.test(rawPrompt);
@@ -151,7 +179,15 @@ serveWithCors(async (req) => {
 
     const mode = resolution === '480p' ? 'standard' : 'pro';
     const audioEnabled = engine === 'kling_morph' ? true : Boolean(generate_audio);
-    const quoteInput = {
+    const genericModelInput = model_input && typeof model_input === 'object' && !Array.isArray(model_input) ? { ...model_input } : {};
+    const hasGenericField = (key: string) => Object.prototype.hasOwnProperty.call(genericModelInput, key);
+    const effectiveVideoInput = engine === 'video' ? {
+      ...genericModelInput,
+      ...(hasGenericField('prompt') ? { prompt: mappedPrompt } : {}),
+      ...(hasGenericField('duration') ? { duration: Number(duration) || genericModelInput.duration } : {}),
+      ...(hasGenericField('aspect_ratio') ? { aspect_ratio } : {}),
+      ...(hasGenericField('reference_images') ? { reference_images: references } : {}),
+    } : {
       prompt: mappedPrompt,
       image_url,
       reference_images: references.length ? references : undefined,
@@ -166,7 +202,7 @@ serveWithCors(async (req) => {
     const dynamicQuote = await quoteAiService(
       billing.service,
       `generateVideo:${engine}`,
-      quoteInput,
+      effectiveVideoInput,
       model_key || null,
       'video'
     );
@@ -180,34 +216,7 @@ serveWithCors(async (req) => {
     });
 
     if (async_mode && engine === 'video') {
-      const input: any = {
-        prompt: mappedPrompt,
-        duration: Math.max(3, Math.min(15, Number(duration) || 5)),
-        mode,
-        aspect_ratio,
-        generate_audio: audioEnabled,
-      };
-
-      if (references.length) {
-        input.reference_images = references;
-      } else if (image_url) {
-        if (use_as_reference) input.reference_images = [image_url];
-        else input.start_image = image_url;
-      }
-
-      const predictionRes = await fetch('https://api.replicate.com/v1/models/kwaivgi/kling-v3-omni-video/predictions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Token ${TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ input }),
-      });
-      const prediction: any = await predictionRes.json().catch(() => ({}));
-      if (!predictionRes.ok || !prediction?.id) {
-        throw new Error(prediction?.detail || prediction?.error || 'Unable to start video generation');
-      }
-
+      const prediction = await startControlledPrediction(effectiveVideoInput);
       return Response.json({
         async: true,
         status: prediction.status,
@@ -265,23 +274,8 @@ serveWithCors(async (req) => {
               const output = await replicate.run('kwaivgi/kling-v1.6-standard', { input: klingInput });
               videoOutputUrl = resolveOutputUrl(output);
             } else {
-              const input: any = {
-                prompt: mappedPrompt,
-                duration: Math.max(3, Math.min(15, Number(duration) || 5)),
-                mode,
-                aspect_ratio,
-                generate_audio: audioEnabled,
-              };
-
-              if (references.length) {
-                input.reference_images = references;
-              } else if (image_url) {
-                if (use_as_reference) input.reference_images = [image_url];
-                else input.start_image = image_url;
-              }
-
-              const output = await replicate.run('kwaivgi/kling-v3-omni-video', { input });
-              videoOutputUrl = resolveOutputUrl(output);
+              const prediction = await awaitControlledPrediction(effectiveVideoInput);
+              videoOutputUrl = resolveOutputUrl(prediction?.output);
             }
 
             const videoRes = await fetch(videoOutputUrl);

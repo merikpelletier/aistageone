@@ -30,37 +30,44 @@ export async function quoteAiService(serviceClient:any,service:string,rawInput:a
     .select('route_key,service,kind,input_mapping,defaults,enabled,model_key')
     .eq('service',service).eq('enabled',true);
   if(preferredKind)assignmentsQuery=assignmentsQuery.eq('kind',preferredKind);
-  const {data:assignments,error:assignmentError}=await assignmentsQuery.limit(20);
+  const {data:assignments,error:assignmentError}=await assignmentsQuery.limit(50);
   if(assignmentError)throw new Error(assignmentError.message);
-  const baseAssignment=(assignments||[])[0];
+  const compatibleAssignments=assignments||[];
+  const baseAssignment=compatibleAssignments[0];
   if(!baseAssignment)throw new Error('Aucune étape compatible pour ce service');
+  const routeKeys=compatibleAssignments.map((item:any)=>item.route_key);
 
   let selectedModelKey=String(requestedModel||'').trim().toLowerCase();
   let explicitOption:any=null;
   if(selectedModelKey){
-    const {data:option,error:optionError}=await serviceClient.from('ai_model_route_option')
-      .select('route_key,service,kind,model_key,enabled,recommended,display_order,input_mapping,defaults')
-      .eq('service',service).eq('kind',baseAssignment.kind).eq('model_key',selectedModelKey).eq('enabled',true)
-      .order('recommended',{ascending:false}).order('display_order',{ascending:true}).limit(1).maybeSingle();
-    if(optionError)throw new Error(optionError.message);
-    explicitOption=option;
-  }else{
     const {data:options,error:optionError}=await serviceClient.from('ai_model_route_option')
       .select('route_key,service,kind,model_key,enabled,recommended,display_order,input_mapping,defaults')
-      .eq('service',service).eq('kind',baseAssignment.kind).eq('enabled',true)
+      .in('route_key',routeKeys).eq('service',service).eq('kind',baseAssignment.kind)
+      .eq('model_key',selectedModelKey).eq('enabled',true)
       .order('recommended',{ascending:false}).order('display_order',{ascending:true}).limit(1);
     if(optionError)throw new Error(optionError.message);
     explicitOption=(options||[])[0]||null;
-    selectedModelKey=explicitOption?.model_key||baseAssignment.model_key||'';
+    if(!explicitOption)throw new Error('Le modèle choisi n’est pas autorisé par Admin pour ce service');
+  }else{
+    const {data:options,error:optionError}=await serviceClient.from('ai_model_route_option')
+      .select('route_key,service,kind,model_key,enabled,recommended,display_order,input_mapping,defaults')
+      .in('route_key',routeKeys).eq('service',service).eq('kind',baseAssignment.kind).eq('enabled',true)
+      .order('recommended',{ascending:false}).order('display_order',{ascending:true}).limit(1);
+    if(optionError)throw new Error(optionError.message);
+    explicitOption=(options||[])[0]||null;
+    selectedModelKey=explicitOption?.model_key||'';
   }
-  if(!selectedModelKey)throw new Error('Aucun modèle tarifable pour ce service');
+  if(!selectedModelKey||!explicitOption)throw new Error('Aucun modèle autorisé par Admin pour ce service');
+
+  const assignment=compatibleAssignments.find((item:any)=>item.route_key===explicitOption.route_key);
+  if(!assignment)throw new Error('La route Admin du modèle choisi n’est plus active');
 
   const {data:model,error:modelError}=await serviceClient.from('ai_model_catalog').select('*')
-    .eq('model_key',selectedModelKey).eq('enabled',true).eq('kind',baseAssignment.kind).maybeSingle();
+    .eq('model_key',selectedModelKey).eq('enabled',true).eq('kind',assignment.kind).maybeSingle();
   if(modelError||!model)throw new Error(modelError?.message||'Modèle tarifable introuvable');
 
-  const mapping=explicitOption?.input_mapping??baseAssignment.input_mapping??{};
-  const defaults=explicitOption?.defaults??baseAssignment.defaults??{};
+  const mapping=explicitOption.input_mapping??assignment.input_mapping??{};
+  const defaults=explicitOption.defaults??assignment.defaults??{};
   const props=model.schema?.components?.schemas?.Input?.properties||{};
   const providerInput:any={...rawInput};
   for(const [key,field] of Object.entries(props)){
@@ -69,9 +76,6 @@ export async function quoteAiService(serviceClient:any,service:string,rawInput:a
     if(providerInput[key]===undefined&&defaults?.[key]!==undefined)providerInput[key]=defaults[key];
     if(providerInput[key]===undefined&&(field as any)?.default!==undefined)providerInput[key]=(field as any).default;
   }
-  if(providerInput.generate_audio===undefined&&rawInput?.audio_url!==undefined)providerInput.generate_audio=Boolean(rawInput.audio_url);
-  if(providerInput.duration===undefined&&rawInput?.duration!==undefined)providerInput.duration=rawInput.duration;
-  if(providerInput.resolution===undefined&&rawInput?.resolution!==undefined)providerInput.resolution=rawInput.resolution;
   const selected=resolveTariff(model,providerInput);
   if(!selected)throw new Error('Le tarif de ce modèle ne peut pas être déterminé avec ces paramètres');
 
