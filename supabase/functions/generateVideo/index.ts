@@ -171,10 +171,14 @@ serveWithCors(async (req) => {
       return Response.json({ error: 'Prompt or image reference is required' }, { status: 400 });
     }
 
-    if (video_url) {
+    if (video_url && engine !== 'kling_video_edit') {
       return Response.json({
         error: 'Video Reference is temporarily unavailable while its approved Replicate model is being restored.',
       }, { status: 409 });
+    }
+
+    if (engine === 'kling_video_edit' && !video_url) {
+      return Response.json({ error: 'video_url is required for kling_video_edit' }, { status: 400 });
     }
 
     const mode = resolution === '480p' ? 'standard' : 'pro';
@@ -238,7 +242,17 @@ serveWithCors(async (req) => {
           try {
             let videoOutputUrl: string;
 
-            if (engine === 'kling_morph') {
+            if (engine === 'kling_video_edit') {
+              if (!video_url) throw new Error('video_url is required for kling_video_edit');
+              const editPrompt = `${mappedPrompt} Keep everything else unchanged.`.trim();
+              const editOutput: any = await replicate.run('kwaivgi/kling-v4.0', {
+                input: {
+                  base_video: video_url,
+                  prompt: editPrompt,
+                },
+              });
+              videoOutputUrl = resolveOutputUrl(editOutput);
+            } else if (engine === 'kling_morph') {
               if (!image_url) throw new Error('image_url is required for kling_morph');
               const stylePrompt = (transformation_prompt || '').trim();
               const actionPrompt = mappedPrompt.trim();

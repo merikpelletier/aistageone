@@ -222,6 +222,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const [busy, setBusy] = useState(false);
   const [regeneratingShotId, setRegeneratingShotId] = useState(null);
   const [activeShotId, setActiveShotId] = useState(null);
+  const [modifyVideoPrompt, setModifyVideoPrompt] = useState('');
   const [showVaultPicker, setShowVaultPicker] = useState(false);
   const [pickerTarget, setPickerTarget] = useState(null);
   const [showAssetsShop, setShowAssetsShop] = useState(false);
@@ -741,6 +742,47 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     }
   };
 
+  const modifyActiveShotVideo = async (shot) => {
+    if (!shot?.result_url) return toast.error('Generate this shot before modifying it.');
+    if (!modifyVideoPrompt.trim()) return toast.error('Describe what to change.');
+    setBusy(true);
+    try {
+      const startData = await invokeGenerateVideo({
+        async_mode: true,
+        engine: 'kling_video_edit',
+        video_url: shot.result_url,
+        prompt: modifyVideoPrompt.trim(),
+      }, { 'x-idempotency-key': crypto.randomUUID() });
+      if (!startData?.prediction_id) throw new Error('Video job did not start.');
+      let statusData = startData;
+      while (statusData?.status !== 'succeeded') {
+        await sleep(5000);
+        statusData = await invokeGenerateVideo({
+          action: 'status',
+          prediction_id: startData.prediction_id,
+          credit_charge: startData.credit_charge,
+          lineage_inputs: startData.lineage_inputs,
+        });
+        if (['failed', 'canceled', 'aborted'].includes(statusData?.status)) {
+          throw new Error(statusData?.error || `Video generation ${statusData.status}`);
+        }
+      }
+      const url = statusData?.file_url;
+      if (!url) throw new Error('No video returned.');
+      const nextShots = shotPlan.map((item) => item.id === shot.id ? { ...item, result_url: url } : item);
+      setShotPlan(nextShots);
+      const currentScene = sceneId || (await saveScene({ shot_plan: nextShots, status: 'shooting' })).id;
+      const { error: updateError } = await supabase.from('shoot_scene').update({ shot_plan: nextShots, status: 'shooting', updated_at: new Date().toISOString() }).eq('id', currentScene);
+      if (updateError) throw updateError;
+      setModifyVideoPrompt('');
+      toast.success('Video modified');
+    } catch (error) {
+      toast.error(error?.message || 'Video modification failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const approvePlan = async () => {
     if (!shotPlan.length) return toast.error('Add at least one shot.');
     setApproved(true);
@@ -1156,7 +1198,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
               <section className="border border-white/10 bg-[#17191d] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black">{activeShot.label}</p><p className="text-xs text-white/45">{activeShot.duration}s · {activeShot.framing} · {shotCast(activeShot).map((member) => member.name).join(', ') || 'No characters'}</p></div><span className="text-xs font-bold text-[#8ee9e4]">{priceQuote?.credits ? `${priceQuote.credits} credits` : ''}</span></div>{renderCharacterData(activeShot)}{shotMode(activeShot) === 'standard' ? <div className="mt-4 space-y-2 border-t border-white/10 pt-3"><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Technical lines</p>{(activeShot.lines || []).map((line, index) => { const member = cast.find((item) => item.id === line.character_id); return <div key={line.id} className="border border-white/10 bg-black/20 p-3 text-xs"><span className="font-black text-[#8ee9e4]">{index + 1}. {member?.name || 'Unassigned'}</span>{line.dialogue && <p className="mt-1"><span className="text-white/40">Dialogue:</span> {line.dialogue}</p>}{line.emotion && <p><span className="text-white/40">Emotion:</span> {line.emotion}</p>}{line.action && <p><span className="text-white/40">Action:</span> {line.action}</p>}</div>; })}</div> : <div className="mt-4 border-t border-white/10 pt-3"><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Description</p><p className="mt-1 text-sm">{activeShot.description || '—'}</p></div>}{renderShotReferences(activeShot)}</section>
               <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase text-white/40">Exact references sent for this shot</p><div className="flex flex-wrap gap-2">{shotReferences(activeShot).map((ref, index) => <div key={`${ref.url}-${index}`} className="w-28"><div className="aspect-square overflow-hidden bg-black"><img src={ref.url} alt="" className="h-full w-full object-contain" /></div><p className="mt-1 text-[9px] font-bold text-[#8ee9e4]">{ref.role}</p><p className="truncate text-[9px] text-white/40">Image {index + 1}</p></div>)}</div></section>
               <section className="border border-[#23c7be]/30 bg-[#17191d] p-4"><div className="mb-2 flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Final prompt sent to video model</p><p className="text-[10px] text-white/40">This is the exact prompt. Review and correct it before generating.</p></div>{promptEdits[activeShot.id] !== undefined && <button type="button" onClick={() => setPromptEdits((current) => { const next = { ...current }; delete next[activeShot.id]; return next; })} className="bg-white/10 px-3 py-2 text-[10px] font-bold">Reset</button>}</div><textarea value={finalPromptForShot(activeShot)} onChange={(event) => setPromptEdits((current) => ({ ...current, [activeShot.id]: event.target.value }))} className="min-h-64 w-full border border-white/10 bg-black/30 p-3 text-xs leading-5 text-white" /></section>
-              {activeShot.result_url ? <section className="border border-white/10 bg-black p-3"><video src={activeShot.result_url} controls className="max-h-[60vh] w-full" /><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => generateShot(activeShot)} disabled={busy} className="flex items-center justify-center bg-white/10 py-3 text-xs font-bold disabled:opacity-60">{regeneratingShotId === activeShot.id ? <><Loader2 size={14} className="mr-2 animate-spin" /> Regenerating…</> : 'Regenerate With This Prompt'}</button><button type="button" onClick={() => { setVaultVideoUrl(activeShot.result_url); setShowSaveVault(true); }} disabled={regeneratingShotId === activeShot.id} className="bg-[#23c7be] py-3 text-xs font-black text-black hover:bg-[#8ee9e4] disabled:opacity-50">Save Shot to Vault</button></div></section> : <Button onClick={() => generateShot(activeShot)} disabled={busy || modelsLoading} className="w-full bg-[#23c7be] py-5 font-black text-black hover:bg-[#8ee9e4] hover:text-black">{busy ? <Loader2 className="mr-2 animate-spin" /> : <Video className="mr-2" />} Generate With This Prompt</Button>}
+              {activeShot.result_url ? <section className="border border-white/10 bg-black p-3"><video src={activeShot.result_url} controls className="max-h-[60vh] w-full" /><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => generateShot(activeShot)} disabled={busy} className="flex items-center justify-center bg-white/10 py-3 text-xs font-bold disabled:opacity-60">{regeneratingShotId === activeShot.id ? <><Loader2 size={14} className="mr-2 animate-spin" /> Regenerating…</> : 'Regenerate With This Prompt'}</button><button type="button" onClick={() => { setVaultVideoUrl(activeShot.result_url); setShowSaveVault(true); }} disabled={regeneratingShotId === activeShot.id} className="bg-[#23c7be] py-3 text-xs font-black text-black hover:bg-[#8ee9e4] disabled:opacity-50">Save Shot to Vault</button></div><div className="mt-2 border-t border-white/10 pt-2"><textarea value={modifyVideoPrompt} onChange={(event) => setModifyVideoPrompt(event.target.value)} className="min-h-16 w-full bg-black/30 p-2 text-xs text-white" placeholder="Describe what to change in this video…" /><button type="button" onClick={() => modifyActiveShotVideo(activeShot)} disabled={busy || !modifyVideoPrompt.trim()} className="mt-2 w-full bg-white/10 py-3 text-xs font-bold disabled:opacity-50">{busy ? <Loader2 size={14} className="mr-2 inline animate-spin" /> : null}Modify Video</button></div></section> : <Button onClick={() => generateShot(activeShot)} disabled={busy || modelsLoading} className="w-full bg-[#23c7be] py-5 font-black text-black hover:bg-[#8ee9e4] hover:text-black">{busy ? <Loader2 className="mr-2 animate-spin" /> : <Video className="mr-2" />} Generate With This Prompt</Button>}
               {completedCount > 0 && <button type="button" onClick={openEditor} className="w-full border border-[#23c7be]/30 bg-[#23c7be]/10 py-4 text-sm font-black text-[#8ee9e4] hover:bg-[#23c7be]/20">Open Scene Editor</button>}
             </>}</main>
           </div>}
