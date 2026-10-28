@@ -448,7 +448,10 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({ clips, mus
           <button type="button" onClick={restoreUndo} disabled={!undoStack.length} className="flex h-9 items-center gap-2 border border-white/10 bg-white/[0.06] px-3 text-xs font-bold disabled:opacity-30"><Undo2 size={14} /> Undo</button>
           <span className="font-mono text-xs font-black text-[#8ee9e4]">{formatTime(playhead)}</span>
         </div>
-        <div className="flex items-center gap-2"><button type="button" onClick={() => triggerLegacy((text) => text.includes('Export Scene'))} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black">Export Scene</button></div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => triggerLegacy((text) => text.includes('Export Scene'))} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black">Export Scene</button>
+          <button type="button" onClick={() => triggerLegacy((text) => text.trim() === 'Save to Vault')} className="border border-[#23c7be]/40 bg-[#23c7be]/10 px-4 py-2 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/20">Save to Vault</button>
+        </div>
       </section>
 
       <div className="grid gap-3 xl:grid-cols-[1fr_340px]">
