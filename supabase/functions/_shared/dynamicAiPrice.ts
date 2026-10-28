@@ -14,21 +14,12 @@ const PRIMARY_KIND:Record<string,string>={
   'replicateGenerate:text_to_video':'video',
 };
 
-const firstNumber=(input:any,keys:string[])=>{
-  for(const k of keys){const n=Number(input?.[k]);if(Number.isFinite(n)&&n>0)return n;}
-  return null;
-};
-const textLength=(input:any)=>{
-  for(const k of ['text','prompt','input','script'])if(typeof input?.[k]==='string'&&input[k].length)return input[k].length;
-  return null;
-};
+const firstNumber=(input:any,keys:string[])=>{for(const k of keys){const n=Number(input?.[k]);if(Number.isFinite(n)&&n>0)return n;}return null;};
+const textLength=(input:any)=>{for(const k of ['text','prompt','input','script'])if(typeof input?.[k]==='string'&&input[k].length)return input[k].length;return null;};
 
 export async function quoteAiService(serviceClient:any,service:string,rawInput:any={},requestedModel?:string|null,kind?:string|null){
   const preferredKind=kind||PRIMARY_KIND[service]||null;
-
-  let assignmentsQuery=serviceClient.from('ai_model_assignment')
-    .select('route_key,service,kind,input_mapping,defaults,enabled,model_key')
-    .eq('service',service).eq('enabled',true);
+  let assignmentsQuery=serviceClient.from('ai_model_assignment').select('route_key,service,kind,input_mapping,defaults,enabled,model_key').eq('service',service).eq('enabled',true);
   if(preferredKind)assignmentsQuery=assignmentsQuery.eq('kind',preferredKind);
   const {data:assignments,error:assignmentError}=await assignmentsQuery.limit(50);
   if(assignmentError)throw new Error(assignmentError.message);
@@ -36,38 +27,30 @@ export async function quoteAiService(serviceClient:any,service:string,rawInput:a
   const baseAssignment=compatibleAssignments[0];
   if(!baseAssignment)throw new Error('Aucune étape compatible pour ce service');
   const routeKeys=compatibleAssignments.map((item:any)=>item.route_key);
+  const shootVideo=service==='generateVideo:video'&&baseAssignment.kind==='video';
 
   let selectedModelKey=String(requestedModel||'').trim().toLowerCase();
   let explicitOption:any=null;
   if(selectedModelKey){
-    const {data:options,error:optionError}=await serviceClient.from('ai_model_route_option')
-      .select('route_key,service,kind,model_key,enabled,recommended,display_order,input_mapping,defaults')
-      .in('route_key',routeKeys).eq('service',service).eq('kind',baseAssignment.kind)
-      .eq('model_key',selectedModelKey).eq('enabled',true)
-      .order('recommended',{ascending:false}).order('display_order',{ascending:true}).limit(1);
+    const {data:options,error:optionError}=await serviceClient.from('ai_model_route_option').select('route_key,service,kind,model_key,enabled,recommended,display_order,input_mapping,defaults').in('route_key',routeKeys).eq('service',service).eq('kind',baseAssignment.kind).eq('model_key',selectedModelKey).eq('enabled',true).order('recommended',{ascending:false}).order('display_order',{ascending:true}).limit(1);
     if(optionError)throw new Error(optionError.message);
     explicitOption=(options||[])[0]||null;
-    if(!explicitOption)throw new Error('Le modèle choisi n’est pas autorisé par Admin pour ce service');
+    if(!explicitOption&&!shootVideo)throw new Error('Le modèle choisi n’est pas autorisé par Admin pour ce service');
   }else{
-    const {data:options,error:optionError}=await serviceClient.from('ai_model_route_option')
-      .select('route_key,service,kind,model_key,enabled,recommended,display_order,input_mapping,defaults')
-      .in('route_key',routeKeys).eq('service',service).eq('kind',baseAssignment.kind).eq('enabled',true)
-      .order('recommended',{ascending:false}).order('display_order',{ascending:true}).limit(1);
+    const {data:options,error:optionError}=await serviceClient.from('ai_model_route_option').select('route_key,service,kind,model_key,enabled,recommended,display_order,input_mapping,defaults').in('route_key',routeKeys).eq('service',service).eq('kind',baseAssignment.kind).eq('enabled',true).order('recommended',{ascending:false}).order('display_order',{ascending:true}).limit(1);
     if(optionError)throw new Error(optionError.message);
     explicitOption=(options||[])[0]||null;
-    selectedModelKey=explicitOption?.model_key||'';
+    selectedModelKey=explicitOption?.model_key||baseAssignment.model_key||'';
   }
-  if(!selectedModelKey||!explicitOption)throw new Error('Aucun modèle autorisé par Admin pour ce service');
+  if(!selectedModelKey)throw new Error('Aucun modèle disponible pour ce service');
 
-  const assignment=compatibleAssignments.find((item:any)=>item.route_key===explicitOption.route_key);
-  if(!assignment)throw new Error('La route Admin du modèle choisi n’est plus active');
-
-  const {data:model,error:modelError}=await serviceClient.from('ai_model_catalog').select('*')
-    .eq('model_key',selectedModelKey).eq('enabled',true).eq('kind',assignment.kind).maybeSingle();
+  const assignment=explicitOption?compatibleAssignments.find((item:any)=>item.route_key===explicitOption.route_key)||baseAssignment:baseAssignment;
+  const {data:model,error:modelError}=await serviceClient.from('ai_model_catalog').select('*').eq('model_key',selectedModelKey).eq('enabled',true).eq('kind',assignment.kind).maybeSingle();
   if(modelError||!model)throw new Error(modelError?.message||'Modèle tarifable introuvable');
+  if(shootVideo&&!model.schema)throw new Error('Le schéma du modèle doit être importé avant utilisation');
 
-  const mapping=explicitOption.input_mapping??assignment.input_mapping??{};
-  const defaults=explicitOption.defaults??assignment.defaults??{};
+  const mapping=explicitOption?.input_mapping??assignment.input_mapping??{};
+  const defaults=explicitOption?.defaults??assignment.defaults??{};
   const props=model.schema?.components?.schemas?.Input?.properties||{};
   const providerInput:any={...rawInput};
   for(const [key,field] of Object.entries(props)){
@@ -84,47 +67,19 @@ export async function quoteAiService(serviceClient:any,service:string,rawInput:a
   let providerCostUsd:number|null=null;
   let estimated=false;
   const billing=selected.billing_type;
-
   if(billing==='prediction')providerCostUsd=unit;
-  else if(billing==='output_seconds'){
-    const seconds=firstNumber(providerInput,['duration','duration_seconds','seconds','video_length','length']);
-    if(seconds==null)throw new Error('Durée requise pour calculer le prix');
-    providerCostUsd=seconds*unit;
-  }else if(billing==='runtime_seconds'){
-    const seconds=firstNumber(providerInput,['duration','duration_seconds','seconds','video_length','length']);
-    if(seconds==null)throw new Error('Durée requise pour estimer le prix');
-    providerCostUsd=seconds*unit;estimated=true;
-  }else if(billing==='output_images'||billing==='output_videos'){
-    const count=firstNumber(providerInput,['num_outputs','number_of_images','num_images','count'])||1;
-    providerCostUsd=count*unit;
-  }else if(billing==='characters'){
-    const chars=textLength(providerInput);
-    if(chars==null)throw new Error('Texte requis pour calculer le prix');
-    const quantity=Number(selected.pricing?.quantity||selected.capabilities?.pricing?.quantity||1000);
-    providerCostUsd=chars*unit/quantity;
-  }else if(billing==='tokens'){
-    const chars=textLength(providerInput);
-    if(chars==null)throw new Error('Texte requis pour estimer le prix');
-    const quantity=Number(selected.pricing?.quantity||selected.capabilities?.pricing?.quantity||1000);
-    const inputTokens=Math.max(1,Math.ceil(chars/4));
-    const outputTokens=firstNumber(providerInput,['max_output_tokens','max_tokens'])||inputTokens;
-    const out=Number(selected.output_unit_price_usd);
-    if(!Number.isFinite(out)||out<0)throw new Error('Tarif de sortie manquant');
-    providerCostUsd=(inputTokens*unit+outputTokens*out)/quantity;estimated=true;
-  }else throw new Error('Mode de facturation non pris en charge');
+  else if(billing==='output_seconds'){const seconds=firstNumber(providerInput,['duration','duration_seconds','seconds','video_length','length']);if(seconds==null)throw new Error('Durée requise pour calculer le prix');providerCostUsd=seconds*unit;}
+  else if(billing==='runtime_seconds'){const seconds=firstNumber(providerInput,['duration','duration_seconds','seconds','video_length','length']);if(seconds==null)throw new Error('Durée requise pour estimer le prix');providerCostUsd=seconds*unit;estimated=true;}
+  else if(billing==='output_images'||billing==='output_videos'){const count=firstNumber(providerInput,['num_outputs','number_of_images','num_images','count'])||1;providerCostUsd=count*unit;}
+  else if(billing==='characters'){const chars=textLength(providerInput);if(chars==null)throw new Error('Texte requis pour calculer le prix');const quantity=Number(selected.pricing?.quantity||selected.capabilities?.pricing?.quantity||1000);providerCostUsd=chars*unit/quantity;}
+  else if(billing==='tokens'){const chars=textLength(providerInput);if(chars==null)throw new Error('Texte requis pour estimer le prix');const quantity=Number(selected.pricing?.quantity||selected.capabilities?.pricing?.quantity||1000);const inputTokens=Math.max(1,Math.ceil(chars/4));const outputTokens=firstNumber(providerInput,['max_output_tokens','max_tokens'])||inputTokens;const out=Number(selected.output_unit_price_usd);if(!Number.isFinite(out)||out<0)throw new Error('Tarif de sortie manquant');providerCostUsd=(inputTokens*unit+outputTokens*out)/quantity;estimated=true;}
+  else throw new Error('Mode de facturation non pris en charge');
 
   const {data:settings,error:settingsError}=await serviceClient.from('credit_economy_settings').select('credit_value_cad,usd_to_cad_rate,cost_buffer_pct').eq('id',true).single();
   if(settingsError||!settings)throw new Error(settingsError?.message||'Conversion crédits indisponible');
   const fx=Number(settings.usd_to_cad_rate),value=Number(settings.credit_value_cad),buffer=Number(settings.cost_buffer_pct||0);
   if(!(fx>0)||!(value>0))throw new Error('Conversion crédits invalide');
   const costCad=providerCostUsd*fx;
-  const bufferedCad=costCad*(1+buffer/100);
-  const credits=Math.max(1,Math.ceil(bufferedCad/value));
-
-  return {
-    service,model_key:model.model_key,model_name:model.name||model.model_key,billing_type:billing,
-    provider_input:providerInput,provider_cost_usd:providerCostUsd,cost_cad:costCad,
-    buffer_pct:buffer,credit_value_cad:value,usd_to_cad_rate:fx,credits,estimated,
-    tariff_label:selected.label||null,source_url:selected.source_url||model.cost_source_url||null,
-  };
+  const credits=Math.max(1,Math.ceil(costCad*(1+buffer/100)/value));
+  return{service,model_key:model.model_key,model_name:model.name||model.model_key,billing_type:billing,provider_input:providerInput,provider_cost_usd:providerCostUsd,cost_cad:costCad,buffer_pct:buffer,credit_value_cad:value,usd_to_cad_rate:fx,credits,estimated,tariff_label:selected.label||null,source_url:selected.source_url||model.cost_source_url||null};
 }
