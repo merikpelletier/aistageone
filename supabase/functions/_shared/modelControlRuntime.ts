@@ -55,33 +55,38 @@ export function installModelControl(slug:string){
     || modelKeys?.[sourceAssignment?.kind]
     || ''
   ).trim().toLowerCase();
+  if(!requestedModel)fail('Aucun modèle n’a été sélectionné pour ce service',422);
 
-  let assignment:any=sourceAssignment;
-  let choice:any=sourceAssignment;
-  let selectedModel:any=null;
+  const {data:requested,error:re}=await client.from('ai_model_catalog').select('*').eq('model_key',requestedModel).eq('enabled',true).maybeSingle();
+  if(re)fail('Catalogue des modèles indisponible',503);
+  if(!requested)fail('Le modèle choisi n’est pas actif dans le catalogue',422);
 
-  if(requestedModel){
-   const {data:requested,error:re}=await client.from('ai_model_catalog').select('*').eq('model_key',requestedModel).eq('enabled',true).maybeSingle();
-   if(re)fail('Catalogue des modèles indisponible',503);
-   if(!requested)fail('Le modèle choisi n’est pas actif dans le catalogue',422);
-   selectedModel=requested;
-   assignment=assignments.find((item:any)=>item.kind===requested.kind) || null;
-   if(!assignment)fail('Le type du modèle choisi n’est pas raccordé à ce service',422);
-   const {data:option,error:oe}=await client.from('ai_model_route_option').select('*').eq('route_key',assignment.route_key).eq('model_key',requestedModel).eq('enabled',true).maybeSingle();
-   if(oe)fail('Choix de modèle indisponible',503);
-   choice={...assignment,model_key:requestedModel,input_mapping:option?.input_mapping??assignment?.input_mapping??{},defaults:option?.defaults??assignment?.defaults??{},enabled:true};
-  }
+  const compatibleAssignments=assignments.filter((item:any)=>item.kind===requested.kind);
+  if(!compatibleAssignments.length)fail('Le type du modèle choisi n’est pas raccordé à ce service',422);
+  const routeKeys=compatibleAssignments.map((item:any)=>item.route_key);
+  const {data:options,error:oe}=await client.from('ai_model_route_option').select('*')
+    .in('route_key',routeKeys).eq('model_key',requestedModel).eq('enabled',true)
+    .order('recommended',{ascending:false}).order('display_order',{ascending:true}).limit(1);
+  if(oe)fail('Choix de modèle indisponible',503);
+  const option=options?.[0];
+  if(!option)fail('Le modèle choisi n’est pas autorisé par Admin pour ce service',422);
 
-  const {data:model,error:me}=selectedModel&&choice?.model_key===selectedModel.model_key
-    ? {data:selectedModel,error:null}
-    : choice?.model_key?await client.from('ai_model_catalog').select('*').eq('model_key',choice.model_key).maybeSingle():{data:null,error:null};
-  if(me)fail('Catalogue des modèles indisponible',503);
+  const assignment=compatibleAssignments.find((item:any)=>item.route_key===option.route_key);
+  if(!assignment)fail('La route Admin du modèle choisi n’est plus active',422);
+  const choice={
+    ...assignment,
+    model_key:requestedModel,
+    input_mapping:option.input_mapping??assignment.input_mapping??{},
+    defaults:option.defaults??assignment.defaults??{},
+    enabled:true,
+  };
+
   let providerInput;
-  try{validateChoice(choice,model);providerInput=adaptInput(body.input,choice,model);}catch(e){context.failed=true;throw e;}
-  const {data:call,error:ce}=await client.from('ai_model_call').insert({route_key:assignment.route_key,request_id:context.id,model_key:model.model_key,assignment_revision:assignment?.revision??null,rate_snapshot:{billing_type:model.billing_type,unit_price_usd:model.unit_price_usd,output_unit_price_usd:model.output_unit_price_usd,source_url:model.cost_source_url},status:'starting'}).select('id').single();
+  try{validateChoice(choice,requested);providerInput=adaptInput(body.input,choice,requested);}catch(e){context.failed=true;throw e;}
+  const {data:call,error:ce}=await client.from('ai_model_call').insert({route_key:assignment.route_key,request_id:context.id,model_key:requested.model_key,assignment_revision:assignment?.revision??null,rate_snapshot:{billing_type:requested.billing_type,unit_price_usd:requested.unit_price_usd,output_unit_price_usd:requested.output_unit_price_usd,source_url:requested.cost_source_url},status:'starting'}).select('id').single();
   if(ce)fail('Journal des appels indisponible; aucun appel envoyé',503);
-  const target=model.version_id?'https://api.replicate.com/v1/predictions':`https://api.replicate.com/v1/models/${model.model_key}/predictions`;
-  const payload={...body,input:providerInput};delete payload.version;if(model.version_id)payload.version=model.version_id;
+  const target=requested.version_id?'https://api.replicate.com/v1/predictions':`https://api.replicate.com/v1/models/${requested.model_key}/predictions`;
+  const payload={...body,input:providerInput};delete payload.version;if(requested.version_id)payload.version=requested.version_id;
   try{
    const response=await nativeFetch(target,{method:'POST',headers:request.headers,body:JSON.stringify(payload),signal:request.signal});
    const prediction=await response.clone().json().catch(()=>({}));
