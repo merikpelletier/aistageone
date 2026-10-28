@@ -420,7 +420,7 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({ clips, mus
 
   const triggerLegacy = (matcher) => {
     const host = portalHost?.parentElement;
-    const buttons = [...(host?.querySelectorAll('button, label') || [])].filter((node) => node !== portalHost && matcher(node.textContent || ''));
+    const buttons = [...(host?.querySelectorAll('button, label') || [])].filter((node) => !portalHost?.contains(node) && matcher(node.textContent || ''));
     buttons[0]?.click();
   };
 
