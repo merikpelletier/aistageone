@@ -2,6 +2,16 @@ import { createClient } from 'npm:@supabase/supabase-js@2.112.2';
 import { serveWithCors } from '../_shared/adminFinanceCors.ts';
 import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 
+const incompatibleRequiredMedia=new Set(['image','image_url','input_image','start_image','end_image','last_frame_image','first_frame','video','video_url','base_video','reference_video','reference_videos','audio','reference_audios']);
+const shootCompatible=(model:any,mapping:any={})=>{
+  const input=model?.schema?.components?.schemas?.Input||{};
+  const props=input?.properties||{};
+  const sources=Object.keys(props).map((name)=>mapping?.[name]||name);
+  if(!sources.includes('prompt')||!sources.includes('reference_images'))return false;
+  const requiredSources=(input.required||[]).map((name:string)=>mapping?.[name]||name);
+  return !requiredSources.some((source:string)=>incompatibleRequiredMedia.has(source));
+};
+
 serveWithCors(async request=>{
   const auth=request.headers.get('Authorization')||'';
   const scoped=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_ANON_KEY')!,{global:{headers:auth?{Authorization:auth}:{}},auth:{persistSession:false}});
@@ -48,7 +58,9 @@ serveWithCors(async request=>{
         const explicit=optionMap.get(model.model_key)||null;
         if(!shootVideo&&!explicit)continue;
         if(shootVideo&&!model.schema)continue;
-        const base={model_key:model.model_key,name:model.name||model.model_key,description:model.description||'',kind:effectiveKind,recommended:Boolean(explicit?.recommended),display_order:explicit?.display_order??999,schema:model.schema||null,capabilities:model.capabilities||null,input_mapping:explicit?.input_mapping||fallbackAssignment?.input_mapping||{},defaults:explicit?.defaults||fallbackAssignment?.defaults||{},route_key:explicit?.route_key||fallbackAssignment?.route_key||null};
+        const inputMapping=explicit?.input_mapping||fallbackAssignment?.input_mapping||{};
+        if(shootVideo&&!shootCompatible(model,inputMapping))continue;
+        const base={model_key:model.model_key,name:model.name||model.model_key,description:model.description||'',kind:effectiveKind,recommended:Boolean(explicit?.recommended),display_order:explicit?.display_order??999,schema:model.schema||null,capabilities:model.capabilities||null,input_mapping:inputMapping,defaults:explicit?.defaults||fallbackAssignment?.defaults||{},route_key:explicit?.route_key||fallbackAssignment?.route_key||null};
         try{
           const quote=await quoteAiService(serviceClient,service,body.input||{},model.model_key,effectiveKind);
           results.push({...base,credits:quote.credits,estimated:quote.estimated,billing_type:quote.billing_type});
