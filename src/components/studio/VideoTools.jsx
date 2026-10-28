@@ -228,6 +228,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const [showAssetsShop, setShowAssetsShop] = useState(false);
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [vaultVideoUrl, setVaultVideoUrl] = useState(null);
+  const [vaultSaveSource, setVaultSaveSource] = useState('shot');
+  const [savingEditToVault, setSavingEditToVault] = useState(false);
   const [userEmail, setUserEmail] = useState(user?.email || null);
   const [showMyScenes, setShowMyScenes] = useState(false);
   const [savedScenes, setSavedScenes] = useState([]);
@@ -1002,10 +1004,9 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     ctx.drawImage(video, x, y, width, height);
   };
 
-  const exportEditor = async () => {
-    if (!editClips.length) return toast.error('There are no clips to export.');
-    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return toast.error('This browser cannot render the edit locally.');
-    setExportingEdit(true);
+  const renderEditTimeline = async () => {
+    if (!editClips.length) throw new Error('There are no clips to export.');
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) throw new Error('This browser cannot render the edit locally.');
     let canvasStream;
     let audioContext;
     let musicElement;
@@ -1112,6 +1113,19 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       if (musicElement) musicElement.pause();
       if (musicStartTimer) clearTimeout(musicStartTimer);
       const blob = new Blob(chunks, { type: mimeType });
+      return { blob, mimeType };
+    } finally {
+      try { exportVideo?.pause(); } catch {}
+      try { musicElement?.pause(); } catch {}
+      try { canvasStream?.getTracks().forEach((track) => track.stop()); } catch {}
+      try { await audioContext?.close(); } catch {}
+    }
+  };
+
+  const exportEditor = async () => {
+    setExportingEdit(true);
+    try {
+      const { blob } = await renderEditTimeline();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -1124,12 +1138,27 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     } catch (error) {
       toast.error(error.message || 'Export failed. Some video hosts may block browser-side rendering.');
     } finally {
-      try { exportVideo?.pause(); } catch {}
-      try { musicElement?.pause(); } catch {}
-      try { if (musicStartTimer) clearTimeout(musicStartTimer); } catch {}
-      try { canvasStream?.getTracks().forEach((track) => track.stop()); } catch {}
-      try { await audioContext?.close(); } catch {}
       setExportingEdit(false);
+    }
+  };
+
+  const saveEditToVault = async () => {
+    setSavingEditToVault(true);
+    try {
+      const { blob } = await renderEditTimeline();
+      const { data: authData } = await supabase.auth.getUser();
+      const owner = authData.user?.id || 'public';
+      const path = `${owner}/shoot/exports/${crypto.randomUUID()}.webm`;
+      const { error } = await supabase.storage.from('media').upload(path, blob, { cacheControl: '3600', upsert: false, contentType: 'video/webm' });
+      if (error) throw error;
+      const { data } = supabase.storage.from('media').getPublicUrl(path);
+      setVaultVideoUrl(data.publicUrl);
+      setVaultSaveSource('scene');
+      setShowSaveVault(true);
+    } catch (error) {
+      toast.error(error.message || 'Could not save the edit to Vault.');
+    } finally {
+      setSavingEditToVault(false);
     }
   };
 
@@ -1198,13 +1227,13 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
               <section className="border border-white/10 bg-[#17191d] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black">{activeShot.label}</p><p className="text-xs text-white/45">{activeShot.duration}s · {activeShot.framing} · {shotCast(activeShot).map((member) => member.name).join(', ') || 'No characters'}</p></div><span className="text-xs font-bold text-[#8ee9e4]">{priceQuote?.credits ? `${priceQuote.credits} credits` : ''}</span></div>{renderCharacterData(activeShot)}{shotMode(activeShot) === 'standard' ? <div className="mt-4 space-y-2 border-t border-white/10 pt-3"><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Technical lines</p>{(activeShot.lines || []).map((line, index) => { const member = cast.find((item) => item.id === line.character_id); return <div key={line.id} className="border border-white/10 bg-black/20 p-3 text-xs"><span className="font-black text-[#8ee9e4]">{index + 1}. {member?.name || 'Unassigned'}</span>{line.dialogue && <p className="mt-1"><span className="text-white/40">Dialogue:</span> {line.dialogue}</p>}{line.emotion && <p><span className="text-white/40">Emotion:</span> {line.emotion}</p>}{line.action && <p><span className="text-white/40">Action:</span> {line.action}</p>}</div>; })}</div> : <div className="mt-4 border-t border-white/10 pt-3"><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Description</p><p className="mt-1 text-sm">{activeShot.description || '—'}</p></div>}{renderShotReferences(activeShot)}</section>
               <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase text-white/40">Exact references sent for this shot</p><div className="flex flex-wrap gap-2">{shotReferences(activeShot).map((ref, index) => <div key={`${ref.url}-${index}`} className="w-28"><div className="aspect-square overflow-hidden bg-black"><img src={ref.url} alt="" className="h-full w-full object-contain" /></div><p className="mt-1 text-[9px] font-bold text-[#8ee9e4]">{ref.role}</p><p className="truncate text-[9px] text-white/40">Image {index + 1}</p></div>)}</div></section>
               <section className="border border-[#23c7be]/30 bg-[#17191d] p-4"><div className="mb-2 flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Final prompt sent to video model</p><p className="text-[10px] text-white/40">This is the exact prompt. Review and correct it before generating.</p></div>{promptEdits[activeShot.id] !== undefined && <button type="button" onClick={() => setPromptEdits((current) => { const next = { ...current }; delete next[activeShot.id]; return next; })} className="bg-white/10 px-3 py-2 text-[10px] font-bold">Reset</button>}</div><textarea value={finalPromptForShot(activeShot)} onChange={(event) => setPromptEdits((current) => ({ ...current, [activeShot.id]: event.target.value }))} className="min-h-64 w-full border border-white/10 bg-black/30 p-3 text-xs leading-5 text-white" /></section>
-              {activeShot.result_url ? <section className="border border-white/10 bg-black p-3"><video src={activeShot.result_url} controls className="max-h-[60vh] w-full" /><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => generateShot(activeShot)} disabled={busy} className="flex items-center justify-center bg-white/10 py-3 text-xs font-bold disabled:opacity-60">{regeneratingShotId === activeShot.id ? <><Loader2 size={14} className="mr-2 animate-spin" /> Regenerating…</> : 'Regenerate With This Prompt'}</button><button type="button" onClick={() => { setVaultVideoUrl(activeShot.result_url); setShowSaveVault(true); }} disabled={regeneratingShotId === activeShot.id} className="bg-[#23c7be] py-3 text-xs font-black text-black hover:bg-[#8ee9e4] disabled:opacity-50">Save Shot to Vault</button></div><div className="mt-2 border-t border-white/10 pt-2"><textarea value={modifyVideoPrompt} onChange={(event) => setModifyVideoPrompt(event.target.value)} className="min-h-16 w-full bg-black/30 p-2 text-xs text-white" placeholder="Describe what to change in this video…" /><button type="button" onClick={() => modifyActiveShotVideo(activeShot)} disabled={busy || !modifyVideoPrompt.trim()} className="mt-2 w-full bg-white/10 py-3 text-xs font-bold disabled:opacity-50">{busy ? <Loader2 size={14} className="mr-2 inline animate-spin" /> : null}Modify Video</button></div></section> : <Button onClick={() => generateShot(activeShot)} disabled={busy || modelsLoading} className="w-full bg-[#23c7be] py-5 font-black text-black hover:bg-[#8ee9e4] hover:text-black">{busy ? <Loader2 className="mr-2 animate-spin" /> : <Video className="mr-2" />} Generate With This Prompt</Button>}
+              {activeShot.result_url ? <section className="border border-white/10 bg-black p-3"><video src={activeShot.result_url} controls className="max-h-[60vh] w-full" /><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => generateShot(activeShot)} disabled={busy} className="flex items-center justify-center bg-white/10 py-3 text-xs font-bold disabled:opacity-60">{regeneratingShotId === activeShot.id ? <><Loader2 size={14} className="mr-2 animate-spin" /> Regenerating…</> : 'Regenerate With This Prompt'}</button><button type="button" onClick={() => { setVaultVideoUrl(activeShot.result_url); setVaultSaveSource('shot'); setShowSaveVault(true); }} disabled={regeneratingShotId === activeShot.id} className="bg-[#23c7be] py-3 text-xs font-black text-black hover:bg-[#8ee9e4] disabled:opacity-50">Save Shot to Vault</button></div><div className="mt-2 border-t border-white/10 pt-2"><textarea value={modifyVideoPrompt} onChange={(event) => setModifyVideoPrompt(event.target.value)} className="min-h-16 w-full bg-black/30 p-2 text-xs text-white" placeholder="Describe what to change in this video…" /><button type="button" onClick={() => modifyActiveShotVideo(activeShot)} disabled={busy || !modifyVideoPrompt.trim()} className="mt-2 w-full bg-white/10 py-3 text-xs font-bold disabled:opacity-50">{busy ? <Loader2 size={14} className="mr-2 inline animate-spin" /> : null}Modify Video</button></div></section> : <Button onClick={() => generateShot(activeShot)} disabled={busy || modelsLoading} className="w-full bg-[#23c7be] py-5 font-black text-black hover:bg-[#8ee9e4] hover:text-black">{busy ? <Loader2 className="mr-2 animate-spin" /> : <Video className="mr-2" />} Generate With This Prompt</Button>}
               {completedCount > 0 && <button type="button" onClick={openEditor} className="w-full border border-[#23c7be]/30 bg-[#23c7be]/10 py-4 text-sm font-black text-[#8ee9e4] hover:bg-[#23c7be]/20">Open Scene Editor</button>}
             </>}</main>
           </div>}
 
           {step === 'edit' && <div className="space-y-4">
-            <section className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-[#17191d] p-4"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Scene Editor</p><p className="text-xs text-white/45">Assemble generated shots, trim, split, reframe, mix music and export.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={undoEdit} disabled={!editUndoStack.length} className="bg-white/10 px-4 py-2 text-xs font-bold disabled:opacity-30">↶ Undo</button><button type="button" onClick={exportEditor} disabled={exportingEdit || !editClips.length} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black hover:bg-[#8ee9e4] disabled:opacity-40">{exportingEdit ? <><Loader2 size={13} className="mr-1 inline animate-spin" /> Rendering…</> : 'Export Scene'}</button></div></section>
+            <section className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-[#17191d] p-4"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Scene Editor</p><p className="text-xs text-white/45">Assemble generated shots, trim, split, reframe, mix music and export.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={undoEdit} disabled={!editUndoStack.length} className="bg-white/10 px-4 py-2 text-xs font-bold disabled:opacity-30">↶ Undo</button><button type="button" onClick={exportEditor} disabled={exportingEdit || savingEditToVault || !editClips.length} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black hover:bg-[#8ee9e4] disabled:opacity-40">{exportingEdit ? <><Loader2 size={13} className="mr-1 inline animate-spin" /> Rendering…</> : 'Export Scene'}</button><button type="button" onClick={saveEditToVault} disabled={exportingEdit || savingEditToVault || !editClips.length} className="border border-[#23c7be]/30 bg-[#23c7be]/10 px-4 py-2 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/20 disabled:opacity-40">{savingEditToVault ? <><Loader2 size={13} className="mr-1 inline animate-spin" /> Rendering…</> : 'Save to Vault'}</button></div></section>
 
             <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
               <section className="border border-white/10 bg-black p-3"><div className={`mx-auto overflow-hidden bg-black ${editRatio === '9:16' ? 'aspect-[9/16] max-h-[620px]' : editRatio === '1:1' ? 'aspect-square max-h-[620px]' : 'aspect-video'}`}>{selectedEditClip ? <ShootTimelineEngine ref={editTimelineEngineRef} clips={editClips} music={editMusic} playhead={editPlayhead} playing={editPlaying} onPlayhead={setEditPlayhead} onPlayingChange={setEditPlaying} onActiveClip={setSelectedEditClipId} videoStyle={{ transform: `translate(${Number(selectedEditClip.x || 0)}%, ${Number(selectedEditClip.y || 0)}%) scale(${Number(selectedEditClip.scale || 1)})`, transformOrigin: 'center center' }} /> : <div className="flex h-full min-h-64 items-center justify-center text-sm text-white/30">No generated shots in the editor.</div>}</div></section>
@@ -1222,7 +1251,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
         {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} mediaType={pickerTarget?.type === 'music' ? 'audio' : pickerTarget?.type === 'shot-video-reference' ? 'video' : 'image'} onSelect={(url, name) => pickerTarget?.type === 'shot-video-reference' ? applyPickedVideoReference(url, name || 'Vault video reference') : applyPickedImage(url, name || (pickerTarget?.type === 'music' ? 'Vault music' : 'Vault reference'))} onClose={() => { setShowVaultPicker(false); setPickerTarget(null); }} embedded={embedded} />}
         {showAssetsShop && <AssetsShopPicker embedded={embedded} onSelect={(url, name) => applyPickedImage(url, name)} onClose={() => { setShowAssetsShop(false); setPickerTarget(null); }} />}
-        {showSaveVault && vaultVideoUrl && userEmail && <SaveToVaultModal userEmail={userEmail} imageUrl={vaultVideoUrl} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={() => { setShowSaveVault(false); toast.success('Shot saved to Vault'); }} />}
+        {showSaveVault && vaultVideoUrl && userEmail && <SaveToVaultModal userEmail={userEmail} imageUrl={vaultVideoUrl} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={() => { setShowSaveVault(false); toast.success(vaultSaveSource === 'scene' ? 'Scene saved to Vault' : 'Shot saved to Vault'); }} />}
       </motion.div>
     </div>
   );
