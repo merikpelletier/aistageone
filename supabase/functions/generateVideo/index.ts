@@ -12,6 +12,16 @@ import type { CreditCharge, CreditBillingContext } from '../_shared/credits.ts';
 import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 import Replicate from 'npm:replicate@0.33.0';
 
+const normalizeCreditCharge = (value: any): CreditCharge | null => {
+  if (!value || typeof value !== 'object') return null;
+  return {
+    id: typeof value.id === 'string' ? value.id : null,
+    cost: Number(value.cost || 0),
+    balanceAfter: value.balanceAfter == null ? null : Number(value.balanceAfter),
+    bypassed: Boolean(value.bypassed),
+  };
+};
+
 serveWithCors(async (req) => {
   let billing: CreditBillingContext | null = null;
   let creditCharge: CreditCharge | null = null;
@@ -24,7 +34,13 @@ serveWithCors(async (req) => {
     const TOKEN = Deno.env.get('REPLICATE_API_TOKEN');
     if (!TOKEN) throw new Error('REPLICATE_API_TOKEN not set');
 
+    const body = await req.json();
     const {
+      action = 'generate',
+      async_mode = false,
+      prediction_id = null,
+      credit_charge = null,
+      lineage_inputs = [],
       prompt,
       image_url = null,
       reference_image_urls = [],
@@ -37,7 +53,67 @@ serveWithCors(async (req) => {
       engine = 'video',
       transformation_prompt = null,
       model_key = null
-    } = await req.json();
+    } = body || {};
+
+    const replicate = new Replicate({ auth: TOKEN });
+
+    const resolveOutputUrl = (output: any): string => {
+      const value = Array.isArray(output) ? output[0] : output;
+      return typeof value === 'string' ? value :
+        typeof value?.url === 'function' ? value.url() :
+        value?.url || String(value || '');
+    };
+
+    if (action === 'status') {
+      if (!prediction_id) return Response.json({ error: 'prediction_id is required' }, { status: 400 });
+      creditCharge = normalizeCreditCharge(credit_charge);
+      const prediction: any = await replicate.predictions.get(String(prediction_id));
+      const status = String(prediction?.status || 'unknown');
+
+      if (status === 'starting' || status === 'processing') {
+        return Response.json({ status, prediction_id });
+      }
+
+      if (status === 'failed' || status === 'canceled' || status === 'aborted') {
+        const failure = new Error(prediction?.error || `Video generation ${status}`);
+        await refundCreditCharge(billing.service, creditCharge, failure);
+        return Response.json({ status, prediction_id, error: failure.message });
+      }
+
+      if (status !== 'succeeded') {
+        return Response.json({ status, prediction_id });
+      }
+
+      const videoOutputUrl = resolveOutputUrl(prediction?.output);
+      if (!videoOutputUrl) throw new Error('Replicate completed without a video output');
+
+      const videoRes = await fetch(videoOutputUrl);
+      if (!videoRes.ok) throw new Error('Failed to fetch completed video');
+      const blob = await videoRes.blob();
+      const file = new File([blob], 'video.mp4', { type: 'video/mp4' });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+
+      const inheritedInputs = Array.isArray(lineage_inputs)
+        ? [...new Set(lineage_inputs.filter((value) => typeof value === 'string' && value.length > 0))]
+        : [];
+      if (inheritedInputs.length > 0) {
+        const { error: lineageError } = await billing.service.rpc('inherit_media_product_placements', {
+          p_output_url: file_url,
+          p_input_urls: inheritedInputs,
+        });
+        if (lineageError) console.error('Product placement lineage propagation failed:', lineageError.message);
+      }
+
+      if (creditCharge) await completeCreditCharge(billing.service, creditCharge);
+
+      return Response.json({
+        status: 'succeeded',
+        prediction_id,
+        file_url,
+        credit_cost: creditCharge?.cost || 0,
+        balance_after: creditCharge?.balanceAfter ?? null,
+      });
+    }
 
     const references = Array.isArray(reference_image_urls)
       ? [...new Set(reference_image_urls.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()))].slice(0, 7)
@@ -103,14 +179,37 @@ serveWithCors(async (req) => {
       explicitCost: dynamicQuote.credits,
     });
 
-    const replicate = new Replicate({ auth: TOKEN });
+    if (async_mode && engine === 'video') {
+      const input: any = {
+        prompt: mappedPrompt,
+        duration: Math.max(3, Math.min(15, Number(duration) || 5)),
+        mode,
+        aspect_ratio,
+        generate_audio: audioEnabled,
+      };
+
+      if (references.length) {
+        input.reference_images = references;
+      } else if (image_url) {
+        if (use_as_reference) input.reference_images = [image_url];
+        else input.start_image = image_url;
+      }
+
+      const versions: any = await replicate.models.versions.list('kwaivgi', 'kling-v3-omni-video');
+      const version = versions?.results?.[0]?.id;
+      if (!version) throw new Error('Unable to resolve Kling v3 Omni model version');
+
+      const prediction: any = await replicate.predictions.create({ version, input });
+      return Response.json({
+        async: true,
+        status: prediction.status,
+        prediction_id: prediction.id,
+        credit_charge: creditCharge,
+        lineage_inputs: [image_url, ...references, video_url].filter((value) => typeof value === 'string' && value.length > 0),
+      });
+    }
+
     const encoder = new TextEncoder();
-
-    const resolveOutputUrl = (output: any): string =>
-      typeof output === 'string' ? output :
-      typeof output?.url === 'function' ? output.url() :
-      output?.url || String(output);
-
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         let closed = false;
