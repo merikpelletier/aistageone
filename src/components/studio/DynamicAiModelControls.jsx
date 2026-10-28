@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 
 export const SHOOT_SYSTEM_FIELDS = new Set(['prompt', 'duration', 'aspect_ratio', 'reference_images']);
+const SHOOT_MEDIA_FIELDS = new Set(['start_image', 'end_image', 'image', 'image_url', 'input_image', 'base_video', 'video', 'video_url', 'reference_videos', 'middle_images', 'first_frame', 'last_frame']);
 
 const titleFor = (key) => String(key || '')
   .replace(/[_-]+/g, ' ')
@@ -125,6 +126,12 @@ const parseValue = (raw, field) => {
   return raw;
 };
 
+const isTechnicalField = (name, field) => {
+  if (field.type === 'object') return true;
+  if (field.type === 'array' && field.items?.type === 'object') return true;
+  return ['negative_prompt', 'cfg_scale', 'seed', 'guidance_scale', 'num_inference_steps', 'fps'].includes(name);
+};
+
 function FieldControl({ name, rawField, document, value, inheritedValue, required, onChange }) {
   const field = normalizeModelSchema(rawField, document);
   const effective = value !== undefined ? value : inheritedValue !== undefined ? inheritedValue : field.default;
@@ -142,16 +149,15 @@ function FieldControl({ name, rawField, document, value, inheritedValue, require
   } else if (field.type === 'boolean') {
     control = <select value={effective === undefined ? '' : String(Boolean(effective))} onChange={(event) => setValue(event.target.value === '' ? undefined : event.target.value === 'true')} className={commonClass}>
       {!required && <option value="">Default</option>}
-      <option value="true">True</option>
-      <option value="false">False</option>
+      <option value="true">On</option>
+      <option value="false">Off</option>
     </select>;
   } else if (field.type === 'number' || field.type === 'integer') {
     control = <input type="number" value={effective ?? ''} min={field.minimum} max={field.maximum} step={field.multipleOf || (field.type === 'integer' ? 1 : 'any')} onChange={(event) => setValue(parseValue(event.target.value, field))} className={commonClass} />;
   } else if (field.type === 'array' || field.type === 'object') {
-    control = <textarea value={displayValue(effective, field)} onChange={(event) => setValue(parseValue(event.target.value, field))} className={`${commonClass} min-h-20`} placeholder={field.type === 'array' ? (field.items?.type === 'object' ? 'JSON array' : 'One value per line') : 'JSON object'} />;
+    control = <textarea value={displayValue(effective, field)} onChange={(event) => setValue(parseValue(event.target.value, field))} className={`${commonClass} min-h-20`} placeholder={field.type === 'array' ? (field.items?.type === 'object' ? 'Advanced JSON array' : 'One value per line') : 'Advanced JSON object'} />;
   } else {
-    const inputType = field.format === 'uri' || field.format === 'url' ? 'url' : 'text';
-    control = <input type={inputType} value={effective ?? ''} minLength={field.minLength} maxLength={field.maxLength} pattern={field.pattern} onChange={(event) => setValue(parseValue(event.target.value, field))} className={commonClass} placeholder={inputType === 'url' ? 'https://…' : ''} />;
+    control = <input type="text" value={effective ?? ''} minLength={field.minLength} maxLength={field.maxLength} pattern={field.pattern} onChange={(event) => setValue(parseValue(event.target.value, field))} className={commonClass} />;
   }
 
   return <label className="block text-[10px] text-white/55">
@@ -162,6 +168,7 @@ function FieldControl({ name, rawField, document, value, inheritedValue, require
 }
 
 export default function DynamicAiModelControls({ model, values = {}, inheritedValues = {}, onChange }) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const document = model?.schema;
   const inputSchema = useMemo(() => getModelInputSchema(model), [model]);
   const fields = useMemo(() => {
@@ -169,21 +176,24 @@ export default function DynamicAiModelControls({ model, values = {}, inheritedVa
     const required = new Set(inputSchema.required || []);
     const mapping = model?.input_mapping || {};
     return Object.entries(inputSchema.properties)
-      .filter(([name]) => !SHOOT_SYSTEM_FIELDS.has(mapping[name] || name))
-      .map(([name, rawField]) => ({ name, rawField, required: required.has(name) }));
+      .map(([name, rawField]) => ({ name, source: mapping[name] || name, rawField, field: normalizeModelSchema(rawField, document), required: required.has(name) }))
+      .filter(({ source }) => !SHOOT_SYSTEM_FIELDS.has(source) && !SHOOT_MEDIA_FIELDS.has(source));
   }, [document, inputSchema, model?.input_mapping]);
 
+  const basicFields = fields.filter(({ name, field }) => !isTechnicalField(name, field));
+  const advancedFields = fields.filter(({ name, field }) => isTechnicalField(name, field));
+
   if (!model) return null;
-  if (!inputSchema?.properties) return <div className="mt-3 border border-amber-300/20 bg-amber-300/5 p-3 text-xs text-amber-100">This model has no imported input schema, so its options cannot be exposed safely.</div>;
-  if (!fields.length) return <p className="mt-3 text-xs text-white/40">This model has no additional options beyond the Shoot controls.</p>;
+  if (!inputSchema?.properties) return <div className="mt-3 border border-amber-300/20 bg-amber-300/5 p-3 text-xs text-amber-100">This model has no imported input schema.</div>;
+  if (!fields.length) return <p className="mt-3 text-xs text-white/40">No additional model settings are needed here.</p>;
 
   return <div className="mt-4 border-t border-white/10 pt-4">
-    <div className="mb-3">
-      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Model options</p>
-      <p className="text-[10px] text-white/40">Generated automatically from the selected model schema.</p>
-    </div>
-    <div className="grid gap-3 md:grid-cols-2">
-      {fields.map(({ name, rawField, required }) => <FieldControl key={name} name={name} rawField={rawField} document={document} value={values[name]} inheritedValue={inheritedValues[name]} required={required} onChange={onChange} />)}
-    </div>
+    {basicFields.length > 0 && <div className="grid gap-3 md:grid-cols-2">
+      {basicFields.map(({ name, rawField, required }) => <FieldControl key={name} name={name} rawField={rawField} document={document} value={values[name]} inheritedValue={inheritedValues[name]} required={required} onChange={onChange} />)}
+    </div>}
+    {advancedFields.length > 0 && <div className="mt-4 border-t border-white/10 pt-3">
+      <button type="button" onClick={() => setAdvancedOpen((open) => !open)} className="text-[10px] font-black uppercase tracking-[0.12em] text-white/55 hover:text-white">Advanced options {advancedOpen ? '▲' : '▼'}</button>
+      {advancedOpen && <div className="mt-3 grid gap-3 md:grid-cols-2">{advancedFields.map(({ name, rawField, required }) => <FieldControl key={name} name={name} rawField={rawField} document={document} value={values[name]} inheritedValue={inheritedValues[name]} required={required} onChange={onChange} />)}</div>}
+    </div>}
   </div>;
 }
