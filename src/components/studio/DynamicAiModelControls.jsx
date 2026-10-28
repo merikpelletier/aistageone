@@ -36,6 +36,14 @@ export const getModelInputSchema = (model) => {
   return resolveSchema(document?.components?.schemas?.Input, document) || null;
 };
 
+export const getModelFieldSchema = (model, fieldName) => {
+  const document = model?.schema;
+  const inputSchema = getModelInputSchema(model);
+  const rawField = inputSchema?.properties?.[fieldName];
+  if (!document || !rawField) return null;
+  return normalizeSchema(rawField, document);
+};
+
 export const getModelDefaults = (model) => {
   const document = model?.schema;
   const inputSchema = getModelInputSchema(model);
