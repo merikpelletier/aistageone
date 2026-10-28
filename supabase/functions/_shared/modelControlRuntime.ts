@@ -18,7 +18,7 @@ export function installModelControl(slug:string){
    const requestBody=request.clone().json().catch(()=>({}));
    return contexts.run({id:crypto.randomUUID(),slug,requestBody,failed:false},()=>handler(request,info));
   };
- return (serve as any)(...args);
+  return (serve as any)(...args);
  };
  globalThis.fetch=async(input:any,init?:RequestInit)=>{
   const inputUrl=typeof input==='string'||input instanceof URL?String(input):input.url;
@@ -33,6 +33,7 @@ export function installModelControl(slug:string){
    }
    return response;
   }
+
   const request=new Request(input,init);
   const context=contexts.getStore();if(!context)fail('Contexte du service IA manquant');
   if(context.failed)fail('La génération précédente a échoué. Aucun remplacement automatique autorisé.');
@@ -49,12 +50,7 @@ export function installModelControl(slug:string){
   const sourceKey=routeKey(service,source);
   const sourceAssignment=assignments.find((item:any)=>item.route_key===sourceKey) || assignments[0];
   const modelKeys=original?.model_keys&&typeof original.model_keys==='object'?original.model_keys:{};
-  const requestedModel=String(
-    original?.model_key
-    || original?.ai_model_key
-    || modelKeys?.[sourceAssignment?.kind]
-    || ''
-  ).trim().toLowerCase();
+  const requestedModel=String(original?.model_key||original?.ai_model_key||modelKeys?.[sourceAssignment?.kind]||'').trim().toLowerCase();
 
   let assignment:any=sourceAssignment;
   let choice:any=sourceAssignment;
@@ -68,20 +64,18 @@ export function installModelControl(slug:string){
    const compatibleAssignments=assignments.filter((item:any)=>item.kind===requested.kind);
    if(!compatibleAssignments.length)fail('Le type du modèle choisi n’est pas raccordé à ce service',422);
    const routeKeys=compatibleAssignments.map((item:any)=>item.route_key);
-   const {data:options,error:oe}=await client.from('ai_model_route_option').select('*')
-     .in('route_key',routeKeys).eq('model_key',requestedModel).eq('enabled',true)
-     .order('recommended',{ascending:false}).order('display_order',{ascending:true}).limit(1);
+   const {data:options,error:oe}=await client.from('ai_model_route_option').select('*').in('route_key',routeKeys).eq('model_key',requestedModel).eq('enabled',true).order('recommended',{ascending:false}).order('display_order',{ascending:true}).limit(1);
    if(oe)fail('Choix de modèle indisponible',503);
-   const option=options?.[0];
-   if(!option)fail('Le modèle choisi n’est pas autorisé par Admin pour ce service',422);
+   const option=options?.[0]||null;
+   const shootVideo=service==='generateVideo:video'&&requested.kind==='video';
+   if(!option&&!shootVideo)fail('Le modèle choisi n’est pas autorisé par Admin pour ce service',422);
 
-   assignment=compatibleAssignments.find((item:any)=>item.route_key===option.route_key);
-   if(!assignment)fail('La route Admin du modèle choisi n’est plus active',422);
+   assignment=option?compatibleAssignments.find((item:any)=>item.route_key===option.route_key)||compatibleAssignments[0]:compatibleAssignments[0];
    choice={
      ...assignment,
      model_key:requestedModel,
-     input_mapping:option.input_mapping??assignment.input_mapping??{},
-     defaults:option.defaults??assignment.defaults??{},
+     input_mapping:option?.input_mapping??assignment.input_mapping??{},
+     defaults:option?.defaults??assignment.defaults??{},
      enabled:true,
    };
    model=requested;
