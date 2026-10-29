@@ -1,6 +1,8 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Folder, Music2, Pause, Play, Scissors, Undo2, Upload, Volume2, VolumeX, ZoomIn, ZoomOut } from 'lucide-react';
+import { Folder, Loader2, Music2, Pause, Play, Scissors, Undo2, Upload, Volume2, VolumeX, ZoomIn, ZoomOut } from 'lucide-react';
+import { supabase } from '@/api/supabaseClient';
+import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const clipDuration = (clip) => Math.max(0.05, Number(clip?.trim_end || 0) - Number(clip?.trim_start || 0));
@@ -37,6 +39,12 @@ const formatTime = (seconds) => {
   const secs = Math.floor(safe % 60);
   const frames = Math.floor((safe - Math.floor(safe)) * 30);
   return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
+};
+
+const ratioSize = (ratio) => {
+  if (ratio === '9:16') return { width: 720, height: 1280 };
+  if (ratio === '1:1') return { width: 1080, height: 1080 };
+  return { width: 1280, height: 720 };
 };
 
 const setElementTime = (element, time, tolerance = 0.04) => {
@@ -135,6 +143,10 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({ clips, mus
   const [zoom, setZoom] = useState(1);
   const [selectedId, setSelectedId] = useState(clips[0]?.id || null);
   const [undoStack, setUndoStack] = useState([]);
+  const [savingToVault, setSavingToVault] = useState(false);
+  const [vaultVideoUrl, setVaultVideoUrl] = useState('');
+  const [vaultUserEmail, setVaultUserEmail] = useState('');
+  const [showVaultSave, setShowVaultSave] = useState(false);
 
   clipsRef.current = clips;
   musicRef.current = music;
@@ -424,6 +436,173 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({ clips, mus
     buttons[0]?.click();
   };
 
+  const drawExportFrame = (ctx, canvas, video, clip) => {
+    const vw = Number(video.videoWidth || canvas.width);
+    const vh = Number(video.videoHeight || canvas.height);
+    const base = Math.max(canvas.width / vw, canvas.height / vh);
+    const scale = base * Math.max(0.25, Number(clip.scale || 1));
+    const width = vw * scale;
+    const height = vh * scale;
+    const x = (canvas.width - width) / 2 + (Number(clip.x || 0) / 100) * (canvas.width / 2);
+    const y = (canvas.height - height) / 2 + (Number(clip.y || 0) / 100) * (canvas.height / 2);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, x, y, width, height);
+  };
+
+  const renderVaultBlob = async () => {
+    const currentClips = clipsRef.current;
+    if (!currentClips.length) throw new Error('There are no clips to save.');
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) throw new Error('This browser cannot render the edit locally.');
+
+    let canvasStream;
+    let audioContext;
+    let musicElement;
+    let exportVideo;
+    let musicStartTimer;
+    try {
+      const { width, height } = ratioSize(previewRatio);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      canvasStream = canvas.captureStream(30);
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      await audioContext.resume();
+      const audioDestination = audioContext.createMediaStreamDestination();
+
+      exportVideo = document.createElement('video');
+      exportVideo.crossOrigin = 'anonymous';
+      exportVideo.playsInline = true;
+      exportVideo.preload = 'auto';
+      const videoSource = audioContext.createMediaElementSource(exportVideo);
+      const videoGain = audioContext.createGain();
+      videoSource.connect(videoGain).connect(audioDestination);
+
+      const currentMusic = musicRef.current || {};
+      if (currentMusic.url) {
+        musicElement = document.createElement('audio');
+        musicElement.crossOrigin = 'anonymous';
+        musicElement.src = currentMusic.url;
+        musicElement.loop = Boolean(currentMusic.loop);
+        musicElement.preload = 'auto';
+        await new Promise((resolve, reject) => {
+          const ready = () => { cleanup(); resolve(); };
+          const failed = () => { cleanup(); reject(new Error('Music track could not be loaded for export.')); };
+          const cleanup = () => { musicElement.removeEventListener('loadedmetadata', ready); musicElement.removeEventListener('error', failed); };
+          musicElement.addEventListener('loadedmetadata', ready);
+          musicElement.addEventListener('error', failed);
+          musicElement.load();
+        });
+        const musicSource = audioContext.createMediaElementSource(musicElement);
+        const musicGain = audioContext.createGain();
+        musicSource.connect(musicGain).connect(audioDestination);
+        const trimStart = Math.max(0, Number(currentMusic.trim_start || 0));
+        const trimEnd = Math.max(trimStart, Math.min(Number(currentMusic.trim_end || musicElement.duration || 0), Number(musicElement.duration || 0)));
+        musicElement.currentTime = trimStart;
+        musicElement.volume = 1;
+        musicGain.gain.value = clamp(Number(currentMusic.volume ?? 0.55), 0, 1);
+        const trackStart = Math.max(0, Number(currentMusic.start || 0));
+        if (trackStart > 0) musicStartTimer = window.setTimeout(() => { void musicElement.play().catch(() => {}); }, trackStart * 1000);
+        else await musicElement.play().catch(() => {});
+        if (!currentMusic.loop && trimEnd > trimStart) {
+          window.setTimeout(() => { try { musicElement.pause(); } catch {} }, (trackStart + (trimEnd - trimStart)) * 1000);
+        }
+      }
+
+      const combinedStream = new MediaStream([...canvasStream.getVideoTracks(), ...audioDestination.stream.getAudioTracks()]);
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+      const recorder = new MediaRecorder(combinedStream, { mimeType, videoBitsPerSecond: 8000000 });
+      const chunks = [];
+      recorder.ondataavailable = (event) => { if (event.data?.size) chunks.push(event.data); };
+      const stopped = new Promise((resolve) => { recorder.onstop = resolve; });
+      recorder.start(500);
+
+      const loadVideo = (url) => new Promise((resolve, reject) => {
+        const onReady = () => { cleanup(); resolve(); };
+        const onError = () => { cleanup(); reject(new Error('A clip could not be loaded for export.')); };
+        const cleanup = () => { exportVideo.removeEventListener('loadedmetadata', onReady); exportVideo.removeEventListener('error', onError); };
+        exportVideo.addEventListener('loadedmetadata', onReady);
+        exportVideo.addEventListener('error', onError);
+        exportVideo.src = url;
+        exportVideo.load();
+      });
+
+      const seekVideo = async (time) => {
+        const target = Math.max(0, Number(time || 0));
+        if (Math.abs(Number(exportVideo.currentTime || 0) - target) <= 0.02) return;
+        await new Promise((resolve) => {
+          const done = () => resolve();
+          exportVideo.addEventListener('seeked', done, { once: true });
+          exportVideo.currentTime = target;
+        });
+      };
+
+      for (const clip of currentClips) {
+        await loadVideo(clip.url);
+        const trimStart = Math.max(0, Number(clip.trim_start || 0));
+        const mediaDuration = Number.isFinite(exportVideo.duration) ? exportVideo.duration : Number(clip.source_duration || 5);
+        const trimEnd = Math.max(trimStart + 0.05, Math.min(Number(clip.trim_end || mediaDuration), mediaDuration));
+        const startAt = Math.min(trimStart, Math.max(0, mediaDuration - 0.05));
+        await seekVideo(startAt);
+        videoGain.gain.value = clip.muted ? 0 : clamp(Number(clip.volume ?? 1), 0, 1);
+        await exportVideo.play();
+        await new Promise((resolve) => {
+          const render = () => {
+            drawExportFrame(ctx, canvas, exportVideo, clip);
+            if (exportVideo.currentTime >= trimEnd || exportVideo.ended) {
+              exportVideo.pause();
+              resolve();
+              return;
+            }
+            requestAnimationFrame(render);
+          };
+          render();
+        });
+      }
+
+      recorder.stop();
+      await stopped;
+      const blob = new Blob(chunks, { type: mimeType });
+      if (!blob.size) throw new Error('The rendered scene is empty.');
+      return blob;
+    } finally {
+      if (musicStartTimer) clearTimeout(musicStartTimer);
+      try { exportVideo?.pause(); } catch {}
+      try { musicElement?.pause(); } catch {}
+      try { canvasStream?.getTracks().forEach((track) => track.stop()); } catch {}
+      try { await audioContext?.close(); } catch {}
+    }
+  };
+
+  const saveTimelineToVault = async () => {
+    if (savingToVault) return;
+    setSavingToVault(true);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const user = authData.user;
+      if (!user?.id || !user?.email) throw new Error('You must be signed in to save to Vault.');
+      const blob = await renderVaultBlob();
+      const path = `${user.id}/shoot/exports/${crypto.randomUUID()}.webm`;
+      const { error: uploadError } = await supabase.storage.from('media').upload(path, blob, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: 'video/webm',
+      });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from('media').getPublicUrl(path);
+      if (!data?.publicUrl) throw new Error('The rendered scene URL could not be created.');
+      setVaultUserEmail(user.email);
+      setVaultVideoUrl(data.publicUrl);
+      setShowVaultSave(true);
+    } catch (error) {
+      window.alert(error?.message || 'Could not save the edit to Vault.');
+    } finally {
+      setSavingToVault(false);
+    }
+  };
+
   const sharedProps = { controls: false, crossOrigin: 'anonymous', playsInline: true, preload: 'auto' };
   const preview = (
     <div className="relative h-full w-full overflow-hidden bg-black">
@@ -450,7 +629,7 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({ clips, mus
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => triggerLegacy((text) => text.includes('Export Scene'))} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black">Export Scene</button>
-          <button type="button" onClick={() => triggerLegacy((text) => text.trim() === 'Save to Vault')} className="border border-[#23c7be]/40 bg-[#23c7be]/10 px-4 py-2 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/20">Save to Vault</button>
+          <button type="button" onClick={() => void saveTimelineToVault()} disabled={savingToVault || !clips.length} className="flex items-center gap-2 border border-[#23c7be]/40 bg-[#23c7be]/10 px-4 py-2 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/20 disabled:opacity-50">{savingToVault && <Loader2 size={13} className="animate-spin" />}{savingToVault ? 'Rendering…' : 'Save to Vault'}</button>
         </div>
       </section>
 
@@ -498,7 +677,10 @@ const ShootTimelineEngine = forwardRef(function ShootTimelineEngine({ clips, mus
     </div>
   );
 
-  return <div ref={rootRef} className={`relative h-full w-full overflow-hidden bg-black ${className}`}>{portalHost ? createPortal(editor, portalHost) : preview}</div>;
+  return <div ref={rootRef} className={`relative h-full w-full overflow-hidden bg-black ${className}`}>
+    {portalHost ? createPortal(editor, portalHost) : preview}
+    {showVaultSave && vaultVideoUrl && vaultUserEmail && <SaveToVaultModal userEmail={vaultUserEmail} imageUrl={vaultVideoUrl} mediaType="video" onClose={() => setShowVaultSave(false)} onSaved={() => setShowVaultSave(false)} />}
+  </div>;
 });
 
 export default ShootTimelineEngine;
