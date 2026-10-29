@@ -509,11 +509,12 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const { data: authData } = await supabase.auth.getUser();
     const owner = authData.user?.id || 'public';
     const extension = file.name?.split('.').pop() || 'mp4';
-    const path = `${owner}/shoot/video-references/${crypto.randomUUID()}.${extension}`;
+    const folder = target?.type === 'shot-video-replacement' ? 'replacements' : 'video-references';
+    const path = `${owner}/shoot/${folder}/${crypto.randomUUID()}.${extension}`;
     const { error } = await supabase.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
     if (error) throw error;
     const { data } = supabase.storage.from('media').getPublicUrl(path);
-    applyPickedVideoReference(data.publicUrl, file.name, target);
+    await applyPickedVideoReference(data.publicUrl, file.name, target);
   };
 
   const applyPickedImage = (url, name, target = pickerTarget) => {
@@ -535,8 +536,32 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setPickerTarget(null);
   };
 
-  const applyPickedVideoReference = (url, name, target = pickerTarget) => {
-    if (!url || !target || target.type !== 'shot-video-reference') return;
+  const replaceShotResult = async (shotId, url) => {
+    if (!shotId || !url) return;
+    const nextShots = shotPlan.map((shot) => shot.id === shotId ? { ...shot, result_url: url } : shot);
+    setShotPlan(nextShots);
+    setEditClips([]);
+    setSelectedEditClipId(null);
+    setEditPlayhead(0);
+    const currentScene = sceneId || (await saveScene({ shot_plan: nextShots, status: 'shooting' })).id;
+    const { error } = await supabase.from('shoot_scene').update({ shot_plan: nextShots, status: 'shooting', updated_at: new Date().toISOString() }).eq('id', currentScene);
+    if (error) throw error;
+    toast.success('Shot video replaced');
+  };
+
+  const applyPickedVideoReference = async (url, name, target = pickerTarget) => {
+    if (!url || !target) return;
+    if (target.type === 'shot-video-replacement') {
+      try {
+        await replaceShotResult(target.shotId, url);
+        setShowVaultPicker(false);
+        setPickerTarget(null);
+      } catch (error) {
+        toast.error(error?.message || 'Shot video could not be replaced.');
+      }
+      return;
+    }
+    if (target.type !== 'shot-video-reference') return;
     setShotPlan((items) => items.map((shot) => {
       if (shot.id !== target.shotId) return shot;
       const currentRefs = Array.isArray(shot.shot_video_references) ? shot.shot_video_references : [];
@@ -1227,7 +1252,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
               <section className="border border-white/10 bg-[#17191d] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black">{activeShot.label}</p><p className="text-xs text-white/45">{activeShot.duration}s · {activeShot.framing} · {shotCast(activeShot).map((member) => member.name).join(', ') || 'No characters'}</p></div><span className="text-xs font-bold text-[#8ee9e4]">{priceQuote?.credits ? `${priceQuote.credits} credits` : ''}</span></div>{renderCharacterData(activeShot)}{shotMode(activeShot) === 'standard' ? <div className="mt-4 space-y-2 border-t border-white/10 pt-3"><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Technical lines</p>{(activeShot.lines || []).map((line, index) => { const member = cast.find((item) => item.id === line.character_id); return <div key={line.id} className="border border-white/10 bg-black/20 p-3 text-xs"><span className="font-black text-[#8ee9e4]">{index + 1}. {member?.name || 'Unassigned'}</span>{line.dialogue && <p className="mt-1"><span className="text-white/40">Dialogue:</span> {line.dialogue}</p>}{line.emotion && <p><span className="text-white/40">Emotion:</span> {line.emotion}</p>}{line.action && <p><span className="text-white/40">Action:</span> {line.action}</p>}</div>; })}</div> : <div className="mt-4 border-t border-white/10 pt-3"><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Description</p><p className="mt-1 text-sm">{activeShot.description || '—'}</p></div>}{renderShotReferences(activeShot)}</section>
               <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-[10px] font-black uppercase text-white/40">Exact references sent for this shot</p><div className="flex flex-wrap gap-2">{shotReferences(activeShot).map((ref, index) => <div key={`${ref.url}-${index}`} className="w-28"><div className="aspect-square overflow-hidden bg-black"><img src={ref.url} alt="" className="h-full w-full object-contain" /></div><p className="mt-1 text-[9px] font-bold text-[#8ee9e4]">{ref.role}</p><p className="truncate text-[9px] text-white/40">Image {index + 1}</p></div>)}</div></section>
               <section className="border border-[#23c7be]/30 bg-[#17191d] p-4"><div className="mb-2 flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Final prompt sent to video model</p><p className="text-[10px] text-white/40">This is the exact prompt. Review and correct it before generating.</p></div>{promptEdits[activeShot.id] !== undefined && <button type="button" onClick={() => setPromptEdits((current) => { const next = { ...current }; delete next[activeShot.id]; return next; })} className="bg-white/10 px-3 py-2 text-[10px] font-bold">Reset</button>}</div><textarea value={finalPromptForShot(activeShot)} onChange={(event) => setPromptEdits((current) => ({ ...current, [activeShot.id]: event.target.value }))} className="min-h-64 w-full border border-white/10 bg-black/30 p-3 text-xs leading-5 text-white" /></section>
-              {activeShot.result_url ? <section className="border border-white/10 bg-black p-3"><video src={activeShot.result_url} controls className="max-h-[60vh] w-full" /><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => generateShot(activeShot)} disabled={busy} className="flex items-center justify-center bg-white/10 py-3 text-xs font-bold disabled:opacity-60">{regeneratingShotId === activeShot.id ? <><Loader2 size={14} className="mr-2 animate-spin" /> Regenerating…</> : 'Regenerate With This Prompt'}</button><button type="button" onClick={() => { setVaultVideoUrl(activeShot.result_url); setVaultSaveSource('shot'); setShowSaveVault(true); }} disabled={regeneratingShotId === activeShot.id} className="bg-[#23c7be] py-3 text-xs font-black text-black hover:bg-[#8ee9e4] disabled:opacity-50">Save Shot to Vault</button></div><div className="mt-2 border-t border-white/10 pt-2"><textarea value={modifyVideoPrompt} onChange={(event) => setModifyVideoPrompt(event.target.value)} className="min-h-16 w-full bg-black/30 p-2 text-xs text-white" placeholder="Describe what to change in this video…" /><button type="button" onClick={() => modifyActiveShotVideo(activeShot)} disabled={busy || !modifyVideoPrompt.trim()} className="mt-2 w-full bg-white/10 py-3 text-xs font-bold disabled:opacity-50">{busy ? <Loader2 size={14} className="mr-2 inline animate-spin" /> : null}Modify Video</button></div></section> : <Button onClick={() => generateShot(activeShot)} disabled={busy || modelsLoading} className="w-full bg-[#23c7be] py-5 font-black text-black hover:bg-[#8ee9e4] hover:text-black">{busy ? <Loader2 className="mr-2 animate-spin" /> : <Video className="mr-2" />} Generate With This Prompt</Button>}
+              {activeShot.result_url ? <section className="border border-white/10 bg-black p-3"><video src={activeShot.result_url} controls className="max-h-[60vh] w-full" /><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => generateShot(activeShot)} disabled={busy} className="flex items-center justify-center bg-white/10 py-3 text-xs font-bold disabled:opacity-60">{regeneratingShotId === activeShot.id ? <><Loader2 size={14} className="mr-2 animate-spin" /> Regenerating…</> : 'Regenerate With This Prompt'}</button><button type="button" onClick={() => { setVaultVideoUrl(activeShot.result_url); setVaultSaveSource('shot'); setShowSaveVault(true); }} disabled={regeneratingShotId === activeShot.id} className="bg-[#23c7be] py-3 text-xs font-black text-black hover:bg-[#8ee9e4] disabled:opacity-50">Save Shot to Vault</button></div><div className="mt-2 grid grid-cols-2 gap-2"><label className="flex cursor-pointer items-center justify-center bg-white/10 py-3 text-xs font-bold hover:bg-white/15"><Upload size={14} className="mr-2" /> Upload Video<input type="file" accept="video/mp4,video/quicktime,video/*" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) uploadVideoReference(file, { type: 'shot-video-replacement', shotId: activeShot.id }).catch((error) => toast.error(error.message || 'Video upload failed.')); }} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'shot-video-replacement', shotId: activeShot.id }); setShowVaultPicker(true); }} className="flex items-center justify-center bg-white/10 py-3 text-xs font-bold hover:bg-white/15"><Folder size={14} className="mr-2" /> Replace from Vault</button></div><div className="mt-2 border-t border-white/10 pt-2"><textarea value={modifyVideoPrompt} onChange={(event) => setModifyVideoPrompt(event.target.value)} className="min-h-16 w-full bg-black/30 p-2 text-xs text-white" placeholder="Describe what to change in this video…" /><button type="button" onClick={() => modifyActiveShotVideo(activeShot)} disabled={busy || !modifyVideoPrompt.trim()} className="mt-2 w-full bg-white/10 py-3 text-xs font-bold disabled:opacity-50">{busy ? <Loader2 size={14} className="mr-2 inline animate-spin" /> : null}Modify Video</button></div></section> : <Button onClick={() => generateShot(activeShot)} disabled={busy || modelsLoading} className="w-full bg-[#23c7be] py-5 font-black text-black hover:bg-[#8ee9e4] hover:text-black">{busy ? <Loader2 className="mr-2 animate-spin" /> : <Video className="mr-2" />} Generate With This Prompt</Button>}
               {completedCount > 0 && <button type="button" onClick={openEditor} className="w-full border border-[#23c7be]/30 bg-[#23c7be]/10 py-4 text-sm font-black text-[#8ee9e4] hover:bg-[#23c7be]/20">Open Scene Editor</button>}
             </>}</main>
           </div>}
@@ -1249,7 +1274,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
           </div>}
         </div>
 
-        {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} mediaType={pickerTarget?.type === 'music' ? 'audio' : pickerTarget?.type === 'shot-video-reference' ? 'video' : 'image'} onSelect={(url, name) => pickerTarget?.type === 'shot-video-reference' ? applyPickedVideoReference(url, name || 'Vault video reference') : applyPickedImage(url, name || (pickerTarget?.type === 'music' ? 'Vault music' : 'Vault reference'))} onClose={() => { setShowVaultPicker(false); setPickerTarget(null); }} embedded={embedded} />}
+        {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} mediaType={pickerTarget?.type === 'music' ? 'audio' : (pickerTarget?.type === 'shot-video-reference' || pickerTarget?.type === 'shot-video-replacement') ? 'video' : 'image'} onSelect={(url, name) => (pickerTarget?.type === 'shot-video-reference' || pickerTarget?.type === 'shot-video-replacement') ? applyPickedVideoReference(url, name || (pickerTarget?.type === 'shot-video-replacement' ? 'Vault replacement video' : 'Vault video reference')) : applyPickedImage(url, name || (pickerTarget?.type === 'music' ? 'Vault music' : 'Vault reference'))} onClose={() => { setShowVaultPicker(false); setPickerTarget(null); }} embedded={embedded} />}
         {showAssetsShop && <AssetsShopPicker embedded={embedded} onSelect={(url, name) => applyPickedImage(url, name)} onClose={() => { setShowAssetsShop(false); setPickerTarget(null); }} />}
         {showSaveVault && vaultVideoUrl && userEmail && <SaveToVaultModal userEmail={userEmail} imageUrl={vaultVideoUrl} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={() => { setShowSaveVault(false); toast.success(vaultSaveSource === 'scene' ? 'Scene saved to Vault' : 'Shot saved to Vault'); }} />}
       </motion.div>
