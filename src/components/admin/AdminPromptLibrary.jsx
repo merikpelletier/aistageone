@@ -83,6 +83,7 @@ function MultiChoice({ items, selected, onChange, emptyText }) {
 
 export default function AdminPromptLibrary() {
   const qc = useQueryClient();
+  const [section, setSection] = useState('categories');
   const [categoryDraft, setCategoryDraft] = useState(emptyCategory);
   const [promptDraft, setPromptDraft] = useState(emptyPrompt);
   const [search, setSearch] = useState('');
@@ -197,66 +198,82 @@ export default function AdminPromptLibrary() {
   return <div className="space-y-6 text-white">
     <div>
       <h2 className="text-2xl font-light">Prompt Library</h2>
-      <p className="mt-2 max-w-4xl text-sm text-white/55">Banque centrale des prompts AISTAGE.ONE. Cette première couche admin classe les prompts et les associe aux outils et aux modèles sans modifier encore le comportement des outils.</p>
+      <p className="mt-2 max-w-4xl text-sm text-white/55">Les catégories organisent la banque. Les prompts sont des éléments distincts qui peuvent ensuite être classés dans une catégorie ou sous-catégorie.</p>
+    </div>
+
+    <div className="flex gap-2 border-b border-white/10 pb-3">
+      <button type="button" onClick={() => setSection('categories')} className={section === 'categories' ? button : secondary}>Catégories & sous-catégories</button>
+      <button type="button" onClick={() => setSection('prompts')} className={section === 'prompts' ? button : secondary}>Prompts</button>
     </div>
 
     {(notice || error) && <p className={`rounded border p-3 text-sm ${error ? 'border-red-400/30 text-red-200' : 'border-green-400/30 text-green-200'}`}>{error || notice}</p>}
 
-    <div className="grid gap-6 2xl:grid-cols-[360px_minmax(0,1fr)]">
-      <section className={`${box} space-y-4`}>
-        <div className="flex items-center justify-between gap-3"><div><h3 className="text-lg">Catégories</h3><p className="text-xs text-white/45">Catégories et sous-catégories administrables.</p></div><button className={secondary} onClick={() => setCategoryDraft(emptyCategory)}><FolderPlus size={15} />Nouveau</button></div>
-        <div className="space-y-1">
+    {section === 'categories' && <section className={`${box} space-y-5`}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-lg">Catégories & sous-catégories</h3>
+          <p className="text-xs text-white/45">Ici on organise la banque seulement. Aucun prompt ni modèle n’est créé dans cette section.</p>
+        </div>
+        <button type="button" className={secondary} onClick={() => setCategoryDraft(emptyCategory)}><FolderPlus size={15} />Nouvelle catégorie</button>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="space-y-1 rounded border border-white/10 bg-black/20 p-3">
           {roots.map((root) => <div key={root.id}>
-            <button className="flex w-full items-center justify-between rounded px-3 py-2 text-left hover:bg-white/5" onClick={() => setCategoryDraft(root)}><span>{root.name}</span><ChevronRight size={15} className="text-white/30" /></button>
-            {(childrenByParent[root.id] || []).map((child) => <button key={child.id} className="flex w-full items-center gap-2 rounded py-2 pl-8 pr-3 text-left text-sm text-white/65 hover:bg-white/5" onClick={() => setCategoryDraft(child)}><span className="text-white/25">—</span>{child.name}</button>)}
+            <button type="button" className="flex w-full items-center justify-between rounded px-3 py-2 text-left hover:bg-white/5" onClick={() => setCategoryDraft(root)}><span>{root.name}</span><ChevronRight size={15} className="text-white/30" /></button>
+            {(childrenByParent[root.id] || []).map((child) => <button type="button" key={child.id} className="flex w-full items-center gap-2 rounded py-2 pl-8 pr-3 text-left text-sm text-white/65 hover:bg-white/5" onClick={() => setCategoryDraft(child)}><span className="text-white/25">—</span>{child.name}</button>)}
           </div>)}
           {!roots.length && <p className="py-3 text-sm text-white/40">Aucune catégorie pour l’instant.</p>}
         </div>
-        <form className="space-y-3 border-t border-white/10 pt-4" onSubmit={(event) => { event.preventDefault(); saveCategory.mutate(categoryDraft); }}>
-          <h4 className="text-sm font-medium">{categoryDraft.id ? 'Modifier la catégorie' : 'Créer une catégorie'}</h4>
-          <label className="block text-sm"><span className="mb-1 block text-white/55">Parent</span><select className={field} value={categoryDraft.parent_id || ''} onChange={(event) => setCategoryDraft({ ...categoryDraft, parent_id: event.target.value || null })}><option value="">Catégorie principale</option>{roots.filter((root) => root.id !== categoryDraft.id).map((root) => <option key={root.id} value={root.id}>{root.name}</option>)}</select></label>
+
+        <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); saveCategory.mutate(categoryDraft); }}>
+          <div>
+            <h4 className="text-base font-medium">{categoryDraft.id ? (categoryDraft.parent_id ? 'Modifier la sous-catégorie' : 'Modifier la catégorie') : (categoryDraft.parent_id ? 'Créer une sous-catégorie' : 'Créer une catégorie')}</h4>
+            <p className="mt-1 text-xs text-white/40">Pour créer une sous-catégorie, choisis simplement sa catégorie principale dans Parent.</p>
+          </div>
+          <label className="block text-sm"><span className="mb-1 block text-white/55">Parent</span><select className={field} value={categoryDraft.parent_id || ''} onChange={(event) => setCategoryDraft({ ...categoryDraft, parent_id: event.target.value || null })}><option value="">Aucun — catégorie principale</option>{roots.filter((root) => root.id !== categoryDraft.id).map((root) => <option key={root.id} value={root.id}>{root.name}</option>)}</select></label>
           <label className="block text-sm"><span className="mb-1 block text-white/55">Nom</span><input className={field} value={categoryDraft.name} onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value, slug: categoryDraft.id ? categoryDraft.slug : slugify(event.target.value) })} /></label>
           <label className="block text-sm"><span className="mb-1 block text-white/55">Clé</span><input className={field} value={categoryDraft.slug} onChange={(event) => setCategoryDraft({ ...categoryDraft, slug: slugify(event.target.value) })} /></label>
-          <label className="block text-sm"><span className="mb-1 block text-white/55">Description</span><textarea className={field} rows={2} value={categoryDraft.description || ''} onChange={(event) => setCategoryDraft({ ...categoryDraft, description: event.target.value })} /></label>
+          <label className="block text-sm"><span className="mb-1 block text-white/55">Description</span><textarea className={field} rows={3} value={categoryDraft.description || ''} onChange={(event) => setCategoryDraft({ ...categoryDraft, description: event.target.value })} /></label>
           <div className="grid grid-cols-2 gap-3"><label className="block text-sm"><span className="mb-1 block text-white/55">Ordre</span><input className={field} type="number" value={categoryDraft.sort_order ?? 0} onChange={(event) => setCategoryDraft({ ...categoryDraft, sort_order: Number(event.target.value) })} /></label><label className="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" checked={categoryDraft.is_active !== false} onChange={(event) => setCategoryDraft({ ...categoryDraft, is_active: event.target.checked })} />Active</label></div>
-          <button className={button} disabled={saveCategory.isPending || !categoryDraft.name.trim()}><Save size={15} />Enregistrer</button>
-        </form>
-      </section>
-
-      <div className="space-y-6 min-w-0">
-        <section className={`${box} space-y-4`}>
-          <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg">Prompts système</h3><p className="text-xs text-white/45">{prompts.length} prompt(s) · {models.length} modèle(s) disponibles dans le catalogue IA.</p></div><button className={secondary} onClick={() => setPromptDraft(emptyPrompt)}><Plus size={15} />Nouveau prompt</button></div>
-          <div className="relative"><Search size={15} className="absolute left-3 top-3 text-white/35" /><input className={`${field} pl-9`} placeholder="Rechercher un prompt…" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
-          <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
-            {visiblePrompts.map((prompt) => <button key={prompt.id} onClick={() => setPromptDraft({ ...prompt, category_id: prompt.category_id || '' })} className={`w-full rounded border p-3 text-left ${promptDraft.id === prompt.id ? 'border-white/45 bg-white/10' : 'border-white/10 bg-black/20 hover:bg-white/5'}`}>
-              <div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-sm">{prompt.name}</strong><span className={`text-xs ${prompt.is_active ? 'text-green-300' : 'text-white/35'}`}>{prompt.is_active ? 'Actif' : 'Inactif'}</span></div>
-              <div className="mt-1 break-all font-mono text-[11px] text-white/40">{prompt.prompt_key}</div>
-              <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-white/50"><span>{categoryLabel(prompt.category_id)}</span><span>·</span><span>{prompt.tool_keys.length} outil(s)</span><span>·</span><span>{prompt.model_keys.length} modèle(s)</span></div>
-            </button>)}
-            {!visiblePrompts.length && <p className="py-4 text-sm text-white/40">Aucun prompt trouvé.</p>}
-          </div>
-        </section>
-
-        <form className={`${box} space-y-5`} onSubmit={(event) => { event.preventDefault(); savePrompt.mutate(promptDraft); }}>
-          <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg">{promptDraft.id ? 'Modifier le prompt' : 'Créer un prompt'}</h3><p className="text-xs text-white/45">Le texte n’est pas encore injecté dans les outils. Ici on définit la banque centrale.</p></div>{promptDraft.id && <span className="inline-flex items-center gap-1 rounded border border-white/15 px-2 py-1 text-xs text-white/50"><Check size={12} />v{promptDraft.version}</span>}</div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block text-sm"><span className="mb-1 block text-white/55">Nom</span><input className={field} value={promptDraft.name} onChange={(event) => setPromptDraft({ ...promptDraft, name: event.target.value })} /></label>
-            <label className="block text-sm"><span className="mb-1 block text-white/55">Clé du prompt</span><input className={field} placeholder="video.image_to_video.default" value={promptDraft.prompt_key} onChange={(event) => setPromptDraft({ ...promptDraft, prompt_key: event.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') })} /></label>
-            <label className="block text-sm"><span className="mb-1 block text-white/55">Catégorie / sous-catégorie</span><select className={field} value={promptDraft.category_id || ''} onChange={(event) => setPromptDraft({ ...promptDraft, category_id: event.target.value })}><option value="">Sans catégorie</option>{roots.map((root) => <React.Fragment key={root.id}><option value={root.id}>{root.name}</option>{(childrenByParent[root.id] || []).map((child) => <option key={child.id} value={child.id}>↳ {root.name} / {child.name}</option>)}</React.Fragment>)}</select></label>
-            <label className="block text-sm"><span className="mb-1 block text-white/55">Variables</span><input className={field} placeholder="character, scene, camera_motion" value={(promptDraft.variables || []).join(', ')} onChange={(event) => setPromptDraft({ ...promptDraft, variables: event.target.value.split(',').map((value) => value.trim()).filter(Boolean) })} /></label>
-            <label className="block text-sm md:col-span-2"><span className="mb-1 block text-white/55">Description</span><textarea className={field} rows={2} value={promptDraft.description || ''} onChange={(event) => setPromptDraft({ ...promptDraft, description: event.target.value })} /></label>
-            <label className="block text-sm md:col-span-2"><span className="mb-1 block text-white/55">Prompt</span><textarea className={`${field} font-mono`} rows={12} value={promptDraft.content || ''} onChange={(event) => setPromptDraft({ ...promptDraft, content: event.target.value })} placeholder="Utilise {{variable}} pour les valeurs dynamiques." /></label>
-            <label className="block text-sm"><span className="mb-1 block text-white/55">Priorité</span><input className={field} type="number" value={promptDraft.priority ?? 100} onChange={(event) => setPromptDraft({ ...promptDraft, priority: Number(event.target.value) })} /></label>
-            <label className="block text-sm"><span className="mb-1 block text-white/55">Version</span><input className={field} type="number" min="1" value={promptDraft.version ?? 1} onChange={(event) => setPromptDraft({ ...promptDraft, version: Math.max(1, Number(event.target.value)) })} /></label>
-            <label className="block text-sm md:col-span-2"><span className="mb-1 block text-white/55">Notes admin</span><textarea className={field} rows={2} value={promptDraft.notes || ''} onChange={(event) => setPromptDraft({ ...promptDraft, notes: event.target.value })} /></label>
-          </div>
-
-          <div className="space-y-3"><div><h4 className="text-sm font-medium">Outils associés</h4><p className="text-xs text-white/40">Un prompt peut être disponible pour un ou plusieurs outils existants.</p></div><MultiChoice items={toolItems} selected={promptDraft.tool_keys || []} onChange={(tool_keys) => setPromptDraft({ ...promptDraft, tool_keys })} emptyText="Aucun outil disponible." /></div>
-          <div className="space-y-3"><div><h4 className="text-sm font-medium">Modèles associés</h4><p className="text-xs text-white/40">Les modèles proviennent directement du catalogue IA existant.</p></div><MultiChoice items={modelItems} selected={promptDraft.model_keys || []} onChange={(model_keys) => setPromptDraft({ ...promptDraft, model_keys })} emptyText="Aucun modèle dans le catalogue." /></div>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={promptDraft.is_active !== false} onChange={(event) => setPromptDraft({ ...promptDraft, is_active: event.target.checked })} />Prompt actif</label>
-          <div className="flex flex-wrap gap-2"><button className={button} disabled={savePrompt.isPending || !promptDraft.name.trim() || !promptDraft.prompt_key.trim()}><Save size={15} />{savePrompt.isPending ? 'Enregistrement…' : 'Enregistrer le prompt'}</button><button type="button" className={secondary} onClick={() => setPromptDraft(emptyPrompt)}>Réinitialiser</button></div>
+          <button className={button} disabled={saveCategory.isPending || !categoryDraft.name.trim()}><Save size={15} />{categoryDraft.parent_id ? 'Enregistrer la sous-catégorie' : 'Enregistrer la catégorie'}</button>
         </form>
       </div>
-    </div>
+    </section>}
+
+    {section === 'prompts' && <div className="space-y-6">
+      <section className={`${box} space-y-4`}>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg">Prompts système</h3><p className="text-xs text-white/45">{prompts.length} prompt(s) · {models.length} modèle(s) disponibles dans le catalogue IA.</p></div><button type="button" className={secondary} onClick={() => setPromptDraft(emptyPrompt)}><Plus size={15} />Nouveau prompt</button></div>
+        <div className="relative"><Search size={15} className="absolute left-3 top-3 text-white/35" /><input className={`${field} pl-9`} placeholder="Rechercher un prompt…" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
+        <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+          {visiblePrompts.map((prompt) => <button type="button" key={prompt.id} onClick={() => setPromptDraft({ ...prompt, category_id: prompt.category_id || '' })} className={`w-full rounded border p-3 text-left ${promptDraft.id === prompt.id ? 'border-white/45 bg-white/10' : 'border-white/10 bg-black/20 hover:bg-white/5'}`}>
+            <div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-sm">{prompt.name}</strong><span className={`text-xs ${prompt.is_active ? 'text-green-300' : 'text-white/35'}`}>{prompt.is_active ? 'Actif' : 'Inactif'}</span></div>
+            <div className="mt-1 break-all font-mono text-[11px] text-white/40">{prompt.prompt_key}</div>
+            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-white/50"><span>{categoryLabel(prompt.category_id)}</span><span>·</span><span>{prompt.tool_keys.length} outil(s)</span><span>·</span><span>{prompt.model_keys.length} modèle(s)</span></div>
+          </button>)}
+          {!visiblePrompts.length && <p className="py-4 text-sm text-white/40">Aucun prompt trouvé.</p>}
+        </div>
+      </section>
+
+      <form className={`${box} space-y-5`} onSubmit={(event) => { event.preventDefault(); savePrompt.mutate(promptDraft); }}>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg">{promptDraft.id ? 'Modifier le prompt' : 'Créer un prompt'}</h3><p className="text-xs text-white/45">Un prompt est un élément distinct. Il peut être classé dans une catégorie ou sous-catégorie existante.</p></div>{promptDraft.id && <span className="inline-flex items-center gap-1 rounded border border-white/15 px-2 py-1 text-xs text-white/50"><Check size={12} />v{promptDraft.version}</span>}</div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="block text-sm"><span className="mb-1 block text-white/55">Nom du prompt</span><input className={field} value={promptDraft.name} onChange={(event) => setPromptDraft({ ...promptDraft, name: event.target.value })} /></label>
+          <label className="block text-sm"><span className="mb-1 block text-white/55">Clé du prompt</span><input className={field} placeholder="video.image_to_video.default" value={promptDraft.prompt_key} onChange={(event) => setPromptDraft({ ...promptDraft, prompt_key: event.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') })} /></label>
+          <label className="block text-sm"><span className="mb-1 block text-white/55">Classer dans</span><select className={field} value={promptDraft.category_id || ''} onChange={(event) => setPromptDraft({ ...promptDraft, category_id: event.target.value })}><option value="">Sans catégorie</option>{roots.map((root) => <React.Fragment key={root.id}><option value={root.id}>{root.name}</option>{(childrenByParent[root.id] || []).map((child) => <option key={child.id} value={child.id}>↳ {root.name} / {child.name}</option>)}</React.Fragment>)}</select></label>
+          <label className="block text-sm"><span className="mb-1 block text-white/55">Variables</span><input className={field} placeholder="character, scene, camera_motion" value={(promptDraft.variables || []).join(', ')} onChange={(event) => setPromptDraft({ ...promptDraft, variables: event.target.value.split(',').map((value) => value.trim()).filter(Boolean) })} /></label>
+          <label className="block text-sm md:col-span-2"><span className="mb-1 block text-white/55">Description</span><textarea className={field} rows={2} value={promptDraft.description || ''} onChange={(event) => setPromptDraft({ ...promptDraft, description: event.target.value })} /></label>
+          <label className="block text-sm md:col-span-2"><span className="mb-1 block text-white/55">Texte du prompt</span><textarea className={`${field} font-mono`} rows={12} value={promptDraft.content || ''} onChange={(event) => setPromptDraft({ ...promptDraft, content: event.target.value })} placeholder="Utilise {{variable}} pour les valeurs dynamiques." /></label>
+          <label className="block text-sm"><span className="mb-1 block text-white/55">Priorité</span><input className={field} type="number" value={promptDraft.priority ?? 100} onChange={(event) => setPromptDraft({ ...promptDraft, priority: Number(event.target.value) })} /></label>
+          <label className="block text-sm"><span className="mb-1 block text-white/55">Version</span><input className={field} type="number" min="1" value={promptDraft.version ?? 1} onChange={(event) => setPromptDraft({ ...promptDraft, version: Math.max(1, Number(event.target.value)) })} /></label>
+          <label className="block text-sm md:col-span-2"><span className="mb-1 block text-white/55">Notes admin</span><textarea className={field} rows={2} value={promptDraft.notes || ''} onChange={(event) => setPromptDraft({ ...promptDraft, notes: event.target.value })} /></label>
+        </div>
+
+        <div className="space-y-3"><div><h4 className="text-sm font-medium">Outils associés</h4><p className="text-xs text-white/40">Ces associations appartiennent au prompt, jamais à la catégorie.</p></div><MultiChoice items={toolItems} selected={promptDraft.tool_keys || []} onChange={(tool_keys) => setPromptDraft({ ...promptDraft, tool_keys })} emptyText="Aucun outil disponible." /></div>
+        <div className="space-y-3"><div><h4 className="text-sm font-medium">Modèles associés</h4><p className="text-xs text-white/40">Ces associations appartiennent au prompt, jamais à la catégorie.</p></div><MultiChoice items={modelItems} selected={promptDraft.model_keys || []} onChange={(model_keys) => setPromptDraft({ ...promptDraft, model_keys })} emptyText="Aucun modèle dans le catalogue." /></div>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={promptDraft.is_active !== false} onChange={(event) => setPromptDraft({ ...promptDraft, is_active: event.target.checked })} />Prompt actif</label>
+        <div className="flex flex-wrap gap-2"><button className={button} disabled={savePrompt.isPending || !promptDraft.name.trim() || !promptDraft.prompt_key.trim()}><Save size={15} />{savePrompt.isPending ? 'Enregistrement…' : 'Enregistrer le prompt'}</button><button type="button" className={secondary} onClick={() => setPromptDraft(emptyPrompt)}>Réinitialiser</button></div>
+      </form>
+    </div>}
   </div>;
 }
