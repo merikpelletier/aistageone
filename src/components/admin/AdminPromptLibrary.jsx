@@ -86,6 +86,7 @@ export default function AdminPromptLibrary() {
   const [section, setSection] = useState('categories');
   const [categoryDraft, setCategoryDraft] = useState(emptyCategory);
   const [promptDraft, setPromptDraft] = useState(emptyPrompt);
+  const [expandedRoots, setExpandedRoots] = useState({});
   const [search, setSearch] = useState('');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
@@ -217,12 +218,31 @@ export default function AdminPromptLibrary() {
         <button type="button" className={secondary} onClick={() => setCategoryDraft(emptyCategory)}><FolderPlus size={15} />Nouvelle catégorie</button>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <div className="space-y-1 rounded border border-white/10 bg-black/20 p-3">
-          {roots.map((root) => <div key={root.id}>
-            <button type="button" className="flex w-full items-center justify-between rounded px-3 py-2 text-left hover:bg-white/5" onClick={() => setCategoryDraft(root)}><span>{root.name}</span><ChevronRight size={15} className="text-white/30" /></button>
-            {(childrenByParent[root.id] || []).map((child) => <button type="button" key={child.id} className="flex w-full items-center gap-2 rounded py-2 pl-8 pr-3 text-left text-sm text-white/65 hover:bg-white/5" onClick={() => setCategoryDraft(child)}><span className="text-white/25">—</span>{child.name}</button>)}
-          </div>)}
+      <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
+        <div className="max-h-[420px] overflow-y-auto rounded border border-white/10 bg-black/20 p-2">
+          {roots.map((root) => {
+            const children = childrenByParent[root.id] || [];
+            const expanded = !!expandedRoots[root.id];
+            return <div key={root.id} className="border-b border-white/5 last:border-b-0">
+              <button
+                type="button"
+                className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-white/5 ${categoryDraft.id === root.id ? 'bg-white/10' : ''}`}
+                onClick={() => {
+                  setCategoryDraft(root);
+                  if (children.length) setExpandedRoots((current) => ({ ...current, [root.id]: !current[root.id] }));
+                }}
+              >
+                <span className="truncate font-medium">{root.name}</span>
+                {children.length > 0 && <span className="flex items-center gap-1 text-xs text-white/35"><span>{children.length}</span><ChevronRight size={14} className={`transition-transform ${expanded ? 'rotate-90' : ''}`} /></span>}
+              </button>
+              {expanded && children.map((child) => <button
+                type="button"
+                key={child.id}
+                className={`flex w-full items-center gap-2 rounded py-1 pl-5 pr-2 text-left text-xs hover:bg-white/5 ${categoryDraft.id === child.id ? 'bg-white/10 text-white' : 'text-white/60'}`}
+                onClick={() => setCategoryDraft(child)}
+              ><span className="text-white/20">—</span><span className="truncate">{child.name}</span></button>)}
+            </div>;
+          })}
           {!roots.length && <p className="py-3 text-sm text-white/40">Aucune catégorie pour l’instant.</p>}
         </div>
 
