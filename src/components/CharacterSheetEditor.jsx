@@ -679,7 +679,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                             <div className="flex items-center justify-center gap-2 p-5 text-xs font-bold text-white/50"><Loader2 size={15} className="animate-spin" />Loading ideas…</div>
                           ) : promptIdeas.length ? (
                             <>
-                              <div className="flex gap-2 overflow-x-auto border-b border-white/10 p-3">
+                              <div className="flex flex-wrap gap-2 border-b border-white/10 p-3">
                                 {promptIdeaCategories.map((category) => (
                                   <button
                                     type="button"
