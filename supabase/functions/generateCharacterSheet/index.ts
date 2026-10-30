@@ -10,6 +10,7 @@ import {
 } from '../_shared/credits.ts';
 import type { CreditCharge, CreditBillingContext } from '../_shared/credits.ts';
 import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
+import { resolveSystemPrompt } from '../_shared/promptEngine.ts';
 
 const REPLICATE_API = 'https://api.replicate.com/v1';
 
@@ -91,33 +92,27 @@ serveWithCors(async (req) => {
       const lookInstruction = lookReferences.length
         ? lookFusionInstruction
         : 'Preserve the clothing shown in the supplied character angles unless the user instruction requests a change.';
-      prompt = `Images 1 through ${sourceImages.length} are separate visual references of the SAME base character. Use all of these identity images together to preserve one exact identity: same face, skin tone, hair, age, body proportions, and recognizable features. Never take identity from any later look-reference image. ${lookInstruction}${accessoriesText}
-
-Create one clean ${resolvedRatio} character reference sheet composed of five consistent views: full-body front, full-body side, full-body back, portrait front, and portrait profile. Use a seamless light grey studio background, even professional lighting, photorealistic rendering, centered subjects, and no text, labels, or borders.${overrideText}`;
+      prompt = `Images 1 through ${sourceImages.length} are separate visual references of the SAME base character. Use all of these identity images together to preserve one exact identity: same face, skin tone, hair, age, body proportions, and recognizable features. Never take identity from any later look-reference image. ${lookInstruction}${accessoriesText}\n\nCreate one clean ${resolvedRatio} character reference sheet composed of five consistent views: full-body front, full-body side, full-body back, portrait front, and portrait profile. Use a seamless light grey studio background, even professional lighting, photorealistic rendering, centered subjects, and no text, labels, or borders.${overrideText}`;
     } else if (lookReferences.length) {
-      prompt = `Image 1 is the base actor reference sheet, the layout/composition reference, and the ONLY identity source. Preserve the same person's exact identity across all views: same face, skin tone, hair texture, age, body proportions, and overall recognizable appearance. Preserve the same reference-sheet structure, panel disposition, framing, and relative image sizes as Image 1. Never replace the base person's identity with a person shown in any look reference.
-
-${lookFusionInstruction}${accessoriesText}
-
-Generate a clean ${resolvedRatio} character reference sheet with five vertical panels, keeping the same arrangement and proportions as Image 1:
-1. full-body front view
-2. full-body side view
-3. full-body back view
-4. portrait front view
-5. portrait profile view
-
-The SAME fused final look must appear consistently in every applicable view. Use a seamless light grey studio background, even professional lighting, photorealistic rendering, and consistent appearance across all five views. Keep the subject centered in each panel and preserve the clean reference-sheet look. No text, no labels, no borders.${overrideText}`;
+      prompt = `Image 1 is the base actor reference sheet, the layout/composition reference, and the ONLY identity source. Preserve the same person's exact identity across all views: same face, skin tone, hair texture, age, body proportions, and overall recognizable appearance. Preserve the same reference-sheet structure, panel disposition, framing, and relative image sizes as Image 1. Never replace the base person's identity with a person shown in any look reference.\n\n${lookFusionInstruction}${accessoriesText}\n\nGenerate a clean ${resolvedRatio} character reference sheet with five vertical panels, keeping the same arrangement and proportions as Image 1:\n1. full-body front view\n2. full-body side view\n3. full-body back view\n4. portrait front view\n5. portrait profile view\n\nThe SAME fused final look must appear consistently in every applicable view. Use a seamless light grey studio background, even professional lighting, photorealistic rendering, and consistent appearance across all five views. Keep the subject centered in each panel and preserve the clean reference-sheet look. No text, no labels, no borders.${overrideText}`;
     } else {
-      prompt = `Image 1 is the actor reference sheet and also the layout/composition reference. Preserve the same person's exact identity across all views: same face, skin tone, hair texture and hairstyle, age, body proportions, and overall appearance. Preserve the same reference-sheet structure, panel disposition, framing, and relative image sizes as Image 1.${accessoriesText}
+      prompt = `Image 1 is the actor reference sheet and also the layout/composition reference. Preserve the same person's exact identity across all views: same face, skin tone, hair texture and hairstyle, age, body proportions, and overall appearance. Preserve the same reference-sheet structure, panel disposition, framing, and relative image sizes as Image 1.${accessoriesText}\n\nGenerate a clean ${resolvedRatio} character reference sheet with five vertical panels, keeping the same arrangement and proportions as Image 1:\n1. full-body front view\n2. full-body side view\n3. full-body back view\n4. portrait front view\n5. portrait profile view\n\nUse a seamless light grey studio background, even professional lighting, photorealistic rendering, and consistent appearance across all five views. Keep the subject centered in each panel and preserve the clean reference-sheet look. No text, no labels, no borders.${overrideText}`;
+    }
 
-Generate a clean ${resolvedRatio} character reference sheet with five vertical panels, keeping the same arrangement and proportions as Image 1:
-1. full-body front view
-2. full-body side view
-3. full-body back view
-4. portrait front view
-5. portrait profile view
-
-Use a seamless light grey studio background, even professional lighting, photorealistic rendering, and consistent appearance across all five views. Keep the subject centered in each panel and preserve the clean reference-sheet look. No text, no labels, no borders.${overrideText}`;
+    // Current Actor Studio pilot: prepend the centralized system prompt when available.
+    // If resolution fails or no prompt matches, the existing prompt above is used unchanged.
+    try {
+      const systemPrompt = await resolveSystemPrompt({
+        toolKey: 'actor',
+        functionKey: 'generate_character_sheet',
+        modelKey: model_key || null,
+        contextTags: ['complete-character', 'reference-sheet'],
+      });
+      if (systemPrompt?.content) {
+        prompt = `${systemPrompt.content}\n\n${prompt}`;
+      }
+    } catch (error) {
+      console.error('Character sheet prompt resolution failed; using existing prompt:', error?.message || error);
     }
 
     const input = {
