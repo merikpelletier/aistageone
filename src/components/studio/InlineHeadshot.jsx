@@ -77,8 +77,7 @@ export default function InlineHeadshot({ userEmail, onDone }) {
     const fullPrompt = `Edit this exact person's photo into a professional actor headshot. STRICT IDENTITY LOCK: you must NOT change the person's eye color, hair color, skin tone, face shape, or any facial features — they must remain the exact same person with the exact same eyes and hair as the reference photo. Only restyle the lighting, background, wardrobe, mood, and facial expression. ${style.prompt} Facial expression: ${expression.prompt}.${addon.trim() ? ` ${addon.trim()}` : ''} Do NOT alter eye color. Do NOT alter hair color. Head and shoulders composition, centered, photorealistic, natural skin texture.`;
     setStatus('generating'); setError('');
     try {
-      const res = await base44.functions.invoke('replicateGenerate', {
-        method: 'headshot',
+      const res = await base44.functions.invoke('actor-headshot', {
         photo_url: photoUrl,
         prompt: fullPrompt,
         aspect_ratio: format,
