@@ -696,7 +696,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                                   <button
                                     type="button"
                                     key={idea.prompt_id}
-                                    onClick={() => addPromptIdea(idea)}
+                                    onClick={() => { addPromptIdea(idea); setTemplateMenuOpen(false); }}
                                     title={idea.content}
                                     className="rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-left text-xs font-bold text-white/80 transition hover:border-cyan-300/40 hover:bg-cyan-300/[0.06] hover:text-white"
                                   >
