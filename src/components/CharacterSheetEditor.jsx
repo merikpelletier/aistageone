@@ -281,6 +281,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [savedCharacterId, setSavedCharacterId] = useState(sheet?.id || null);
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
+  const [promptIdeaCategory, setPromptIdeaCategory] = useState('character-type');
   const [selectedModel, setSelectedModel] = useState(null);
   const pricingInput = {
     aspect_ratio: aspectRatio,
@@ -351,6 +352,15 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
       return data || [];
     },
   });
+  const { data: promptIdeas = [], isLoading: promptIdeasLoading } = useQuery({
+    queryKey: ['actor-prompt-ideas'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('studio_prompt_ideas', { p_tool_key: 'actor' });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: Boolean(userEmail),
+  });
   useQuery({
     queryKey: ['character-sheet-price'],
     queryFn: async () => {
@@ -360,6 +370,18 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
     },
   });
 
+  const promptIdeaCategories = useMemo(() => {
+    const seen = new Map();
+    promptIdeas.forEach((idea) => {
+      if (!seen.has(idea.category_slug)) seen.set(idea.category_slug, idea.category_name);
+    });
+    return [...seen.entries()].map(([slug, name]) => ({ slug, name: slug === 'character-type' ? 'Actor Style' : name }));
+  }, [promptIdeas]);
+  const visiblePromptIdeas = useMemo(
+    () => promptIdeas.filter((idea) => idea.category_slug === promptIdeaCategory),
+    [promptIdeas, promptIdeaCategory],
+  );
+
   const photoCount = PHOTO_SLOTS.filter(({ key }) => photos[key]).length;
   const hasCharacterSource = sourceMode === 'sheet' ? Boolean(sourceSheet?.url) : sourceMode === 'description' ? Boolean(characterDescription.trim()) : photoCount > 0;
   const preview = generatedSheet || sourceSheet?.url || photos.front || photos.portrait || Object.values(photos)[0] || null;
@@ -368,6 +390,17 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const addLookReference = (asset) => {
     if (!asset?.url) return;
     setLookReferences((current) => current.some((item) => item.url === asset.url) ? current : [...current, asset]);
+  };
+
+  const addPromptIdea = (idea) => {
+    const text = idea?.content?.trim();
+    if (!text) return;
+    setTransformationPrompt((current) => {
+      const existing = current.trim();
+      if (!existing) return text;
+      if (existing.includes(text)) return current;
+      return `${existing}\n${text}`;
+    });
   };
 
   const uploadImage = async (event, target) => {
@@ -635,19 +668,46 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                   <p className="text-xs font-black uppercase tracking-wider text-white/60">Transformation prompt</p>
                   <div className="flex items-center gap-2">
                     <div className="relative">
-                      <button type="button" onClick={() => setTemplateMenuOpen((value) => !value)} className="rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white">Templates</button>
+                      <button type="button" onClick={() => setTemplateMenuOpen((value) => !value)} className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white"><WandSparkles size={12} />Prompt ideas</button>
                       {templateMenuOpen && (
-                        <div className="absolute right-0 z-10 mt-2 w-64 overflow-hidden rounded-xl border border-white/15 bg-[#161618] shadow-2xl">
-                          {PROMPT_TEMPLATES.map((template) => (
-                            <button
-                              type="button"
-                              key={template.key}
-                              onClick={() => { setTransformationPrompt(template.prompt); setTemplateMenuOpen(false); }}
-                              className="block w-full px-4 py-3 text-left text-xs font-bold text-white/80 hover:bg-white/10 hover:text-white"
-                            >
-                              {template.label}
-                            </button>
-                          ))}
+                        <div className="absolute right-0 z-20 mt-2 w-[min(90vw,34rem)] overflow-hidden rounded-2xl border border-white/15 bg-[#161618] shadow-2xl">
+                          <div className="border-b border-white/10 p-3">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Creative ideas</p>
+                            <p className="mt-1 text-xs text-white/40">Choose one or combine several. They are added to your prompt.</p>
+                          </div>
+                          {promptIdeasLoading ? (
+                            <div className="flex items-center justify-center gap-2 p-5 text-xs font-bold text-white/50"><Loader2 size={15} className="animate-spin" />Loading ideas…</div>
+                          ) : promptIdeas.length ? (
+                            <>
+                              <div className="flex gap-2 overflow-x-auto border-b border-white/10 p-3">
+                                {promptIdeaCategories.map((category) => (
+                                  <button
+                                    type="button"
+                                    key={category.slug}
+                                    onClick={() => setPromptIdeaCategory(category.slug)}
+                                    className={`shrink-0 rounded-full px-3 py-2 text-[10px] font-black uppercase tracking-wider ${promptIdeaCategory === category.slug ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}
+                                  >
+                                    {category.name}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="grid max-h-64 gap-2 overflow-y-auto p-3 sm:grid-cols-2">
+                                {visiblePromptIdeas.map((idea) => (
+                                  <button
+                                    type="button"
+                                    key={idea.prompt_id}
+                                    onClick={() => addPromptIdea(idea)}
+                                    title={idea.content}
+                                    className="rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-left text-xs font-bold text-white/80 transition hover:border-cyan-300/40 hover:bg-cyan-300/[0.06] hover:text-white"
+                                  >
+                                    {idea.name}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="p-5 text-center text-xs text-white/45">No prompt ideas available.</div>
+                          )}
                         </div>
                       )}
                     </div>
