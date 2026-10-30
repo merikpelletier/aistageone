@@ -34,6 +34,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import AdminModels from '@/components/admin/AdminModels';
+import AdminPromptLibrary from '@/components/admin/AdminPromptLibrary';
 import AdminFinance from '@/components/admin/AdminFinance';
 import AdminVideoBilling from '@/components/admin/AdminVideoBilling';
 import AdminPublicationEconomics from '@/components/admin/AdminPublicationEconomics';
@@ -120,6 +121,7 @@ const groups = [
       ['pages-tools', 'Pages & Tools', MonitorCog, <AdminPagesTools />],
       ['set-designer-images', 'Set Designer Images', ImagePlus, <AdminSetDesignerImages />],
       ['style-references', 'Style References', Palette, <AdminStyleReferences />],
+      ['prompt-library', 'Prompt Library', Library, <AdminPromptLibrary />],
       ['ai-models', 'AI Models', Brain, <AdminModels />],
       ['studio-3d-library', '3D Library', Boxes, <Admin3DLibrary />],
     ],
