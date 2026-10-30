@@ -282,6 +282,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const [savedCharacterId, setSavedCharacterId] = useState(sheet?.id || null);
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
   const [promptIdeaCategory, setPromptIdeaCategory] = useState('character-type');
+  const [promptUndoValue, setPromptUndoValue] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
   const pricingInput = {
     aspect_ratio: aspectRatio,
@@ -317,6 +318,15 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
     image.src = sourceSheet.url;
     return () => { active = false; };
   }, [sourceMode, sourceSheet?.url]);
+
+  useEffect(() => {
+    if (!templateMenuOpen || typeof window === 'undefined') return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setTemplateMenuOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [templateMenuOpen]);
 
   const { data: vaultAssets = [], refetch: refetchVault } = useQuery({
     queryKey: ['vaultAssetsForCharacterDesigner', userEmail],
@@ -397,10 +407,17 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
     if (!text) return;
     setTransformationPrompt((current) => {
       const existing = current.trim();
-      if (!existing) return text;
       if (existing.includes(text)) return current;
+      setPromptUndoValue(current);
+      if (!existing) return text;
       return `${existing}\n${text}`;
     });
+  };
+
+  const undoPromptIdea = () => {
+    if (promptUndoValue === null) return;
+    setTransformationPrompt(promptUndoValue);
+    setPromptUndoValue(null);
   };
 
   const uploadImage = async (event, target) => {
@@ -501,6 +518,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
       setSourceSheet({ url: response.data.file_url, title: 'Generated result', source: 'generated', sourceAssetId: null });
       setSourceMode('sheet');
       setTransformationPrompt('');
+      setPromptUndoValue(null);
       toast.success('Character created');
     } catch (error) {
       toast.error(error.message || 'Generation failed');
@@ -670,13 +688,18 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs font-black uppercase tracking-wider text-white/60">Transformation prompt</p>
                   <div className="flex items-center gap-2">
+                    <button type="button" onClick={undoPromptIdea} disabled={promptUndoValue === null} className="rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-30">Undo</button>
                     <div className="relative">
                       <button type="button" onClick={() => setTemplateMenuOpen((value) => !value)} className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white"><WandSparkles size={12} />Prompt ideas</button>
+                      {templateMenuOpen && <button type="button" aria-label="Close prompt ideas" onClick={() => setTemplateMenuOpen(false)} className="fixed inset-0 z-10 cursor-default" />}
                       {templateMenuOpen && (
                         <div className="absolute right-0 z-20 mt-2 w-[min(90vw,34rem)] overflow-hidden rounded-2xl border border-white/15 bg-[#161618] shadow-2xl">
-                          <div className="border-b border-white/10 p-3">
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Creative ideas</p>
-                            <p className="mt-1 text-xs text-white/40">Choose one or combine several. They are added to your prompt.</p>
+                          <div className="flex items-start justify-between gap-3 border-b border-white/10 p-3">
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Creative ideas</p>
+                              <p className="mt-1 text-xs text-white/40">Choose one or combine several. They are added to your prompt.</p>
+                            </div>
+                            <button type="button" onClick={() => setTemplateMenuOpen(false)} className="rounded-full bg-white/10 p-1.5 text-white/60 hover:bg-white/20 hover:text-white" aria-label="Close prompt ideas"><X size={15} /></button>
                           </div>
                           {promptIdeasLoading ? (
                             <div className="flex items-center justify-center gap-2 p-5 text-xs font-bold text-white/50"><Loader2 size={15} className="animate-spin" />Loading ideas…</div>
@@ -717,7 +740,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                     <button type="button" onClick={() => setReplacePreset((value) => !value)} className={`rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${replacePreset ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white/60'}`}>{replacePreset ? 'Custom prompt' : 'Add to preset'}</button>
                   </div>
                 </div>
-                <textarea value={transformationPrompt} onChange={(event) => setTransformationPrompt(event.target.value)} placeholder={replacePreset ? 'Write the complete transformation instruction...' : 'Describe how you want to transform the character...'} rows={3} className="w-full resize-none rounded-2xl border border-cyan-300/20 bg-black/35 px-4 py-3.5 text-sm font-semibold text-white outline-none placeholder:text-white/20 focus:border-cyan-300/60" />
+                <textarea value={transformationPrompt} onChange={(event) => { setTransformationPrompt(event.target.value); setPromptUndoValue(null); }} placeholder={replacePreset ? 'Write the complete transformation instruction...' : 'Describe how you want to transform the character...'} rows={3} className="w-full resize-none rounded-2xl border border-cyan-300/20 bg-black/35 px-4 py-3.5 text-sm font-semibold text-white outline-none placeholder:text-white/20 focus:border-cyan-300/60" />
               </div>
             </section>
 
