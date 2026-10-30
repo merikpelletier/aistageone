@@ -498,6 +498,9 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
       });
       if (!response.data?.file_url) throw new Error(response.data?.error || 'Generation failed');
       setGeneratedSheet(response.data.file_url);
+      setSourceSheet({ url: response.data.file_url, title: 'Generated result', source: 'generated', sourceAssetId: null });
+      setSourceMode('sheet');
+      setTransformationPrompt('');
       toast.success('Character created');
     } catch (error) {
       toast.error(error.message || 'Generation failed');
