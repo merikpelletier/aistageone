@@ -1,0 +1,20 @@
+// Prompt Library tool associations must reflect the current Studio shell,
+// not the legacy admin surface catalog.
+export const PROMPT_TOOL_SURFACES = [
+  { key: 'fotoplay', label: 'FotoPlay' },
+  { key: 'actor', label: 'Actor' },
+  { key: 'set', label: 'Set' },
+  { key: 'compose', label: 'Compose Scene' },
+  { key: 'stages', label: 'Stages' },
+  { key: 'ai_video', label: 'Shoot' },
+  { key: 'lip_sync', label: 'Lip Sync' },
+  { key: 'generate_3d', label: 'Generate 3D' },
+  { key: 'voice', label: 'Record Voice' },
+  { key: 'dubbing', label: 'Dubbing Studio' },
+  { key: 'tts', label: 'Text to Speech' },
+  { key: 'music', label: 'Music' },
+  { key: 'sound_fx', label: 'Sound FX' },
+  { key: 'timeline', label: 'Timeline' },
+  { key: 'layout', label: 'Layout' },
+  { key: 'pitch', label: 'Pitch Deck' },
+];
