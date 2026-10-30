@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ChevronRight, FolderPlus, Plus, Save, Search } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
-import { ADMIN_TOOL_SURFACES } from '@/config/adminSurfaces';
+import { PROMPT_TOOL_SURFACES } from '@/config/promptToolSurfaces';
 
 const field = 'w-full rounded border border-white/15 bg-neutral-900 px-3 py-2 text-sm text-white outline-none focus:border-white/40';
 const box = 'rounded border border-white/10 bg-neutral-950 p-4';
@@ -186,7 +186,7 @@ export default function AdminPromptLibrary() {
     if (!term) return true;
     return [prompt.name, prompt.prompt_key, prompt.description, categoryLabel(prompt.category_id)].some((value) => String(value || '').toLowerCase().includes(term));
   });
-  const toolItems = ADMIN_TOOL_SURFACES.map((tool) => ({ value: tool.key, label: tool.label, detail: tool.key }));
+  const toolItems = PROMPT_TOOL_SURFACES.map((tool) => ({ value: tool.key, label: tool.label, detail: tool.key }));
   const modelItems = models.map((model) => ({
     value: model.model_key,
     label: model.name,
