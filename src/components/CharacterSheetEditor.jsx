@@ -283,6 +283,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
   const [promptIdeaCategory, setPromptIdeaCategory] = useState('character-type');
   const [promptHistory, setPromptHistory] = useState([]);
+  const [generationHistory, setGenerationHistory] = useState([]);
   const [selectedModel, setSelectedModel] = useState(null);
   const pricingInput = {
     aspect_ratio: aspectRatio,
@@ -412,7 +413,17 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
     setTransformationPrompt(existing ? `${existing}\n${text}` : text);
   };
 
-  const undoPromptIdea = () => {
+  const undoLastChange = () => {
+    if (generationHistory.length) {
+      const previous = generationHistory[generationHistory.length - 1];
+      setSourceSheet(previous.sourceSheet);
+      setGeneratedSheet(previous.generatedSheet);
+      setSourceMode(previous.sourceMode);
+      setTransformationPrompt(previous.transformationPrompt);
+      setGenerationHistory((history) => history.slice(0, -1));
+      setPromptHistory([]);
+      return;
+    }
     if (!promptHistory.length) return;
     const previous = promptHistory[promptHistory.length - 1];
     setTransformationPrompt(previous);
@@ -430,6 +441,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
         setSourceSheet({ url, title: file.name, source: 'upload', sourceAssetId: null });
         setSourceMode('sheet');
         setGeneratedSheet(null);
+        setGenerationHistory([]);
       }
       else {
         setPhotos((current) => ({ ...current, [target]: url }));
@@ -449,6 +461,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
       setSourceSheet(asset);
       setSourceMode('sheet');
       setGeneratedSheet(null);
+      setGenerationHistory([]);
     }
     else {
       setPhotos((current) => ({ ...current, [picker.slot]: asset.url }));
@@ -513,6 +526,12 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
         model_key: effectiveModel || undefined,
       });
       if (!response.data?.file_url) throw new Error(response.data?.error || 'Generation failed');
+      setGenerationHistory((history) => [...history, {
+        sourceSheet,
+        generatedSheet,
+        sourceMode,
+        transformationPrompt,
+      }]);
       setGeneratedSheet(response.data.file_url);
       setSourceSheet({ url: response.data.file_url, title: 'Generated result', source: 'generated', sourceAssetId: null });
       setSourceMode('sheet');
@@ -687,7 +706,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs font-black uppercase tracking-wider text-white/60">Transformation prompt</p>
                   <div className="flex items-center gap-2">
-                    <button type="button" onClick={undoPromptIdea} disabled={!promptHistory.length} className="rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-30">Undo</button>
+                    <button type="button" onClick={undoLastChange} disabled={!generationHistory.length && !promptHistory.length} className="rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-30">Undo</button>
                     <div className="relative">
                       <button type="button" onClick={() => setTemplateMenuOpen((value) => !value)} className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white"><WandSparkles size={12} />Prompt ideas</button>
                       {templateMenuOpen && <button type="button" aria-label="Close prompt ideas" onClick={() => setTemplateMenuOpen(false)} className="fixed inset-0 z-10 cursor-default" />}
