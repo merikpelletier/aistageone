@@ -5,11 +5,9 @@ import { supabase } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 
 const CONTROL_CLASS = 'bg-black/20 border-white/15 text-white placeholder:text-white/25 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[var(--studio-accent)]';
-const SELECT_TRIGGER_CLASS = 'bg-black/20 border-white/15 text-white focus:ring-0 focus:ring-offset-0 focus:border-[var(--studio-accent)]';
 const PRIMARY_BUTTON_CLASS = 'bg-[var(--studio-accent)] text-[#071211] border border-[var(--studio-accent)] hover:bg-[var(--studio-accent-hover)] hover:border-[var(--studio-accent-hover)]';
 const SECONDARY_BUTTON_CLASS = 'bg-white/[0.04] text-white border border-white/15 hover:bg-white/[0.08] hover:border-white/25';
 
@@ -29,7 +27,6 @@ const emptyCharacter = (versionId, sortOrder = 0) => ({
   speech_style: '',
   wardrobe_look: '',
   continuity_locks: '',
-  performer_character_sheet_id: '',
   sort_order: sortOrder,
   is_active: true,
 });
@@ -49,18 +46,6 @@ export default function AIPilotCharacters({ version, readOnly = false }) {
         .eq('version_id', version.id)
         .order('sort_order', { ascending: true })
         .order('role_name', { ascending: true });
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const { data: performers = [] } = useQuery({
-    queryKey: ['ai-pilot-character-sheet-options'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('character_sheet')
-        .select('id, character_name')
-        .order('character_name', { ascending: true });
       if (error) throw error;
       return data || [];
     },
@@ -102,7 +87,6 @@ export default function AIPilotCharacters({ version, readOnly = false }) {
         speech_style: draft.speech_style || '',
         wardrobe_look: draft.wardrobe_look || '',
         continuity_locks: draft.continuity_locks || '',
-        performer_character_sheet_id: draft.performer_character_sheet_id || null,
         sort_order: Number(draft.sort_order || 0),
         is_active: draft.is_active !== false,
       };
@@ -142,8 +126,8 @@ export default function AIPilotCharacters({ version, readOnly = false }) {
     <div className="border border-white/10 bg-neutral-950">
       <div className="p-4 md:p-5 border-b border-white/10 flex items-center justify-between gap-3">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--studio-accent)]">Characters / Roles / Casting</div>
-          <div className="text-sm mt-1 text-white/65">Define the story role first, then optionally connect a performer.</div>
+          <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--studio-accent)]">Characters / Roles</div>
+          <div className="text-sm mt-1 text-white/65">Define the story roles independently from production casting.</div>
         </div>
         {!readOnly && (
           <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={startNew}>
@@ -181,16 +165,6 @@ export default function AIPilotCharacters({ version, readOnly = false }) {
                 <label className="space-y-2">
                   <span className="text-xs text-white/55">Narrative Function</span>
                   <Input className={CONTROL_CLASS} disabled={readOnly} value={draft.narrative_function || ''} onChange={(e) => setDraft({ ...draft, narrative_function: e.target.value })} placeholder="Lead, antagonist, mentor, critic..." />
-                </label>
-                <label className="space-y-2 md:col-span-2">
-                  <span className="text-xs text-white/55">Performer / Actor</span>
-                  <Select disabled={readOnly} value={draft.performer_character_sheet_id || 'none'} onValueChange={(value) => setDraft({ ...draft, performer_character_sheet_id: value === 'none' ? '' : value })}>
-                    <SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue placeholder="No performer assigned" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No performer assigned</SelectItem>
-                      {performers.map((performer) => <SelectItem key={performer.id} value={performer.id}>{performer.character_name || performer.id}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
                 </label>
               </div>
 
