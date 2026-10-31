@@ -299,8 +299,13 @@ export default function AdminAIPilots() {
             <div className="text-[10px] uppercase tracking-[0.2em] text-white/40">Direction System</div>
             <h2 className="text-lg font-light">AI Pilots</h2>
           </div>
-          <Button size="sm" onClick={() => createPilot.mutate()} disabled={createPilot.isPending}>
-            <Plus size={15} className="mr-1" /> New
+          <Button
+            size="sm"
+            className="bg-white text-black hover:bg-white/90 border border-white"
+            onClick={() => createPilot.mutate()}
+            disabled={createPilot.isPending}
+          >
+            <Plus size={15} className="mr-2" /> New AI Pilot
           </Button>
         </div>
 
@@ -325,7 +330,23 @@ export default function AdminAIPilots() {
               </div>
             </button>
           ))}
-          {!pilots.length && <div className="p-6 text-sm text-white/40">No AI Pilot yet.</div>}
+          {!pilots.length && (
+            <div className="p-5">
+              <div className="border border-white/10 bg-white/[0.02] p-5 text-center">
+                <div className="text-white text-sm font-medium">Create your first AI Pilot</div>
+                <div className="text-white/50 text-xs mt-2 leading-relaxed">
+                  Build the production directions that AI tools will use for this Pilot.
+                </div>
+                <Button
+                  className="mt-4 bg-white text-black hover:bg-white/90"
+                  onClick={() => createPilot.mutate()}
+                  disabled={createPilot.isPending}
+                >
+                  <Plus size={15} className="mr-2" /> Create AI Pilot
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 
