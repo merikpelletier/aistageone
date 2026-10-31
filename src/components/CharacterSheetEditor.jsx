@@ -282,7 +282,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const [savedCharacterId, setSavedCharacterId] = useState(sheet?.id || null);
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
   const [promptIdeaCategory, setPromptIdeaCategory] = useState('character-type');
-  const [promptUndoValue, setPromptUndoValue] = useState(null);
+  const [promptHistory, setPromptHistory] = useState([]);
   const [selectedModel, setSelectedModel] = useState(null);
   const pricingInput = {
     aspect_ratio: aspectRatio,
@@ -405,19 +405,18 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const addPromptIdea = (idea) => {
     const text = idea?.content?.trim();
     if (!text) return;
-    setTransformationPrompt((current) => {
-      const existing = current.trim();
-      if (existing.includes(text)) return current;
-      setPromptUndoValue(current);
-      if (!existing) return text;
-      return `${existing}\n${text}`;
-    });
+    const current = transformationPrompt;
+    const existing = current.trim();
+    if (existing.includes(text)) return;
+    setPromptHistory((history) => [...history, current]);
+    setTransformationPrompt(existing ? `${existing}\n${text}` : text);
   };
 
   const undoPromptIdea = () => {
-    if (promptUndoValue === null) return;
-    setTransformationPrompt(promptUndoValue);
-    setPromptUndoValue(null);
+    if (!promptHistory.length) return;
+    const previous = promptHistory[promptHistory.length - 1];
+    setTransformationPrompt(previous);
+    setPromptHistory((history) => history.slice(0, -1));
   };
 
   const uploadImage = async (event, target) => {
@@ -518,7 +517,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
       setSourceSheet({ url: response.data.file_url, title: 'Generated result', source: 'generated', sourceAssetId: null });
       setSourceMode('sheet');
       setTransformationPrompt('');
-      setPromptUndoValue(null);
+      setPromptHistory([]);
       toast.success('Character created');
     } catch (error) {
       toast.error(error.message || 'Generation failed');
@@ -688,7 +687,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs font-black uppercase tracking-wider text-white/60">Transformation prompt</p>
                   <div className="flex items-center gap-2">
-                    <button type="button" onClick={undoPromptIdea} disabled={promptUndoValue === null} className="rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-30">Undo</button>
+                    <button type="button" onClick={undoPromptIdea} disabled={!promptHistory.length} className="rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-30">Undo</button>
                     <div className="relative">
                       <button type="button" onClick={() => setTemplateMenuOpen((value) => !value)} className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white"><WandSparkles size={12} />Prompt ideas</button>
                       {templateMenuOpen && <button type="button" aria-label="Close prompt ideas" onClick={() => setTemplateMenuOpen(false)} className="fixed inset-0 z-10 cursor-default" />}
@@ -740,7 +739,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                     <button type="button" onClick={() => setReplacePreset((value) => !value)} className={`rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${replacePreset ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white/60'}`}>{replacePreset ? 'Custom prompt' : 'Add to preset'}</button>
                   </div>
                 </div>
-                <textarea value={transformationPrompt} onChange={(event) => { setTransformationPrompt(event.target.value); setPromptUndoValue(null); }} placeholder={replacePreset ? 'Write the complete transformation instruction...' : 'Describe how you want to transform the character...'} rows={3} className="w-full resize-none rounded-2xl border border-cyan-300/20 bg-black/35 px-4 py-3.5 text-sm font-semibold text-white outline-none placeholder:text-white/20 focus:border-cyan-300/60" />
+                <textarea value={transformationPrompt} onChange={(event) => { setTransformationPrompt(event.target.value); setPromptHistory([]); }} placeholder={replacePreset ? 'Write the complete transformation instruction...' : 'Describe how you want to transform the character...'} rows={3} className="w-full resize-none rounded-2xl border border-cyan-300/20 bg-black/35 px-4 py-3.5 text-sm font-semibold text-white outline-none placeholder:text-white/20 focus:border-cyan-300/60" />
               </div>
             </section>
 
