@@ -33,7 +33,7 @@ const emptyPilot = () => ({
   cover_url: '',
   status: 'draft',
   distribution_mode: 'private',
-  shop_product_id: '',
+  catalog_asset_id: '',
 });
 
 const emptyBlock = (versionId, sortOrder = 0) => ({
@@ -161,7 +161,7 @@ export default function AdminAIPilots() {
         tags: Array.isArray(pilotDraft.tags) ? pilotDraft.tags : [],
         cover_url: pilotDraft.cover_url || null,
         distribution_mode: pilotDraft.distribution_mode || 'private',
-        shop_product_id: pilotDraft.shop_product_id || null,
+        catalog_asset_id: pilotDraft.catalog_asset_id || null,
       };
       if (!payload.pilot_key || !payload.name) throw new Error('Name and key are required');
       const { data, error } = await supabase
@@ -382,14 +382,14 @@ export default function AdminAIPilots() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="private">Private</SelectItem>
-                      <SelectItem value="shop">Assets Shop</SelectItem>
+                      <SelectItem value="assets_shop">Assets Shop</SelectItem>
                     </SelectContent>
                   </Select>
                 </label>
-                {pilotDraft.distribution_mode === 'shop' && (
+                {pilotDraft.distribution_mode === 'assets_shop' && (
                   <label className="space-y-2 md:col-span-2">
-                    <span className="text-xs text-white/55">Assets Shop Product ID</span>
-                    <Input value={pilotDraft.shop_product_id || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, shop_product_id: e.target.value })} />
+                    <span className="text-xs text-white/55">Assets Shop Catalog Asset ID</span>
+                    <Input value={pilotDraft.catalog_asset_id || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, catalog_asset_id: e.target.value })} />
                   </label>
                 )}
               </div>
@@ -425,6 +425,7 @@ export default function AdminAIPilots() {
                     <label className="space-y-2">
                       <span className="text-xs text-white/55">Version notes</span>
                       <Textarea
+                        key={selectedVersion.id}
                         rows={2}
                         defaultValue={selectedVersion.changelog || ''}
                         disabled={selectedVersion.is_published}
