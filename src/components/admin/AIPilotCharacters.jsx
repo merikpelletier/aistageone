@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Save } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
@@ -31,7 +31,7 @@ const emptyCharacter = (versionId, sortOrder = 0) => ({
   is_active: true,
 });
 
-export default function AIPilotCharacters({ version, readOnly = false }) {
+const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readOnly = false }, ref) {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -67,55 +67,68 @@ export default function AIPilotCharacters({ version, readOnly = false }) {
     }
   }, [version?.id]);
 
-  const saveCharacter = useMutation({
-    mutationFn: async () => {
-      if (!draft || readOnly) return null;
-      if (!draft.role_name?.trim()) throw new Error('Character / role name is required.');
-      const payload = {
-        version_id: version.id,
-        role_name: draft.role_name.trim(),
-        narrative_function: draft.narrative_function || '',
-        description: draft.description || '',
-        backstory: draft.backstory || '',
-        personality: draft.personality || '',
-        motivations: draft.motivations || '',
-        goals: draft.goals || '',
-        fears: draft.fears || '',
-        relationships: draft.relationships || '',
-        character_arc: draft.character_arc || '',
-        behavior: draft.behavior || '',
-        speech_style: draft.speech_style || '',
-        wardrobe_look: draft.wardrobe_look || '',
-        continuity_locks: draft.continuity_locks || '',
-        sort_order: Number(draft.sort_order || 0),
-        is_active: draft.is_active !== false,
-      };
+  const persistCharacter = async () => {
+    if (!draft || readOnly) return null;
+    if (!draft.role_name?.trim()) throw new Error('Character / role name is required.');
 
-      if (draft.id) {
-        const { data, error } = await supabase
-          .from('ai_pilot_characters')
-          .update(payload)
-          .eq('id', draft.id)
-          .select('*')
-          .single();
-        if (error) throw error;
-        return data;
-      }
+    const payload = {
+      version_id: version.id,
+      role_name: draft.role_name.trim(),
+      narrative_function: draft.narrative_function || '',
+      description: draft.description || '',
+      backstory: draft.backstory || '',
+      personality: draft.personality || '',
+      motivations: draft.motivations || '',
+      goals: draft.goals || '',
+      fears: draft.fears || '',
+      relationships: draft.relationships || '',
+      character_arc: draft.character_arc || '',
+      behavior: draft.behavior || '',
+      speech_style: draft.speech_style || '',
+      wardrobe_look: draft.wardrobe_look || '',
+      continuity_locks: draft.continuity_locks || '',
+      sort_order: Number(draft.sort_order || 0),
+      is_active: draft.is_active !== false,
+    };
 
+    if (draft.id) {
       const { data, error } = await supabase
         .from('ai_pilot_characters')
-        .insert(payload)
+        .update(payload)
+        .eq('id', draft.id)
         .select('*')
         .single();
       if (error) throw error;
       return data;
-    },
+    }
+
+    const { data, error } = await supabase
+      .from('ai_pilot_characters')
+      .insert(payload)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data;
+  };
+
+  const saveCharacter = useMutation({
+    mutationFn: persistCharacter,
     onSuccess: (character) => {
       queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-characters', version?.id] });
       if (character?.id) setEditingId(character.id);
     },
     onError: (error) => alert(error?.message || 'Unable to save character'),
   });
+
+  useImperativeHandle(ref, () => ({
+    saveCurrent: async () => {
+      if (!draft || readOnly) return null;
+      const character = await persistCharacter();
+      await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-characters', version?.id] });
+      if (character?.id) setEditingId(character.id);
+      return character;
+    },
+  }), [draft, readOnly, version?.id]);
 
   const startNew = () => {
     setEditingId(null);
@@ -212,4 +225,6 @@ export default function AIPilotCharacters({ version, readOnly = false }) {
       </div>
     </div>
   );
-}
+});
+
+export default AIPilotCharacters;
