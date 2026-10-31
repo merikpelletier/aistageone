@@ -38,6 +38,7 @@ export default function AdminAIPilots() {
   const [tagInput, setTagInput] = useState('');
   const [coverUploading, setCoverUploading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [saveState, setSaveState] = useState('idle');
 
   const { data: pilots = [], isLoading } = useQuery({
     queryKey: ['admin-ai-pilots'],
@@ -62,7 +63,8 @@ export default function AdminAIPilots() {
   const selectedPilot = useMemo(() => pilots.find((pilot) => pilot.id === selectedPilotId) || null, [pilots, selectedPilotId]);
 
   const { data: versions = [] } = useQuery({
-    queryKey: ['admin-ai-pilot-versions', selectedPilotId], enabled: Boolean(selectedPilotId),
+    queryKey: ['admin-ai-pilot-versions', selectedPilotId],
+    enabled: Boolean(selectedPilotId),
     queryFn: async () => {
       const { data, error } = await supabase.from('ai_pilot_versions').select('*').eq('ai_pilot_id', selectedPilotId).order('version_number', { ascending: false });
       if (error) throw error;
@@ -73,7 +75,8 @@ export default function AdminAIPilots() {
   const selectedVersion = useMemo(() => versions.find((version) => version.id === selectedVersionId) || versions[0] || null, [versions, selectedVersionId]);
 
   const { data: blocks = [] } = useQuery({
-    queryKey: ['admin-ai-pilot-blocks', selectedVersion?.id], enabled: Boolean(selectedVersion?.id),
+    queryKey: ['admin-ai-pilot-blocks', selectedVersion?.id],
+    enabled: Boolean(selectedVersion?.id),
     queryFn: async () => {
       const { data, error } = await supabase.from('ai_pilot_blocks').select('*').eq('version_id', selectedVersion.id).order('sort_order', { ascending: true }).order('priority', { ascending: true });
       if (error) throw error;
@@ -94,20 +97,52 @@ export default function AdminAIPilots() {
       if (versionError) throw versionError;
       return { pilot, version };
     },
-    onSuccess: ({ pilot, version }) => { queryClient.invalidateQueries({ queryKey: ['admin-ai-pilots'] }); setSelectedPilotId(pilot.id); setSelectedVersionId(version.id); setActiveTab('overview'); },
+    onSuccess: ({ pilot, version }) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-ai-pilots'] });
+      setSelectedPilotId(pilot.id);
+      setSelectedVersionId(version.id);
+      setEditingBlock(null);
+      setActiveTab('overview');
+    },
     onError: (error) => alert(error?.message || 'Unable to create AI Pilot'),
   });
 
   const buildPilotPayload = () => ({
-    pilot_key: slugify(pilotDraft?.pilot_key || pilotDraft?.name), name: pilotDraft?.name?.trim(), description: pilotDraft?.description || '', category: pilotDraft?.category || '', tags: Array.isArray(pilotDraft?.tags) ? pilotDraft.tags : [], cover_url: pilotDraft?.cover_url || null, distribution_mode: pilotDraft?.distribution_mode || 'private', asset_subcategory_id: pilotDraft?.distribution_mode === 'assets_shop' ? (pilotDraft?.asset_subcategory_id || null) : null,
+    pilot_key: slugify(pilotDraft?.pilot_key || pilotDraft?.name),
+    name: pilotDraft?.name?.trim(),
+    description: pilotDraft?.description || '',
+    category: pilotDraft?.category || '',
+    tags: Array.isArray(pilotDraft?.tags) ? pilotDraft.tags : [],
+    cover_url: pilotDraft?.cover_url || null,
+    distribution_mode: pilotDraft?.distribution_mode || 'private',
+    asset_subcategory_id: pilotDraft?.distribution_mode === 'assets_shop' ? (pilotDraft?.asset_subcategory_id || null) : null,
   });
 
-  const persistBlock = async () => {
-    if (!editingBlock || selectedVersion?.is_published) return null;
-    const payload = { version_id: selectedVersion.id, block_key: slugify(editingBlock.block_key || editingBlock.title), block_type: editingBlock.block_type, title: editingBlock.title?.trim(), content: { text: editingBlock.content?.text || '' }, tool_targets: editingBlock.tool_targets || [], priority: Number(editingBlock.priority || 100), sort_order: Number(editingBlock.sort_order || 0), is_active: Boolean(editingBlock.is_active) };
+  const persistOverview = async () => {
+    if (!pilotDraft?.id) return null;
+    const payload = buildPilotPayload();
+    if (!payload.pilot_key || !payload.name) throw new Error('Name and key are required');
+    const { data, error } = await supabase.from('ai_pilots').update(payload).eq('id', pilotDraft.id).select('*').single();
+    if (error) throw error;
+    return data;
+  };
+
+  const persistBlock = async (block = editingBlock) => {
+    if (!block || selectedVersion?.is_published) return null;
+    const payload = {
+      version_id: selectedVersion.id,
+      block_key: slugify(block.block_key || block.title),
+      block_type: block.block_type,
+      title: block.title?.trim(),
+      content: { text: block.content?.text || '' },
+      tool_targets: block.tool_targets || [],
+      priority: Number(block.priority || 100),
+      sort_order: Number(block.sort_order || 0),
+      is_active: block.is_active !== false,
+    };
     if (!payload.block_key || !payload.title) throw new Error('Block title and key are required');
-    if (editingBlock.id) {
-      const { data, error } = await supabase.from('ai_pilot_blocks').update(payload).eq('id', editingBlock.id).select('*').single();
+    if (block.id) {
+      const { data, error } = await supabase.from('ai_pilot_blocks').update(payload).eq('id', block.id).select('*').single();
       if (error) throw error;
       return data;
     }
@@ -116,116 +151,211 @@ export default function AdminAIPilots() {
     return data;
   };
 
+  const persistVersionNotes = async () => {
+    if (!selectedVersion?.id || selectedVersion.is_published) return null;
+    const { data, error } = await supabase.from('ai_pilot_versions').update({ changelog: versionNotesDraft }).eq('id', selectedVersion.id).select('*').single();
+    if (error) throw error;
+    return data;
+  };
+
+  const persistEverything = async () => {
+    const overview = await persistOverview();
+    if (!selectedVersion?.is_published) {
+      await charactersRef.current?.saveCurrent?.();
+      if (editingBlock) await persistBlock(editingBlock);
+      await persistVersionNotes();
+    }
+    return overview;
+  };
+
+  const refreshAll = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['admin-ai-pilots'] }),
+      selectedVersion?.id ? queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-blocks', selectedVersion.id] }) : Promise.resolve(),
+      selectedVersion?.id ? queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-characters', selectedVersion.id] }) : Promise.resolve(),
+      selectedPilotId ? queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-versions', selectedPilotId] }) : Promise.resolve(),
+    ]);
+  };
+
   const savePilot = useMutation({
     mutationFn: async () => {
-      if (!pilotDraft?.id) return null;
-      const payload = buildPilotPayload();
-      if (!payload.pilot_key || !payload.name) throw new Error('Name and key are required');
-      const { data, error } = await supabase.from('ai_pilots').update(payload).eq('id', pilotDraft.id).select('*').single();
-      if (error) throw error;
-
-      if (!selectedVersion?.is_published) {
-        if (activeTab === 'characters') await charactersRef.current?.saveCurrent?.();
-        if (activeTab === 'direction' && editingBlock) await persistBlock();
-        if (activeTab === 'versions' && selectedVersion?.id) {
-          const { error: versionError } = await supabase.from('ai_pilot_versions').update({ changelog: versionNotesDraft }).eq('id', selectedVersion.id);
-          if (versionError) throw versionError;
-        }
-      }
-      return data;
+      setSaveState('saving');
+      return persistEverything();
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilots'] });
-      if (activeTab === 'direction' && selectedVersion?.id) await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-blocks', selectedVersion.id] });
-      if (activeTab === 'versions') await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-versions', selectedPilotId] });
+      await refreshAll();
+      setSaveState('saved');
+      window.setTimeout(() => setSaveState('idle'), 1600);
     },
-    onError: (error) => alert(error?.message || 'Unable to save AI Pilot'),
+    onError: (error) => {
+      setSaveState('error');
+      alert(error?.message || 'Unable to save AI Pilot');
+    },
   });
 
-  const addTag = (rawValue = tagInput) => { const nextTags = rawValue.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean); if (!nextTags.length) return; setPilotDraft((current) => ({ ...current, tags: Array.from(new Set([...(current?.tags || []), ...nextTags])) })); setTagInput(''); };
+  const addTag = (rawValue = tagInput) => {
+    const nextTags = rawValue.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean);
+    if (!nextTags.length) return;
+    setPilotDraft((current) => ({ ...current, tags: Array.from(new Set([...(current?.tags || []), ...nextTags])) }));
+    setTagInput('');
+  };
   const removeTag = (tagToRemove) => setPilotDraft((current) => ({ ...current, tags: (current?.tags || []).filter((tag) => tag !== tagToRemove) }));
   const handleTagKeyDown = (event) => { if (event.key === 'Enter' || event.key === ',') { event.preventDefault(); addTag(); } };
 
   const handleCoverUpload = async (event) => {
-    const file = event.target.files?.[0]; event.target.value = '';
+    const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file || !pilotDraft?.id) return;
     if (!file.type?.startsWith('image/')) return alert('Please choose an image file.');
     setCoverUploading(true);
     try {
-      const { data: userData, error: userError } = await supabase.auth.getUser(); if (userError) throw userError;
-      const user = userData?.user; if (!user?.id) throw new Error('You must be signed in to upload a cover.');
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      const user = userData?.user;
+      if (!user?.id) throw new Error('You must be signed in to upload a cover.');
       const extension = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'jpg';
       const safeName = `${Date.now()}-${slugify(file.name.replace(/\.[^.]+$/, '')) || 'cover'}.${extension}`;
       const path = `${user.id}/ai-pilots/${pilotDraft.id}/${safeName}`;
-      const { error: uploadError } = await supabase.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false }); if (uploadError) throw uploadError;
-      const { data: publicData } = supabase.storage.from('media').getPublicUrl(path); if (!publicData?.publicUrl) throw new Error('Unable to create the cover URL.');
+      const { error: uploadError } = await supabase.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false });
+      if (uploadError) throw uploadError;
+      const { data: publicData } = supabase.storage.from('media').getPublicUrl(path);
+      if (!publicData?.publicUrl) throw new Error('Unable to create the cover URL.');
       setPilotDraft((current) => ({ ...current, cover_url: publicData.publicUrl }));
-    } catch (error) { alert(error?.message || 'Unable to upload cover image'); } finally { setCoverUploading(false); }
+    } catch (error) {
+      alert(error?.message || 'Unable to upload cover image');
+    } finally {
+      setCoverUploading(false);
+    }
+  };
+
+  const saveBlock = useMutation({
+    mutationFn: () => persistBlock(editingBlock),
+    onSuccess: async (saved) => {
+      if (saved) setEditingBlock(saved);
+      if (selectedVersion?.id) await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-blocks', selectedVersion.id] });
+    },
+    onError: (error) => alert(error?.message || 'Unable to save block'),
+  });
+
+  const selectBlock = async (block) => {
+    try {
+      if (editingBlock && !selectedVersion?.is_published && editingBlock.id !== block.id) await persistBlock(editingBlock);
+      setEditingBlock({ ...block, content: block.content || { text: '' } });
+      if (selectedVersion?.id) await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-blocks', selectedVersion.id] });
+    } catch (error) {
+      alert(error?.message || 'Unable to save current direction block');
+    }
   };
 
   const createVersion = useMutation({
     mutationFn: async () => {
       if (!selectedPilotId) return null;
+      await persistEverything();
       const nextNumber = Math.max(0, ...versions.map((version) => version.version_number || 0)) + 1;
-      const { data: nextVersion, error: versionError } = await supabase.from('ai_pilot_versions').insert({ ai_pilot_id: selectedPilotId, version_number: nextNumber, changelog: '' }).select('*').single(); if (versionError) throw versionError;
-      if (selectedVersion && blocks.length) {
-        const copies = blocks.map((block) => ({ version_id: nextVersion.id, block_key: block.block_key, block_type: block.block_type, title: block.title, content: block.content, tool_targets: block.tool_targets || [], priority: block.priority, sort_order: block.sort_order, is_active: block.is_active }));
-        const { error: copyError } = await supabase.from('ai_pilot_blocks').insert(copies); if (copyError) throw copyError;
+      const { data: nextVersion, error: versionError } = await supabase.from('ai_pilot_versions').insert({ ai_pilot_id: selectedPilotId, version_number: nextNumber, changelog: '' }).select('*').single();
+      if (versionError) throw versionError;
+
+      const { data: currentBlocks, error: blocksError } = await supabase.from('ai_pilot_blocks').select('*').eq('version_id', selectedVersion.id).order('sort_order');
+      if (blocksError) throw blocksError;
+      if (currentBlocks?.length) {
+        const copies = currentBlocks.map(({ id, created_at, updated_at, ...block }) => ({ ...block, version_id: nextVersion.id }));
+        const { error: copyError } = await supabase.from('ai_pilot_blocks').insert(copies);
+        if (copyError) throw copyError;
       }
-      if (selectedVersion?.id) {
-        const { data: characters, error: characterReadError } = await supabase.from('ai_pilot_characters').select('*').eq('version_id', selectedVersion.id); if (characterReadError) throw characterReadError;
-        if (characters?.length) { const characterCopies = characters.map(({ id, created_at, updated_at, ...character }) => ({ ...character, version_id: nextVersion.id })); const { error: characterCopyError } = await supabase.from('ai_pilot_characters').insert(characterCopies); if (characterCopyError) throw characterCopyError; }
+
+      const { data: characters, error: characterReadError } = await supabase.from('ai_pilot_characters').select('*').eq('version_id', selectedVersion.id);
+      if (characterReadError) throw characterReadError;
+      if (characters?.length) {
+        const characterCopies = characters.map(({ id, created_at, updated_at, ...character }) => ({ ...character, version_id: nextVersion.id }));
+        const { error: characterCopyError } = await supabase.from('ai_pilot_characters').insert(characterCopies);
+        if (characterCopyError) throw characterCopyError;
       }
       return nextVersion;
     },
-    onSuccess: (version) => { queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-versions', selectedPilotId] }); if (version) setSelectedVersionId(version.id); },
+    onSuccess: async (version) => {
+      await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-versions', selectedPilotId] });
+      if (version) {
+        setSelectedVersionId(version.id);
+        setEditingBlock(null);
+      }
+    },
     onError: (error) => alert(error?.message || 'Unable to create version'),
-  });
-
-  const saveBlock = useMutation({
-    mutationFn: persistBlock,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-blocks', selectedVersion?.id] }); setEditingBlock(null); },
-    onError: (error) => alert(error?.message || 'Unable to save block'),
   });
 
   const publishVersion = useMutation({
     mutationFn: async () => {
       if (!selectedVersion?.id || !pilotDraft?.id) return;
-      const payload = buildPilotPayload(); if (!payload.pilot_key || !payload.name) throw new Error('Name and key are required');
+      const payload = buildPilotPayload();
       if (payload.distribution_mode === 'assets_shop' && !payload.asset_subcategory_id) throw new Error('Select an AI Pilot Assets Shop subcategory before publishing');
-      const { error: saveError } = await supabase.from('ai_pilots').update(payload).eq('id', pilotDraft.id); if (saveError) throw saveError;
-      const { error } = await supabase.rpc('publish_ai_pilot_version', { p_version_id: selectedVersion.id }); if (error) throw error;
+      await persistEverything();
+      const { error } = await supabase.rpc('publish_ai_pilot_version', { p_version_id: selectedVersion.id });
+      if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-ai-pilots'] }); queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-versions', selectedPilotId] }); },
+    onSuccess: refreshAll,
     onError: (error) => alert(error?.message || 'Unable to publish version'),
   });
 
-  const selectPilot = (pilot) => { setSelectedPilotId(pilot.id); setSelectedVersionId(null); setEditingBlock(null); setTagInput(''); setActiveTab('overview'); };
+  const selectPilot = (pilot) => {
+    setSelectedPilotId(pilot.id);
+    setSelectedVersionId(null);
+    setEditingBlock(null);
+    setTagInput('');
+    setActiveTab('overview');
+  };
+
   if (isLoading) return <div className="text-white/60 text-sm">Loading AI Pilots…</div>;
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)] gap-0 border border-white/10 bg-[#090b0d] min-h-[76vh]">
       <aside className="border-b xl:border-b-0 xl:border-r border-white/10 bg-[#0b0d0f]">
-        <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3"><div><div className="text-[10px] uppercase tracking-[0.2em] text-[var(--studio-accent)]">Direction System</div><div className="text-lg font-light mt-1">AI Pilots</div></div><Button size="icon" className={PRIMARY_BUTTON_CLASS} onClick={() => createPilot.mutate()} disabled={createPilot.isPending} title="New AI Pilot"><Plus size={17} /></Button></div>
-        <div className="max-h-[68vh] overflow-y-auto">{pilots.map((pilot) => <button key={pilot.id} type="button" onClick={() => selectPilot(pilot)} className={`w-full text-left px-4 py-3 border-b border-white/8 hover:bg-white/[0.04] ${selectedPilotId === pilot.id ? 'bg-white/[0.06] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}><div className="flex items-center justify-between gap-2"><div className="min-w-0"><div className="text-sm text-white truncate">{pilot.name}</div><div className="text-[11px] text-white/35 truncate mt-0.5">{pilot.category || 'Uncategorized'}</div></div><ChevronRight size={14} className="text-white/25" /></div></button>)}{!pilots.length && <div className="p-4 text-sm text-white/35">No AI Pilot yet.</div>}</div>
+        <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3">
+          <div><div className="text-[10px] uppercase tracking-[0.2em] text-[var(--studio-accent)]">Direction System</div><div className="text-lg font-light mt-1">AI Pilots</div></div>
+          <Button size="icon" className={PRIMARY_BUTTON_CLASS} onClick={() => createPilot.mutate()} disabled={createPilot.isPending} title="New AI Pilot"><Plus size={17} /></Button>
+        </div>
+        <div className="max-h-[68vh] overflow-y-auto">
+          {pilots.map((pilot) => <button key={pilot.id} type="button" onClick={() => selectPilot(pilot)} className={`w-full text-left px-4 py-3 border-b border-white/8 hover:bg-white/[0.04] ${selectedPilotId === pilot.id ? 'bg-white/[0.06] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}><div className="flex items-center justify-between gap-2"><div className="min-w-0"><div className="text-sm text-white truncate">{pilot.name}</div><div className="text-[11px] text-white/35 truncate mt-0.5">{pilot.category || 'Uncategorized'}</div></div><ChevronRight size={14} className="text-white/25" /></div></button>)}
+          {!pilots.length && <div className="p-4 text-sm text-white/35">No AI Pilot yet.</div>}
+        </div>
       </aside>
 
       <main className="min-w-0">
-        {!pilotDraft ? <div className="min-h-[76vh] flex items-center justify-center"><div className="text-center max-w-sm px-6"><div className="text-white text-lg">Create or select an AI Pilot</div><div className="text-white/45 text-sm mt-2">Build the production direction package used across AISTAGE.ONE tools.</div><Button className={`mt-5 ${PRIMARY_BUTTON_CLASS}`} onClick={() => createPilot.mutate()}><Plus size={16} className="mr-2" /> New AI Pilot</Button></div></div> : (
+        {!pilotDraft ? (
+          <div className="min-h-[76vh] flex items-center justify-center"><div className="text-center max-w-sm px-6"><div className="text-white text-lg">Create or select an AI Pilot</div><div className="text-white/45 text-sm mt-2">Build the production direction package used across AISTAGE.ONE tools.</div><Button className={`mt-5 ${PRIMARY_BUTTON_CLASS}`} onClick={() => createPilot.mutate()}><Plus size={16} className="mr-2" /> New AI Pilot</Button></div></div>
+        ) : (
           <div className="min-h-[76vh] flex flex-col">
             <div className="sticky top-0 z-20 bg-[#090b0d]/95 backdrop-blur border-b border-white/10">
-              <div className="px-5 py-3 flex items-center justify-between gap-4"><div className="min-w-0"><div className="flex items-center gap-3 min-w-0"><h2 className="text-lg md:text-xl font-light truncate">{pilotDraft.name || 'Untitled AI Pilot'}</h2>{selectedVersion && <span className="text-[10px] uppercase tracking-wider border border-white/10 px-2 py-1 text-white/45">v{selectedVersion.version_number}{selectedVersion.is_published ? ' · Published' : ' · Draft'}</span>}</div><div className="text-xs text-white/35 mt-1 truncate">{pilotDraft.pilot_key}</div></div><Button className={PRIMARY_BUTTON_CLASS} onClick={() => savePilot.mutate()} disabled={savePilot.isPending || saveBlock.isPending}><Save size={15} className="mr-2" /> {savePilot.isPending ? 'Saving…' : 'Save'}</Button></div>
+              <div className="px-5 py-3 flex items-center justify-between gap-4">
+                <div className="min-w-0"><div className="flex items-center gap-3 min-w-0"><h2 className="text-lg md:text-xl font-light truncate">{pilotDraft.name || 'Untitled AI Pilot'}</h2>{selectedVersion && <span className="text-[10px] uppercase tracking-wider border border-white/10 px-2 py-1 text-white/45">v{selectedVersion.version_number}{selectedVersion.is_published ? ' · Published' : ' · Draft'}</span>}</div><div className="text-xs text-white/35 mt-1 truncate">{pilotDraft.pilot_key}</div></div>
+                <div className="flex items-center gap-3">{saveState === 'saved' && <span className="text-xs text-[var(--studio-accent)]">All saved</span>}{saveState === 'error' && <span className="text-xs text-red-400">Save failed</span>}<Button className={PRIMARY_BUTTON_CLASS} onClick={() => savePilot.mutate()} disabled={savePilot.isPending || saveBlock.isPending}><Save size={15} className="mr-2" /> {savePilot.isPending ? 'Saving all…' : 'Save All'}</Button></div>
+              </div>
               <div className="px-5 flex gap-1 overflow-x-auto">{TABS.map(([value, label, Icon]) => <button key={value} type="button" onClick={() => setActiveTab(value)} className={`inline-flex items-center gap-2 px-3 py-3 text-sm border-b-2 whitespace-nowrap transition-colors ${activeTab === value ? 'border-[var(--studio-accent)] text-white' : 'border-transparent text-white/45 hover:text-white/75'}`}><Icon size={15} /> {label}</button>)}</div>
             </div>
 
             <div className="flex-1 p-4 md:p-5">
-              {activeTab === 'overview' && <div className="grid lg:grid-cols-[220px_minmax(0,1fr)] gap-5 max-w-5xl"><div><div className="text-xs text-white/50 mb-2">Cover</div><div className="aspect-[2/3] border border-white/10 bg-[#0d0f12] flex items-center justify-center overflow-hidden">{pilotDraft.cover_url ? <img src={pilotDraft.cover_url} alt="AI Pilot cover" className="w-full h-full object-contain" /> : <div className="text-xs text-white/25">No cover</div>}</div><label className="mt-3 block"><input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} disabled={coverUploading} /><span className="h-10 w-full inline-flex items-center justify-center gap-2 border border-white/15 text-sm text-white/75 cursor-pointer hover:border-[var(--studio-accent)] hover:bg-white/[0.04]"><Upload size={15} /> {coverUploading ? 'Uploading…' : 'Upload cover'}</span></label>{pilotDraft.cover_url && <button type="button" onClick={() => setPilotDraft({ ...pilotDraft, cover_url: '' })} className="w-full text-xs text-white/35 hover:text-white mt-2">Remove cover</button>}</div><div className="space-y-4"><div className="grid md:grid-cols-2 gap-4"><label className="space-y-2"><span className="text-xs text-white/55">Name</span><Input className={CONTROL_CLASS} value={pilotDraft.name || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, name: e.target.value })} /></label><label className="space-y-2"><span className="text-xs text-white/55">Key</span><Input className={CONTROL_CLASS} value={pilotDraft.pilot_key || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, pilot_key: e.target.value })} /></label><label className="space-y-2"><span className="text-xs text-white/55">Category</span><Input className={CONTROL_CLASS} value={pilotDraft.category || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, category: e.target.value })} /></label><label className="space-y-2"><span className="text-xs text-white/55">Distribution</span><Select value={pilotDraft.distribution_mode || 'private'} onValueChange={(value) => setPilotDraft({ ...pilotDraft, distribution_mode: value, asset_subcategory_id: value === 'assets_shop' ? pilotDraft.asset_subcategory_id : '' })}><SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="private">Private</SelectItem><SelectItem value="assets_shop">Assets Shop</SelectItem></SelectContent></Select></label></div>{pilotDraft.distribution_mode === 'assets_shop' && <div className="grid md:grid-cols-2 gap-4 border border-white/10 bg-white/[0.02] p-4"><div className="space-y-2"><span className="text-xs text-white/55">Assets Shop Category</span><div className="h-10 px-3 flex items-center border border-white/10 bg-black/20 text-sm text-white/70">{aiPilotCatalog.category?.label_en || 'AI Pilot'}</div></div><label className="space-y-2"><span className="text-xs text-white/55">Subcategory</span><Select value={pilotDraft.asset_subcategory_id || ''} onValueChange={(value) => setPilotDraft({ ...pilotDraft, asset_subcategory_id: value })}><SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue placeholder="Select subcategory" /></SelectTrigger><SelectContent>{aiPilotCatalog.subcategories.map((subcategory) => <SelectItem key={subcategory.id} value={subcategory.id}>{subcategory.label_en || subcategory.label_fr || subcategory.key}</SelectItem>)}</SelectContent></Select></label></div>}<label className="space-y-2 block"><span className="text-xs text-white/55">Description</span><Textarea className={CONTROL_CLASS} rows={5} value={pilotDraft.description || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, description: e.target.value })} /></label><div className="space-y-2"><span className="text-xs text-white/55">Tags</span><div className="flex gap-2"><Input className={CONTROL_CLASS} value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} placeholder="Add tag" /><Button type="button" className={SECONDARY_BUTTON_CLASS} onClick={() => addTag()} disabled={!tagInput.trim()}>Add</Button></div>{!!pilotDraft.tags?.length && <div className="flex flex-wrap gap-2">{pilotDraft.tags.map((tag) => <span key={tag} className="inline-flex items-center gap-1.5 border border-white/15 px-2.5 py-1 text-xs text-white/75 bg-white/[0.03]">{tag}<button type="button" onClick={() => removeTag(tag)} className="text-white/35 hover:text-white"><X size={12} /></button></span>)}</div>}</div></div></div>}
+              <div className={activeTab === 'overview' ? '' : 'hidden'}>
+                <div className="grid lg:grid-cols-[220px_minmax(0,1fr)] gap-5 max-w-5xl">
+                  <div><div className="text-xs text-white/50 mb-2">Cover</div><div className="aspect-[2/3] border border-white/10 bg-[#0d0f12] flex items-center justify-center overflow-hidden">{pilotDraft.cover_url ? <img src={pilotDraft.cover_url} alt="AI Pilot cover" className="w-full h-full object-contain" /> : <div className="text-xs text-white/25">No cover</div>}</div><label className="mt-3 block"><input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} disabled={coverUploading} /><span className="h-10 w-full inline-flex items-center justify-center gap-2 border border-white/15 text-sm text-white/75 cursor-pointer hover:border-[var(--studio-accent)] hover:bg-white/[0.04]"><Upload size={15} /> {coverUploading ? 'Uploading…' : 'Upload cover'}</span></label>{pilotDraft.cover_url && <button type="button" onClick={() => setPilotDraft({ ...pilotDraft, cover_url: '' })} className="w-full text-xs text-white/35 hover:text-white mt-2">Remove cover</button>}</div>
+                  <div className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4"><label className="space-y-2"><span className="text-xs text-white/55">Name</span><Input className={CONTROL_CLASS} value={pilotDraft.name || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, name: e.target.value })} /></label><label className="space-y-2"><span className="text-xs text-white/55">Key</span><Input className={CONTROL_CLASS} value={pilotDraft.pilot_key || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, pilot_key: e.target.value })} /></label><label className="space-y-2"><span className="text-xs text-white/55">Category</span><Input className={CONTROL_CLASS} value={pilotDraft.category || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, category: e.target.value })} /></label><label className="space-y-2"><span className="text-xs text-white/55">Distribution</span><Select value={pilotDraft.distribution_mode || 'private'} onValueChange={(value) => setPilotDraft({ ...pilotDraft, distribution_mode: value, asset_subcategory_id: value === 'assets_shop' ? pilotDraft.asset_subcategory_id : '' })}><SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="private">Private</SelectItem><SelectItem value="assets_shop">Assets Shop</SelectItem></SelectContent></Select></label></div>
+                    {pilotDraft.distribution_mode === 'assets_shop' && <div className="grid md:grid-cols-2 gap-4 border border-white/10 bg-white/[0.02] p-4"><div className="space-y-2"><span className="text-xs text-white/55">Assets Shop Category</span><div className="h-10 px-3 flex items-center border border-white/10 bg-black/20 text-sm text-white/70">{aiPilotCatalog.category?.label_en || 'AI Pilot'}</div></div><label className="space-y-2"><span className="text-xs text-white/55">Subcategory</span><Select value={pilotDraft.asset_subcategory_id || ''} onValueChange={(value) => setPilotDraft({ ...pilotDraft, asset_subcategory_id: value })}><SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue placeholder="Select subcategory" /></SelectTrigger><SelectContent>{aiPilotCatalog.subcategories.map((subcategory) => <SelectItem key={subcategory.id} value={subcategory.id}>{subcategory.label_en || subcategory.label_fr || subcategory.key}</SelectItem>)}</SelectContent></Select></label></div>}
+                    <label className="space-y-2 block"><span className="text-xs text-white/55">Description</span><Textarea className={CONTROL_CLASS} rows={5} value={pilotDraft.description || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, description: e.target.value })} /></label>
+                    <div className="space-y-2"><span className="text-xs text-white/55">Tags</span><div className="flex gap-2"><Input className={CONTROL_CLASS} value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} placeholder="Add tag" /><Button type="button" className={SECONDARY_BUTTON_CLASS} onClick={() => addTag()} disabled={!tagInput.trim()}>Add</Button></div>{!!pilotDraft.tags?.length && <div className="flex flex-wrap gap-2">{pilotDraft.tags.map((tag) => <span key={tag} className="inline-flex items-center gap-1.5 border border-white/15 px-2.5 py-1 text-xs text-white/75 bg-white/[0.03]">{tag}<button type="button" onClick={() => removeTag(tag)} className="text-white/35 hover:text-white"><X size={12} /></button></span>)}</div>}</div>
+                  </div>
+                </div>
+              </div>
 
-              {activeTab === 'characters' && selectedVersion && <AIPilotCharacters ref={charactersRef} version={selectedVersion} readOnly={selectedVersion.is_published} />}
+              {selectedVersion && <div className={activeTab === 'characters' ? '' : 'hidden'}><AIPilotCharacters ref={charactersRef} version={selectedVersion} readOnly={selectedVersion.is_published} /></div>}
 
-              {activeTab === 'direction' && selectedVersion && <div className="grid lg:grid-cols-[260px_minmax(0,1fr)] border border-white/10 min-h-[58vh]"><div className="border-b lg:border-b-0 lg:border-r border-white/10 bg-[#0b0d0f]"><div className="p-3 border-b border-white/10 flex items-center justify-between gap-2"><div className="text-xs uppercase tracking-[0.18em] text-white/45">Direction blocks</div>{!selectedVersion.is_published && <Button size="icon" className={SECONDARY_BUTTON_CLASS} onClick={() => setEditingBlock(emptyBlock(selectedVersion.id, blocks.length))}><Plus size={15} /></Button>}</div><div className="max-h-[60vh] overflow-y-auto">{blocks.map((block) => <button key={block.id} type="button" onClick={() => setEditingBlock({ ...block, content: block.content || { text: '' } })} className={`w-full text-left px-3 py-3 border-b border-white/8 hover:bg-white/[0.04] ${editingBlock?.id === block.id ? 'bg-white/[0.06] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}><div className="text-sm text-white">{block.title}</div><div className="text-[10px] uppercase tracking-wider text-white/35 mt-1">{block.block_type.replaceAll('_', ' ')}</div></button>)}</div></div><div className="p-4 md:p-5">{!editingBlock ? <div className="h-full min-h-80 flex items-center justify-center text-sm text-white/35">Select a direction block.</div> : <div className="space-y-4 max-w-4xl"><div className="grid md:grid-cols-2 gap-4"><label className="space-y-2"><span className="text-xs text-white/55">Title</span><Input className={CONTROL_CLASS} disabled={selectedVersion.is_published} value={editingBlock.title || ''} onChange={(e) => setEditingBlock({ ...editingBlock, title: e.target.value })} /></label><label className="space-y-2"><span className="text-xs text-white/55">Type</span><Select disabled={selectedVersion.is_published} value={editingBlock.block_type} onValueChange={(value) => setEditingBlock({ ...editingBlock, block_type: value })}><SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue /></SelectTrigger><SelectContent>{BLOCK_TYPES.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></label></div><label className="space-y-2 block"><span className="text-xs text-white/55">Direction</span><Textarea className={CONTROL_CLASS} rows={15} disabled={selectedVersion.is_published} value={editingBlock.content?.text || ''} onChange={(e) => setEditingBlock({ ...editingBlock, content: { text: e.target.value } })} placeholder="Write the production direction this block contributes to AI context." /></label><div className="grid md:grid-cols-[1fr_120px_120px_auto] gap-4 items-end"><label className="space-y-2"><span className="text-xs text-white/55">Tool targets</span><Input className={CONTROL_CLASS} disabled={selectedVersion.is_published} value={(editingBlock.tool_targets || []).join(', ')} onChange={(e) => setEditingBlock({ ...editingBlock, tool_targets: e.target.value.split(',').map((item) => item.trim()).filter(Boolean) })} placeholder="fotoplay, actor, tts..." /></label><label className="space-y-2"><span className="text-xs text-white/55">Priority</span><Input className={CONTROL_CLASS} type="number" disabled={selectedVersion.is_published} value={editingBlock.priority ?? 100} onChange={(e) => setEditingBlock({ ...editingBlock, priority: e.target.value })} /></label><label className="space-y-2"><span className="text-xs text-white/55">Order</span><Input className={CONTROL_CLASS} type="number" disabled={selectedVersion.is_published} value={editingBlock.sort_order ?? 0} onChange={(e) => setEditingBlock({ ...editingBlock, sort_order: e.target.value })} /></label><label className="flex items-center gap-2 h-10"><Switch disabled={selectedVersion.is_published} checked={editingBlock.is_active !== false} onCheckedChange={(checked) => setEditingBlock({ ...editingBlock, is_active: checked })} /><span className="text-xs text-white/55">Active</span></label></div>{!selectedVersion.is_published && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={() => saveBlock.mutate()} disabled={saveBlock.isPending}><Save size={15} className="mr-2" /> Save Block</Button></div>}</div>}</div></div>}
+              {selectedVersion && <div className={activeTab === 'direction' ? '' : 'hidden'}>
+                <div className="grid lg:grid-cols-[260px_minmax(0,1fr)] border border-white/10 min-h-[58vh]">
+                  <div className="border-b lg:border-b-0 lg:border-r border-white/10 bg-[#0b0d0f]"><div className="p-3 border-b border-white/10 flex items-center justify-between gap-2"><div className="text-xs uppercase tracking-[0.18em] text-white/45">Direction blocks</div>{!selectedVersion.is_published && <Button size="icon" className={SECONDARY_BUTTON_CLASS} onClick={() => setEditingBlock(emptyBlock(selectedVersion.id, blocks.length))}><Plus size={15} /></Button>}</div><div className="max-h-[60vh] overflow-y-auto">{blocks.map((block) => <button key={block.id} type="button" onClick={() => selectBlock(block)} className={`w-full text-left px-3 py-3 border-b border-white/8 hover:bg-white/[0.04] ${editingBlock?.id === block.id ? 'bg-white/[0.06] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}><div className="text-sm text-white">{block.title}</div><div className="text-[10px] uppercase tracking-wider text-white/35 mt-1">{block.block_type.replaceAll('_', ' ')}</div></button>)}</div></div>
+                  <div className="p-4 md:p-5">{!editingBlock ? <div className="h-full min-h-80 flex items-center justify-center text-sm text-white/35">Select a direction block.</div> : <div className="space-y-4 max-w-4xl"><div className="grid md:grid-cols-2 gap-4"><label className="space-y-2"><span className="text-xs text-white/55">Title</span><Input className={CONTROL_CLASS} disabled={selectedVersion.is_published} value={editingBlock.title || ''} onChange={(e) => setEditingBlock({ ...editingBlock, title: e.target.value })} /></label><label className="space-y-2"><span className="text-xs text-white/55">Type</span><Select disabled={selectedVersion.is_published} value={editingBlock.block_type} onValueChange={(value) => setEditingBlock({ ...editingBlock, block_type: value })}><SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue /></SelectTrigger><SelectContent>{BLOCK_TYPES.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></label></div><label className="space-y-2 block"><span className="text-xs text-white/55">Direction</span><Textarea className={CONTROL_CLASS} rows={15} disabled={selectedVersion.is_published} value={editingBlock.content?.text || ''} onChange={(e) => setEditingBlock({ ...editingBlock, content: { ...(editingBlock.content || {}), text: e.target.value } })} placeholder="Write the production direction this block contributes to AI context." /></label><div className="grid md:grid-cols-[1fr_120px_120px_auto] gap-4 items-end"><label className="space-y-2"><span className="text-xs text-white/55">Tool targets</span><Input className={CONTROL_CLASS} disabled={selectedVersion.is_published} value={(editingBlock.tool_targets || []).join(', ')} onChange={(e) => setEditingBlock({ ...editingBlock, tool_targets: e.target.value.split(',').map((item) => item.trim()).filter(Boolean) })} placeholder="fotoplay, actor, tts..." /></label><label className="space-y-2"><span className="text-xs text-white/55">Priority</span><Input className={CONTROL_CLASS} type="number" disabled={selectedVersion.is_published} value={editingBlock.priority ?? 100} onChange={(e) => setEditingBlock({ ...editingBlock, priority: e.target.value })} /></label><label className="space-y-2"><span className="text-xs text-white/55">Order</span><Input className={CONTROL_CLASS} type="number" disabled={selectedVersion.is_published} value={editingBlock.sort_order ?? 0} onChange={(e) => setEditingBlock({ ...editingBlock, sort_order: e.target.value })} /></label><label className="flex items-center gap-2 h-10"><Switch disabled={selectedVersion.is_published} checked={editingBlock.is_active !== false} onCheckedChange={(checked) => setEditingBlock({ ...editingBlock, is_active: checked })} /><span className="text-xs text-white/55">Active</span></label></div>{!selectedVersion.is_published && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={() => saveBlock.mutate()} disabled={saveBlock.isPending}><Save size={15} className="mr-2" /> {saveBlock.isPending ? 'Saving…' : 'Save Block'}</Button></div>}</div>}</div>
+                </div>
+              </div>}
 
-              {activeTab === 'versions' && <div className="max-w-4xl space-y-4"><div className="flex items-center justify-between gap-4"><div><div className="text-sm text-white">Versions</div><div className="text-xs text-white/40 mt-1">Published versions stay fixed. New work continues in a new version.</div></div><Button className={SECONDARY_BUTTON_CLASS} onClick={() => createVersion.mutate()} disabled={!selectedVersion || createVersion.isPending}><Copy size={15} className="mr-2" /> New Version</Button></div><div className="border border-white/10 divide-y divide-white/10">{versions.map((version) => <button key={version.id} type="button" onClick={() => { setSelectedVersionId(version.id); setEditingBlock(null); }} className={`w-full text-left p-4 flex items-center justify-between gap-4 ${selectedVersion?.id === version.id ? 'bg-white/[0.05] shadow-[inset_2px_0_0_var(--studio-accent)]' : 'hover:bg-white/[0.03]'}`}><div><div className="text-sm text-white">Version {version.version_number}</div><div className="text-xs text-white/35 mt-1">{version.changelog || 'No version notes'}</div></div><span className="text-[10px] uppercase tracking-wider text-white/45">{version.is_published ? 'Published' : 'Draft'}</span></button>)}</div>{selectedVersion && <div className="border border-white/10 p-4 space-y-4"><label className="space-y-2 block"><span className="text-xs text-white/55">Version notes</span><Textarea className={CONTROL_CLASS} rows={4} value={versionNotesDraft} disabled={selectedVersion.is_published} onChange={(e) => setVersionNotesDraft(e.target.value)} /></label>{!selectedVersion.is_published && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={() => publishVersion.mutate()} disabled={publishVersion.isPending || blocks.length === 0}><Rocket size={15} className="mr-2" /> Publish v{selectedVersion.version_number}</Button></div>}</div>}</div>}
+              <div className={activeTab === 'versions' ? '' : 'hidden'}>
+                <div className="max-w-4xl space-y-4"><div className="flex items-center justify-between gap-4"><div><div className="text-sm text-white">Versions</div><div className="text-xs text-white/40 mt-1">Published versions stay fixed. New work continues in a new version.</div></div><Button className={SECONDARY_BUTTON_CLASS} onClick={() => createVersion.mutate()} disabled={!selectedVersion || createVersion.isPending}><Copy size={15} className="mr-2" /> New Version</Button></div><div className="border border-white/10 divide-y divide-white/10">{versions.map((version) => <button key={version.id} type="button" onClick={() => { setSelectedVersionId(version.id); setEditingBlock(null); }} className={`w-full text-left p-4 flex items-center justify-between gap-4 ${selectedVersion?.id === version.id ? 'bg-white/[0.05] shadow-[inset_2px_0_0_var(--studio-accent)]' : 'hover:bg-white/[0.03]'}`}><div><div className="text-sm text-white">Version {version.version_number}</div><div className="text-xs text-white/35 mt-1">{version.changelog || 'No version notes'}</div></div><span className="text-[10px] uppercase tracking-wider text-white/45">{version.is_published ? 'Published' : 'Draft'}</span></button>)}</div>{selectedVersion && <div className="border border-white/10 p-4 space-y-4"><label className="space-y-2 block"><span className="text-xs text-white/55">Version notes</span><Textarea className={CONTROL_CLASS} rows={4} value={versionNotesDraft} disabled={selectedVersion.is_published} onChange={(e) => setVersionNotesDraft(e.target.value)} /></label>{!selectedVersion.is_published && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={() => publishVersion.mutate()} disabled={publishVersion.isPending || blocks.length === 0}><Rocket size={15} className="mr-2" /> Publish v{selectedVersion.version_number}</Button></div>}</div>}</div>
+              </div>
             </div>
           </div>
         )}
