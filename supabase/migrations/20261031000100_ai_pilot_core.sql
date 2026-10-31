@@ -7,8 +7,8 @@ create table if not exists public.ai_pilots (
   tags text[] not null default '{}',
   cover_url text,
   status text not null default 'draft' check (status in ('draft', 'published', 'archived')),
-  distribution_mode text not null default 'private' check (distribution_mode in ('private', 'shop')),
-  shop_product_id text,
+  distribution_mode text not null default 'private' check (distribution_mode in ('private', 'assets_shop')),
+  catalog_asset_id text,
   current_published_version_id uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -110,7 +110,7 @@ begin
 
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='ai_pilots' and policyname='read_published_ai_pilot_catalog') then
     create policy read_published_ai_pilot_catalog on public.ai_pilots for select to anon, authenticated
-      using (status = 'published' and distribution_mode = 'shop');
+      using (status = 'published' and distribution_mode = 'assets_shop');
   end if;
 
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='ai_pilot_versions' and policyname='admin_manage_ai_pilot_versions') then
@@ -128,7 +128,7 @@ begin
           from public.ai_pilots p
           where p.id = ai_pilot_versions.ai_pilot_id
             and p.status = 'published'
-            and p.distribution_mode = 'shop'
+            and p.distribution_mode = 'assets_shop'
         )
       );
   end if;
