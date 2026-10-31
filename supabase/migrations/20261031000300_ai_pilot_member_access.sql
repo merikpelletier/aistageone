@@ -5,7 +5,7 @@ create table if not exists public.member_ai_pilots (
   ai_pilot_id uuid not null references public.ai_pilots(id) on delete cascade,
   version_id uuid not null references public.ai_pilot_versions(id) on delete restrict,
   access_source text not null default 'admin' check (access_source in ('admin', 'shop', 'included', 'creator')),
-  source_asset_id uuid,
+  source_asset_id text,
   granted_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   unique (user_id, ai_pilot_id)
