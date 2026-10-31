@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Save, Copy, Rocket, ChevronRight } from 'lucide-react';
+import { Plus, Save, Copy, Rocket, ChevronRight, Upload, X } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +62,8 @@ export default function AdminAIPilots() {
   const [pilotDraft, setPilotDraft] = useState(null);
   const [selectedVersionId, setSelectedVersionId] = useState(null);
   const [editingBlock, setEditingBlock] = useState(null);
+  const [tagInput, setTagInput] = useState('');
+  const [coverUploading, setCoverUploading] = useState(false);
 
   const { data: pilots = [], isLoading } = useQuery({
     queryKey: ['admin-ai-pilots'],
@@ -177,6 +179,68 @@ export default function AdminAIPilots() {
     onError: (error) => alert(error?.message || 'Unable to save AI Pilot'),
   });
 
+  const addTag = (rawValue = tagInput) => {
+    const nextTags = rawValue
+      .split(',')
+      .map((tag) => tag.trim().toLowerCase())
+      .filter(Boolean);
+    if (!nextTags.length) return;
+    setPilotDraft((current) => ({
+      ...current,
+      tags: Array.from(new Set([...(current?.tags || []), ...nextTags])),
+    }));
+    setTagInput('');
+  };
+
+  const removeTag = (tagToRemove) => {
+    setPilotDraft((current) => ({
+      ...current,
+      tags: (current?.tags || []).filter((tag) => tag !== tagToRemove),
+    }));
+  };
+
+  const handleTagKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ',') {
+      event.preventDefault();
+      addTag();
+    }
+  };
+
+  const handleCoverUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !pilotDraft?.id) return;
+    if (!file.type?.startsWith('image/')) {
+      alert('Please choose an image file.');
+      return;
+    }
+
+    setCoverUploading(true);
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      const user = userData?.user;
+      if (!user?.id) throw new Error('You must be signed in to upload a cover.');
+
+      const extension = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'jpg';
+      const safeName = `${Date.now()}-${slugify(file.name.replace(/\.[^.]+$/, '')) || 'cover'}.${extension}`;
+      const path = `${user.id}/ai-pilots/${pilotDraft.id}/${safeName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(path, file, { cacheControl: '3600', upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { data: publicData } = supabase.storage.from('media').getPublicUrl(path);
+      if (!publicData?.publicUrl) throw new Error('Unable to create the cover URL.');
+      setPilotDraft((current) => ({ ...current, cover_url: publicData.publicUrl }));
+    } catch (error) {
+      alert(error?.message || 'Unable to upload cover image');
+    } finally {
+      setCoverUploading(false);
+    }
+  };
+
   const createVersion = useMutation({
     mutationFn: async () => {
       if (!selectedPilotId) return null;
@@ -287,6 +351,7 @@ export default function AdminAIPilots() {
     setSelectedPilotId(pilot.id);
     setSelectedVersionId(null);
     setEditingBlock(null);
+    setTagInput('');
   };
 
   if (isLoading) return <div className="text-white/60 text-sm">Loading AI Pilots…</div>;
@@ -381,22 +446,63 @@ export default function AdminAIPilots() {
                   <span className="text-xs text-white/55">Category</span>
                   <Input value={pilotDraft.category || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, category: e.target.value })} />
                 </label>
-                <label className="space-y-2">
+                <div className="space-y-2">
                   <span className="text-xs text-white/55">Tags</span>
-                  <Input
-                    value={(pilotDraft.tags || []).join(', ')}
-                    onChange={(e) => setPilotDraft({ ...pilotDraft, tags: e.target.value.split(',').map((tag) => tag.trim()).filter(Boolean) })}
-                    placeholder="fashion, drama, period"
-                  />
-                </label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleTagKeyDown}
+                      onBlur={() => tagInput.trim() && addTag()}
+                      placeholder="Type a tag and press Enter"
+                    />
+                    <Button type="button" variant="outline" onClick={() => addTag()} disabled={!tagInput.trim()}>
+                      Add
+                    </Button>
+                  </div>
+                  {!!pilotDraft.tags?.length && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {pilotDraft.tags.map((tag) => (
+                        <span key={tag} className="inline-flex items-center gap-1.5 border border-white/15 px-2.5 py-1 text-xs text-white/75 bg-white/[0.03]">
+                          {tag}
+                          <button type="button" onClick={() => removeTag(tag)} className="text-white/45 hover:text-white" aria-label={`Remove ${tag}`}>
+                            <X size={12} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <label className="space-y-2 md:col-span-2">
                   <span className="text-xs text-white/55">Description</span>
                   <Textarea rows={3} value={pilotDraft.description || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, description: e.target.value })} />
                 </label>
-                <label className="space-y-2">
-                  <span className="text-xs text-white/55">Cover URL</span>
-                  <Input value={pilotDraft.cover_url || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, cover_url: e.target.value })} />
-                </label>
+                <div className="space-y-2">
+                  <span className="text-xs text-white/55">Cover</span>
+                  <div className="flex items-center gap-3">
+                    <label className="inline-flex">
+                      <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} disabled={coverUploading} />
+                      <span className="inline-flex h-10 items-center justify-center gap-2 border border-white/15 px-4 text-sm text-white/80 cursor-pointer hover:bg-white/[0.05]">
+                        <Upload size={15} /> {coverUploading ? 'Uploading…' : 'Upload cover'}
+                      </span>
+                    </label>
+                    {pilotDraft.cover_url && (
+                      <button type="button" onClick={() => setPilotDraft({ ...pilotDraft, cover_url: '' })} className="text-xs text-white/45 hover:text-white">
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {pilotDraft.cover_url && (
+                    <div className="mt-2 border border-white/10 bg-black/30 p-2 max-w-[220px]">
+                      <img src={pilotDraft.cover_url} alt="AI Pilot cover preview" className="w-full h-28 object-cover" />
+                    </div>
+                  )}
+                  <Input
+                    value={pilotDraft.cover_url || ''}
+                    onChange={(e) => setPilotDraft({ ...pilotDraft, cover_url: e.target.value })}
+                    placeholder="Or paste an image URL"
+                  />
+                </div>
                 <label className="space-y-2">
                   <span className="text-xs text-white/55">Distribution</span>
                   <Select value={pilotDraft.distribution_mode || 'private'} onValueChange={(value) => setPilotDraft({ ...pilotDraft, distribution_mode: value })}>
