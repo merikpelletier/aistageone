@@ -29,6 +29,22 @@ export const AI_PILOT_TOOL_KEYS = [
   'pitch',
 ];
 
+export const AI_PILOT_DEFAULT_ROUTES = {
+  theme_bible: ['fotoplay', 'compose', 'ai_video', 'music', 'sound_fx', 'pitch'],
+  look_bible: ['fotoplay', 'actor', 'set', 'compose', 'ai_video', 'layout', 'pitch'],
+  production_direction: ['fotoplay', 'compose', 'ai_video', 'timeline', 'layout', 'pitch'],
+  performance_direction: ['actor', 'compose', 'ai_video', 'lip_sync', 'dubbing', 'tts'],
+  voice_dialogue_direction: ['fotoplay', 'lip_sync', 'dubbing', 'tts'],
+  music_direction: ['music', 'timeline'],
+  sound_direction: ['sound_fx', 'timeline', 'dubbing'],
+  episode_structure: ['fotoplay', 'timeline', 'pitch'],
+  continuity_rules: ['fotoplay', 'actor', 'set', 'compose', 'ai_video', 'timeline', 'layout'],
+  assets: ['actor', 'set', 'compose', 'ai_video', 'layout'],
+  tool_direction: [],
+  prompt_override: [],
+  custom: [],
+};
+
 export function normalizeAIPilotToolKey(toolKey) {
   const normalized = String(toolKey || '').trim().toLowerCase();
   return TOOL_ALIASES[normalized] || normalized;
@@ -36,13 +52,16 @@ export function normalizeAIPilotToolKey(toolKey) {
 
 export function blockTargetsTool(block, toolKey) {
   const tool = normalizeAIPilotToolKey(toolKey);
-  const targets = Array.isArray(block?.tool_targets) ? block.tool_targets : [];
-  if (targets.length === 0) return true;
+  const explicitTargets = Array.isArray(block?.tool_targets)
+    ? block.tool_targets.map(normalizeAIPilotToolKey).filter(Boolean)
+    : [];
 
-  return targets.some((target) => {
-    const normalizedTarget = String(target || '').trim().toLowerCase();
-    return normalizedTarget === '*' || normalizeAIPilotToolKey(normalizedTarget) === tool;
-  });
+  if (explicitTargets.length > 0) {
+    return explicitTargets.includes('*') || explicitTargets.includes(tool);
+  }
+
+  const defaultTargets = AI_PILOT_DEFAULT_ROUTES[block?.block_type] || [];
+  return defaultTargets.includes(tool);
 }
 
 export function orderAIPilotBlocks(blocks = []) {
