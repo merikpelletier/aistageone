@@ -24,6 +24,11 @@ const BLOCK_TYPES = [
   ['custom', 'Custom'],
 ];
 
+const CONTROL_CLASS = 'bg-black/20 border-white/15 text-white placeholder:text-white/25 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[var(--studio-accent)]';
+const SELECT_TRIGGER_CLASS = 'bg-black/20 border-white/15 text-white focus:ring-0 focus:ring-offset-0 focus:border-[var(--studio-accent)]';
+const PRIMARY_BUTTON_CLASS = 'bg-[var(--studio-accent)] text-[#071211] border border-[var(--studio-accent)] hover:bg-[var(--studio-accent-hover)] hover:border-[var(--studio-accent-hover)]';
+const SECONDARY_BUTTON_CLASS = 'bg-white/[0.04] text-white border border-white/15 hover:bg-white/[0.08] hover:border-white/25';
+
 const emptyPilot = () => ({
   pilot_key: '',
   name: '',
@@ -361,15 +366,10 @@ export default function AdminAIPilots() {
       <aside className="border border-white/10 bg-neutral-950 min-h-[70vh]">
         <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-white/40">Direction System</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--studio-accent)]">Direction System</div>
             <h2 className="text-lg font-light">AI Pilots</h2>
           </div>
-          <Button
-            size="sm"
-            className="bg-white text-black hover:bg-white/90 border border-white"
-            onClick={() => createPilot.mutate()}
-            disabled={createPilot.isPending}
-          >
+          <Button size="sm" className={PRIMARY_BUTTON_CLASS} onClick={() => createPilot.mutate()} disabled={createPilot.isPending}>
             <Plus size={15} className="mr-2" /> New AI Pilot
           </Button>
         </div>
@@ -380,7 +380,7 @@ export default function AdminAIPilots() {
               key={pilot.id}
               type="button"
               onClick={() => selectPilot(pilot)}
-              className={`w-full text-left p-4 hover:bg-white/[0.04] ${selectedPilotId === pilot.id ? 'bg-white/[0.07]' : ''}`}
+              className={`w-full text-left p-4 hover:bg-white/[0.04] ${selectedPilotId === pilot.id ? 'bg-white/[0.07] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -399,14 +399,8 @@ export default function AdminAIPilots() {
             <div className="p-5">
               <div className="border border-white/10 bg-white/[0.02] p-5 text-center">
                 <div className="text-white text-sm font-medium">Create your first AI Pilot</div>
-                <div className="text-white/50 text-xs mt-2 leading-relaxed">
-                  Build the production directions that AI tools will use for this Pilot.
-                </div>
-                <Button
-                  className="mt-4 bg-white text-black hover:bg-white/90"
-                  onClick={() => createPilot.mutate()}
-                  disabled={createPilot.isPending}
-                >
+                <div className="text-white/50 text-xs mt-2 leading-relaxed">Build the production directions that AI tools will use for this Pilot.</div>
+                <Button className={`mt-4 ${PRIMARY_BUTTON_CLASS}`} onClick={() => createPilot.mutate()} disabled={createPilot.isPending}>
                   <Plus size={15} className="mr-2" /> Create AI Pilot
                 </Button>
               </div>
@@ -417,18 +411,16 @@ export default function AdminAIPilots() {
 
       <section className="min-w-0">
         {!pilotDraft ? (
-          <div className="border border-white/10 min-h-[70vh] flex items-center justify-center text-white/35 text-sm">
-            Select or create an AI Pilot.
-          </div>
+          <div className="border border-white/10 min-h-[70vh] flex items-center justify-center text-white/35 text-sm">Select or create an AI Pilot.</div>
         ) : (
           <div className="space-y-5">
             <div className="border border-white/10 bg-neutral-950 p-4 md:p-5">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-5">
                 <div>
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-white/40">AI Pilot</div>
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--studio-accent)]">AI Pilot</div>
                   <h2 className="text-xl font-light mt-1">{pilotDraft.name || 'Untitled'}</h2>
                 </div>
-                <Button onClick={() => savePilot.mutate()} disabled={savePilot.isPending}>
+                <Button className={PRIMARY_BUTTON_CLASS} onClick={() => savePilot.mutate()} disabled={savePilot.isPending}>
                   <Save size={15} className="mr-2" /> Save Pilot
                 </Button>
               </div>
@@ -436,38 +428,28 @@ export default function AdminAIPilots() {
               <div className="grid md:grid-cols-2 gap-4">
                 <label className="space-y-2">
                   <span className="text-xs text-white/55">Name</span>
-                  <Input value={pilotDraft.name || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, name: e.target.value })} />
+                  <Input className={CONTROL_CLASS} value={pilotDraft.name || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, name: e.target.value })} />
                 </label>
                 <label className="space-y-2">
                   <span className="text-xs text-white/55">Key</span>
-                  <Input value={pilotDraft.pilot_key || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, pilot_key: e.target.value })} />
+                  <Input className={CONTROL_CLASS} value={pilotDraft.pilot_key || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, pilot_key: e.target.value })} />
                 </label>
                 <label className="space-y-2">
                   <span className="text-xs text-white/55">Category</span>
-                  <Input value={pilotDraft.category || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, category: e.target.value })} />
+                  <Input className={CONTROL_CLASS} value={pilotDraft.category || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, category: e.target.value })} />
                 </label>
                 <div className="space-y-2">
                   <span className="text-xs text-white/55">Tags</span>
                   <div className="flex gap-2">
-                    <Input
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyDown={handleTagKeyDown}
-                      onBlur={() => tagInput.trim() && addTag()}
-                      placeholder="Type a tag and press Enter"
-                    />
-                    <Button type="button" variant="outline" onClick={() => addTag()} disabled={!tagInput.trim()}>
-                      Add
-                    </Button>
+                    <Input className={CONTROL_CLASS} value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} onBlur={() => tagInput.trim() && addTag()} placeholder="Type a tag and press Enter" />
+                    <Button type="button" className={SECONDARY_BUTTON_CLASS} onClick={() => addTag()} disabled={!tagInput.trim()}>Add</Button>
                   </div>
                   {!!pilotDraft.tags?.length && (
                     <div className="flex flex-wrap gap-2 pt-1">
                       {pilotDraft.tags.map((tag) => (
                         <span key={tag} className="inline-flex items-center gap-1.5 border border-white/15 px-2.5 py-1 text-xs text-white/75 bg-white/[0.03]">
                           {tag}
-                          <button type="button" onClick={() => removeTag(tag)} className="text-white/45 hover:text-white" aria-label={`Remove ${tag}`}>
-                            <X size={12} />
-                          </button>
+                          <button type="button" onClick={() => removeTag(tag)} className="text-white/45 hover:text-[var(--studio-accent)]" aria-label={`Remove ${tag}`}><X size={12} /></button>
                         </span>
                       ))}
                     </div>
@@ -475,48 +457,39 @@ export default function AdminAIPilots() {
                 </div>
                 <label className="space-y-2 md:col-span-2">
                   <span className="text-xs text-white/55">Description</span>
-                  <Textarea rows={3} value={pilotDraft.description || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, description: e.target.value })} />
+                  <Textarea className={CONTROL_CLASS} rows={3} value={pilotDraft.description || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, description: e.target.value })} />
                 </label>
                 <div className="space-y-2">
                   <span className="text-xs text-white/55">Cover</span>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <label className="inline-flex">
                       <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} disabled={coverUploading} />
-                      <span className="inline-flex h-10 items-center justify-center gap-2 border border-white/15 px-4 text-sm text-white/80 cursor-pointer hover:bg-white/[0.05]">
-                        <Upload size={15} /> {coverUploading ? 'Uploading…' : 'Upload cover'}
+                      <span className="inline-flex h-10 items-center justify-center gap-2 border border-white/15 px-4 text-sm text-white/80 cursor-pointer hover:bg-white/[0.05] hover:border-[var(--studio-accent)] transition-colors">
+                        <Upload size={15} className="text-[var(--studio-accent)]" /> {coverUploading ? 'Uploading…' : 'Upload cover'}
                       </span>
                     </label>
                     {pilotDraft.cover_url && (
-                      <button type="button" onClick={() => setPilotDraft({ ...pilotDraft, cover_url: '' })} className="text-xs text-white/45 hover:text-white">
-                        Remove
-                      </button>
+                      <button type="button" onClick={() => setPilotDraft({ ...pilotDraft, cover_url: '' })} className="text-xs text-white/45 hover:text-white">Remove</button>
                     )}
                   </div>
                   {pilotDraft.cover_url && (
-                    <div className="mt-2 border border-white/10 bg-black/30 p-2 max-w-[220px]">
-                      <img src={pilotDraft.cover_url} alt="AI Pilot cover preview" className="w-full h-28 object-cover" />
+                    <div className="mt-3 w-full max-w-[260px] aspect-[2/3] border border-white/10 bg-[#0d0f12] p-2 flex items-center justify-center overflow-hidden">
+                      <img src={pilotDraft.cover_url} alt="AI Pilot cover preview" className="w-full h-full object-contain" />
                     </div>
                   )}
-                  <Input
-                    value={pilotDraft.cover_url || ''}
-                    onChange={(e) => setPilotDraft({ ...pilotDraft, cover_url: e.target.value })}
-                    placeholder="Or paste an image URL"
-                  />
+                  <Input className={CONTROL_CLASS} value={pilotDraft.cover_url || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, cover_url: e.target.value })} placeholder="Or paste an image URL" />
                 </div>
                 <label className="space-y-2">
                   <span className="text-xs text-white/55">Distribution</span>
                   <Select value={pilotDraft.distribution_mode || 'private'} onValueChange={(value) => setPilotDraft({ ...pilotDraft, distribution_mode: value })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="private">Private</SelectItem>
-                      <SelectItem value="assets_shop">Assets Shop</SelectItem>
-                    </SelectContent>
+                    <SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="private">Private</SelectItem><SelectItem value="assets_shop">Assets Shop</SelectItem></SelectContent>
                   </Select>
                 </label>
                 {pilotDraft.distribution_mode === 'assets_shop' && (
                   <label className="space-y-2 md:col-span-2">
                     <span className="text-xs text-white/55">Assets Shop Catalog Asset ID</span>
-                    <Input value={pilotDraft.catalog_asset_id || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, catalog_asset_id: e.target.value })} />
+                    <Input className={CONTROL_CLASS} value={pilotDraft.catalog_asset_id || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, catalog_asset_id: e.target.value })} />
                   </label>
                 )}
               </div>
@@ -525,10 +498,10 @@ export default function AdminAIPilots() {
             <div className="border border-white/10 bg-neutral-950">
               <div className="p-4 md:p-5 border-b border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-white/40">Versions</div>
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--studio-accent)]">Versions</div>
                   <div className="text-sm mt-1 text-white/70">Published versions stay fixed. New work continues in a new version.</div>
                 </div>
-                <Button variant="outline" onClick={() => createVersion.mutate()} disabled={!selectedVersion || createVersion.isPending}>
+                <Button className={SECONDARY_BUTTON_CLASS} onClick={() => createVersion.mutate()} disabled={!selectedVersion || createVersion.isPending}>
                   <Copy size={15} className="mr-2" /> New Version
                 </Button>
               </div>
@@ -536,12 +509,7 @@ export default function AdminAIPilots() {
               <div className="p-4 md:p-5 space-y-5">
                 <div className="flex flex-wrap gap-2">
                   {versions.map((version) => (
-                    <button
-                      type="button"
-                      key={version.id}
-                      onClick={() => { setSelectedVersionId(version.id); setEditingBlock(null); }}
-                      className={`px-3 py-2 border text-xs ${selectedVersion?.id === version.id ? 'bg-white text-black border-white' : 'border-white/15 text-white/65'}`}
-                    >
+                    <button type="button" key={version.id} onClick={() => { setSelectedVersionId(version.id); setEditingBlock(null); }} className={`px-3 py-2 border text-xs ${selectedVersion?.id === version.id ? 'bg-[var(--studio-accent)] text-[#071211] border-[var(--studio-accent)]' : 'border-white/15 text-white/65 hover:border-white/25'}`}>
                       v{version.version_number}{version.is_published ? ' · Published' : ' · Draft'}
                     </button>
                   ))}
@@ -551,16 +519,10 @@ export default function AdminAIPilots() {
                   <div className="grid md:grid-cols-[1fr_auto] gap-4 items-end">
                     <label className="space-y-2">
                       <span className="text-xs text-white/55">Version notes</span>
-                      <Textarea
-                        key={selectedVersion.id}
-                        rows={2}
-                        defaultValue={selectedVersion.changelog || ''}
-                        disabled={selectedVersion.is_published}
-                        onBlur={(e) => saveVersionChangelog(e.target.value)}
-                      />
+                      <Textarea className={CONTROL_CLASS} key={selectedVersion.id} rows={2} defaultValue={selectedVersion.changelog || ''} disabled={selectedVersion.is_published} onBlur={(e) => saveVersionChangelog(e.target.value)} />
                     </label>
                     {!selectedVersion.is_published && (
-                      <Button onClick={() => publishVersion.mutate()} disabled={publishVersion.isPending || blocks.length === 0}>
+                      <Button className={PRIMARY_BUTTON_CLASS} onClick={() => publishVersion.mutate()} disabled={publishVersion.isPending || blocks.length === 0}>
                         <Rocket size={15} className="mr-2" /> Publish v{selectedVersion.version_number}
                       </Button>
                     )}
@@ -573,11 +535,11 @@ export default function AdminAIPilots() {
               <div className="border border-white/10 bg-neutral-950">
                 <div className="p-4 md:p-5 border-b border-white/10 flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-white/40">Direction Blocks</div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--studio-accent)]">Direction Blocks</div>
                     <h3 className="text-base font-light mt-1">AI Pilot v{selectedVersion.version_number}</h3>
                   </div>
                   {!selectedVersion.is_published && (
-                    <Button size="sm" onClick={() => setEditingBlock(emptyBlock(selectedVersion.id, blocks.length))}>
+                    <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => setEditingBlock(emptyBlock(selectedVersion.id, blocks.length))}>
                       <Plus size={15} className="mr-1" /> Block
                     </Button>
                   )}
@@ -586,12 +548,7 @@ export default function AdminAIPilots() {
                 <div className="grid lg:grid-cols-[300px_minmax(0,1fr)] min-h-[420px]">
                   <div className="border-b lg:border-b-0 lg:border-r border-white/10">
                     {blocks.map((block) => (
-                      <button
-                        type="button"
-                        key={block.id}
-                        onClick={() => setEditingBlock({ ...block, content: block.content || { text: '' } })}
-                        className={`w-full text-left p-4 border-b border-white/10 hover:bg-white/[0.04] ${editingBlock?.id === block.id ? 'bg-white/[0.07]' : ''}`}
-                      >
+                      <button type="button" key={block.id} onClick={() => setEditingBlock({ ...block, content: block.content || { text: '' } })} className={`w-full text-left p-4 border-b border-white/10 hover:bg-white/[0.04] ${editingBlock?.id === block.id ? 'bg-white/[0.07] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}>
                         <div className="text-sm text-white">{block.title}</div>
                         <div className="text-[10px] uppercase tracking-wider text-white/40 mt-1">{block.block_type.replaceAll('_', ' ')}</div>
                         {!!block.tool_targets?.length && <div className="text-xs text-white/45 mt-2">{block.tool_targets.join(' · ')}</div>}
@@ -608,51 +565,38 @@ export default function AdminAIPilots() {
                         <div className="grid md:grid-cols-2 gap-4">
                           <label className="space-y-2">
                             <span className="text-xs text-white/55">Title</span>
-                            <Input disabled={selectedVersion.is_published} value={editingBlock.title || ''} onChange={(e) => setEditingBlock({ ...editingBlock, title: e.target.value })} />
+                            <Input className={CONTROL_CLASS} disabled={selectedVersion.is_published} value={editingBlock.title || ''} onChange={(e) => setEditingBlock({ ...editingBlock, title: e.target.value })} />
                           </label>
                           <label className="space-y-2">
                             <span className="text-xs text-white/55">Key</span>
-                            <Input disabled={selectedVersion.is_published} value={editingBlock.block_key || ''} onChange={(e) => setEditingBlock({ ...editingBlock, block_key: e.target.value })} />
+                            <Input className={CONTROL_CLASS} disabled={selectedVersion.is_published} value={editingBlock.block_key || ''} onChange={(e) => setEditingBlock({ ...editingBlock, block_key: e.target.value })} />
                           </label>
                           <label className="space-y-2">
                             <span className="text-xs text-white/55">Type</span>
                             <Select disabled={selectedVersion.is_published} value={editingBlock.block_type} onValueChange={(value) => setEditingBlock({ ...editingBlock, block_type: value })}>
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {BLOCK_TYPES.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
-                              </SelectContent>
+                              <SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue /></SelectTrigger>
+                              <SelectContent>{BLOCK_TYPES.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
                             </Select>
                           </label>
                           <label className="space-y-2">
                             <span className="text-xs text-white/55">Tool targets</span>
-                            <Input
-                              disabled={selectedVersion.is_published}
-                              value={(editingBlock.tool_targets || []).join(', ')}
-                              onChange={(e) => setEditingBlock({ ...editingBlock, tool_targets: e.target.value.split(',').map((item) => item.trim()).filter(Boolean) })}
-                              placeholder="fotoplay, shoot, tts"
-                            />
+                            <Input className={CONTROL_CLASS} disabled={selectedVersion.is_published} value={(editingBlock.tool_targets || []).join(', ')} onChange={(e) => setEditingBlock({ ...editingBlock, tool_targets: e.target.value.split(',').map((item) => item.trim()).filter(Boolean) })} placeholder="fotoplay, shoot, tts" />
                           </label>
                         </div>
 
                         <label className="space-y-2 block">
                           <span className="text-xs text-white/55">Direction</span>
-                          <Textarea
-                            rows={12}
-                            disabled={selectedVersion.is_published}
-                            value={editingBlock.content?.text || ''}
-                            onChange={(e) => setEditingBlock({ ...editingBlock, content: { text: e.target.value } })}
-                            placeholder="Write only the direction this block must contribute to the AI context."
-                          />
+                          <Textarea className={CONTROL_CLASS} rows={12} disabled={selectedVersion.is_published} value={editingBlock.content?.text || ''} onChange={(e) => setEditingBlock({ ...editingBlock, content: { text: e.target.value } })} placeholder="Write only the direction this block must contribute to the AI context." />
                         </label>
 
                         <div className="grid sm:grid-cols-3 gap-4">
                           <label className="space-y-2">
                             <span className="text-xs text-white/55">Priority</span>
-                            <Input type="number" disabled={selectedVersion.is_published} value={editingBlock.priority ?? 100} onChange={(e) => setEditingBlock({ ...editingBlock, priority: e.target.value })} />
+                            <Input className={CONTROL_CLASS} type="number" disabled={selectedVersion.is_published} value={editingBlock.priority ?? 100} onChange={(e) => setEditingBlock({ ...editingBlock, priority: e.target.value })} />
                           </label>
                           <label className="space-y-2">
                             <span className="text-xs text-white/55">Order</span>
-                            <Input type="number" disabled={selectedVersion.is_published} value={editingBlock.sort_order ?? 0} onChange={(e) => setEditingBlock({ ...editingBlock, sort_order: e.target.value })} />
+                            <Input className={CONTROL_CLASS} type="number" disabled={selectedVersion.is_published} value={editingBlock.sort_order ?? 0} onChange={(e) => setEditingBlock({ ...editingBlock, sort_order: e.target.value })} />
                           </label>
                           <label className="flex items-end gap-3 pb-2">
                             <Switch disabled={selectedVersion.is_published} checked={editingBlock.is_active !== false} onCheckedChange={(checked) => setEditingBlock({ ...editingBlock, is_active: checked })} />
@@ -662,7 +606,7 @@ export default function AdminAIPilots() {
 
                         {!selectedVersion.is_published && (
                           <div className="flex justify-end">
-                            <Button onClick={() => saveBlock.mutate()} disabled={saveBlock.isPending}>
+                            <Button className={PRIMARY_BUTTON_CLASS} onClick={() => saveBlock.mutate()} disabled={saveBlock.isPending}>
                               <Save size={15} className="mr-2" /> Save Block
                             </Button>
                           </div>
