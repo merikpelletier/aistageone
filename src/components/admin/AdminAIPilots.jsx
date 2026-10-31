@@ -39,7 +39,7 @@ const emptyPilot = () => ({
   cover_url: '',
   status: 'draft',
   distribution_mode: 'private',
-  catalog_asset_id: '',
+  asset_subcategory_id: '',
 });
 
 const emptyBlock = (versionId, sortOrder = 0) => ({
@@ -81,6 +81,29 @@ export default function AdminAIPilots() {
       const { data, error } = await supabase.from('ai_pilots').select('*').order('updated_at', { ascending: false });
       if (error) throw error;
       return data || [];
+    },
+  });
+
+  const { data: aiPilotCatalog = { category: null, subcategories: [] } } = useQuery({
+    queryKey: ['ai-pilot-assets-shop-taxonomy'],
+    queryFn: async () => {
+      const { data: category, error: categoryError } = await supabase
+        .from('asset_category')
+        .select('id, key, label_en, label_fr')
+        .eq('key', 'ai-pilot')
+        .eq('is_active', true)
+        .single();
+      if (categoryError) throw categoryError;
+
+      const { data: subcategories, error: subcategoryError } = await supabase
+        .from('asset_subcategory')
+        .select('id, key, label_en, label_fr, display_order')
+        .eq('category_id', category.id)
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+      if (subcategoryError) throw subcategoryError;
+
+      return { category, subcategories: subcategories || [] };
     },
   });
 
@@ -137,19 +160,21 @@ export default function AdminAIPilots() {
     onError: (error) => alert(error?.message || 'Unable to create AI Pilot'),
   });
 
+  const buildPilotPayload = () => ({
+    pilot_key: slugify(pilotDraft?.pilot_key || pilotDraft?.name),
+    name: pilotDraft?.name?.trim(),
+    description: pilotDraft?.description || '',
+    category: pilotDraft?.category || '',
+    tags: Array.isArray(pilotDraft?.tags) ? pilotDraft.tags : [],
+    cover_url: pilotDraft?.cover_url || null,
+    distribution_mode: pilotDraft?.distribution_mode || 'private',
+    asset_subcategory_id: pilotDraft?.distribution_mode === 'assets_shop' ? (pilotDraft?.asset_subcategory_id || null) : null,
+  });
+
   const savePilot = useMutation({
     mutationFn: async () => {
       if (!pilotDraft?.id) return null;
-      const payload = {
-        pilot_key: slugify(pilotDraft.pilot_key || pilotDraft.name),
-        name: pilotDraft.name?.trim(),
-        description: pilotDraft.description || '',
-        category: pilotDraft.category || '',
-        tags: Array.isArray(pilotDraft.tags) ? pilotDraft.tags : [],
-        cover_url: pilotDraft.cover_url || null,
-        distribution_mode: pilotDraft.distribution_mode || 'private',
-        catalog_asset_id: pilotDraft.catalog_asset_id || null,
-      };
+      const payload = buildPilotPayload();
       if (!payload.pilot_key || !payload.name) throw new Error('Name and key are required');
       const { data, error } = await supabase.from('ai_pilots').update(payload).eq('id', pilotDraft.id).select('*').single();
       if (error) throw error;
@@ -283,7 +308,14 @@ export default function AdminAIPilots() {
 
   const publishVersion = useMutation({
     mutationFn: async () => {
-      if (!selectedVersion?.id) return;
+      if (!selectedVersion?.id || !pilotDraft?.id) return;
+      const payload = buildPilotPayload();
+      if (!payload.pilot_key || !payload.name) throw new Error('Name and key are required');
+      if (payload.distribution_mode === 'assets_shop' && !payload.asset_subcategory_id) throw new Error('Select an AI Pilot Assets Shop subcategory before publishing');
+
+      const { error: saveError } = await supabase.from('ai_pilots').update(payload).eq('id', pilotDraft.id);
+      if (saveError) throw saveError;
+
       const { error } = await supabase.rpc('publish_ai_pilot_version', { p_version_id: selectedVersion.id });
       if (error) throw error;
     },
@@ -396,8 +428,26 @@ export default function AdminAIPilots() {
                       <label className="space-y-2"><span className="text-xs text-white/55">Name</span><Input className={CONTROL_CLASS} value={pilotDraft.name || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, name: e.target.value })} /></label>
                       <label className="space-y-2"><span className="text-xs text-white/55">Key</span><Input className={CONTROL_CLASS} value={pilotDraft.pilot_key || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, pilot_key: e.target.value })} /></label>
                       <label className="space-y-2"><span className="text-xs text-white/55">Category</span><Input className={CONTROL_CLASS} value={pilotDraft.category || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, category: e.target.value })} /></label>
-                      <label className="space-y-2"><span className="text-xs text-white/55">Distribution</span><Select value={pilotDraft.distribution_mode || 'private'} onValueChange={(value) => setPilotDraft({ ...pilotDraft, distribution_mode: value })}><SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="private">Private</SelectItem><SelectItem value="assets_shop">Assets Shop</SelectItem></SelectContent></Select></label>
+                      <label className="space-y-2"><span className="text-xs text-white/55">Distribution</span><Select value={pilotDraft.distribution_mode || 'private'} onValueChange={(value) => setPilotDraft({ ...pilotDraft, distribution_mode: value, asset_subcategory_id: value === 'assets_shop' ? pilotDraft.asset_subcategory_id : '' })}><SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="private">Private</SelectItem><SelectItem value="assets_shop">Assets Shop</SelectItem></SelectContent></Select></label>
                     </div>
+
+                    {pilotDraft.distribution_mode === 'assets_shop' && (
+                      <div className="grid md:grid-cols-2 gap-4 border border-white/10 bg-white/[0.02] p-4">
+                        <div className="space-y-2">
+                          <span className="text-xs text-white/55">Assets Shop Category</span>
+                          <div className="h-10 px-3 flex items-center border border-white/10 bg-black/20 text-sm text-white/70">{aiPilotCatalog.category?.label_en || 'AI Pilot'}</div>
+                        </div>
+                        <label className="space-y-2">
+                          <span className="text-xs text-white/55">Subcategory</span>
+                          <Select value={pilotDraft.asset_subcategory_id || ''} onValueChange={(value) => setPilotDraft({ ...pilotDraft, asset_subcategory_id: value })}>
+                            <SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue placeholder="Select subcategory" /></SelectTrigger>
+                            <SelectContent>
+                              {aiPilotCatalog.subcategories.map((subcategory) => <SelectItem key={subcategory.id} value={subcategory.id}>{subcategory.label_en || subcategory.label_fr || subcategory.key}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </label>
+                      </div>
+                    )}
 
                     <label className="space-y-2 block"><span className="text-xs text-white/55">Description</span><Textarea className={CONTROL_CLASS} rows={5} value={pilotDraft.description || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, description: e.target.value })} /></label>
 
@@ -406,8 +456,6 @@ export default function AdminAIPilots() {
                       <div className="flex gap-2"><Input className={CONTROL_CLASS} value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} placeholder="Add tag" /><Button type="button" className={SECONDARY_BUTTON_CLASS} onClick={() => addTag()} disabled={!tagInput.trim()}>Add</Button></div>
                       {!!pilotDraft.tags?.length && <div className="flex flex-wrap gap-2">{pilotDraft.tags.map((tag) => <span key={tag} className="inline-flex items-center gap-1.5 border border-white/15 px-2.5 py-1 text-xs text-white/75 bg-white/[0.03]">{tag}<button type="button" onClick={() => removeTag(tag)} className="text-white/35 hover:text-white"><X size={12} /></button></span>)}</div>}
                     </div>
-
-                    {pilotDraft.distribution_mode === 'assets_shop' && <label className="space-y-2 block"><span className="text-xs text-white/55">Assets Shop Catalog Asset ID</span><Input className={CONTROL_CLASS} value={pilotDraft.catalog_asset_id || ''} onChange={(e) => setPilotDraft({ ...pilotDraft, catalog_asset_id: e.target.value })} /></label>}
                   </div>
                 </div>
               )}
