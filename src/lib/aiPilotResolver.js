@@ -34,6 +34,29 @@ export function normalizeAIPilotToolKey(toolKey) {
   return TOOL_ALIASES[normalized] || normalized;
 }
 
+export function blockTargetsTool(block, toolKey) {
+  const tool = normalizeAIPilotToolKey(toolKey);
+  const targets = Array.isArray(block?.tool_targets) ? block.tool_targets : [];
+  if (targets.length === 0) return true;
+
+  return targets.some((target) => {
+    const normalizedTarget = String(target || '').trim().toLowerCase();
+    return normalizedTarget === '*' || normalizeAIPilotToolKey(normalizedTarget) === tool;
+  });
+}
+
+export function orderAIPilotBlocks(blocks = []) {
+  return [...blocks].sort((a, b) => {
+    const priorityDelta = Number(a?.priority ?? 100) - Number(b?.priority ?? 100);
+    if (priorityDelta !== 0) return priorityDelta;
+
+    const sortDelta = Number(a?.sort_order ?? 0) - Number(b?.sort_order ?? 0);
+    if (sortDelta !== 0) return sortDelta;
+
+    return String(a?.block_key || '').localeCompare(String(b?.block_key || ''));
+  });
+}
+
 export async function resolveAIPilotContext({ projectId, toolKey }) {
   const project = String(projectId || '').trim();
   const tool = normalizeAIPilotToolKey(toolKey);
@@ -41,14 +64,16 @@ export async function resolveAIPilotContext({ projectId, toolKey }) {
   if (!project) throw new Error('AI Pilot resolver requires a project id.');
   if (!tool) throw new Error('AI Pilot resolver requires a tool key.');
 
-  const { data, error } = await supabase.rpc('resolve_ai_pilot_context', {
-    p_project_id: project,
-    p_tool_key: tool,
-  });
+  const { data: assignment, error: assignmentError } = await supabase
+    .from('ai_pilot_project_assignments')
+    .select('id, ai_pilot_id, version_id, project_id, activated_at')
+    .eq('project_id', project)
+    .eq('is_active', true)
+    .maybeSingle();
 
-  if (error) throw error;
+  if (assignmentError) throw assignmentError;
 
-  if (!data?.active) {
+  if (!assignment) {
     return {
       active: false,
       project_id: project,
@@ -57,9 +82,38 @@ export async function resolveAIPilotContext({ projectId, toolKey }) {
     };
   }
 
+  const [pilotResult, versionResult, blocksResult] = await Promise.all([
+    supabase
+      .from('ai_pilots')
+      .select('id, pilot_key, name, description, category, tags, cover_url')
+      .eq('id', assignment.ai_pilot_id)
+      .single(),
+    supabase
+      .from('ai_pilot_versions')
+      .select('id, version_number, schema_version, published_at')
+      .eq('id', assignment.version_id)
+      .single(),
+    supabase
+      .from('ai_pilot_blocks')
+      .select('id, block_key, block_type, title, content, tool_targets, priority, sort_order')
+      .eq('version_id', assignment.version_id)
+      .eq('is_active', true),
+  ]);
+
+  if (pilotResult.error) throw pilotResult.error;
+  if (versionResult.error) throw versionResult.error;
+  if (blocksResult.error) throw blocksResult.error;
+
+  const blocks = orderAIPilotBlocks((blocksResult.data || []).filter((block) => blockTargetsTool(block, tool)));
+
   return {
-    ...data,
-    tool_key: normalizeAIPilotToolKey(data.tool_key || tool),
-    blocks: Array.isArray(data.blocks) ? data.blocks : [],
+    active: true,
+    project_id: project,
+    tool_key: tool,
+    assignment_id: assignment.id,
+    activated_at: assignment.activated_at,
+    pilot: pilotResult.data,
+    version: versionResult.data,
+    blocks,
   };
 }
