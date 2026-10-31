@@ -1,5 +1,6 @@
 import React from 'react';
-import { Edit2, LogOut, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Bot, Edit2, LogOut, User } from 'lucide-react';
 import CreatorSubscriptionSection from '@/components/CreatorSubscriptionSection';
 import TokensMembershipSection from '@/components/TokensMembershipSection';
 import MemberEconomicsSection from '@/components/MemberEconomicsSection';
@@ -84,7 +85,8 @@ export default function DesktopAccountDashboard({
 
         <DesktopDossierPublishing userEmail={viewingEmail} dossiers={dossiers} />
 
-        <div className="mt-7 flex justify-end border-t border-white/10 pt-4">
+        <div className="mt-7 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
+          <Link to="/MyAIPilots" className="flex items-center gap-2 border border-cyan-400/35 px-5 py-2 text-xs font-bold uppercase tracking-[0.14em] text-cyan-200 hover:border-cyan-300 hover:text-white"><Bot size={14} />My AI Pilots</Link>
           <button onClick={onLogout} className="flex items-center gap-2 border border-white/35 px-5 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white hover:border-white"><LogOut size={14} />Log out</button>
         </div>
       </main>
