@@ -61,7 +61,11 @@ begin
     raise exception 'Published AI Pilot versions cannot be deleted';
   end if;
 
-  return case when tg_op = 'DELETE' then old else new end;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+
+  return new;
 end;
 $$;
 
@@ -79,7 +83,11 @@ as $$
 declare
   v_version_id uuid;
 begin
-  v_version_id := case when tg_op = 'DELETE' then old.version_id else new.version_id end;
+  if tg_op = 'DELETE' then
+    v_version_id := old.version_id;
+  else
+    v_version_id := new.version_id;
+  end if;
 
   if exists (
     select 1
@@ -90,7 +98,11 @@ begin
     raise exception 'Blocks in a published AI Pilot version are immutable';
   end if;
 
-  return case when tg_op = 'DELETE' then old else new end;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+
+  return new;
 end;
 $$;
 
