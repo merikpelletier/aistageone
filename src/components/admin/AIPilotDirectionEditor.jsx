@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Plus, Save, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -103,7 +103,7 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
                         <span className="text-sm text-white truncate">{location.name || 'Unnamed location'}</span>
                         {!expanded && location.description && <span className="hidden md:block text-xs text-white/30 truncate">{location.description}</span>}
                       </button>
-                      {!readOnly && <button type="button" className={REMOVE_BUTTON_CLASS} onClick={() => removeLocation(location.id)} title="Remove location" aria-label="Remove location"><X size={16} strokeWidth={2} color="#d1d5db" /></button>}
+                      {!readOnly && <button type="button" className={REMOVE_BUTTON_CLASS} onClick={() => removeLocation(location.id)} title="Remove location" aria-label="Remove location"><Trash2 size={16} strokeWidth={2} color="#ffffff" /></button>}
                     </div>
                     {expanded && (
                       <div className="border-t border-white/10 p-3 space-y-3">
@@ -140,7 +140,7 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
                         <span className="text-xs text-white/35 shrink-0">{location?.name || 'No location'}</span>
                         {!expanded && set.description && <span className="hidden md:block text-xs text-white/30 truncate">{set.description}</span>}
                       </button>
-                      {!readOnly && <button type="button" className={REMOVE_BUTTON_CLASS} onClick={() => removeSet(set.id)} title="Remove set" aria-label="Remove set"><X size={16} strokeWidth={2} color="#d1d5db" /></button>}
+                      {!readOnly && <button type="button" className={REMOVE_BUTTON_CLASS} onClick={() => removeSet(set.id)} title="Remove set" aria-label="Remove set"><Trash2 size={16} strokeWidth={2} color="#ffffff" /></button>}
                     </div>
                     {expanded && (
                       <div className="border-t border-white/10 p-3 space-y-3">
