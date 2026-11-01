@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Plus, Save, Trash2 } from 'lucide-react';
-import { supabase } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,22 +27,6 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
   const [expandedSetId, setExpandedSetId] = useState(null);
   const [expandedLookId, setExpandedLookId] = useState(null);
 
-  const { data: characters = [] } = useQuery({
-    queryKey: ['admin-ai-pilot-look-characters', block?.version_id],
-    enabled: Boolean(block?.version_id && block?.block_key === 'looks'),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ai_pilot_characters')
-        .select('id, role_name, sort_order, is_active')
-        .eq('version_id', block.version_id)
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true })
-        .order('role_name', { ascending: true });
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
   if (!block) return <div className="h-full min-h-80 flex items-center justify-center text-sm text-white/35">Select a direction block.</div>;
 
   const content = block.content || {};
@@ -70,9 +52,8 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
   };
 
   const addLook = () => {
-    if (!characters.length) return;
     const id = makeId('look');
-    updateContent('looks', [...looks, { id, character_id: characters[0].id, name: '', costume: '', makeup: '', hair: '' }]);
+    updateContent('looks', [...looks, { id, name: '', costume: '', makeup: '', hair: '' }]);
     setExpandedLookId(id);
   };
 
@@ -127,45 +108,33 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-sm text-white">Character Looks <span className="text-white/35">({looks.length})</span></div>
-          <div className="text-xs text-white/35 mt-1">Create specific looks for individual characters.</div>
+          <div className="text-sm text-white">Looks <span className="text-white/35">({looks.length})</span></div>
+          <div className="text-xs text-white/35 mt-1">Reusable looks that belong to this AI Pilot.</div>
         </div>
-        {!readOnly && <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={addLook} disabled={!characters.length}><Plus size={14} /> Add Look</Button>}
+        {!readOnly && <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={addLook}><Plus size={14} /> Add Look</Button>}
       </div>
 
-      {!characters.length && <div className="border border-white/10 bg-white/[0.02] p-4 text-sm text-white/40">Create the characters first, then assign looks to them here.</div>}
-      {characters.length > 0 && !looks.length && <div className="text-sm text-white/30 py-2">No looks yet.</div>}
+      {!looks.length && <div className="text-sm text-white/30 py-2">No looks yet.</div>}
 
       <div className="space-y-2">
         {looks.map((look) => {
           const expanded = expandedLookId === look.id;
-          const character = characters.find((item) => item.id === look.character_id);
           return (
             <div key={look.id} className="border border-white/10 bg-black/20">
               <div className="flex items-center gap-2 min-h-11 px-2">
                 <button type="button" className="flex flex-1 min-w-0 items-center gap-2 text-left py-2" onClick={() => setExpandedLookId(expanded ? null : look.id)}>
                   {expanded ? <ChevronDown size={16} className="text-white/50 shrink-0" /> : <ChevronRight size={16} className="text-white/50 shrink-0" />}
-                  <span className="text-sm text-white truncate">{character?.role_name || 'Select character'}</span>
-                  <span className="text-xs text-white/35 truncate">{look.name || 'Unnamed look'}</span>
+                  <span className="text-sm text-white truncate">{look.name || 'Unnamed look'}</span>
                 </button>
                 {!readOnly && <button type="button" className={REMOVE_BUTTON_CLASS} onClick={() => removeLook(look.id)} title="Remove look" aria-label="Remove look"><Trash2 size={16} strokeWidth={2} color="#ffffff" /></button>}
               </div>
 
               {expanded && (
                 <div className="border-t border-white/10 p-3 space-y-4">
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <label className="space-y-2">
-                      <span className="text-xs text-white/55">Character</span>
-                      <Select disabled={readOnly} value={look.character_id || ''} onValueChange={(value) => updateLook(look.id, { character_id: value })}>
-                        <SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue placeholder="Select character" /></SelectTrigger>
-                        <SelectContent>{characters.map((item) => <SelectItem key={item.id} value={item.id}>{item.role_name || 'Unnamed character'}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </label>
-                    <label className="space-y-2">
-                      <span className="text-xs text-white/55">Look Name</span>
-                      <Input className={CONTROL_CLASS} disabled={readOnly} placeholder="e.g. Arrival, Gala, Runway, Casual" value={look.name || ''} onChange={(event) => updateLook(look.id, { name: event.target.value })} />
-                    </label>
-                  </div>
+                  <label className="space-y-2 block">
+                    <span className="text-xs text-white/55">Look Name</span>
+                    <Input className={CONTROL_CLASS} disabled={readOnly} placeholder="e.g. Arrival, Gala, Runway, Casual" value={look.name || ''} onChange={(event) => updateLook(look.id, { name: event.target.value })} />
+                  </label>
 
                   <label className="space-y-2 block">
                     <span className="text-xs text-white/55">Costume</span>
@@ -175,11 +144,11 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
                   <div className="grid md:grid-cols-2 gap-3">
                     <label className="space-y-2">
                       <span className="text-xs text-white/55">Makeup</span>
-                      <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} placeholder="Makeup for this specific look." value={look.makeup || ''} onChange={(event) => updateLook(look.id, { makeup: event.target.value })} />
+                      <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} placeholder="Makeup for this look." value={look.makeup || ''} onChange={(event) => updateLook(look.id, { makeup: event.target.value })} />
                     </label>
                     <label className="space-y-2">
                       <span className="text-xs text-white/55">Hair</span>
-                      <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} placeholder="Hair for this specific look." value={look.hair || ''} onChange={(event) => updateLook(look.id, { hair: event.target.value })} />
+                      <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} placeholder="Hair for this look." value={look.hair || ''} onChange={(event) => updateLook(look.id, { hair: event.target.value })} />
                     </label>
                   </div>
                 </div>
