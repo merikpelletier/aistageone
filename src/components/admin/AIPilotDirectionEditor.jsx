@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronDown, ChevronRight, Plus, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +9,7 @@ const CONTROL_CLASS = 'bg-black/20 border-white/15 text-white placeholder:text-w
 const SELECT_TRIGGER_CLASS = 'bg-black/20 border-white/15 text-white focus:ring-0 focus:ring-offset-0 focus:border-[var(--studio-accent)]';
 const PRIMARY_BUTTON_CLASS = 'bg-[var(--studio-accent)] text-[#071211] border border-[var(--studio-accent)] hover:bg-[var(--studio-accent-hover)] hover:border-[var(--studio-accent-hover)]';
 const SECONDARY_BUTTON_CLASS = 'bg-white/[0.04] text-white border border-white/15 hover:bg-white/[0.08] hover:border-white/25';
+const DELETE_BUTTON_CLASS = 'bg-red-500/10 text-red-300 border border-red-400/35 hover:bg-red-500/20 hover:text-red-200 hover:border-red-300/60';
 
 const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -22,6 +23,9 @@ const normalizeEntries = (value, prefix) => {
 };
 
 export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSave, saving }) {
+  const [expandedLocationId, setExpandedLocationId] = useState(null);
+  const [expandedSetId, setExpandedSetId] = useState(null);
+
   if (!block) return <div className="h-full min-h-80 flex items-center justify-center text-sm text-white/35">Select a direction block.</div>;
 
   const content = block.content || {};
@@ -31,9 +35,29 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
   const updateContent = (key, value) => setBlock({ ...block, content: { ...content, [key]: value } });
   const updateLocation = (id, patch) => updateContent('locations', locations.map((item) => item.id === id ? { ...item, ...patch } : item));
   const updateSet = (id, patch) => updateContent('sets', sets.map((item) => item.id === id ? { ...item, ...patch } : item));
+
+  const addLocation = () => {
+    const id = makeId('location');
+    updateContent('locations', [...locations, { id, name: '', description: '' }]);
+    setExpandedLocationId(id);
+  };
+
+  const addSet = () => {
+    const id = makeId('set');
+    updateContent('sets', [...sets, { id, name: '', location_id: '', description: '' }]);
+    setExpandedSetId(id);
+  };
+
   const removeLocation = (id) => {
-    updateContent('locations', locations.filter((item) => item.id !== id));
-    setBlock({ ...block, content: { ...content, locations: locations.filter((item) => item.id !== id), sets: sets.map((item) => item.location_id === id ? { ...item, location_id: '' } : item) } });
+    const nextLocations = locations.filter((item) => item.id !== id);
+    const nextSets = sets.map((item) => item.location_id === id ? { ...item, location_id: '' } : item);
+    setBlock({ ...block, content: { ...content, locations: nextLocations, sets: nextSets } });
+    if (expandedLocationId === id) setExpandedLocationId(null);
+  };
+
+  const removeSet = (id) => {
+    updateContent('sets', sets.filter((item) => item.id !== id));
+    if (expandedSetId === id) setExpandedSetId(null);
   };
 
   const textField = (key, label, rows = 4, full = false) => (
@@ -59,29 +83,81 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
           </div>
 
           <section className="border border-white/10 bg-white/[0.02] p-4 space-y-3">
-            <div className="flex items-center justify-between gap-3"><div><div className="text-sm text-white">Locations</div><div className="text-xs text-white/35 mt-1">One precise production location per entry.</div></div>{!readOnly && <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => updateContent('locations', [...locations, { id: makeId('location'), name: '', description: '' }])}><Plus size={14} /> Add Location</Button>}</div>
-            {!locations.length && <div className="text-sm text-white/30 py-2">No locations yet.</div>}
-            {locations.map((location) => (
-              <div key={location.id} className="border border-white/10 p-3 space-y-3 bg-black/20">
-                <div className="flex gap-2"><Input className={CONTROL_CLASS} disabled={readOnly} placeholder="Location name" value={location.name || ''} onChange={(event) => updateLocation(location.id, { name: event.target.value })} />{!readOnly && <Button size="icon" className={SECONDARY_BUTTON_CLASS} onClick={() => removeLocation(location.id)} title="Remove location"><Trash2 size={14} /></Button>}</div>
-                <Textarea className={CONTROL_CLASS} rows={5} disabled={readOnly} placeholder="Precise description of this location for production and AI generation" value={location.description || ''} onChange={(event) => updateLocation(location.id, { description: event.target.value })} />
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm text-white">Locations <span className="text-white/35">({locations.length})</span></div>
+                <div className="text-xs text-white/35 mt-1">Compact list. Open only the location you want to edit.</div>
               </div>
-            ))}
+              {!readOnly && <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={addLocation}><Plus size={14} /> Add Location</Button>}
+            </div>
+
+            {!locations.length && <div className="text-sm text-white/30 py-2">No locations yet.</div>}
+            <div className="space-y-1.5">
+              {locations.map((location) => {
+                const expanded = expandedLocationId === location.id;
+                return (
+                  <div key={location.id} className="border border-white/10 bg-black/20">
+                    <div className="flex items-center gap-2 min-h-11 px-2">
+                      <button type="button" className="flex flex-1 min-w-0 items-center gap-2 text-left py-2" onClick={() => setExpandedLocationId(expanded ? null : location.id)}>
+                        {expanded ? <ChevronDown size={16} className="text-white/50 shrink-0" /> : <ChevronRight size={16} className="text-white/50 shrink-0" />}
+                        <span className="text-sm text-white truncate">{location.name || 'Unnamed location'}</span>
+                        {!expanded && location.description && <span className="hidden md:block text-xs text-white/30 truncate">{location.description}</span>}
+                      </button>
+                      {!readOnly && <Button size="icon" className={`${DELETE_BUTTON_CLASS} h-8 w-8 shrink-0`} onClick={() => removeLocation(location.id)} title="Remove location"><Trash2 size={16} strokeWidth={2.2} /></Button>}
+                    </div>
+                    {expanded && (
+                      <div className="border-t border-white/10 p-3 space-y-3">
+                        <Input className={CONTROL_CLASS} disabled={readOnly} placeholder="Location name" value={location.name || ''} onChange={(event) => updateLocation(location.id, { name: event.target.value })} />
+                        <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} placeholder="Precise description of this location for production and AI generation" value={location.description || ''} onChange={(event) => updateLocation(location.id, { description: event.target.value })} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </section>
 
           <section className="border border-white/10 bg-white/[0.02] p-4 space-y-3">
-            <div className="flex items-center justify-between gap-3"><div><div className="text-sm text-white">Sets</div><div className="text-xs text-white/35 mt-1">Each set is separate and can be linked to a Location.</div></div>{!readOnly && <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => updateContent('sets', [...sets, { id: makeId('set'), name: '', location_id: '', description: '' }])}><Plus size={14} /> Add Set</Button>}</div>
-            {!sets.length && <div className="text-sm text-white/30 py-2">No sets yet.</div>}
-            {sets.map((set) => (
-              <div key={set.id} className="border border-white/10 p-3 space-y-3 bg-black/20">
-                <div className="grid md:grid-cols-[1fr_1fr_auto] gap-2">
-                  <Input className={CONTROL_CLASS} disabled={readOnly} placeholder="Set name" value={set.name || ''} onChange={(event) => updateSet(set.id, { name: event.target.value })} />
-                  <Select disabled={readOnly || !locations.length} value={set.location_id || 'none'} onValueChange={(value) => updateSet(set.id, { location_id: value === 'none' ? '' : value })}><SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue placeholder="Associated location" /></SelectTrigger><SelectContent><SelectItem value="none">No location</SelectItem>{locations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name || 'Unnamed location'}</SelectItem>)}</SelectContent></Select>
-                  {!readOnly && <Button size="icon" className={SECONDARY_BUTTON_CLASS} onClick={() => updateContent('sets', sets.filter((item) => item.id !== set.id))} title="Remove set"><Trash2 size={14} /></Button>}
-                </div>
-                <Textarea className={CONTROL_CLASS} rows={5} disabled={readOnly} placeholder="Precise description of this set for production and AI generation" value={set.description || ''} onChange={(event) => updateSet(set.id, { description: event.target.value })} />
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm text-white">Sets <span className="text-white/35">({sets.length})</span></div>
+                <div className="text-xs text-white/35 mt-1">Compact list. Open only the set you want to edit.</div>
               </div>
-            ))}
+              {!readOnly && <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={addSet}><Plus size={14} /> Add Set</Button>}
+            </div>
+
+            {!sets.length && <div className="text-sm text-white/30 py-2">No sets yet.</div>}
+            <div className="space-y-1.5">
+              {sets.map((set) => {
+                const expanded = expandedSetId === set.id;
+                const location = locations.find((item) => item.id === set.location_id);
+                return (
+                  <div key={set.id} className="border border-white/10 bg-black/20">
+                    <div className="flex items-center gap-2 min-h-11 px-2">
+                      <button type="button" className="flex flex-1 min-w-0 items-center gap-2 text-left py-2" onClick={() => setExpandedSetId(expanded ? null : set.id)}>
+                        {expanded ? <ChevronDown size={16} className="text-white/50 shrink-0" /> : <ChevronRight size={16} className="text-white/50 shrink-0" />}
+                        <span className="text-sm text-white truncate">{set.name || 'Unnamed set'}</span>
+                        <span className="text-xs text-white/35 shrink-0">{location?.name || 'No location'}</span>
+                        {!expanded && set.description && <span className="hidden md:block text-xs text-white/30 truncate">{set.description}</span>}
+                      </button>
+                      {!readOnly && <Button size="icon" className={`${DELETE_BUTTON_CLASS} h-8 w-8 shrink-0`} onClick={() => removeSet(set.id)} title="Remove set"><Trash2 size={16} strokeWidth={2.2} /></Button>}
+                    </div>
+                    {expanded && (
+                      <div className="border-t border-white/10 p-3 space-y-3">
+                        <div className="grid md:grid-cols-2 gap-2">
+                          <Input className={CONTROL_CLASS} disabled={readOnly} placeholder="Set name" value={set.name || ''} onChange={(event) => updateSet(set.id, { name: event.target.value })} />
+                          <Select disabled={readOnly || !locations.length} value={set.location_id || 'none'} onValueChange={(value) => updateSet(set.id, { location_id: value === 'none' ? '' : value })}>
+                            <SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue placeholder="Associated location" /></SelectTrigger>
+                            <SelectContent><SelectItem value="none">No location</SelectItem>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name || 'Unnamed location'}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                        <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} placeholder="Precise description of this set for production and AI generation" value={set.description || ''} onChange={(event) => updateSet(set.id, { description: event.target.value })} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </section>
 
           <div className="grid md:grid-cols-2 gap-4">
