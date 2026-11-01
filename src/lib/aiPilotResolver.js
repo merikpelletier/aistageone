@@ -76,7 +76,44 @@ export function orderAIPilotBlocks(blocks = []) {
   });
 }
 
-export async function resolveAIPilotContext({ projectId, toolKey }) {
+function normalizeProductionEntries(value) {
+  return Array.isArray(value) ? value.filter((item) => item && typeof item === 'object') : [];
+}
+
+function scopeSeriesDirection(block, { locationId, setId }) {
+  if (block?.block_key !== 'series-direction') {
+    return { block, location: null, set: null };
+  }
+
+  const content = block.content && typeof block.content === 'object' ? block.content : {};
+  const locations = normalizeProductionEntries(content.locations);
+  const sets = normalizeProductionEntries(content.sets);
+  const selectedSet = setId ? sets.find((item) => item.id === setId) || null : null;
+  const selectedLocation = locationId
+    ? locations.find((item) => item.id === locationId) || null
+    : selectedSet?.location_id
+      ? locations.find((item) => item.id === selectedSet.location_id) || null
+      : null;
+
+  if (!locationId && !setId) {
+    return { block, location: null, set: null };
+  }
+
+  return {
+    block: {
+      ...block,
+      content: {
+        ...content,
+        locations: selectedLocation ? [selectedLocation] : [],
+        sets: selectedSet ? [selectedSet] : [],
+      },
+    },
+    location: selectedLocation,
+    set: selectedSet,
+  };
+}
+
+export async function resolveAIPilotContext({ projectId, toolKey, locationId, setId }) {
   const project = String(projectId || '').trim();
   const tool = normalizeAIPilotToolKey(toolKey);
 
@@ -98,6 +135,7 @@ export async function resolveAIPilotContext({ projectId, toolKey }) {
       project_id: project,
       tool_key: tool,
       blocks: [],
+      production_selection: { location: null, set: null },
     };
   }
 
@@ -123,7 +161,16 @@ export async function resolveAIPilotContext({ projectId, toolKey }) {
   if (versionResult.error) throw versionResult.error;
   if (blocksResult.error) throw blocksResult.error;
 
-  const blocks = orderAIPilotBlocks((blocksResult.data || []).filter((block) => blockTargetsTool(block, tool)));
+  const routedBlocks = orderAIPilotBlocks((blocksResult.data || []).filter((block) => blockTargetsTool(block, tool)));
+  let selectedLocation = null;
+  let selectedSet = null;
+
+  const blocks = routedBlocks.map((block) => {
+    const scoped = scopeSeriesDirection(block, { locationId, setId });
+    if (scoped.location) selectedLocation = scoped.location;
+    if (scoped.set) selectedSet = scoped.set;
+    return scoped.block;
+  });
 
   return {
     active: true,
@@ -133,6 +180,10 @@ export async function resolveAIPilotContext({ projectId, toolKey }) {
     activated_at: assignment.activated_at,
     pilot: pilotResult.data,
     version: versionResult.data,
+    production_selection: {
+      location: selectedLocation,
+      set: selectedSet,
+    },
     blocks,
   };
 }
