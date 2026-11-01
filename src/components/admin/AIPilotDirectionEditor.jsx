@@ -174,6 +174,20 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
     </div>
   );
 
+  const musicEditor = (
+    <div className="space-y-5">
+      <div className="grid md:grid-cols-2 gap-4">
+        {textField('music_style', 'Music Style', 4, false, 'Genre, period, sonic identity and overall musical language.')}
+        {textField('mood', 'Mood', 4, false, 'Emotional atmosphere, tension, warmth, darkness, energy or restraint.')}
+        {textField('tempo', 'Tempo', 4, false, 'Tempo range, pulse, rhythmic feel and when tempo should change.')}
+        {textField('instrumentation', 'Instrumentation', 4, false, 'Core instruments, textures, electronic or acoustic palette and featured sounds.')}
+        {textField('music_role', 'Music Role', 4, false, 'How music should support story, characters, transitions, tension and emotional beats.')}
+        {textField('references', 'References', 4, false, 'Musical references, eras, composers, genres or descriptive reference points.')}
+        {textField('music_notes', 'Music Notes', 6, true, 'Additional recurring rules, motifs, restrictions, continuity notes or production guidance.')}
+      </div>
+    </div>
+  );
+
   const looksEditor = (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -391,7 +405,7 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
             {textField('what_to_avoid', 'What to Avoid', 5, true)}
           </div>
         </div>
-      ) : block.block_key === 'story-structure' ? storyStructureEditor : block.block_key === 'looks' ? looksEditor : (
+      ) : block.block_key === 'story-structure' ? storyStructureEditor : block.block_key === 'looks' ? looksEditor : block.block_key === 'music-direction' ? musicEditor : (
         <label className="space-y-2 block"><span className="text-xs text-white/55">Direction</span><Textarea className={CONTROL_CLASS} rows={18} disabled={readOnly} value={content.text || ''} onChange={(event) => updateContent('text', event.target.value)} /></label>
       )}
 
