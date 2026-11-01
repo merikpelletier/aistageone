@@ -1,8 +1,9 @@
 import { supabase } from '@/api/supabaseClient';
 
 const TOOL_ALIASES = {
-  shoot: 'ai_video',
-  video: 'ai_video',
+  video: 'shoot',
+  ai_video: 'shoot',
+  'ai-video': 'shoot',
   compose_scene: 'compose',
   'compose-scene': 'compose',
   text_to_speech: 'tts',
@@ -13,12 +14,14 @@ const TOOL_ALIASES = {
   'lip-sync': 'lip_sync',
 };
 
+const DISABLED_AI_PILOT_TOOLS = new Set(['pitch']);
+
 export const AI_PILOT_TOOL_KEYS = [
   'fotoplay',
   'actor',
   'set',
   'compose',
-  'ai_video',
+  'shoot',
   'lip_sync',
   'dubbing',
   'tts',
@@ -26,20 +29,19 @@ export const AI_PILOT_TOOL_KEYS = [
   'sound_fx',
   'timeline',
   'layout',
-  'pitch',
 ];
 
 export const AI_PILOT_DEFAULT_ROUTES = {
-  theme_bible: ['fotoplay', 'compose', 'ai_video', 'music', 'sound_fx', 'pitch'],
-  look_bible: ['fotoplay', 'actor', 'set', 'compose', 'ai_video', 'layout', 'pitch'],
-  production_direction: ['fotoplay', 'set', 'compose', 'ai_video', 'timeline', 'layout', 'pitch'],
-  performance_direction: ['actor', 'compose', 'ai_video', 'dubbing', 'lip_sync'],
-  voice_dialogue_direction: ['fotoplay', 'compose', 'ai_video', 'dubbing', 'tts', 'lip_sync'],
-  music_direction: ['music', 'fotoplay', 'ai_video', 'timeline'],
-  sound_direction: ['sound_fx', 'fotoplay', 'ai_video', 'timeline', 'dubbing'],
-  episode_structure: ['fotoplay', 'timeline', 'pitch'],
-  continuity_rules: ['fotoplay', 'actor', 'set', 'compose', 'ai_video', 'dubbing', 'tts', 'lip_sync', 'timeline', 'layout'],
-  assets: ['actor', 'set', 'compose', 'ai_video', 'layout'],
+  theme_bible: ['fotoplay', 'compose', 'shoot', 'music', 'sound_fx'],
+  look_bible: ['fotoplay', 'actor', 'set', 'compose', 'shoot', 'layout'],
+  production_direction: ['fotoplay', 'set', 'compose', 'shoot', 'timeline', 'layout'],
+  performance_direction: ['actor', 'compose', 'shoot', 'dubbing', 'lip_sync'],
+  voice_dialogue_direction: ['fotoplay', 'compose', 'shoot', 'dubbing', 'tts', 'lip_sync'],
+  music_direction: ['music', 'fotoplay', 'shoot', 'timeline'],
+  sound_direction: ['sound_fx', 'fotoplay', 'shoot', 'timeline', 'dubbing'],
+  episode_structure: ['fotoplay', 'shoot', 'timeline'],
+  continuity_rules: ['fotoplay', 'actor', 'set', 'compose', 'shoot', 'dubbing', 'tts', 'lip_sync', 'timeline', 'layout'],
+  assets: ['actor', 'set', 'compose', 'shoot', 'layout'],
   tool_direction: [],
   prompt_override: [],
   custom: [],
@@ -52,8 +54,12 @@ export function normalizeAIPilotToolKey(toolKey) {
 
 export function blockTargetsTool(block, toolKey) {
   const tool = normalizeAIPilotToolKey(toolKey);
+  if (!tool || DISABLED_AI_PILOT_TOOLS.has(tool)) return false;
+
   const explicitTargets = Array.isArray(block?.tool_targets)
-    ? block.tool_targets.map(normalizeAIPilotToolKey).filter(Boolean)
+    ? block.tool_targets
+      .map(normalizeAIPilotToolKey)
+      .filter((target) => target && !DISABLED_AI_PILOT_TOOLS.has(target))
     : [];
 
   if (explicitTargets.length > 0) {
@@ -119,6 +125,16 @@ export async function resolveAIPilotContext({ projectId, toolKey, locationId, se
 
   if (!project) throw new Error('AI Pilot resolver requires a project id.');
   if (!tool) throw new Error('AI Pilot resolver requires a tool key.');
+
+  if (DISABLED_AI_PILOT_TOOLS.has(tool)) {
+    return {
+      active: false,
+      project_id: project,
+      tool_key: tool,
+      blocks: [],
+      production_selection: { location: null, set: null },
+    };
+  }
 
   const { data: assignment, error: assignmentError } = await supabase
     .from('ai_pilot_project_assignments')
