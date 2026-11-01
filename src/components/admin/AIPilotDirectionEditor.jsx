@@ -60,11 +60,34 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
     if (expandedSetId === id) setExpandedSetId(null);
   };
 
-  const textField = (key, label, rows = 4, full = false) => (
+  const textField = (key, label, rows = 4, full = false, placeholder = '') => (
     <label className={`space-y-2 ${full ? 'md:col-span-2' : ''}`}>
       <span className="text-xs text-white/55">{label}</span>
-      <Textarea className={CONTROL_CLASS} rows={rows} disabled={readOnly} value={content[key] || ''} onChange={(event) => updateContent(key, event.target.value)} />
+      <Textarea className={CONTROL_CLASS} rows={rows} disabled={readOnly} placeholder={placeholder} value={content[key] || ''} onChange={(event) => updateContent(key, event.target.value)} />
     </label>
+  );
+
+  const storyStructureEditor = (
+    <div className="space-y-5">
+      <div className="border border-white/10 bg-white/[0.02] p-4">
+        <div className="text-sm text-white">Series Story Structure</div>
+        <div className="text-xs text-white/40 mt-1">Define the recurring narrative framework of the series. Do not describe a specific episode or its story content.</div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        {textField('opening_rules', 'Opening / Setup', 4, false, 'How episodes or chapters should usually begin. Define function and rhythm, not episode content.')}
+        {textField('inciting_event_rules', 'Inciting Event', 4, false, 'What kind of narrative disruption should normally launch the story movement.')}
+        {textField('escalation_rules', 'Escalation', 4, false, 'How conflict, pressure or stakes should build through the story.')}
+        {textField('midpoint_rules', 'Midpoint / Major Turn', 4, false, 'Rules for the central shift, reveal, reversal or change of direction.')}
+        {textField('crisis_rules', 'Crisis', 4, false, 'How the story should approach its most difficult or unstable point.')}
+        {textField('climax_rules', 'Climax', 4, false, 'What the climax should accomplish and how intense or decisive it should be.')}
+        {textField('resolution_rules', 'Resolution / Ending', 4, false, 'How much should be resolved and what should remain open.')}
+        {textField('hook_rules', 'Hook / Cliffhanger', 4, false, 'Rules for ending hooks, cliffhangers or forward momentum.')}
+        {textField('pacing_rules', 'Pacing Rules', 5, true, 'Define pacing, beat density, transitions, quiet moments and acceleration.')}
+        {textField('recurring_structure_rules', 'Recurring Structure Rules', 5, true, 'Any structural rules that should remain consistent across user-created episodes.')}
+        {textField('structure_avoid', 'What to Avoid', 5, true, 'Narrative structures, pacing habits or storytelling patterns that do not belong in this series.')}
+      </div>
+    </div>
   );
 
   return (
@@ -165,7 +188,7 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
             {textField('music', 'Music', 4, true)}
           </div>
         </div>
-      ) : (
+      ) : block.block_key === 'story-structure' ? storyStructureEditor : (
         <label className="space-y-2 block"><span className="text-xs text-white/55">Direction</span><Textarea className={CONTROL_CLASS} rows={18} disabled={readOnly} value={content.text || ''} onChange={(event) => updateContent('text', event.target.value)} /></label>
       )}
 
