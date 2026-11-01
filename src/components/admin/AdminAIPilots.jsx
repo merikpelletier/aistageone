@@ -6,16 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import AIPilotCharacters from './AIPilotCharacters';
-
-const BLOCK_TYPES = [
-  ['theme_bible', 'Theme Bible'], ['look_bible', 'Look Bible'], ['production_direction', 'Production Direction'],
-  ['performance_direction', 'Performance Direction'], ['voice_dialogue_direction', 'Voice / Dialogue Direction'],
-  ['music_direction', 'Music Direction'], ['sound_direction', 'Sound Direction'], ['episode_structure', 'Episode Structure'],
-  ['tool_direction', 'Tool Direction'], ['continuity_rules', 'Continuity Rules'], ['assets', 'Assets'],
-  ['prompt_override', 'Prompt Override'], ['custom', 'Custom'],
-];
+import AIPilotDirectionEditor from './AIPilotDirectionEditor';
 
 const CONTROL_CLASS = 'bg-black/20 border-white/15 text-white placeholder:text-white/25 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[var(--studio-accent)]';
 const SELECT_TRIGGER_CLASS = 'bg-black/20 border-white/15 text-white focus:ring-0 focus:ring-offset-0 focus:border-[var(--studio-accent)]';
@@ -23,7 +15,6 @@ const PRIMARY_BUTTON_CLASS = 'bg-[var(--studio-accent)] text-[#071211] border bo
 const SECONDARY_BUTTON_CLASS = 'bg-white/[0.04] text-white border border-white/15 hover:bg-white/[0.08] hover:border-white/25';
 
 const emptyPilot = () => ({ pilot_key: '', name: '', description: '', category: '', tags: [], cover_url: '', status: 'draft', distribution_mode: 'private', asset_subcategory_id: '' });
-const emptyBlock = (versionId, sortOrder = 0) => ({ version_id: versionId, block_key: '', block_type: 'theme_bible', title: '', content: { text: '' }, tool_targets: [], priority: 100, sort_order: sortOrder, is_active: true });
 const slugify = (value = '') => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 const TABS = [['overview', 'Overview', FileText], ['characters', 'Characters', Users], ['direction', 'Direction', SlidersHorizontal], ['versions', 'Versions', History]];
 
@@ -78,7 +69,7 @@ export default function AdminAIPilots() {
     queryKey: ['admin-ai-pilot-blocks', selectedVersion?.id],
     enabled: Boolean(selectedVersion?.id),
     queryFn: async () => {
-      const { data, error } = await supabase.from('ai_pilot_blocks').select('*').eq('version_id', selectedVersion.id).order('sort_order', { ascending: true }).order('priority', { ascending: true });
+      const { data, error } = await supabase.from('ai_pilot_blocks').select('*').eq('version_id', selectedVersion.id).eq('is_active', true).order('sort_order', { ascending: true }).order('priority', { ascending: true });
       if (error) throw error;
       return data || [];
     },
@@ -134,7 +125,7 @@ export default function AdminAIPilots() {
       block_key: slugify(block.block_key || block.title),
       block_type: block.block_type,
       title: block.title?.trim(),
-      content: { text: block.content?.text || '' },
+      content: block.content || {},
       tool_targets: block.tool_targets || [],
       priority: Number(block.priority || 100),
       sort_order: Number(block.sort_order || 0),
@@ -234,16 +225,16 @@ export default function AdminAIPilots() {
       if (saved) setEditingBlock(saved);
       if (selectedVersion?.id) await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-blocks', selectedVersion.id] });
     },
-    onError: (error) => alert(error?.message || 'Unable to save block'),
+    onError: (error) => alert(error?.message || 'Unable to save direction'),
   });
 
   const selectBlock = async (block) => {
     try {
       if (editingBlock && !selectedVersion?.is_published && editingBlock.id !== block.id) await persistBlock(editingBlock);
-      setEditingBlock({ ...block, content: block.content || { text: '' } });
+      setEditingBlock({ ...block, content: block.content || {} });
       if (selectedVersion?.id) await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-blocks', selectedVersion.id] });
     } catch (error) {
-      alert(error?.message || 'Unable to save current direction block');
+      alert(error?.message || 'Unable to save current direction');
     }
   };
 
@@ -252,10 +243,10 @@ export default function AdminAIPilots() {
       if (!selectedPilotId) return null;
       await persistEverything();
       const nextNumber = Math.max(0, ...versions.map((version) => version.version_number || 0)) + 1;
-      const { data: nextVersion, error: versionError } = await supabase.from('ai_pilot_versions').insert({ ai_pilot_id: selectedPilotId, version_number: nextNumber, changelog: '' }).select('*').single();
+      const { data: nextVersion, error: versionError } = await supabase.from('ai_pilot_versions').insert({ ai_pilot_id: selectedPilotId, version_number: nextNumber }).select('*').single();
       if (versionError) throw versionError;
 
-      const { data: currentBlocks, error: blocksError } = await supabase.from('ai_pilot_blocks').select('*').eq('version_id', selectedVersion.id).order('sort_order');
+      const { data: currentBlocks, error: blocksError } = await supabase.from('ai_pilot_blocks').select('*').eq('version_id', selectedVersion.id).eq('is_active', true).order('sort_order');
       if (blocksError) throw blocksError;
       if (currentBlocks?.length) {
         const copies = currentBlocks.map(({ id, created_at, updated_at, ...block }) => ({ ...block, version_id: nextVersion.id }));
@@ -348,8 +339,15 @@ export default function AdminAIPilots() {
 
               {selectedVersion && <div className={activeTab === 'direction' ? '' : 'hidden'}>
                 <div className="grid lg:grid-cols-[260px_minmax(0,1fr)] border border-white/10 min-h-[58vh]">
-                  <div className="border-b lg:border-b-0 lg:border-r border-white/10 bg-[#0b0d0f]"><div className="p-3 border-b border-white/10 flex items-center justify-between gap-2"><div className="text-xs uppercase tracking-[0.18em] text-white/45">Direction blocks</div>{!selectedVersion.is_published && <Button size="icon" className={SECONDARY_BUTTON_CLASS} onClick={() => setEditingBlock(emptyBlock(selectedVersion.id, blocks.length))}><Plus size={15} /></Button>}</div><div className="max-h-[60vh] overflow-y-auto">{blocks.map((block) => <button key={block.id} type="button" onClick={() => selectBlock(block)} className={`w-full text-left px-3 py-3 border-b border-white/8 hover:bg-white/[0.04] ${editingBlock?.id === block.id ? 'bg-white/[0.06] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}><div className="text-sm text-white">{block.title}</div><div className="text-[10px] uppercase tracking-wider text-white/35 mt-1">{block.block_type.replaceAll('_', ' ')}</div></button>)}</div></div>
-                  <div className="p-4 md:p-5">{!editingBlock ? <div className="h-full min-h-80 flex items-center justify-center text-sm text-white/35">Select a direction block.</div> : <div className="space-y-4 max-w-4xl"><div className="grid md:grid-cols-2 gap-4"><label className="space-y-2"><span className="text-xs text-white/55">Title</span><Input className={CONTROL_CLASS} disabled={selectedVersion.is_published} value={editingBlock.title || ''} onChange={(e) => setEditingBlock({ ...editingBlock, title: e.target.value })} /></label><label className="space-y-2"><span className="text-xs text-white/55">Type</span><Select disabled={selectedVersion.is_published} value={editingBlock.block_type} onValueChange={(value) => setEditingBlock({ ...editingBlock, block_type: value })}><SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue /></SelectTrigger><SelectContent>{BLOCK_TYPES.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></label></div><label className="space-y-2 block"><span className="text-xs text-white/55">Direction</span><Textarea className={CONTROL_CLASS} rows={15} disabled={selectedVersion.is_published} value={editingBlock.content?.text || ''} onChange={(e) => setEditingBlock({ ...editingBlock, content: { ...(editingBlock.content || {}), text: e.target.value } })} placeholder="Write the production direction this block contributes to AI context." /></label><div className="grid md:grid-cols-[1fr_120px_120px_auto] gap-4 items-end"><label className="space-y-2"><span className="text-xs text-white/55">Tool targets</span><Input className={CONTROL_CLASS} disabled={selectedVersion.is_published} value={(editingBlock.tool_targets || []).join(', ')} onChange={(e) => setEditingBlock({ ...editingBlock, tool_targets: e.target.value.split(',').map((item) => item.trim()).filter(Boolean) })} placeholder="fotoplay, actor, tts..." /></label><label className="space-y-2"><span className="text-xs text-white/55">Priority</span><Input className={CONTROL_CLASS} type="number" disabled={selectedVersion.is_published} value={editingBlock.priority ?? 100} onChange={(e) => setEditingBlock({ ...editingBlock, priority: e.target.value })} /></label><label className="space-y-2"><span className="text-xs text-white/55">Order</span><Input className={CONTROL_CLASS} type="number" disabled={selectedVersion.is_published} value={editingBlock.sort_order ?? 0} onChange={(e) => setEditingBlock({ ...editingBlock, sort_order: e.target.value })} /></label><label className="flex items-center gap-2 h-10"><Switch disabled={selectedVersion.is_published} checked={editingBlock.is_active !== false} onCheckedChange={(checked) => setEditingBlock({ ...editingBlock, is_active: checked })} /><span className="text-xs text-white/55">Active</span></label></div>{!selectedVersion.is_published && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={() => saveBlock.mutate()} disabled={saveBlock.isPending}><Save size={15} className="mr-2" /> {saveBlock.isPending ? 'Saving…' : 'Save Block'}</Button></div>}</div>}</div>
+                  <div className="border-b lg:border-b-0 lg:border-r border-white/10 bg-[#0b0d0f]">
+                    <div className="p-3 border-b border-white/10"><div className="text-xs uppercase tracking-[0.18em] text-white/45">Production Direction</div></div>
+                    <div className="max-h-[60vh] overflow-y-auto">
+                      {blocks.map((block) => <button key={block.id} type="button" onClick={() => selectBlock(block)} className={`w-full text-left px-3 py-3 border-b border-white/8 hover:bg-white/[0.04] ${editingBlock?.id === block.id ? 'bg-white/[0.06] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}><div className="text-sm text-white">{block.title}</div></button>)}
+                    </div>
+                  </div>
+                  <div className="p-4 md:p-5">
+                    <AIPilotDirectionEditor block={editingBlock} setBlock={setEditingBlock} readOnly={selectedVersion.is_published} onSave={() => saveBlock.mutate()} saving={saveBlock.isPending} />
+                  </div>
                 </div>
               </div>}
 
