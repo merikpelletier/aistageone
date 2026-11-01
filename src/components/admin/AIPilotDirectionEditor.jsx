@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Plus, Save, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,7 +9,7 @@ const CONTROL_CLASS = 'bg-black/20 border-white/15 text-white placeholder:text-w
 const SELECT_TRIGGER_CLASS = 'bg-black/20 border-white/15 text-white focus:ring-0 focus:ring-offset-0 focus:border-[var(--studio-accent)]';
 const PRIMARY_BUTTON_CLASS = 'bg-[var(--studio-accent)] text-[#071211] border border-[var(--studio-accent)] hover:bg-[var(--studio-accent-hover)] hover:border-[var(--studio-accent-hover)]';
 const SECONDARY_BUTTON_CLASS = 'bg-white/[0.04] text-white border border-white/15 hover:bg-white/[0.08] hover:border-white/25';
-const DELETE_BUTTON_CLASS = 'bg-red-500/10 text-red-300 border border-red-400/35 hover:bg-red-500/20 hover:text-red-200 hover:border-red-300/60';
+const REMOVE_BUTTON_CLASS = 'h-7 w-7 shrink-0 rounded-md bg-transparent text-white/35 border border-transparent hover:bg-white/[0.05] hover:text-white/80 hover:border-white/10';
 
 const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -103,7 +103,7 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
                         <span className="text-sm text-white truncate">{location.name || 'Unnamed location'}</span>
                         {!expanded && location.description && <span className="hidden md:block text-xs text-white/30 truncate">{location.description}</span>}
                       </button>
-                      {!readOnly && <Button size="icon" className={`${DELETE_BUTTON_CLASS} h-8 w-8 shrink-0`} onClick={() => removeLocation(location.id)} title="Remove location"><Trash2 size={16} strokeWidth={2.2} /></Button>}
+                      {!readOnly && <Button size="icon" className={REMOVE_BUTTON_CLASS} onClick={() => removeLocation(location.id)} title="Remove location"><X size={15} strokeWidth={1.8} /></Button>}
                     </div>
                     {expanded && (
                       <div className="border-t border-white/10 p-3 space-y-3">
@@ -140,7 +140,7 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
                         <span className="text-xs text-white/35 shrink-0">{location?.name || 'No location'}</span>
                         {!expanded && set.description && <span className="hidden md:block text-xs text-white/30 truncate">{set.description}</span>}
                       </button>
-                      {!readOnly && <Button size="icon" className={`${DELETE_BUTTON_CLASS} h-8 w-8 shrink-0`} onClick={() => removeSet(set.id)} title="Remove set"><Trash2 size={16} strokeWidth={2.2} /></Button>}
+                      {!readOnly && <Button size="icon" className={REMOVE_BUTTON_CLASS} onClick={() => removeSet(set.id)} title="Remove set"><X size={15} strokeWidth={1.8} /></Button>}
                     </div>
                     {expanded && (
                       <div className="border-t border-white/10 p-3 space-y-3">
