@@ -80,6 +80,7 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
   const [expandedLocationId, setExpandedLocationId] = useState(null);
   const [expandedSetId, setExpandedSetId] = useState(null);
   const [expandedLookId, setExpandedLookId] = useState(null);
+  const [expandedMusicId, setExpandedMusicId] = useState(null);
 
   if (!block) return <div className="h-full min-h-80 flex items-center justify-center text-sm text-white/35">Select a direction block.</div>;
 
@@ -87,11 +88,13 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
   const locations = normalizeEntries(content.locations, 'location');
   const sets = normalizeEntries(content.sets, 'set');
   const looks = Array.isArray(content.looks) ? content.looks.map((item, index) => ({ id: item?.id || `look-${index + 1}`, ...item })) : [];
+  const musicPieces = Array.isArray(content.music_pieces) ? content.music_pieces.map((item, index) => ({ id: item?.id || `music-${index + 1}`, ...item })) : [];
 
   const updateContent = (key, value) => setBlock({ ...block, content: { ...content, [key]: value } });
   const updateLocation = (id, patch) => updateContent('locations', locations.map((item) => item.id === id ? { ...item, ...patch } : item));
   const updateSet = (id, patch) => updateContent('sets', sets.map((item) => item.id === id ? { ...item, ...patch } : item));
   const updateLook = (id, patch) => updateContent('looks', looks.map((item) => item.id === id ? { ...item, ...patch } : item));
+  const updateMusicPiece = (id, patch) => updateContent('music_pieces', musicPieces.map((item) => item.id === id ? { ...item, ...patch } : item));
 
   const addLocation = () => {
     const id = makeId('location');
@@ -127,6 +130,26 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
     setExpandedLookId(id);
   };
 
+  const addMusicPiece = () => {
+    const id = makeId('music');
+    updateContent('music_pieces', [...musicPieces, {
+      id,
+      name: '',
+      music_style: '',
+      mood: '',
+      tempo: '',
+      instrumentation: '',
+      music_role: '',
+      references: '',
+      lyrics_direction: '',
+      lyrics: '',
+      language: '',
+      structure: '',
+      music_notes: '',
+    }]);
+    setExpandedMusicId(id);
+  };
+
   const removeLocation = (id) => {
     const nextLocations = locations.filter((item) => item.id !== id);
     const nextSets = sets.map((item) => item.location_id === id ? { ...item, location_id: '' } : item);
@@ -142,6 +165,11 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
   const removeLook = (id) => {
     updateContent('looks', looks.filter((item) => item.id !== id));
     if (expandedLookId === id) setExpandedLookId(null);
+  };
+
+  const removeMusicPiece = (id) => {
+    updateContent('music_pieces', musicPieces.filter((item) => item.id !== id));
+    if (expandedMusicId === id) setExpandedMusicId(null);
   };
 
   const textField = (key, label, rows = 4, full = false, placeholder = '') => (
@@ -175,15 +203,92 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
   );
 
   const musicEditor = (
-    <div className="space-y-5">
-      <div className="grid md:grid-cols-2 gap-4">
-        {textField('music_style', 'Music Style', 4, false, 'Genre, period, sonic identity and overall musical language.')}
-        {textField('mood', 'Mood', 4, false, 'Emotional atmosphere, tension, warmth, darkness, energy or restraint.')}
-        {textField('tempo', 'Tempo', 4, false, 'Tempo range, pulse, rhythmic feel and when tempo should change.')}
-        {textField('instrumentation', 'Instrumentation', 4, false, 'Core instruments, textures, electronic or acoustic palette and featured sounds.')}
-        {textField('music_role', 'Music Role', 4, false, 'How music should support story, characters, transitions, tension and emotional beats.')}
-        {textField('references', 'References', 4, false, 'Musical references, eras, composers, genres or descriptive reference points.')}
-        {textField('music_notes', 'Music Notes', 6, true, 'Additional recurring rules, motifs, restrictions, continuity notes or production guidance.')}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-sm text-white">Music Pieces <span className="text-white/35">({musicPieces.length})</span></div>
+          <div className="text-xs text-white/35 mt-1">Define each reusable music piece independently for this AI Pilot.</div>
+        </div>
+        {!readOnly && <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={addMusicPiece}><Plus size={14} /> Add Music</Button>}
+      </div>
+
+      {!musicPieces.length && <div className="text-sm text-white/30 py-2">No music pieces yet.</div>}
+
+      <div className="space-y-2">
+        {musicPieces.map((piece) => {
+          const expanded = expandedMusicId === piece.id;
+          return (
+            <div key={piece.id} className="border border-white/10 bg-black/20">
+              <div className="flex items-center gap-2 min-h-11 px-2">
+                <button type="button" className="flex flex-1 min-w-0 items-center gap-2 text-left py-2" onClick={() => setExpandedMusicId(expanded ? null : piece.id)}>
+                  {expanded ? <ChevronDown size={16} className="text-white/50 shrink-0" /> : <ChevronRight size={16} className="text-white/50 shrink-0" />}
+                  <span className="text-sm text-white truncate">{piece.name || 'Unnamed music piece'}</span>
+                  {!expanded && piece.music_role && <span className="hidden md:block text-xs text-white/30 truncate">{piece.music_role}</span>}
+                </button>
+                {!readOnly && <button type="button" className={REMOVE_BUTTON_CLASS} onClick={() => removeMusicPiece(piece.id)} title="Remove music piece" aria-label="Remove music piece"><Trash2 size={16} strokeWidth={2} color="#ffffff" /></button>}
+              </div>
+
+              {expanded && (
+                <div className="border-t border-white/10 p-3 space-y-4">
+                  <label className="space-y-2 block">
+                    <span className="text-xs text-white/55">Title / Name</span>
+                    <Input className={CONTROL_CLASS} disabled={readOnly} placeholder="e.g. Main Theme, Romantic Theme, Tension Cue" value={piece.name || ''} onChange={(event) => updateMusicPiece(piece.id, { name: event.target.value })} />
+                  </label>
+
+                  <div className="grid md:grid-cols-2 gap-3">
+                    <label className="space-y-2">
+                      <span className="text-xs text-white/55">Music Style</span>
+                      <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} placeholder="Genre, period, sonic identity and musical language." value={piece.music_style || ''} onChange={(event) => updateMusicPiece(piece.id, { music_style: event.target.value })} />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs text-white/55">Mood</span>
+                      <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} placeholder="Emotional atmosphere, tension, warmth, darkness or energy." value={piece.mood || ''} onChange={(event) => updateMusicPiece(piece.id, { mood: event.target.value })} />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs text-white/55">Tempo</span>
+                      <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} placeholder="BPM, tempo range, pulse and rhythmic feel." value={piece.tempo || ''} onChange={(event) => updateMusicPiece(piece.id, { tempo: event.target.value })} />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs text-white/55">Instrumentation</span>
+                      <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} placeholder="Core instruments, textures and sonic palette." value={piece.instrumentation || ''} onChange={(event) => updateMusicPiece(piece.id, { instrumentation: event.target.value })} />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs text-white/55">Music Role</span>
+                      <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} placeholder="Where and why this piece is used in the production." value={piece.music_role || ''} onChange={(event) => updateMusicPiece(piece.id, { music_role: event.target.value })} />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs text-white/55">References</span>
+                      <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} placeholder="Musical references, eras, composers, genres or descriptive reference points." value={piece.references || ''} onChange={(event) => updateMusicPiece(piece.id, { references: event.target.value })} />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs text-white/55">Language</span>
+                      <Input className={CONTROL_CLASS} disabled={readOnly} placeholder="e.g. English, French, instrumental" value={piece.language || ''} onChange={(event) => updateMusicPiece(piece.id, { language: event.target.value })} />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs text-white/55">Structure</span>
+                      <Input className={CONTROL_CLASS} disabled={readOnly} placeholder="e.g. Intro → Verse → Chorus → Bridge → Outro" value={piece.structure || ''} onChange={(event) => updateMusicPiece(piece.id, { structure: event.target.value })} />
+                    </label>
+                  </div>
+
+                  <label className="space-y-2 block">
+                    <span className="text-xs text-white/55">Lyrics Direction</span>
+                    <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} placeholder="What the lyrics should communicate: themes, point of view, recurring ideas and emotional intent." value={piece.lyrics_direction || ''} onChange={(event) => updateMusicPiece(piece.id, { lyrics_direction: event.target.value })} />
+                  </label>
+
+                  <label className="space-y-2 block">
+                    <span className="text-xs text-white/55">Lyrics</span>
+                    <Textarea className={CONTROL_CLASS} rows={8} disabled={readOnly} placeholder="Actual locked lyrics for this piece, when they exist." value={piece.lyrics || ''} onChange={(event) => updateMusicPiece(piece.id, { lyrics: event.target.value })} />
+                  </label>
+
+                  <label className="space-y-2 block">
+                    <span className="text-xs text-white/55">Music Notes</span>
+                    <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} placeholder="Additional rules, motifs, restrictions, continuity notes or production guidance for this piece." value={piece.music_notes || ''} onChange={(event) => updateMusicPiece(piece.id, { music_notes: event.target.value })} />
+                  </label>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
