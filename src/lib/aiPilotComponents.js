@@ -24,6 +24,31 @@ function extractBlockComponents(block, pilotName, access) {
   const results = [];
   const content = block?.content || {};
 
+  if (block?.block_key === 'action-prompts' || block?.block_key === 'blocking-prompts') {
+    const componentType = block.block_key === 'action-prompts' ? 'action_prompt' : 'blocking_prompt';
+    const lines = String(content.text || '').split(/\n+/).map((line) => line.trim()).filter(Boolean);
+    return lines.map((line, index) => ({
+      key: `published:${block.id}:line:${index}`,
+      source_kind: 'published',
+      component_type: componentType,
+      source_item_id: `line:${index}`,
+      label: line,
+      data: {},
+      pilot: {
+        id: access.ai_pilot_id,
+        name: pilotName,
+        member_ai_pilot_id: access.id,
+        version_id: access.version_id,
+      },
+      block: {
+        id: block.id,
+        key: block.block_key,
+        title: block.title,
+        tool_targets: block.tool_targets || [],
+      },
+    }));
+  }
+
   Object.entries(content).forEach(([key, value]) => {
     if (!Array.isArray(value)) return;
 
