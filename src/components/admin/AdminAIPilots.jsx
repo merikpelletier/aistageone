@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Save, Copy, Rocket, ChevronRight, Upload, X, FileText, Users, SlidersHorizontal, History } from 'lucide-react';
+import { Plus, Save, Copy, Rocket, ChevronRight, Upload, X, FileText, Users, SlidersHorizontal, History, Images } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AIPilotCharacters from './AIPilotCharacters';
 import AIPilotDirectionEditor from './AIPilotDirectionEditor';
+import AIPilotMedia from './AIPilotMedia';
 
 const CONTROL_CLASS = 'bg-black/20 border-white/15 text-white placeholder:text-white/25 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[var(--studio-accent)]';
 const SELECT_TRIGGER_CLASS = 'bg-black/20 border-white/15 text-white focus:ring-0 focus:ring-offset-0 focus:border-[var(--studio-accent)]';
@@ -16,7 +17,7 @@ const SECONDARY_BUTTON_CLASS = 'bg-white/[0.04] text-white border border-white/1
 
 const emptyPilot = () => ({ pilot_key: '', name: '', description: '', category: '', tags: [], cover_url: '', status: 'draft', distribution_mode: 'private', asset_subcategory_id: '' });
 const slugify = (value = '') => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-const TABS = [['overview', 'Overview', FileText], ['characters', 'Characters', Users], ['direction', 'Direction', SlidersHorizontal], ['versions', 'Versions', History]];
+const TABS = [['overview', 'Overview', FileText], ['characters', 'Characters', Users], ['direction', 'Direction', SlidersHorizontal], ['media', 'Media', Images], ['versions', 'Versions', History]];
 
 export default function AdminAIPilots() {
   const queryClient = useQueryClient();
@@ -162,6 +163,7 @@ export default function AdminAIPilots() {
       queryClient.invalidateQueries({ queryKey: ['admin-ai-pilots'] }),
       selectedVersion?.id ? queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-blocks', selectedVersion.id] }) : Promise.resolve(),
       selectedVersion?.id ? queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-characters', selectedVersion.id] }) : Promise.resolve(),
+      selectedVersion?.id ? queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-media', selectedVersion.id] }) : Promise.resolve(),
       selectedPilotId ? queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-versions', selectedPilotId] }) : Promise.resolve(),
     ]);
   };
@@ -259,6 +261,14 @@ export default function AdminAIPilots() {
         const { error: characterCopyError } = await supabase.from('ai_pilot_characters').insert(characterCopies);
         if (characterCopyError) throw characterCopyError;
       }
+
+      const { data: media, error: mediaReadError } = await supabase.from('ai_pilot_media').select('*').eq('version_id', selectedVersion.id).eq('is_active', true).order('sort_order');
+      if (mediaReadError) throw mediaReadError;
+      if (media?.length) {
+        const mediaCopies = media.map(({ id, created_at, updated_at, ...item }) => ({ ...item, version_id: nextVersion.id }));
+        const { error: mediaCopyError } = await supabase.from('ai_pilot_media').insert(mediaCopies);
+        if (mediaCopyError) throw mediaCopyError;
+      }
       return nextVersion;
     },
     onSuccess: async (version) => {
@@ -348,6 +358,8 @@ export default function AdminAIPilots() {
                   </div>
                 </div>
               </div>}
+
+              {selectedVersion && <div className={activeTab === 'media' ? '' : 'hidden'}><AIPilotMedia pilot={pilotDraft} version={selectedVersion} /></div>}
 
               <div className={activeTab === 'versions' ? '' : 'hidden'}>
                 <div className="max-w-4xl space-y-4"><div className="flex items-center justify-between gap-4"><div><div className="text-sm text-white">Versions</div><div className="text-xs text-white/40 mt-1">Save updates the selected version. Publish remains a separate action.</div></div><Button className={SECONDARY_BUTTON_CLASS} onClick={() => createVersion.mutate()} disabled={!selectedVersion || createVersion.isPending}><Copy size={15} className="mr-2" /> New Version</Button></div><div className="border border-white/10 divide-y divide-white/10">{versions.map((version) => <button key={version.id} type="button" onClick={() => { setSelectedVersionId(version.id); setEditingBlock(null); }} className={`w-full text-left p-4 flex items-center justify-between gap-4 ${selectedVersion?.id === version.id ? 'bg-white/[0.05] shadow-[inset_2px_0_0_var(--studio-accent)]' : 'hover:bg-white/[0.03]'}`}><div><div className="text-sm text-white">Version {version.version_number}</div><div className="text-xs text-white/35 mt-1">{version.changelog || 'No version notes'}</div></div><span className="text-[10px] uppercase tracking-wider text-white/45">{version.is_published ? 'Published' : 'Draft'}</span></button>)}</div>{selectedVersion && <div className="border border-white/10 p-4 space-y-4"><label className="space-y-2 block"><span className="text-xs text-white/55">Version notes</span><Textarea className={CONTROL_CLASS} rows={4} value={versionNotesDraft} disabled={selectedVersion.is_published} onChange={(e) => setVersionNotesDraft(e.target.value)} /></label>{!selectedVersion.is_published && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={() => publishVersion.mutate()} disabled={publishVersion.isPending || blocks.length === 0}><Rocket size={15} className="mr-2" /> Publish v{selectedVersion.version_number}</Button></div>}</div>}</div>
