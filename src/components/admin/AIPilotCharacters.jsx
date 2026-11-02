@@ -183,7 +183,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
       <div className="p-4 md:p-5 border-b border-white/10 flex items-center justify-between gap-3">
         <div>
           <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--studio-accent)]">Characters / Roles</div>
-          <div className="text-sm mt-1 text-white/65">Production directions for how AI tools must write, portray, animate and voice each role.</div>
+          <div className="text-sm mt-1 text-white/65">Essential character direction shared with AI writing and production tools.</div>
         </div>
         {!readOnly && (
           <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={startNew}>
@@ -213,7 +213,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
             <div className="min-h-80 flex items-center justify-center text-sm text-white/35">Select or add a character.</div>
           ) : (
             <div className="space-y-5 max-w-5xl">
-              <Section eyebrow="Identity" title="Narrative Core" description="The story information used by writing and direction tools to understand who this person is.">
+              <Section eyebrow="Identity" title="Narrative Core" description="Only information that helps the AI understand who this character is and how they behave in the story.">
                 <div className="grid md:grid-cols-2 gap-4">
                   <label className="space-y-2">
                     <span className="text-xs text-white/60">Character / Role Name</span>
@@ -224,39 +224,35 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                     <Input className={CONTROL_CLASS} disabled={readOnly} value={draft.narrative_function || ''} onChange={(e) => setField('narrative_function', e.target.value)} placeholder="Lead, antagonist, ally, critic..." />
                   </label>
                 </div>
-                <Field label="Role Description" helper="Feeds FotoPlay, scene writing and production context." value={draft.description} onChange={(value) => setField('description', value)} readOnly={readOnly} rows={3} />
-                <Field label="Backstory" helper="Only information that should influence behavior, dialogue or story decisions." value={draft.backstory} onChange={(value) => setField('backstory', value)} readOnly={readOnly} />
+                <Field label="Role Description" helper="Who this person is in the story now. Keep it short and do not include history." value={draft.description} onChange={(value) => setField('description', value)} readOnly={readOnly} rows={3} />
+                <Field label="Relevant Backstory" helper="Only past facts that directly affect present behavior, choices or relationships. Do not repeat the role description." value={draft.backstory} onChange={(value) => setField('backstory', value)} readOnly={readOnly} rows={3} />
                 <div className="grid md:grid-cols-2 gap-4">
-                  <Field label="Personality / Behavioral Traits" helper="Core behavior the AI must preserve." value={draft.personality} onChange={(value) => setField('personality', value)} readOnly={readOnly} />
-                  <Field label="Motivation / Goals / Pressure" helper="What drives choices in generated scenes." value={[draft.motivations, draft.goals, draft.fears].filter(Boolean).join('\n\n')} onChange={(value) => setDraft((current) => ({ ...current, motivations: value, goals: '', fears: '' }))} readOnly={readOnly} />
+                  <Field label="Personality & Behavior" helper="Core traits and reactions the AI should consistently preserve." value={draft.personality} onChange={(value) => setField('personality', value)} readOnly={readOnly} rows={3} />
+                  <Field label="Motivation / Goals / Pressure" helper="What currently drives the character's decisions. Keep only what changes scene behavior." value={draft.motivations} onChange={(value) => setField('motivations', value)} readOnly={readOnly} rows={3} />
                 </div>
-                <Field label="Relationships" helper="How behavior changes around specific people." value={draft.relationships} onChange={(value) => setField('relationships', value)} readOnly={readOnly} />
-                <Field label="Character Arc" helper="Long-term evolution; prevents generated scenes from ignoring where the role is in the story." value={draft.character_arc} onChange={(value) => setField('character_arc', value)} readOnly={readOnly} />
+                <Field label="Key Relationships" helper="Only relationships that materially change how this character behaves around someone." value={draft.relationships} onChange={(value) => setField('relationships', value)} readOnly={readOnly} rows={3} />
               </Section>
 
-              <Section eyebrow="Performance" title="Physical Performance Direction" description="Feeds AI Video, Compose and any model generating acting, movement or body language.">
-                <Field label="Physical Performance" helper="Posture, movement, gestures, eye behavior, energy, stillness, physical confidence and recurring mannerisms." value={draft.physical_performance} onChange={(value) => setField('physical_performance', value)} readOnly={readOnly} placeholder="Example: controlled posture, economical gestures, holds eye contact under pressure..." />
-                <Field label="Behavior Under Pressure" helper="How the performance changes in conflict, intimacy, fear, anger, seduction, authority or vulnerability." value={draft.behavior} onChange={(value) => setField('behavior', value)} readOnly={readOnly} />
+              <Section eyebrow="Performance" title="Performance Direction" description="Use only recurring performance information that should remain consistent across generated scenes.">
+                <Field label="Physical Performance" helper="Posture, movement, gestures, eye behavior or mannerisms that define the character on screen." value={draft.physical_performance} onChange={(value) => setField('physical_performance', value)} readOnly={readOnly} rows={3} placeholder="Example: controlled posture, economical gestures, steady eye contact..." />
               </Section>
 
-              <Section eyebrow="Voice" title="Voice & Speech Direction" description="Shared vocal direction for AI Video, Dubbing, TTS, Lip Sync and dialogue generation.">
-                <Field label="Voice Identity" helper="Timbre, perceived age, register, texture, accent, resonance and vocal presence. This defines what the voice should sound like." value={draft.voice_identity} onChange={(value) => setField('voice_identity', value)} readOnly={readOnly} placeholder="Example: warm low register, precise London inflection, controlled resonance..." />
-                <Field label="Delivery & Rhythm" helper="Pace, pauses, breath, articulation, emphasis, volume and conversational rhythm." value={draft.voice_delivery} onChange={(value) => setField('voice_delivery', value)} readOnly={readOnly} />
-                <Field label="Emotional Vocal Range" helper="How the voice changes across emotions while remaining recognizably the same character." value={draft.voice_emotional_range} onChange={(value) => setField('voice_emotional_range', value)} readOnly={readOnly} />
-                <Field label="Dialogue Style" helper="Vocabulary, sentence length, formality, humor, directness, hesitation and verbal strategy. Feeds dialogue writing as well as spoken performance." value={draft.dialogue_style} onChange={(value) => setField('dialogue_style', value)} readOnly={readOnly} />
-                <Field label="Signature Speech Traits" helper="Recurring phrases, verbal habits, interruptions, fillers, clipped endings or patterns that may be used without becoming caricature." value={draft.signature_speech_traits} onChange={(value) => setField('signature_speech_traits', value)} readOnly={readOnly} />
-                <Field label="Voice Continuity / Never Change" helper="Hard vocal locks that every voice-producing model must preserve across scenes and tools." value={draft.voice_continuity} onChange={(value) => setField('voice_continuity', value)} readOnly={readOnly} />
+              <Section eyebrow="Voice" title="Voice & Dialogue" description="The minimum vocal direction needed to keep speaking and dialogue consistent.">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Field label="Voice Identity" helper="Only stable vocal qualities: register, texture, accent or defining vocal presence." value={draft.voice_identity} onChange={(value) => setField('voice_identity', value)} readOnly={readOnly} rows={3} placeholder="Example: warm low register, precise London inflection..." />
+                  <Field label="Dialogue Style" helper="How the character speaks: vocabulary, rhythm, formality, directness or recurring verbal habits." value={draft.dialogue_style} onChange={(value) => setField('dialogue_style', value)} readOnly={readOnly} rows={3} />
+                </div>
               </Section>
 
-              <Section eyebrow="Visual" title="Visual Production Direction" description="Feeds Actor, Compose, AI Video and image-generation tools without tying the role to a specific performer.">
-                <Field label="Visual Identity" helper="Stable visual qualities of the role: silhouette, grooming, presence, styling logic and defining visual cues." value={draft.visual_identity} onChange={(value) => setField('visual_identity', value)} readOnly={readOnly} />
-                <Field label="Wardrobe / Styling Direction" helper="How the role should be dressed and styled; use story-state variations when needed." value={draft.wardrobe_look} onChange={(value) => setField('wardrobe_look', value)} readOnly={readOnly} />
-                <Field label="Visual Continuity / Never Change" helper="Locks for generated images and video: details that cannot drift between shots, scenes or tools." value={draft.visual_continuity} onChange={(value) => setField('visual_continuity', value)} readOnly={readOnly} />
+              <Section eyebrow="Visual" title="Visual Direction" description="Stable visual information that image and video tools need to preserve the character.">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Field label="Visual Identity" helper="Defining visual qualities that should remain recognizable across generated images and video." value={draft.visual_identity} onChange={(value) => setField('visual_identity', value)} readOnly={readOnly} rows={3} />
+                  <Field label="Wardrobe / Styling Direction" helper="Recurring styling logic only. Scene-specific outfits belong with the scene or look." value={draft.wardrobe_look} onChange={(value) => setField('wardrobe_look', value)} readOnly={readOnly} rows={3} />
+                </div>
               </Section>
 
-              <Section eyebrow="Control" title="Production Locks & Tool Notes" description="Final constraints used to prevent AI drift across the production pipeline.">
-                <Field label="Global Continuity Locks / Do Not Change" helper="Cross-tool rules that override creative variation for this role." value={draft.continuity_locks} onChange={(value) => setField('continuity_locks', value)} readOnly={readOnly} />
-                <Field label="Production Notes" helper="Role-specific instructions that do not fit another field but must reach the production resolver." value={draft.production_notes} onChange={(value) => setField('production_notes', value)} readOnly={readOnly} />
+              <Section eyebrow="Continuity" title="Character Locks" description="Use only for details that the AI must never change.">
+                <Field label="Do Not Change" helper="Hard character continuity rules. Leave blank when there is no true lock." value={draft.continuity_locks} onChange={(value) => setField('continuity_locks', value)} readOnly={readOnly} rows={3} />
               </Section>
 
               <div className="grid sm:grid-cols-2 gap-4">
