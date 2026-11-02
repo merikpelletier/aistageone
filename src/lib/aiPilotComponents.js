@@ -26,6 +26,39 @@ function extractBlockComponents(block, pilotName, access) {
 
   if (block?.block_key === 'action-prompts' || block?.block_key === 'blocking-prompts') {
     const componentType = block.block_key === 'action-prompts' ? 'action_prompt' : 'blocking_prompt';
+    const structuredPrompts = Array.isArray(content.prompts)
+      ? content.prompts
+          .map((item, index) => ({
+            id: item?.id || `${componentType}-${index + 1}`,
+            name: item?.name || '',
+            text: String(item?.text || '').trim(),
+          }))
+          .filter((item) => item.text)
+      : [];
+
+    if (structuredPrompts.length) {
+      return structuredPrompts.map((item, index) => ({
+        key: `published:${block.id}:${item.id}`,
+        source_kind: 'published',
+        component_type: componentType,
+        source_item_id: item.id,
+        label: item.name || item.text,
+        data: { id: item.id, name: item.name, text: item.text },
+        pilot: {
+          id: access.ai_pilot_id,
+          name: pilotName,
+          member_ai_pilot_id: access.id,
+          version_id: access.version_id,
+        },
+        block: {
+          id: block.id,
+          key: block.block_key,
+          title: block.title,
+          tool_targets: block.tool_targets || [],
+        },
+      }));
+    }
+
     const lines = String(content.text || '').split(/\n+/).map((line) => line.trim()).filter(Boolean);
     return lines.map((line, index) => ({
       key: `published:${block.id}:line:${index}`,
@@ -33,7 +66,7 @@ function extractBlockComponents(block, pilotName, access) {
       component_type: componentType,
       source_item_id: `line:${index}`,
       label: line,
-      data: {},
+      data: { text: line },
       pilot: {
         id: access.ai_pilot_id,
         name: pilotName,
