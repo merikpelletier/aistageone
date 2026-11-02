@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
+import AIPilotComponentPicker from '@/components/studio/AIPilotComponentPicker';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import {
@@ -99,6 +100,15 @@ const getCatalogImages = (asset) => [...new Set([
 
 const getAssetImage = (asset) => asset?.images?.[0] || asset?.url || asset?.selected_image || asset?.featured_image || null;
 
+const componentDirectionText = (components) => (components || []).map((component) => {
+  const data = component?.data && typeof component.data === 'object' ? component.data : {};
+  const details = Object.entries(data)
+    .filter(([, value]) => value !== null && value !== undefined && value !== '' && !Array.isArray(value) && typeof value !== 'object')
+    .map(([key, value]) => `${key.replace(/_/g, ' ')}: ${String(value)}`)
+    .join('; ');
+  return `${component.component_type.replace(/_/g, ' ')} from AI Pilot "${component.pilot?.name || 'AI Pilot'}" — ${component.label}${details ? `: ${details}` : ''}`;
+}).join(' | ');
+
 function AssetTile({ image, label, selected }) {
   return (
     <div className={`relative aspect-[4/3] w-full overflow-hidden border bg-black ${selected ? 'border-cyan-300' : 'border-white/15'}`}>
@@ -123,6 +133,7 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
   const [subcategoryId, setSubcategoryId] = useState('all');
   const [shopSearch, setShopSearch] = useState('');
   const [selectedSet, setSelectedSet] = useState(null);
+  const [aiPilotComponents, setAIPilotComponents] = useState([]);
   const [uploadedAsset, setUploadedAsset] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
   const [aspectRatio, setAspectRatio] = useState('16:9');
@@ -142,7 +153,8 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
   const [customShot, setCustomShot] = useState('');
 
   const template = SCENE_TEMPLATES.find((item) => item.id === templateId) || SCENE_TEMPLATES[0];
-  const modelInput = useMemo(() => ({ aspect_ratio: aspectRatio, prompt: additionalPrompt || template.action }), [aspectRatio, additionalPrompt, template.action]);
+  const pilotDirection = useMemo(() => componentDirectionText(aiPilotComponents), [aiPilotComponents]);
+  const modelInput = useMemo(() => ({ aspect_ratio: aspectRatio, prompt: [pilotDirection, additionalPrompt || template.action].filter(Boolean).join(' ') }), [aspectRatio, additionalPrompt, template.action, pilotDirection]);
   const { options: modelOptions, loading: modelLoading } = useAiModelOptions({ service: 'replicateGenerate:compose_scene', kind: 'image', input: modelInput, enabled: modelReady });
   const modelKey = selectedModel || modelOptions.find((item) => item.recommended)?.model_key || modelOptions[0]?.model_key || null;
   const { quote, loading: quoteLoading } = useAiPriceQuote({ service: 'replicateGenerate:compose_scene', kind: 'image', input: modelInput, modelKey, enabled: modelReady });
@@ -246,7 +258,7 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
 
       const identityMap = visibleCharacters.map((character, index) => `${character.label} = ${character.asset?.label || character.asset?.name || `selected character ${index + 1}`}`).join(' | ');
       const offFrameNames = characters.filter((character) => character.shot === 'Off frame').map((character) => character.label);
-      const masterPrompt = `COMPOSE SCENE. Template: ${template.label}. ${setRef ? 'The first supplied reference image is the selected Set and is the visual source of truth for location, lighting, palette, atmosphere and style; do not redesign it.' : ''} ${visibleCharacters.length ? `CHARACTER IDENTITY LOCK — MANDATORY. The supplied character reference images ${setRef ? 'after the Set reference ' : ''}correspond to the visible selected characters in Scene Blocking order. Identity mapping: ${identityMap}. Use those exact people. Do not invent, replace, reinterpret, blend, merge, or substitute any selected character. Preserve each visible selected character's facial identity, age presentation, skin tone, hair, body proportions, wardrobe/look, and recognizable physical appearance. Character blocking: ${blockingText()}.` : characters.length ? `Character blocking: ${blockingText()}.` : 'No required performer.'} ${offFrameNames.length ? `OFF FRAME IS ABSOLUTE: ${offFrameNames.join(', ')} remain part of the scene context and eyelines but MUST NOT appear anywhere in the image, including background, reflection, silhouette, shoulder, or partial body.` : ''} ${elements.length ? `Props and products: ${elementsText()}.` : ''} ${additionalPrompt ? `Additional instruction only: ${additionalPrompt}.` : ''} Preserve the established look of the Set while staging the described action clearly.`;
+      const masterPrompt = `COMPOSE SCENE. Template: ${template.label}. ${pilotDirection ? `AI PILOT DIRECTION — USE ONLY THE USER-SELECTED COMPONENTS BELOW. Components may come from different AI Pilots and must be combined as creative direction, not treated as one locked package. ${pilotDirection}.` : ''} ${setRef ? 'The first supplied reference image is the selected Set and is the visual source of truth for location, lighting, palette, atmosphere and style; do not redesign it.' : ''} ${visibleCharacters.length ? `CHARACTER IDENTITY LOCK — MANDATORY. The supplied character reference images ${setRef ? 'after the Set reference ' : ''}correspond to the visible selected characters in Scene Blocking order. Identity mapping: ${identityMap}. Use those exact people. Do not invent, replace, reinterpret, blend, merge, or substitute any selected character. Preserve each visible selected character's facial identity, age presentation, skin tone, hair, body proportions, wardrobe/look, and recognizable physical appearance. Character blocking: ${blockingText()}.` : characters.length ? `Character blocking: ${blockingText()}.` : 'No required performer.'} ${offFrameNames.length ? `OFF FRAME IS ABSOLUTE: ${offFrameNames.join(', ')} remain part of the scene context and eyelines but MUST NOT appear anywhere in the image, including background, reflection, silhouette, shoulder, or partial body.` : ''} ${elements.length ? `Props and products: ${elementsText()}.` : ''} ${additionalPrompt ? `Additional instruction only: ${additionalPrompt}.` : ''} Preserve the established look of the Set while staging the described action clearly.`;
 
       const result = await base44.functions.invoke('replicateGenerate', {
         method: 'compose_scene',
@@ -321,7 +333,7 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
       const shotInstruction = shotPreset === 'custom' ? customShot.trim() : preset.instruction;
       if (!shotInstruction) throw new Error('Describe the custom framing first.');
 
-      const prompt = `GENERATE A NEW CAMERA SHOT OF THE SAME ESTABLISHED SCENE. ${guide.join(' ')} REFERENCE PRIORITY IS STRICT: original character references control face, hair, skin tone, body, wardrobe and recognizable look; the original Set controls the environment; the Master Scene, when supplied, controls ONLY spatial geography, blocking continuity, lighting direction and scene relationship. Never copy a face, wardrobe, or altered appearance from the Master when an original reference is supplied. Do not create a generation chain from a previous generated shot. CAMERA INSTRUCTION: ${shotInstruction} Scene blocking continuity: ${blockingText()}. ${offFrameNames.length ? `OFF FRAME IS ABSOLUTE: ${offFrameNames.join(', ')} may still be looked at or spoken to but MUST NOT be visible anywhere in this shot, including reflection, silhouette, shoulder, background or partial body.` : ''} ${elements.length ? `Props/products continuity: ${elementsText()}.` : ''} ${additionalPrompt ? `Additional instruction: ${additionalPrompt}.` : ''} Preserve the same location, wardrobe, time, lighting logic, screen direction and character relationships unless the camera instruction explicitly requires a new angle.`;
+      const prompt = `GENERATE A NEW CAMERA SHOT OF THE SAME ESTABLISHED SCENE. ${pilotDirection ? `AI PILOT DIRECTION REMAINS ACTIVE FOR THIS SHOT: ${pilotDirection}.` : ''} ${guide.join(' ')} REFERENCE PRIORITY IS STRICT: original character references control face, hair, skin tone, body, wardrobe and recognizable look; the original Set controls the environment; the Master Scene, when supplied, controls ONLY spatial geography, blocking continuity, lighting direction and scene relationship. Never copy a face, wardrobe, or altered appearance from the Master when an original reference is supplied. Do not create a generation chain from a previous generated shot. CAMERA INSTRUCTION: ${shotInstruction} Scene blocking continuity: ${blockingText()}. ${offFrameNames.length ? `OFF FRAME IS ABSOLUTE: ${offFrameNames.join(', ')} may still be looked at or spoken to but MUST NOT be visible anywhere in this shot, including reflection, silhouette, shoulder, background or partial body.` : ''} ${elements.length ? `Props/products continuity: ${elementsText()}.` : ''} ${additionalPrompt ? `Additional instruction: ${additionalPrompt}.` : ''} Preserve the same location, wardrobe, time, lighting logic, screen direction and character relationships unless the camera instruction explicitly requires a new angle.`;
 
       const result = await base44.functions.invoke('replicateGenerate', {
         method: 'compose_scene',
@@ -352,6 +364,8 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
         </select>
         <div className="flex justify-between text-xs text-white/65"><span>AI cost</span><span>{quoteLoading ? 'Calculating…' : quote?.credits ? `${quote.credits} credits` : 'Calculated automatically'}</span></div>
       </section>
+
+      <AIPilotComponentPicker toolKey="compose_scene" value={aiPilotComponents} onChange={setAIPilotComponents} />
 
       <section className="space-y-2">
         <p className="text-xs font-bold uppercase tracking-wider text-white">Additional Prompt</p>
