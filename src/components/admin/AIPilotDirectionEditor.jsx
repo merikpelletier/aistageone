@@ -141,7 +141,8 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
       instrumentation: '',
       music_role: '',
       references: '',
-      lyrics_direction: '',
+      vocal_type: '',
+      vocal_style: '',
       lyrics: '',
       language: '',
       structure: '',
@@ -261,8 +262,22 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
                       <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} placeholder="Musical references, eras, composers, genres or descriptive reference points." value={piece.references || ''} onChange={(event) => updateMusicPiece(piece.id, { references: event.target.value })} />
                     </label>
                     <label className="space-y-2">
+                      <span className="text-xs text-white/55">Vocal Type</span>
+                      <Select disabled={readOnly} value={piece.vocal_type || 'female_lead'} onValueChange={(value) => updateMusicPiece(piece.id, { vocal_type: value })}>
+                        <SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue placeholder="Select vocal type" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="female_lead">Female Lead</SelectItem>
+                          <SelectItem value="male_lead">Male Lead</SelectItem>
+                          <SelectItem value="duet">Duet</SelectItem>
+                          <SelectItem value="group_vocals">Group Vocals</SelectItem>
+                          <SelectItem value="choir">Choir</SelectItem>
+                          <SelectItem value="instrumental">Instrumental</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <label className="space-y-2">
                       <span className="text-xs text-white/55">Language</span>
-                      <Input className={CONTROL_CLASS} disabled={readOnly} placeholder="e.g. English, French, instrumental" value={piece.language || ''} onChange={(event) => updateMusicPiece(piece.id, { language: event.target.value })} />
+                      <Input className={CONTROL_CLASS} disabled={readOnly} placeholder="e.g. English, French" value={piece.language || ''} onChange={(event) => updateMusicPiece(piece.id, { language: event.target.value })} />
                     </label>
                     <label className="space-y-2">
                       <span className="text-xs text-white/55">Structure</span>
@@ -271,13 +286,13 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
                   </div>
 
                   <label className="space-y-2 block">
-                    <span className="text-xs text-white/55">Lyrics Direction</span>
-                    <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} placeholder="What the lyrics should communicate: themes, point of view, recurring ideas and emotional intent." value={piece.lyrics_direction || ''} onChange={(event) => updateMusicPiece(piece.id, { lyrics_direction: event.target.value })} />
+                    <span className="text-xs text-white/55">Vocal Style</span>
+                    <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly || piece.vocal_type === 'instrumental'} placeholder="Voice character and performance: tone, delivery, intensity, range, attitude and chorus treatment." value={piece.vocal_style || ''} onChange={(event) => updateMusicPiece(piece.id, { vocal_style: event.target.value })} />
                   </label>
 
                   <label className="space-y-2 block">
                     <span className="text-xs text-white/55">Lyrics</span>
-                    <Textarea className={CONTROL_CLASS} rows={8} disabled={readOnly} placeholder="Actual locked lyrics for this piece, when they exist." value={piece.lyrics || ''} onChange={(event) => updateMusicPiece(piece.id, { lyrics: event.target.value })} />
+                    <Textarea className={CONTROL_CLASS} rows={8} disabled={readOnly || piece.vocal_type === 'instrumental'} placeholder="Production-provided lyrics for this music piece." value={piece.lyrics || ''} onChange={(event) => updateMusicPiece(piece.id, { lyrics: event.target.value })} />
                   </label>
 
                   <label className="space-y-2 block">
