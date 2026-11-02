@@ -100,7 +100,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
 
   const persistCharacter = async () => {
     if (!draft || readOnly) return null;
-    if (!draft.role_name?.trim()) throw new Error('Character / role name is required.');
+    if (!draft.role_name?.trim()) throw new Error('Character name is required.');
 
     const payload = {
       version_id: version.id,
@@ -182,8 +182,8 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
     <div className="border border-white/10 bg-neutral-950">
       <div className="p-4 md:p-5 border-b border-white/10 flex items-center justify-between gap-3">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--studio-accent)]">Characters / Roles</div>
-          <div className="text-sm mt-1 text-white/65">Essential character direction shared with AI writing and production tools.</div>
+          <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--studio-accent)]">Characters</div>
+          <div className="text-sm mt-1 text-white/65">Stable character information shared with AI writing and production tools.</div>
         </div>
         {!readOnly && (
           <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={startNew}>
@@ -202,7 +202,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
               className={`w-full text-left p-4 border-b border-white/10 hover:bg-white/[0.04] ${editingId === character.id ? 'bg-white/[0.07] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}
             >
               <div className="text-sm text-white">{character.role_name}</div>
-              <div className="text-xs text-white/40 mt-1">{character.narrative_function || 'Role'}</div>
+              <div className="text-xs text-white/40 mt-1">Character</div>
             </button>
           ))}
           {!characters.length && <div className="p-5 text-sm text-white/35">No characters yet.</div>}
@@ -213,24 +213,14 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
             <div className="min-h-80 flex items-center justify-center text-sm text-white/35">Select or add a character.</div>
           ) : (
             <div className="space-y-5 max-w-5xl">
-              <Section eyebrow="Identity" title="Narrative Core" description="Only information that helps the AI understand who this character is and how they behave in the story.">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <label className="space-y-2">
-                    <span className="text-xs text-white/60">Character / Role Name</span>
-                    <Input className={CONTROL_CLASS} disabled={readOnly} value={draft.role_name || ''} onChange={(e) => setField('role_name', e.target.value)} />
-                  </label>
-                  <label className="space-y-2">
-                    <span className="text-xs text-white/60">Narrative Function</span>
-                    <Input className={CONTROL_CLASS} disabled={readOnly} value={draft.narrative_function || ''} onChange={(e) => setField('narrative_function', e.target.value)} placeholder="Lead, antagonist, ally, critic..." />
-                  </label>
-                </div>
-                <Field label="Role Description" helper="Who this person is in the story now. Keep it short and do not include history." value={draft.description} onChange={(value) => setField('description', value)} readOnly={readOnly} rows={3} />
-                <Field label="Relevant Backstory" helper="Only past facts that directly affect present behavior, choices or relationships. Do not repeat the role description." value={draft.backstory} onChange={(value) => setField('backstory', value)} readOnly={readOnly} rows={3} />
-                <div className="grid md:grid-cols-2 gap-4">
-                  <Field label="Personality & Behavior" helper="Core traits and reactions the AI should consistently preserve." value={draft.personality} onChange={(value) => setField('personality', value)} readOnly={readOnly} rows={3} />
-                  <Field label="Motivation / Goals / Pressure" helper="What currently drives the character's decisions. Keep only what changes scene behavior." value={draft.motivations} onChange={(value) => setField('motivations', value)} readOnly={readOnly} rows={3} />
-                </div>
-                <Field label="Key Relationships" helper="Only relationships that materially change how this character behaves around someone." value={draft.relationships} onChange={(value) => setField('relationships', value)} readOnly={readOnly} rows={3} />
+              <Section eyebrow="Identity" title="Character Core" description="Only stable information that helps the AI understand and preserve this character.">
+                <label className="space-y-2 block">
+                  <span className="text-xs text-white/60">Character Name</span>
+                  <Input className={CONTROL_CLASS} disabled={readOnly} value={draft.role_name || ''} onChange={(e) => setField('role_name', e.target.value)} />
+                </label>
+                <Field label="Character Description" helper="A short description of who the character is. Do not repeat personality, history or appearance." value={draft.description} onChange={(value) => setField('description', value)} readOnly={readOnly} rows={3} />
+                <Field label="Personality & Behavior" helper="Core traits and reactions the AI should consistently preserve." value={draft.personality} onChange={(value) => setField('personality', value)} readOnly={readOnly} rows={3} />
+                <Field label="Relevant Backstory" helper="Optional. Include only past facts that still affect the character's present behavior or decisions." value={draft.backstory} onChange={(value) => setField('backstory', value)} readOnly={readOnly} rows={3} />
               </Section>
 
               <Section eyebrow="Performance" title="Performance Direction" description="Use only recurring performance information that should remain consistent across generated scenes.">
