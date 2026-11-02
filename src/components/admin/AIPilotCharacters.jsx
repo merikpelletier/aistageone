@@ -265,6 +265,15 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                 />
 
                 <Field
+                  label="Background"
+                  helper="Relevant past information that still affects how the character is written, directed or interpreted."
+                  value={draft.backstory}
+                  onChange={(value) => setField('backstory', value)}
+                  readOnly={readOnly}
+                  rows={3}
+                />
+
+                <Field
                   label="Personality"
                   helper="Core personality traits the AI should consistently preserve."
                   value={draft.personality}
