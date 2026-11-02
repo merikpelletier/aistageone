@@ -4,24 +4,11 @@ import { supabase } from '@/api/supabaseClient';
 import { getAIPilotComponentLibrary } from '@/lib/aiPilotComponents';
 
 const TYPE_LABELS = {
-  set: 'Sets',
-  location: 'Locations',
-  look: 'Looks',
-  character_style: 'Character Styles',
-  'visual-direction': 'Visual Direction',
-  visual_direction: 'Visual Direction',
-  'series-direction': 'Series Direction',
+  action_prompt: 'Action Prompts',
+  blocking_prompt: 'Blocking Prompts',
 };
 
-const ALLOWED_TYPES = new Set([
-  'set',
-  'location',
-  'look',
-  'character_style',
-  'visual-direction',
-  'visual_direction',
-  'series-direction',
-]);
+const ALLOWED_TYPES = new Set(['action_prompt', 'blocking_prompt']);
 
 export default function AIPilotComponentPicker({ toolKey = 'compose_scene', value = [], onChange }) {
   const [open, setOpen] = useState(false);
@@ -43,7 +30,7 @@ export default function AIPilotComponentPicker({ toolKey = 'compose_scene', valu
         const items = await getAIPilotComponentLibrary({ userId: user.id, toolKey });
         if (!cancelled) setLibrary((items || []).filter((item) => ALLOWED_TYPES.has(item.component_type)));
       } catch (err) {
-        if (!cancelled) setError(err?.message || 'Unable to load AI Pilot components.');
+        if (!cancelled) setError(err?.message || 'Unable to load AI Pilot prompts.');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -76,7 +63,7 @@ export default function AIPilotComponentPicker({ toolKey = 'compose_scene', valu
           <Sparkles size={15} className="shrink-0 text-cyan-300" />
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-wider text-cyan-200">AI Pilot Direction</p>
-            <p className="mt-0.5 text-[11px] text-white/50">Choose components from any AI Pilot in your library.</p>
+            <p className="mt-0.5 text-[11px] text-white/50">Choose Action or Blocking prompts from any AI Pilot in your library.</p>
           </div>
         </div>
         <div className="flex items-center gap-2 text-xs text-white/55">
@@ -99,9 +86,9 @@ export default function AIPilotComponentPicker({ toolKey = 'compose_scene', valu
 
       {open && (
         <div className="space-y-4 border-t border-white/10 p-3">
-          {loading && <div className="flex items-center gap-2 text-xs text-white/55"><Loader2 size={14} className="animate-spin" /> Loading AI Pilot components…</div>}
+          {loading && <div className="flex items-center gap-2 text-xs text-white/55"><Loader2 size={14} className="animate-spin" /> Loading AI Pilot prompts…</div>}
           {error && <p className="text-xs text-red-300">{error}</p>}
-          {!loading && !error && grouped.length === 0 && <p className="text-xs text-white/45">No compatible AI Pilot components found in your library.</p>}
+          {!loading && !error && grouped.length === 0 && <p className="text-xs text-white/45">No Action or Blocking prompts found in your AI Pilots.</p>}
           {grouped.map(([type, items]) => (
             <div key={type} className="space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-wider text-white/45">{TYPE_LABELS[type] || type.replace(/_/g, ' ')}</p>
@@ -110,7 +97,7 @@ export default function AIPilotComponentPicker({ toolKey = 'compose_scene', valu
                   const selected = selectedKeys.has(component.key);
                   return (
                     <button key={component.key} type="button" onClick={() => toggle(component)} className={`border p-2.5 text-left ${selected ? 'border-cyan-300 bg-cyan-300/10' : 'border-white/10 bg-black/35 hover:border-white/25'}`}>
-                      <p className="truncate text-xs font-bold text-white">{component.label}</p>
+                      <p className="text-xs font-bold text-white">{component.label}</p>
                       <p className="mt-1 truncate text-[10px] text-cyan-200/70">{component.pilot?.name || 'AI Pilot'}{component.personal ? ' · My addition' : ''}</p>
                     </button>
                   );
