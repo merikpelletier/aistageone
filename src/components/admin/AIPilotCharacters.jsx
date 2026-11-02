@@ -1,6 +1,6 @@
 import React, { forwardRef, useImperativeHandle, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Save } from 'lucide-react';
+import { Plus, Save, Trash2 } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -161,6 +161,24 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
     onError: (error) => alert(error?.message || 'Unable to save character'),
   });
 
+  const deleteCharacter = useMutation({
+    mutationFn: async () => {
+      if (!draft?.id || readOnly) return;
+      const { error } = await supabase
+        .from('ai_pilot_characters')
+        .delete()
+        .eq('id', draft.id)
+        .eq('version_id', version.id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      setEditingId(null);
+      setDraft(null);
+      await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-characters', version?.id] });
+    },
+    onError: (error) => alert(error?.message || 'Unable to delete character'),
+  });
+
   useImperativeHandle(ref, () => ({
     saveCurrent: async () => {
       if (!draft || readOnly) return null;
@@ -177,6 +195,14 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
   };
 
   const setField = (field, value) => setDraft((current) => ({ ...current, [field]: value }));
+
+  const confirmDelete = () => {
+    if (!draft?.id || deleteCharacter.isPending) return;
+    const name = draft.role_name?.trim() || 'this character';
+    if (window.confirm(`Delete ${name}? This cannot be undone.`)) {
+      deleteCharacter.mutate();
+    }
+  };
 
   return (
     <div className="border border-white/10 bg-neutral-950">
@@ -257,8 +283,13 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
               </div>
 
               {!readOnly && (
-                <div className="flex justify-end">
-                  <Button className={PRIMARY_BUTTON_CLASS} onClick={() => saveCharacter.mutate()} disabled={saveCharacter.isPending}>
+                <div className="flex items-center justify-between gap-3">
+                  {draft.id ? (
+                    <Button variant="destructive" onClick={confirmDelete} disabled={deleteCharacter.isPending || saveCharacter.isPending}>
+                      <Trash2 size={15} className="mr-2" /> Delete Character
+                    </Button>
+                  ) : <div />}
+                  <Button className={PRIMARY_BUTTON_CLASS} onClick={() => saveCharacter.mutate()} disabled={saveCharacter.isPending || deleteCharacter.isPending}>
                     <Save size={15} className="mr-2" /> Save Character
                   </Button>
                 </div>
