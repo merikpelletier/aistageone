@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import SaveToVaultModal from './SaveToVaultModal';
 import AudioSimpleEditor from './AudioSimpleEditor';
 import { audioInput, AUDIO_TOOLS } from '../../../supabase/functions/_shared/studioAudioInput.js';
@@ -9,6 +10,20 @@ import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const terminal = job => !job || ['succeeded', 'failed'].includes(job.status);
 const field = 'w-full bg-white/10 text-white rounded-xl p-3 border border-white/20';
+const buildPilotMusicPrompt = piece => [
+  piece.music_style && `Style: ${piece.music_style}`,
+  piece.mood && `Mood: ${piece.mood}`,
+  piece.tempo && `Tempo: ${piece.tempo}`,
+  piece.instrumentation && `Instrumentation: ${piece.instrumentation}`,
+  piece.music_role && `Production role: ${piece.music_role}`,
+  piece.references && `References: ${piece.references}`,
+  piece.vocal_type && `Vocal type: ${piece.vocal_type}`,
+  piece.vocal_style && `Vocal style: ${piece.vocal_style}`,
+  piece.language && `Language: ${piece.language}`,
+  piece.structure && `Structure: ${piece.structure}`,
+  piece.music_notes && `Additional direction: ${piece.music_notes}`,
+].filter(Boolean).join('\n');
+
 export default function StudioAudioTool({ tool, user }) {
   const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
@@ -30,6 +45,10 @@ export default function StudioAudioTool({ tool, user }) {
   const [vaultAudioAssets, setVaultAudioAssets] = useState([]);
   const [vaultAudioLoading, setVaultAudioLoading] = useState(false);
   const [editorSource, setEditorSource] = useState(null);
+  const [pilotMusicOptions, setPilotMusicOptions] = useState([]);
+  const [selectedPilotMusic, setSelectedPilotMusic] = useState('');
+  const [pilotMusicLoading, setPilotMusicLoading] = useState(false);
+  const [pilotMusicError, setPilotMusicError] = useState('');
   const audioFileInput = useRef(null);
   const submission = useRef(false);
   const mounted = useRef(true);
@@ -56,6 +75,86 @@ export default function StudioAudioTool({ tool, user }) {
     setJob(next);
     setHistory(previous => [next, ...previous.filter(item => item.id !== next.id)].slice(0, 30));
   };
+
+  useEffect(() => {
+    if (tool !== 'music' || !user?.id) {
+      setPilotMusicOptions([]);
+      setSelectedPilotMusic('');
+      setPilotMusicError('');
+      return undefined;
+    }
+
+    let disposed = false;
+    const loadPilotMusic = async () => {
+      setPilotMusicLoading(true);
+      setPilotMusicError('');
+      try {
+        const { data: assignments, error: assignmentsError } = await supabase
+          .from('ai_pilot_project_assignments')
+          .select('id, project_id, ai_pilot_id, version_id')
+          .eq('user_id', user.id)
+          .eq('is_active', true);
+        if (assignmentsError) throw assignmentsError;
+        if (!assignments?.length) {
+          if (!disposed) setPilotMusicOptions([]);
+          return;
+        }
+
+        const versionIds = [...new Set(assignments.map(item => item.version_id).filter(Boolean))];
+        const pilotIds = [...new Set(assignments.map(item => item.ai_pilot_id).filter(Boolean))];
+        const projectIds = [...new Set(assignments.map(item => String(item.project_id)).filter(Boolean))];
+        const [blocksResult, pilotsResult, projectsResult] = await Promise.all([
+          supabase.from('ai_pilot_blocks').select('id, version_id, content').in('version_id', versionIds).eq('block_key', 'music-direction'),
+          supabase.from('ai_pilots').select('id, name').in('id', pilotIds),
+          supabase.from('timeline_story').select('id, production_name, episode_title').in('id', projectIds),
+        ]);
+        if (blocksResult.error) throw blocksResult.error;
+        if (pilotsResult.error) throw pilotsResult.error;
+        if (projectsResult.error) throw projectsResult.error;
+
+        const blockByVersion = new Map((blocksResult.data || []).map(item => [item.version_id, item]));
+        const pilotById = new Map((pilotsResult.data || []).map(item => [item.id, item]));
+        const projectById = new Map((projectsResult.data || []).map(item => [String(item.id), item]));
+        const options = assignments.flatMap(assignment => {
+          const block = blockByVersion.get(assignment.version_id);
+          const pieces = Array.isArray(block?.content?.music_pieces) ? block.content.music_pieces : [];
+          const pilot = pilotById.get(assignment.ai_pilot_id);
+          const project = projectById.get(String(assignment.project_id));
+          return pieces.map((piece, index) => ({
+            key: `${assignment.id}:${piece.id || index}`,
+            piece,
+            pilotName: pilot?.name || 'AI Pilot',
+            projectName: project?.production_name || project?.episode_title || `Project ${assignment.project_id}`,
+          }));
+        });
+        if (!disposed) setPilotMusicOptions(options);
+      } catch (loadError) {
+        if (!disposed) {
+          setPilotMusicOptions([]);
+          setPilotMusicError(loadError?.message || 'AI Pilot music could not load.');
+        }
+      } finally {
+        if (!disposed) setPilotMusicLoading(false);
+      }
+    };
+
+    loadPilotMusic();
+    return () => { disposed = true; };
+  }, [tool, user?.id]);
+
+  const applyPilotMusic = key => {
+    setSelectedPilotMusic(key);
+    const option = pilotMusicOptions.find(item => item.key === key);
+    if (!option) return;
+    const piece = option.piece || {};
+    setTitle(piece.name || '');
+    setPrompt(buildPilotMusicPrompt(piece));
+    setLyrics(piece.lyrics || '');
+    const instrumental = String(piece.vocal_type || '').toLowerCase() === 'instrumental';
+    setMode(instrumental ? 'instrumental' : 'lyrics');
+    setError('');
+  };
+
   useEffect(() => {
     mounted.current = true;
     let disposed = false;
@@ -178,6 +277,18 @@ export default function StudioAudioTool({ tool, user }) {
             <input ref={audioFileInput} type="file" accept="audio/*" className="hidden" onChange={e => uploadMusicFile(e.target.files?.[0])} />
             <button className="studio-button studio-button-secondary" onClick={openVaultAudio}>Vault</button>
           </div>
+        </section>
+      ) : null}
+      {tool === 'music' ? (
+        <section className="studio-panel-secondary p-4 space-y-2">
+          <div className="studio-tool-eyebrow">AI Pilot Music</div>
+          <p className="text-sm text-[var(--studio-text-muted)]">Load a music piece from an AI Pilot active on one of your projects.</p>
+          <select className={field + ' bg-black'} value={selectedPilotMusic} onChange={e => applyPilotMusic(e.target.value)} disabled={busy || pilotMusicLoading || pilotMusicOptions.length === 0}>
+            <option value="">{pilotMusicLoading ? 'Loading AI Pilot music…' : pilotMusicOptions.length ? 'Select an AI Pilot music piece' : 'No active AI Pilot music piece'}</option>
+            {pilotMusicOptions.map(option => <option key={option.key} value={option.key}>{option.projectName} — {option.pilotName} — {option.piece?.name || 'Unnamed music piece'}</option>)}
+          </select>
+          {pilotMusicError ? <p className="text-xs text-red-300">{pilotMusicError}</p> : null}
+          {selectedPilotMusic ? <p className="text-xs text-[var(--studio-accent)]">AI Pilot direction loaded into the music prompt and lyrics fields. You can still adjust them before generation.</p> : null}
         </section>
       ) : null}
       {tool === 'music' && editorSource ? (
