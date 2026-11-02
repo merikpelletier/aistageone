@@ -119,7 +119,7 @@ export default function AdminAIPilots() {
   };
 
   const persistBlock = async (block = editingBlock) => {
-    if (!block || selectedVersion?.is_published) return null;
+    if (!block) return null;
     const payload = {
       version_id: selectedVersion.id,
       block_key: slugify(block.block_key || block.title),
@@ -151,11 +151,9 @@ export default function AdminAIPilots() {
 
   const persistEverything = async () => {
     const overview = await persistOverview();
-    if (!selectedVersion?.is_published) {
-      await charactersRef.current?.saveCurrent?.();
-      if (editingBlock) await persistBlock(editingBlock);
-      await persistVersionNotes();
-    }
+    await charactersRef.current?.saveCurrent?.();
+    if (editingBlock) await persistBlock(editingBlock);
+    await persistVersionNotes();
     return overview;
   };
 
@@ -230,7 +228,7 @@ export default function AdminAIPilots() {
 
   const selectBlock = async (block) => {
     try {
-      if (editingBlock && !selectedVersion?.is_published && editingBlock.id !== block.id) await persistBlock(editingBlock);
+      if (editingBlock && editingBlock.id !== block.id) await persistBlock(editingBlock);
       setEditingBlock({ ...block, content: block.content || {} });
       if (selectedVersion?.id) await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-blocks', selectedVersion.id] });
     } catch (error) {
@@ -335,7 +333,7 @@ export default function AdminAIPilots() {
                 </div>
               </div>
 
-              {selectedVersion && <div className={activeTab === 'characters' ? '' : 'hidden'}><AIPilotCharacters ref={charactersRef} version={selectedVersion} readOnly={selectedVersion.is_published} /></div>}
+              {selectedVersion && <div className={activeTab === 'characters' ? '' : 'hidden'}><AIPilotCharacters ref={charactersRef} version={selectedVersion} readOnly={false} /></div>}
 
               {selectedVersion && <div className={activeTab === 'direction' ? '' : 'hidden'}>
                 <div className="grid lg:grid-cols-[260px_minmax(0,1fr)] border border-white/10 min-h-[58vh]">
@@ -346,13 +344,13 @@ export default function AdminAIPilots() {
                     </div>
                   </div>
                   <div className="p-4 md:p-5">
-                    <AIPilotDirectionEditor block={editingBlock} setBlock={setEditingBlock} readOnly={selectedVersion.is_published} onSave={() => saveBlock.mutate()} saving={saveBlock.isPending} />
+                    <AIPilotDirectionEditor block={editingBlock} setBlock={setEditingBlock} readOnly={false} onSave={() => saveBlock.mutate()} saving={saveBlock.isPending} />
                   </div>
                 </div>
               </div>}
 
               <div className={activeTab === 'versions' ? '' : 'hidden'}>
-                <div className="max-w-4xl space-y-4"><div className="flex items-center justify-between gap-4"><div><div className="text-sm text-white">Versions</div><div className="text-xs text-white/40 mt-1">Published versions stay fixed. New work continues in a new version.</div></div><Button className={SECONDARY_BUTTON_CLASS} onClick={() => createVersion.mutate()} disabled={!selectedVersion || createVersion.isPending}><Copy size={15} className="mr-2" /> New Version</Button></div><div className="border border-white/10 divide-y divide-white/10">{versions.map((version) => <button key={version.id} type="button" onClick={() => { setSelectedVersionId(version.id); setEditingBlock(null); }} className={`w-full text-left p-4 flex items-center justify-between gap-4 ${selectedVersion?.id === version.id ? 'bg-white/[0.05] shadow-[inset_2px_0_0_var(--studio-accent)]' : 'hover:bg-white/[0.03]'}`}><div><div className="text-sm text-white">Version {version.version_number}</div><div className="text-xs text-white/35 mt-1">{version.changelog || 'No version notes'}</div></div><span className="text-[10px] uppercase tracking-wider text-white/45">{version.is_published ? 'Published' : 'Draft'}</span></button>)}</div>{selectedVersion && <div className="border border-white/10 p-4 space-y-4"><label className="space-y-2 block"><span className="text-xs text-white/55">Version notes</span><Textarea className={CONTROL_CLASS} rows={4} value={versionNotesDraft} disabled={selectedVersion.is_published} onChange={(e) => setVersionNotesDraft(e.target.value)} /></label>{!selectedVersion.is_published && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={() => publishVersion.mutate()} disabled={publishVersion.isPending || blocks.length === 0}><Rocket size={15} className="mr-2" /> Publish v{selectedVersion.version_number}</Button></div>}</div>}</div>
+                <div className="max-w-4xl space-y-4"><div className="flex items-center justify-between gap-4"><div><div className="text-sm text-white">Versions</div><div className="text-xs text-white/40 mt-1">Save updates the selected version. Publish remains a separate action.</div></div><Button className={SECONDARY_BUTTON_CLASS} onClick={() => createVersion.mutate()} disabled={!selectedVersion || createVersion.isPending}><Copy size={15} className="mr-2" /> New Version</Button></div><div className="border border-white/10 divide-y divide-white/10">{versions.map((version) => <button key={version.id} type="button" onClick={() => { setSelectedVersionId(version.id); setEditingBlock(null); }} className={`w-full text-left p-4 flex items-center justify-between gap-4 ${selectedVersion?.id === version.id ? 'bg-white/[0.05] shadow-[inset_2px_0_0_var(--studio-accent)]' : 'hover:bg-white/[0.03]'}`}><div><div className="text-sm text-white">Version {version.version_number}</div><div className="text-xs text-white/35 mt-1">{version.changelog || 'No version notes'}</div></div><span className="text-[10px] uppercase tracking-wider text-white/45">{version.is_published ? 'Published' : 'Draft'}</span></button>)}</div>{selectedVersion && <div className="border border-white/10 p-4 space-y-4"><label className="space-y-2 block"><span className="text-xs text-white/55">Version notes</span><Textarea className={CONTROL_CLASS} rows={4} value={versionNotesDraft} disabled={selectedVersion.is_published} onChange={(e) => setVersionNotesDraft(e.target.value)} /></label>{!selectedVersion.is_published && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={() => publishVersion.mutate()} disabled={publishVersion.isPending || blocks.length === 0}><Rocket size={15} className="mr-2" /> Publish v{selectedVersion.version_number}</Button></div>}</div>}</div>
               </div>
             </div>
           </div>
