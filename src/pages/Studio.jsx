@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useAppContext } from '@/lib/AppContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Layers, Camera, ChevronRight, ChevronLeft, ChevronDown, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench, PanelLeft, FolderOpen, Video, ListVideo, Wand2, Presentation, ShoppingBag, LayoutTemplate, MoreHorizontal, Volume2, Plug } from 'lucide-react';
+import { Users, Layers, Camera, ChevronRight, ChevronLeft, ChevronDown, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench, PanelLeft, FolderOpen, Video, ListVideo, Wand2, Presentation, ShoppingBag, LayoutTemplate, MoreHorizontal, Volume2, Plug, Bot } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const HOME_ICON_MAP = { Home, Clapperboard, Theater, Wrench, Bookmark: undefined, BookOpen, Users, Layers, Film };
@@ -41,6 +41,7 @@ import PitchDecks from '@/pages/PitchDecks';
 import PitchDeckEditor from '@/pages/PitchDeckEditor';
 import PitchDeckDetail from '@/pages/PitchDeckDetail';
 import AiConnections from '@/pages/AiConnections';
+import MyAIPilots from '@/pages/MyAIPilots';
 import ThreeDStudio from '@/components/studio/ThreeDStudio';
 import { Bookmark } from 'lucide-react';
 HOME_ICON_MAP.Bookmark = Bookmark;
@@ -100,6 +101,13 @@ const STUDIO_TOOL_SECTIONS = [
     tools: [
       { key: 'vault', label: 'Vault', icon: Bookmark, action: 'workspace' },
       { key: 'shop', label: 'Assets Shop', icon: ShoppingBag, action: 'workspace' },
+    ],
+  },
+  {
+    key: 'ai_direction',
+    label: 'AI Direction',
+    tools: [
+      { key: 'ai_pilots', label: 'My AI Pilots', icon: Bot, action: 'workspace' },
     ],
   },
   {
@@ -635,7 +643,7 @@ export default function Studio() {
   };
 
   useEffect(() => {
-    const sectionLabels = { home: 'Home overview', library: 'Production Kits library', lab: 'Stages (sketch generators)', stages: 'Stages (sketch generators)', tools: 'AI Tools workspace', stories: 'FotoPlay', vault: 'Vault' };
+    const sectionLabels = { home: 'Home overview', library: 'Production Kits library', lab: 'Stages (sketch generators)', stages: 'Stages (sketch generators)', tools: 'AI Tools workspace', stories: 'FotoPlay', vault: 'Vault', ai_pilots: 'My AI Pilots' };
     const openTools = [];
     if (showVoiceRecorder) openTools.push('Voice Recorder');
     if (showAudioUploader) openTools.push('Audio Uploader');
@@ -895,6 +903,8 @@ export default function Studio() {
       )}
 
       {['generate_3d', 'three_d_shop', 'my_3d_assets'].includes(activeToolPanel) && <div className="absolute inset-0 z-20 bg-[#d8d8d3]"><ThreeDStudio mode={activeToolPanel} /></div>}
+
+      {activeToolPanel === 'ai_pilots' && <div className="absolute inset-0 z-20 bg-black"><MyAIPilots embedded /></div>}
 
       {activeToolPanel === 'ai_connections' && <div className="absolute inset-0 z-20 bg-zinc-950"><AiConnections embedded onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }} /></div>}
 
