@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Box, BookmarkPlus, Check, ChevronLeft, ChevronRight, Download, Music2, Play, ShieldCheck, Sparkles, X } from 'lucide-react';
@@ -69,6 +69,7 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
   const [params] = useSearchParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const previewStripRef = useRef(null);
   const [addingToVault, setAddingToVault] = useState(false);
   const [addedToVault, setAddedToVault] = useState(false);
   const [vaultError, setVaultError] = useState('');
@@ -232,6 +233,11 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
   };
 
   const activeMedia = aiPilot ? previewMedia[activeImageIndex] : (images[activeImageIndex] ? { type: 'image', url: images[activeImageIndex], title: '' } : null);
+  const scrollPreview = (direction) => {
+    const strip = previewStripRef.current;
+    if (!strip) return;
+    strip.scrollBy({ left: direction * Math.max(strip.clientWidth * 0.75, 260), behavior: 'smooth' });
+  };
 
   return (
     <div className={`${embedded ? 'min-h-[calc(100vh-3.5rem)]' : 'min-h-screen'} bg-zinc-950 pb-28 pt-6 text-white`}>
@@ -271,11 +277,19 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
 
             {(aiPilot ? previewMedia.length : images.length) > 1 && (
               <div className="mt-4">
-                <div className="mb-3 flex items-center justify-between">
+                <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">{aiPilot ? 'Preview' : 'Files'}</p>
-                  <p className="text-xs font-bold text-zinc-500">{activeImageIndex + 1} / {aiPilot ? previewMedia.length : images.length}</p>
+                  <div className="flex items-center gap-2">
+                    {aiPilot && (
+                      <>
+                        <button type="button" onClick={() => scrollPreview(-1)} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.10]" aria-label="Scroll previews left"><ChevronLeft size={18} /></button>
+                        <button type="button" onClick={() => scrollPreview(1)} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.10]" aria-label="Scroll previews right"><ChevronRight size={18} /></button>
+                      </>
+                    )}
+                    <p className="min-w-[42px] text-right text-xs font-bold text-zinc-500">{activeImageIndex + 1} / {aiPilot ? previewMedia.length : images.length}</p>
+                  </div>
                 </div>
-                <div className={aiPilot ? 'flex gap-3 overflow-x-auto pb-2' : 'grid grid-cols-4 gap-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7'}>
+                <div ref={aiPilot ? previewStripRef : null} className={aiPilot ? 'flex scroll-smooth gap-3 overflow-x-auto pb-2' : 'grid grid-cols-4 gap-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7'}>
                   {aiPilot ? previewMedia.map((item, index) => (
                     <button key={`${item.type}-${item.url}`} type="button" onClick={() => { setActiveImageIndex(index); setViewerIndex(index); }} className={`h-24 w-36 shrink-0 overflow-hidden rounded-xl border-2 bg-black transition sm:h-28 sm:w-44 ${activeImageIndex === index ? 'border-cyan-400' : 'border-white/10 hover:border-white/30'}`} aria-label={`Open preview ${index + 1}`}>
                       <MediaThumb item={item} />
