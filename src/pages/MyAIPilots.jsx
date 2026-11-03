@@ -124,7 +124,7 @@ function PilotDetails({ access, user, onMessage }) {
   );
 }
 
-export default function MyAIPilots() {
+export default function MyAIPilots({ embedded = false }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isLoadingAuth } = useAuth();
@@ -135,41 +135,56 @@ export default function MyAIPilots() {
   const { data: library = [], isLoading: libraryLoading, error: libraryError } = useQuery({
     queryKey: ['my-ai-pilots', user?.id],
     enabled: Boolean(user?.id),
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
     queryFn: async () => {
       const { data: accessRows, error: accessError } = await supabase.from('member_ai_pilots').select('*').eq('user_id', user.id).order('granted_at', { ascending: false });
       if (accessError) throw accessError;
       if (!accessRows?.length) return [];
 
       const pilotIds = [...new Set(accessRows.map((row) => row.ai_pilot_id).filter(Boolean))];
-      const versionIds = [...new Set(accessRows.map((row) => row.version_id).filter(Boolean))];
       const memberIds = accessRows.map((row) => row.id);
       const assetIds = [...new Set(accessRows.map((row) => row.source_asset_id).filter(Boolean))];
 
-      const [pilotsResult, versionsResult, blocksResult, extensionsResult, assetsResult] = await Promise.all([
+      const [pilotsResult, versionsResult, extensionsResult, assetsResult] = await Promise.all([
         supabase.from('ai_pilots').select('*').in('id', pilotIds),
-        supabase.from('ai_pilot_versions').select('*').in('id', versionIds),
-        supabase.from('ai_pilot_blocks').select('*').in('version_id', versionIds).eq('is_active', true).order('sort_order', { ascending: true }),
+        supabase.from('ai_pilot_versions').select('*').in('ai_pilot_id', pilotIds).eq('is_published', true).order('version_number', { ascending: false }),
         supabase.from('member_ai_pilot_extensions').select('*').in('member_ai_pilot_id', memberIds).eq('is_active', true).order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
         assetIds.length ? supabase.from('catalog_asset').select('id,title,description,featured_image,preview_images,creator_name,tags').in('id', assetIds) : Promise.resolve({ data: [], error: null }),
       ]);
-      for (const result of [pilotsResult, versionsResult, blocksResult, extensionsResult, assetsResult]) if (result.error) throw result.error;
+      for (const result of [pilotsResult, versionsResult, extensionsResult, assetsResult]) if (result.error) throw result.error;
+
+      const latestPublishedByPilot = new Map();
+      (versionsResult.data || []).forEach((version) => {
+        if (!latestPublishedByPilot.has(version.ai_pilot_id)) latestPublishedByPilot.set(version.ai_pilot_id, version);
+      });
+      const versionMap = new Map((versionsResult.data || []).map((version) => [version.id, version]));
+      const resolvedVersionIds = [...new Set(accessRows.map((access) => latestPublishedByPilot.get(access.ai_pilot_id)?.id || access.version_id).filter(Boolean))];
+      const blocksResult = resolvedVersionIds.length
+        ? await supabase.from('ai_pilot_blocks').select('*').in('version_id', resolvedVersionIds).eq('is_active', true).order('sort_order', { ascending: true })
+        : { data: [], error: null };
+      if (blocksResult.error) throw blocksResult.error;
 
       const pilotMap = new Map((pilotsResult.data || []).map((pilot) => [pilot.id, pilot]));
-      const versionMap = new Map((versionsResult.data || []).map((version) => [version.id, version]));
       const assetMap = new Map((assetsResult.data || []).map((asset) => [String(asset.id), asset]));
       const blocksByVersion = new Map();
       (blocksResult.data || []).forEach((block) => { if (!blocksByVersion.has(block.version_id)) blocksByVersion.set(block.version_id, []); blocksByVersion.get(block.version_id).push(block); });
       const extensionsByMember = new Map();
       (extensionsResult.data || []).forEach((extension) => { if (!extensionsByMember.has(extension.member_ai_pilot_id)) extensionsByMember.set(extension.member_ai_pilot_id, []); extensionsByMember.get(extension.member_ai_pilot_id).push(extension); });
 
-      return accessRows.map((access) => ({
-        ...access,
-        pilot: pilotMap.get(access.ai_pilot_id) || null,
-        version: versionMap.get(access.version_id) || null,
-        presentation: assetMap.get(String(access.source_asset_id)) || null,
-        blocks: blocksByVersion.get(access.version_id) || [],
-        extensions: extensionsByMember.get(access.id) || [],
-      }));
+      return accessRows.map((access) => {
+        const resolvedVersion = latestPublishedByPilot.get(access.ai_pilot_id) || versionMap.get(access.version_id) || null;
+        const resolvedVersionId = resolvedVersion?.id || access.version_id;
+        return {
+          ...access,
+          version_id: resolvedVersionId,
+          pilot: pilotMap.get(access.ai_pilot_id) || null,
+          version: resolvedVersion,
+          presentation: assetMap.get(String(access.source_asset_id)) || null,
+          blocks: blocksByVersion.get(resolvedVersionId) || [],
+          extensions: extensionsByMember.get(access.id) || [],
+        };
+      });
     },
   });
 
@@ -207,12 +222,12 @@ export default function MyAIPilots() {
     onError: (error) => setMessage(error?.message || 'Unable to remove AI Pilot.'),
   });
 
-  if (isLoadingAuth || libraryLoading) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-white" size={34} /></div>;
+  if (isLoadingAuth || libraryLoading) return <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} bg-black flex items-center justify-center`}><Loader2 className="animate-spin text-white" size={34} /></div>;
 
   return (
-    <div className="min-h-screen bg-black pb-20 text-white">
+    <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} bg-black pb-20 text-white`}>
       <main className="mx-auto max-w-6xl px-5 py-8 sm:px-7">
-        <button type="button" onClick={() => navigate('/MemberDashboard')} className="mb-8 inline-flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white"><ChevronLeft size={18} /> Account</button>
+        {!embedded && <button type="button" onClick={() => navigate('/MemberDashboard')} className="mb-8 inline-flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white"><ChevronLeft size={18} /> Account</button>}
         <div className="mb-8 flex flex-col gap-3 border-b border-white/10 pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-400">AISTAGE.ONE Direction System</p><h1 className="mt-2 text-4xl font-light tracking-tight">My AI Pilots</h1><p className="mt-2 max-w-2xl text-sm text-white/50">View the published Pilot, add your own production elements, and activate it for your projects.</p></div>
           <Button type="button" variant="outline" onClick={() => navigate('/Catalog')} className="border-white/20 bg-white/[0.03] text-white hover:bg-white/10">Browse Assets Shop</Button>
