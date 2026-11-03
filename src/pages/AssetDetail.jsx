@@ -16,6 +16,7 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
   const [acquiringPilot, setAcquiringPilot] = useState(false);
   const [pilotError, setPilotError] = useState('');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [showFullDescription, setShowFullDescription] = useState(false);
   const assetId = assetIdProp || params.get('id');
 
   const { data: asset, isLoading, error } = useQuery({
@@ -66,6 +67,7 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
   useEffect(() => {
     setActiveImageIndex(0);
     setPilotError('');
+    setShowFullDescription(false);
   }, [assetId]);
 
   if (isLoading || pilotLoading) return <div className={`${embedded ? 'min-h-[calc(100vh-3.5rem)]' : 'min-h-screen'} bg-zinc-950 flex items-center justify-center font-black text-white`}>LOADING…</div>;
@@ -158,12 +160,12 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
           <Link to="/Catalog" className="mb-6 inline-flex items-center gap-2 text-sm font-black tracking-wide text-zinc-300 hover:text-cyan-300"><ArrowLeft size={18} /> ASSETS SHOP</Link>
         )}
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.85fr)]">
+        <div className={`grid gap-8 ${aiPilot ? 'lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]' : 'lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.85fr)]'}`}>
           <section className="min-w-0">
             <div className="overflow-hidden rounded-2xl border border-white/10 bg-black">
-              <div className="flex min-h-[360px] items-center justify-center bg-black sm:min-h-[520px] lg:min-h-[620px]">
+              <div className={`flex items-center justify-center bg-black ${aiPilot ? 'min-h-[300px] sm:min-h-[420px] lg:min-h-[500px]' : 'min-h-[360px] sm:min-h-[520px] lg:min-h-[620px]'}`}>
                 {images[activeImageIndex] ? (
-                  <img src={images[activeImageIndex]} alt={asset.title} className="max-h-[72vh] w-full object-contain" />
+                  <img src={images[activeImageIndex]} alt={asset.title} className={`${aiPilot ? 'max-h-[500px]' : 'max-h-[72vh]'} w-full object-contain`} />
                 ) : (
                   <div className="flex h-full min-h-[420px] w-full items-center justify-center text-zinc-700"><Box size={72} /></div>
                 )}
@@ -173,12 +175,12 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
             {images.length > 1 && (
               <div className="mt-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">Files</p>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">{aiPilot ? 'Preview' : 'Files'}</p>
                   <p className="text-xs font-bold text-zinc-500">{activeImageIndex + 1} / {images.length}</p>
                 </div>
-                <div className="grid grid-cols-4 gap-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7">
+                <div className={aiPilot ? 'flex gap-3 overflow-x-auto pb-2' : 'grid grid-cols-4 gap-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7'}>
                   {images.map((imageUrl, index) => (
-                    <button key={imageUrl} type="button" onClick={() => setActiveImageIndex(index)} className={`aspect-square overflow-hidden rounded-xl border-2 bg-black transition ${activeImageIndex === index ? 'border-cyan-400' : 'border-white/10 hover:border-white/30'}`} aria-label={`View file ${index + 1}`}>
+                    <button key={imageUrl} type="button" onClick={() => setActiveImageIndex(index)} className={`${aiPilot ? 'h-24 w-36 shrink-0 sm:h-28 sm:w-44' : 'aspect-square'} overflow-hidden rounded-xl border-2 bg-black transition ${activeImageIndex === index ? 'border-cyan-400' : 'border-white/10 hover:border-white/30'}`} aria-label={`View ${aiPilot ? 'preview' : 'file'} ${index + 1}`}>
                       <img src={imageUrl} alt="" className="h-full w-full object-cover" />
                     </button>
                   ))}
@@ -190,7 +192,7 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
           <aside className="min-w-0 lg:sticky lg:top-6 lg:self-start">
             <div className="rounded-2xl border border-white/10 bg-zinc-900 p-6 sm:p-7">
               <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-400">{aiPilot ? 'AI Pilot' : asset.is_product_placement ? 'Product placement' : 'Production asset'}</p>
-              <h1 className="mt-3 text-4xl font-black leading-none sm:text-5xl">{asset.title}</h1>
+              <h1 className={`${aiPilot ? 'mt-3 text-4xl sm:text-5xl' : 'mt-3 text-4xl sm:text-5xl'} font-black leading-none`}>{asset.title}</h1>
               <div className="mt-5 h-1 w-14 bg-cyan-400" />
 
               <div className="mt-5 space-y-1 text-sm font-bold text-zinc-400">
@@ -199,7 +201,16 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
                 {!aiPilot && images.length > 0 && <p><span className="text-zinc-200">Files:</span> {images.length}</p>}
               </div>
 
-              {asset.description && <p className="mt-6 leading-relaxed text-zinc-300">{asset.description}</p>}
+              {asset.description && (
+                <div className="mt-6">
+                  <p className={`${aiPilot && !showFullDescription ? 'line-clamp-4' : ''} leading-relaxed text-zinc-300`}>{asset.description}</p>
+                  {aiPilot && asset.description.length > 220 && (
+                    <button type="button" onClick={() => setShowFullDescription((current) => !current)} className="mt-3 text-sm font-black uppercase tracking-wide text-cyan-300 hover:text-cyan-200">
+                      {showFullDescription ? 'Less' : 'More'}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {Array.isArray(asset.tags) && asset.tags.length > 0 && (
                 <div className="mt-6 flex flex-wrap gap-2">
