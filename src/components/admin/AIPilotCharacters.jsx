@@ -1,6 +1,6 @@
 import React, { forwardRef, useImperativeHandle, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import { Plus, Save, Trash2, Upload, X } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,7 @@ const emptyCharacter = (versionId, sortOrder = 0) => ({
   visual_identity: '',
   visual_continuity: '',
   production_notes: '',
+  reference_images: [],
   sort_order: sortOrder,
   is_active: true,
 });
@@ -66,6 +67,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
+  const [referenceUploading, setReferenceUploading] = useState(false);
 
   const { data: characters = [] } = useQuery({
     queryKey: ['admin-ai-pilot-characters', version?.id],
@@ -88,7 +90,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
   );
 
   React.useEffect(() => {
-    if (selected) setDraft({ ...selected });
+    if (selected) setDraft({ ...selected, reference_images: Array.isArray(selected.reference_images) ? selected.reference_images : [] });
   }, [selected]);
 
   React.useEffect(() => {
@@ -128,6 +130,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
       visual_identity: draft.visual_identity || '',
       visual_continuity: draft.visual_continuity || '',
       production_notes: draft.production_notes || '',
+      reference_images: Array.isArray(draft.reference_images) ? draft.reference_images : [],
       sort_order: Number(draft.sort_order || 0),
       is_active: draft.is_active !== false,
     };
@@ -195,6 +198,50 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
   };
 
   const setField = (field, value) => setDraft((current) => ({ ...current, [field]: value }));
+
+  const handleReferenceUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length || readOnly || !version?.id) return;
+    const invalid = files.find((file) => !file.type?.startsWith('image/'));
+    if (invalid) return alert('Reference images must be image files.');
+
+    setReferenceUploading(true);
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      const userId = userData?.user?.id;
+      if (!userId) throw new Error('You must be signed in to upload reference images.');
+
+      const uploaded = [];
+      for (const file of files) {
+        const extension = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'jpg';
+        const base = file.name.replace(/\.[^.]+$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'reference';
+        const path = `${userId}/ai-pilots/${version.id}/characters/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${base}.${extension}`;
+        const { error: uploadError } = await supabase.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: publicData } = supabase.storage.from('media').getPublicUrl(path);
+        if (!publicData?.publicUrl) throw new Error('Unable to create reference image URL.');
+        uploaded.push({ url: publicData.publicUrl, name: file.name });
+      }
+
+      setDraft((current) => ({
+        ...current,
+        reference_images: [...(Array.isArray(current?.reference_images) ? current.reference_images : []), ...uploaded],
+      }));
+    } catch (error) {
+      alert(error?.message || 'Unable to upload reference images');
+    } finally {
+      setReferenceUploading(false);
+    }
+  };
+
+  const removeReferenceImage = (index) => {
+    setDraft((current) => ({
+      ...current,
+      reference_images: (Array.isArray(current?.reference_images) ? current.reference_images : []).filter((_, itemIndex) => itemIndex !== index),
+    }));
+  };
 
   const confirmDelete = () => {
     if (!draft?.id || deleteCharacter.isPending) return;
@@ -292,6 +339,33 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                   rows={3}
                 />
 
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-xs text-white/60">Reference Images</div>
+                    <div className="text-[11px] text-white/30 mt-1">Images used by compatible AI image and video tools to preserve the character's visual identity.</div>
+                  </div>
+                  {!!draft.reference_images?.length && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {draft.reference_images.map((image, index) => (
+                        <div key={`${image?.url || image}-${index}`} className="relative aspect-[3/4] overflow-hidden border border-white/10 bg-black">
+                          <img src={image?.url || image} alt={`${draft.role_name || 'Character'} reference ${index + 1}`} className="h-full w-full object-cover" />
+                          {!readOnly && (
+                            <button type="button" onClick={() => removeReferenceImage(index)} className="absolute right-1.5 top-1.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/75 text-white hover:bg-black" aria-label={`Remove reference image ${index + 1}`}>
+                              <X size={14} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {!readOnly && (
+                    <label className="inline-flex cursor-pointer items-center gap-2 border border-white/15 bg-white/[0.04] px-3 py-2 text-xs text-white/75 hover:bg-white/[0.08] hover:border-white/25">
+                      <input type="file" accept="image/*" multiple className="hidden" onChange={handleReferenceUpload} disabled={referenceUploading} />
+                      <Upload size={14} /> {referenceUploading ? 'Uploading…' : 'Add reference images'}
+                    </label>
+                  )}
+                </div>
+
                 <Field
                   label="Voice Prompt"
                   helper="Prompt sent to the voice model / TTS to guide the generated voice: apparent age, accent, tone, pitch, texture, rhythm, energy and other useful vocal qualities."
@@ -340,7 +414,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                       <Trash2 size={15} className="mr-2" /> Delete Character
                     </Button>
                   ) : <div />}
-                  <Button className={PRIMARY_BUTTON_CLASS} onClick={() => saveCharacter.mutate()} disabled={saveCharacter.isPending || deleteCharacter.isPending}>
+                  <Button className={PRIMARY_BUTTON_CLASS} onClick={() => saveCharacter.mutate()} disabled={saveCharacter.isPending || deleteCharacter.isPending || referenceUploading}>
                     <Save size={15} className="mr-2" /> Save Character
                   </Button>
                 </div>
