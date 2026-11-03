@@ -1,10 +1,69 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Box, BookmarkPlus, Check, Download, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, Box, BookmarkPlus, Check, ChevronLeft, ChevronRight, Download, Music2, Play, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/AuthContext';
+
+function MediaThumb({ item }) {
+  if (item?.type === 'video') {
+    return (
+      <div className="relative h-full w-full bg-black">
+        <video src={item.url} muted preload="metadata" className="h-full w-full object-cover" />
+        <div className="absolute inset-0 flex items-center justify-center bg-black/25"><Play size={24} className="text-white" /></div>
+      </div>
+    );
+  }
+  if (item?.type === 'audio') {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-zinc-900 px-3 text-center">
+        <Music2 size={26} className="text-cyan-300" />
+        <span className="line-clamp-2 text-[11px] font-bold text-zinc-300">{item.title || 'Audio'}</span>
+      </div>
+    );
+  }
+  return <img src={item?.url} alt="" className="h-full w-full object-cover" />;
+}
+
+function MediaViewer({ item, index, count, onClose, onPrevious, onNext }) {
+  if (!item) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col bg-black/95 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Preview media viewer">
+      <div className="flex items-center justify-between gap-4 pb-3 text-white">
+        <div className="min-w-0">
+          <div className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">Preview</div>
+          {item.title && <div className="mt-1 truncate text-sm font-bold text-zinc-200">{item.title}</div>}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold text-zinc-400">{index + 1} / {count}</span>
+          <button type="button" onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20" aria-label="Close preview"><X size={22} /></button>
+        </div>
+      </div>
+
+      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-xl bg-black">
+        {item.type === 'video' ? (
+          <video key={item.url} src={item.url} controls autoPlay className="max-h-full max-w-full object-contain" />
+        ) : item.type === 'audio' ? (
+          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-zinc-900 p-8 text-center">
+            <Music2 size={54} className="mx-auto text-cyan-300" />
+            <div className="mt-4 text-lg font-black text-white">{item.title || 'Audio preview'}</div>
+            <audio key={item.url} src={item.url} controls autoPlay className="mt-6 w-full" />
+          </div>
+        ) : (
+          <img src={item.url} alt={item.title || 'AI Pilot preview'} className="max-h-full max-w-full object-contain" />
+        )}
+
+        {count > 1 && (
+          <>
+            <button type="button" onClick={onPrevious} className="absolute left-2 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/65 text-white hover:bg-black/85 sm:left-4" aria-label="Previous preview"><ChevronLeft size={28} /></button>
+            <button type="button" onClick={onNext} className="absolute right-2 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/65 text-white hover:bg-black/85 sm:right-4" aria-label="Next preview"><ChevronRight size={28} /></button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function AssetDetail({ assetId: assetIdProp = null, embedded = false, onBack = null }) {
   const [params] = useSearchParams();
@@ -17,6 +76,7 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
   const [pilotError, setPilotError] = useState('');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(null);
   const assetId = assetIdProp || params.get('id');
 
   const { data: asset, isLoading, error } = useQuery({
@@ -64,11 +124,33 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
     enabled: Boolean(user?.id && aiPilot?.id),
   });
 
+  const images = useMemo(() => [...new Set([asset?.featured_image, ...(Array.isArray(asset?.preview_images) ? asset.preview_images : [])].filter(Boolean))], [asset?.featured_image, asset?.preview_images]);
+  const previewMedia = useMemo(() => {
+    if (!aiPilot) return images.map((url) => ({ type: 'image', url, title: '' }));
+    const stored = Array.isArray(asset?.preview_media) && asset.preview_media.length
+      ? asset.preview_media.filter((item) => item?.url).map((item) => ({ type: item.type || 'image', url: item.url, title: item.title || '' }))
+      : (Array.isArray(asset?.preview_images) ? asset.preview_images : []).filter(Boolean).map((url) => ({ type: 'image', url, title: '' }));
+    const combined = asset?.featured_image ? [{ type: 'image', url: asset.featured_image, title: asset.title || '' }, ...stored] : stored;
+    return combined.filter((item, index, list) => list.findIndex((candidate) => candidate.url === item.url) === index);
+  }, [aiPilot, images, asset?.featured_image, asset?.preview_images, asset?.preview_media, asset?.title]);
+
   useEffect(() => {
     setActiveImageIndex(0);
     setPilotError('');
     setShowFullDescription(false);
+    setViewerIndex(null);
   }, [assetId]);
+
+  useEffect(() => {
+    if (viewerIndex === null) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setViewerIndex(null);
+      if (event.key === 'ArrowLeft' && previewMedia.length > 1) setViewerIndex((current) => (current - 1 + previewMedia.length) % previewMedia.length);
+      if (event.key === 'ArrowRight' && previewMedia.length > 1) setViewerIndex((current) => (current + 1) % previewMedia.length);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [viewerIndex, previewMedia.length]);
 
   if (isLoading || pilotLoading) return <div className={`${embedded ? 'min-h-[calc(100vh-3.5rem)]' : 'min-h-screen'} bg-zinc-950 flex items-center justify-center font-black text-white`}>LOADING…</div>;
 
@@ -80,8 +162,6 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
       </div>
     );
   }
-
-  const images = [...new Set([asset.featured_image, ...(Array.isArray(asset.preview_images) ? asset.preview_images : [])].filter(Boolean))];
 
   const addPlacementToVault = async () => {
     if (!asset.is_product_placement || !asset.featured_image) return;
@@ -151,8 +231,21 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
     }
   };
 
+  const activeMedia = aiPilot ? previewMedia[activeImageIndex] : (images[activeImageIndex] ? { type: 'image', url: images[activeImageIndex], title: '' } : null);
+
   return (
     <div className={`${embedded ? 'min-h-[calc(100vh-3.5rem)]' : 'min-h-screen'} bg-zinc-950 pb-28 pt-6 text-white`}>
+      {viewerIndex !== null && aiPilot && (
+        <MediaViewer
+          item={previewMedia[viewerIndex]}
+          index={viewerIndex}
+          count={previewMedia.length}
+          onClose={() => setViewerIndex(null)}
+          onPrevious={() => setViewerIndex((viewerIndex - 1 + previewMedia.length) % previewMedia.length)}
+          onNext={() => setViewerIndex((viewerIndex + 1) % previewMedia.length)}
+        />
+      )}
+
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         {embedded ? (
           <button type="button" onClick={onBack} className="mb-6 inline-flex items-center gap-2 text-sm font-black tracking-wide text-zinc-300 hover:text-cyan-300"><ArrowLeft size={18} /> ASSETS SHOP</button>
@@ -162,25 +255,33 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
 
         <div className={`grid gap-8 ${aiPilot ? 'lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]' : 'lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.85fr)]'}`}>
           <section className="min-w-0">
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-black">
+            <button type="button" onClick={() => aiPilot && activeMedia && setViewerIndex(activeImageIndex)} className="block w-full overflow-hidden rounded-2xl border border-white/10 bg-black text-left" aria-label={aiPilot ? 'Open preview viewer' : undefined}>
               <div className={`flex items-center justify-center bg-black ${aiPilot ? 'min-h-[300px] sm:min-h-[420px] lg:min-h-[500px]' : 'min-h-[360px] sm:min-h-[520px] lg:min-h-[620px]'}`}>
-                {images[activeImageIndex] ? (
-                  <img src={images[activeImageIndex]} alt={asset.title} className={`${aiPilot ? 'max-h-[500px]' : 'max-h-[72vh]'} w-full object-contain`} />
+                {activeMedia?.type === 'video' ? (
+                  <div className="relative flex h-full w-full items-center justify-center"><video src={activeMedia.url} muted preload="metadata" className="max-h-[500px] w-full object-contain" /><div className="absolute inset-0 flex items-center justify-center bg-black/20"><span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-black/70"><Play size={30} className="ml-1 text-white" /></span></div></div>
+                ) : activeMedia?.type === 'audio' ? (
+                  <div className="flex min-h-[300px] w-full flex-col items-center justify-center gap-4 bg-zinc-900 px-6 text-center"><Music2 size={60} className="text-cyan-300" /><div className="text-lg font-black text-white">{activeMedia.title || 'Audio preview'}</div><div className="text-sm font-bold text-zinc-400">Open to listen</div></div>
+                ) : activeMedia?.url ? (
+                  <img src={activeMedia.url} alt={asset.title} className={`${aiPilot ? 'max-h-[500px]' : 'max-h-[72vh]'} w-full object-contain`} />
                 ) : (
                   <div className="flex h-full min-h-[420px] w-full items-center justify-center text-zinc-700"><Box size={72} /></div>
                 )}
               </div>
-            </div>
+            </button>
 
-            {images.length > 1 && (
+            {(aiPilot ? previewMedia.length : images.length) > 1 && (
               <div className="mt-4">
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">{aiPilot ? 'Preview' : 'Files'}</p>
-                  <p className="text-xs font-bold text-zinc-500">{activeImageIndex + 1} / {images.length}</p>
+                  <p className="text-xs font-bold text-zinc-500">{activeImageIndex + 1} / {aiPilot ? previewMedia.length : images.length}</p>
                 </div>
                 <div className={aiPilot ? 'flex gap-3 overflow-x-auto pb-2' : 'grid grid-cols-4 gap-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7'}>
-                  {images.map((imageUrl, index) => (
-                    <button key={imageUrl} type="button" onClick={() => setActiveImageIndex(index)} className={`${aiPilot ? 'h-24 w-36 shrink-0 sm:h-28 sm:w-44' : 'aspect-square'} overflow-hidden rounded-xl border-2 bg-black transition ${activeImageIndex === index ? 'border-cyan-400' : 'border-white/10 hover:border-white/30'}`} aria-label={`View ${aiPilot ? 'preview' : 'file'} ${index + 1}`}>
+                  {aiPilot ? previewMedia.map((item, index) => (
+                    <button key={`${item.type}-${item.url}`} type="button" onClick={() => { setActiveImageIndex(index); setViewerIndex(index); }} className={`h-24 w-36 shrink-0 overflow-hidden rounded-xl border-2 bg-black transition sm:h-28 sm:w-44 ${activeImageIndex === index ? 'border-cyan-400' : 'border-white/10 hover:border-white/30'}`} aria-label={`Open preview ${index + 1}`}>
+                      <MediaThumb item={item} />
+                    </button>
+                  )) : images.map((imageUrl, index) => (
+                    <button key={imageUrl} type="button" onClick={() => setActiveImageIndex(index)} className={`aspect-square overflow-hidden rounded-xl border-2 bg-black transition ${activeImageIndex === index ? 'border-cyan-400' : 'border-white/10 hover:border-white/30'}`} aria-label={`View file ${index + 1}`}>
                       <img src={imageUrl} alt="" className="h-full w-full object-cover" />
                     </button>
                   ))}
@@ -192,7 +293,7 @@ export default function AssetDetail({ assetId: assetIdProp = null, embedded = fa
           <aside className="min-w-0 lg:sticky lg:top-6 lg:self-start">
             <div className="rounded-2xl border border-white/10 bg-zinc-900 p-6 sm:p-7">
               <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-400">{aiPilot ? 'AI Pilot' : asset.is_product_placement ? 'Product placement' : 'Production asset'}</p>
-              <h1 className={`${aiPilot ? 'mt-3 text-4xl sm:text-5xl' : 'mt-3 text-4xl sm:text-5xl'} font-black leading-none`}>{asset.title}</h1>
+              <h1 className="mt-3 text-4xl font-black leading-none sm:text-5xl">{asset.title}</h1>
               <div className="mt-5 h-1 w-14 bg-cyan-400" />
 
               <div className="mt-5 space-y-1 text-sm font-bold text-zinc-400">
