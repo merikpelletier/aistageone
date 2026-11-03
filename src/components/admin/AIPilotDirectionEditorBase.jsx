@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Plus, Save, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Save, Trash2, Upload, X } from 'lucide-react';
+import { supabase } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -79,6 +80,7 @@ const lookDetailConfig = {
 export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSave, saving }) {
   const [expandedLocationId, setExpandedLocationId] = useState(null);
   const [expandedSetId, setExpandedSetId] = useState(null);
+  const [uploadingSetId, setUploadingSetId] = useState(null);
   const [expandedLookId, setExpandedLookId] = useState(null);
   const [expandedMusicId, setExpandedMusicId] = useState(null);
 
@@ -104,8 +106,56 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
 
   const addSet = () => {
     const id = makeId('set');
-    updateContent('sets', [...sets, { id, name: '', location_id: '', description: '' }]);
+    updateContent('sets', [...sets, { id, name: '', location_id: '', description: '', reference_images: [] }]);
     setExpandedSetId(id);
+  };
+
+  const handleSetReferenceUpload = async (event, setId) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length || readOnly || uploadingSetId || !block?.version_id) return;
+    if (files.some((file) => !file.type?.startsWith('image/'))) {
+      alert('Reference photos must be image files.');
+      return;
+    }
+    setUploadingSetId(setId);
+    try {
+      const { data, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!data?.user?.id) throw new Error('You must be signed in to upload set photos.');
+      const images = [];
+      for (const file of files) {
+        const extension = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'jpg';
+        const base = file.name.replace(/\\.[^.]+$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'set';
+        const path = `${data.user.id}/ai-pilots/${block.version_id}/sets/${setId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${base}.${extension}`;
+        const { error: uploadError } = await supabase.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: publicData } = supabase.storage.from('media').getPublicUrl(path);
+        if (!publicData?.publicUrl) throw new Error('Unable to create reference image URL.');
+        images.push({ url: publicData.publicUrl, name: file.name });
+      }
+      setBlock((current) => ({
+        ...current,
+        content: {
+          ...(current.content || {}),
+          sets: (current.content?.sets || []).map((item) => item.id === setId ? {
+            ...item,
+            reference_images: [...(Array.isArray(item.reference_images) ? item.reference_images : []), ...images],
+          } : item),
+        },
+      }));
+    } catch (error) {
+      alert(error?.message || 'Unable to upload set photos');
+    } finally {
+      setUploadingSetId(null);
+    }
+  };
+
+  const removeSetReference = (setId, index) => {
+    updateContent('sets', sets.map((item) => item.id === setId ? {
+      ...item,
+      reference_images: (Array.isArray(item.reference_images) ? item.reference_images : []).filter((_, i) => i !== index),
+    } : item));
   };
 
   const addLook = () => {
@@ -513,6 +563,30 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
                           </Select>
                         </div>
                         <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} placeholder="Precise description of this set for production and AI generation" value={set.description || ''} onChange={(event) => updateSet(set.id, { description: event.target.value })} />
+                        <div className="space-y-3 border-t border-white/10 pt-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <span className="text-xs text-white/60">Reference Photos</span>
+                            {!readOnly && (
+                              <label className={`inline-flex min-h-9 items-center gap-2 px-3 text-xs cursor-pointer ${SECONDARY_BUTTON_CLASS} ${uploadingSetId ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <Upload size={14} /> {uploadingSetId === set.id ? 'Uploading…' : 'Add Photos'}
+                                <input type="file" accept="image/*" multiple className="hidden" disabled={Boolean(uploadingSetId)} onChange={(event) => handleSetReferenceUpload(event, set.id)} />
+                              </label>
+                            )}
+                          </div>
+                          {Array.isArray(set.reference_images) && set.reference_images.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                              {set.reference_images.map((image, index) => (
+                                <div key={image.url || index} className="relative border border-white/10 bg-black/30">
+                                  <a href={image.url} target="_blank" rel="noreferrer" title="View reference photo">
+                                    <img src={image.url} alt={image.name || `Set reference ${index + 1}`} className="aspect-[4/3] w-full object-cover" />
+                                  </a>
+                                  {!readOnly && <button type="button" onClick={() => removeSetReference(set.id, index)} className="absolute right-1 top-1 rounded bg-black/80 p-1.5 text-white hover:bg-red-700" aria-label="Remove reference photo"><X size={14} /></button>}
+                                </div>
+                              ))}
+                            </div>
+                          ) : <div className="text-xs text-white/30">No reference photos yet.</div>}
+                          <p className="text-[11px] text-white/35">Save Direction to save changes to the set.</p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -529,7 +603,7 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
         <label className="space-y-2 block"><span className="text-xs text-white/55">Direction</span><Textarea className={CONTROL_CLASS} rows={18} disabled={readOnly} value={content.text || ''} onChange={(event) => updateContent('text', event.target.value)} /></label>
       )}
 
-      {!readOnly && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={onSave} disabled={saving}><Save size={15} className="mr-2" /> {saving ? 'Saving…' : 'Save Direction'}</Button></div>}
+      {!readOnly && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={onSave} disabled={saving || Boolean(uploadingSetId)}><Save size={15} className="mr-2" /> {saving ? 'Saving…' : 'Save Direction'}</Button></div>}
     </div>
   );
 }
