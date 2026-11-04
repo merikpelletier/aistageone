@@ -285,6 +285,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const [promptHistory, setPromptHistory] = useState([]);
   const [generationHistory, setGenerationHistory] = useState([]);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [pilotSelection, setPilotSelection] = useState('');
   const pricingInput = {
     aspect_ratio: aspectRatio,
     prompt: transformationPrompt.trim() || characterDescription.trim() || undefined,
