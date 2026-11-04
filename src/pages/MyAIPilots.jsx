@@ -41,6 +41,67 @@ function ContentObject({ value }) {
   ))}</div>;
 }
 
+const FORMAT_GUIDANCE = {
+  fotoplay: 'FotoPlay · Nine visual/dialogue segments per chapter. The nine-season-chapter structure is separate from the nine segments inside each FotoPlay chapter.',
+  audio: 'Audio drama · Adapt the episode to narration, voices, music and sound effects. No fixed duration is imposed.',
+  ebook: 'E-book · Adapt the episode into written scenes or chapters, with optional illustrations. No fixed duration is imposed.',
+  video: 'Video · Aim for 120 seconds per episode, divided into four publishable 30-second parts. Shoot and Timeline can extend the final runtime. Budget for newly generated AI footage independently of total timeline length.',
+};
+const VIDEO_PART_LABELS = [['setup','0–30s · Setup'], ['development','30–60s · Development'], ['turn','60–90s · Turning point'], ['hook','90–120s · Hook']];
+
+function ScenarioGuide({ content }) {
+  const [format, setFormat] = useState('fotoplay');
+  const episodes = Array.from({ length: 9 }, (_, index) => (Array.isArray(content?.scenarios) ? content.scenarios[index] : null) || {});
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">9</div><div className="text-[11px] text-white/45">Episodes / chapters</div></div>
+        <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">120s</div><div className="text-[11px] text-white/45">Video episode target</div></div>
+        <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">4 × 30s</div><div className="text-[11px] text-white/45">Video shorts</div></div>
+      </div>
+      {content?.creative_brief && <div><div className="text-xs font-bold text-cyan-300">Season theme / Creative brief</div><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-white/75">{content.creative_brief}</p></div>}
+      <label className="block space-y-2">
+        <span className="text-xs font-bold text-white/70">Choose a production format to view guidance</span>
+        <select className="w-full rounded-lg border border-white/15 bg-zinc-950 px-3 py-2 text-sm text-white" value={format} onChange={(event) => setFormat(event.target.value)}>
+          <option value="fotoplay">FotoPlay</option>
+          <option value="audio">Audio drama</option>
+          <option value="ebook">E-book</option>
+          <option value="video">Video (Shoot / Timeline)</option>
+        </select>
+      </label>
+      <p className="rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm leading-relaxed text-white/70">{FORMAT_GUIDANCE[format]}</p>
+      <div className="space-y-2">
+        {episodes.map((episode,index) => (
+          <details key={episode.id || index} className="rounded-lg border border-white/10 bg-black/30 p-3">
+            <summary className="cursor-pointer text-sm font-semibold text-white">Episode {index + 1}{episode.title ? ` · ${episode.title}` : ''}</summary>
+            <div className="mt-3 space-y-3">
+              {episode.premise && <div><p className="text-xs font-bold text-white/50">Premise / conflict</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/75">{episode.premise}</p></div>}
+              {episode.outline && <div><p className="text-xs font-bold text-white/50">Story development</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/75">{episode.outline}</p></div>}
+              {format === 'video' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-cyan-300">Four 30-second video parts</p>
+                  {VIDEO_PART_LABELS.map(([key,label]) => (
+                    <div key={key} className="border-l-2 border-cyan-400/30 pl-3">
+                      <div className="text-xs font-semibold text-white/70">{label}</div>
+                      <p className="mt-1 whitespace-pre-wrap text-xs text-white/60">{episode.parts?.[key] || 'Develop this part from the episode premise and story direction.'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {format === 'fotoplay' && <p className="text-xs text-white/50">Develop this chapter across nine FotoPlay segments, following the episode direction above.</p>}
+              {episode.scene_ideas && <div><p className="text-xs font-bold text-white/50">Scene inspirations</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/70">{episode.scene_ideas}</p></div>}
+              {episode.creative_options && <div><p className="text-xs font-bold text-white/50">Creative variations</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/70">{episode.creative_options}</p></div>}
+              {!episode.title && !episode.premise && !episode.outline && <p className="text-xs text-white/35">No specific story direction has been provided for this episode yet.</p>}
+            </div>
+          </details>
+        ))}
+      </div>
+      {content?.creative_freedom && <div><div className="text-xs font-bold text-cyan-300">Freedom to create</div><p className="mt-2 whitespace-pre-wrap text-sm text-white/70">{content.creative_freedom}</p></div>}
+      <p className="text-xs text-white/35">This format choice changes the guidance displayed here; it does not generate content or charge credits.</p>
+    </div>
+  );
+}
+
 function PilotDetails({ access, user, onMessage }) {
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState({ extension_type: 'look', name: '', description: '', notes: '' });
@@ -88,7 +149,7 @@ function PilotDetails({ access, user, onMessage }) {
           {(access.blocks || []).length ? (access.blocks || []).map((block) => (
             <details key={block.id} className="rounded-xl border border-white/10 bg-black/35 p-4">
               <summary className="cursor-pointer text-sm font-black text-white">{block.title || humanize(block.block_key)}</summary>
-              <div className="mt-4"><ContentObject value={block.content || {}} /></div>
+              <div className="mt-4">{block.block_key === 'scenario' ? <ScenarioGuide content={block.content || {}} /> : <ContentObject value={block.content || {}} />}</div>
             </details>
           )) : <p className="text-sm text-white/35">No published direction blocks available.</p>}
         </div>
