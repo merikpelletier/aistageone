@@ -82,6 +82,7 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
   const [expandedSetId, setExpandedSetId] = useState(null);
   const [uploadingSetId, setUploadingSetId] = useState(null);
   const [expandedLookId, setExpandedLookId] = useState(null);
+  const [uploadingLookId, setUploadingLookId] = useState(null);
   const [expandedMusicId, setExpandedMusicId] = useState(null);
 
   if (!block) return <div className="h-full min-h-80 flex items-center justify-center text-sm text-white/35">Select a direction block.</div>;
@@ -158,6 +159,54 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
     } : item));
   };
 
+  const uploadLookResults = async (event, lookId) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length || readOnly || uploadingLookId || !block?.version_id) return;
+    if (files.some((file) => !file.type?.startsWith('image/'))) {
+      alert('Look results must be image files.');
+      return;
+    }
+    setUploadingLookId(lookId);
+    try {
+      const { data, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!data?.user?.id) throw new Error('You must be signed in to upload look results.');
+      const images = [];
+      for (const file of files) {
+        const extension = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'jpg';
+        const base = file.name.replace(/\.[^.]+$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'look';
+        const path = `${data.user.id}/ai-pilots/${block.version_id}/looks/${lookId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${base}.${extension}`;
+        const { error: uploadError } = await supabase.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: publicData } = supabase.storage.from('media').getPublicUrl(path);
+        if (!publicData?.publicUrl) throw new Error('Unable to create look image URL.');
+        images.push({ url: publicData.publicUrl, name: file.name });
+      }
+      setBlock((current) => ({
+        ...current,
+        content: {
+          ...(current.content || {}),
+          looks: (current.content?.looks || []).map((item) => item.id === lookId ? {
+            ...item,
+            result_images: [...(Array.isArray(item.result_images) ? item.result_images : []), ...images],
+          } : item),
+        },
+      }));
+    } catch (error) {
+      alert(error?.message || 'Unable to upload look results');
+    } finally {
+      setUploadingLookId(null);
+    }
+  };
+
+  const removeLookResult = (lookId, index) => {
+    updateContent('looks', looks.map((item) => item.id === lookId ? {
+      ...item,
+      result_images: (Array.isArray(item.result_images) ? item.result_images : []).filter((_, i) => i !== index),
+    } : item));
+  };
+
   const addLook = () => {
     const id = makeId('look');
     updateContent('looks', [...looks, {
@@ -170,6 +219,7 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
       style_notes: '',
       can_combine: true,
       combination_notes: '',
+      result_images: [],
       garment_details: '',
       costume: '',
       shoes: '',
@@ -403,6 +453,16 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
                     </label>
                   </div>
 
+                  <div className="space-y-3 border border-white/10 bg-white/[0.02] p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div><p className="text-sm font-semibold text-white">Look result images</p><p className="mt-1 text-xs text-white/40">Upload images generated from this look's prompts. Keep the text details below.</p></div>
+                      {!readOnly && <label className={`inline-flex cursor-pointer items-center gap-2 border border-white/20 px-3 py-2 text-xs text-white ${uploadingLookId ? 'pointer-events-none opacity-50' : ''}`}><Upload size={14}/>{uploadingLookId === look.id ? 'Uploading…' : 'Add Images'}<input type="file" multiple accept="image/*" className="hidden" disabled={Boolean(uploadingLookId)} onChange={(event) => uploadLookResults(event, look.id)}/></label>}
+                    </div>
+                    {Array.isArray(look.result_images) && look.result_images.length > 0 ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{look.result_images.map((image, index) => {
+                      const url = typeof image === 'string' ? image : image?.url;
+                      return <div key={index} className="relative overflow-hidden border border-white/10 bg-black/40">{url && <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={look.name || 'Look result'} className="aspect-[3/4] w-full object-cover"/></a>}{!readOnly && <button type="button" onClick={() => removeLookResult(look.id, index)} aria-label="Remove result image" className="absolute right-1 top-1 bg-black/80 p-1.5 text-white"><X size={14}/></button>}</div>;
+                    })}</div> : <p className="text-xs text-white/35">No look images added yet.</p>}
+                  </div>
                   <label className="space-y-2 block">
                     <span className="text-xs text-white/55">Description</span>
                     <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} placeholder="Precise description of this styling element." value={look.description || ''} onChange={(event) => updateLook(look.id, { description: event.target.value })} />
@@ -603,7 +663,7 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
         <label className="space-y-2 block"><span className="text-xs text-white/55">Direction</span><Textarea className={CONTROL_CLASS} rows={18} disabled={readOnly} value={content.text || ''} onChange={(event) => updateContent('text', event.target.value)} /></label>
       )}
 
-      {!readOnly && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={onSave} disabled={saving || Boolean(uploadingSetId)}><Save size={15} className="mr-2" /> {saving ? 'Saving…' : 'Save Direction'}</Button></div>}
+      {!readOnly && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={onSave} disabled={saving || Boolean(uploadingSetId) || Boolean(uploadingLookId)}><Save size={15} className="mr-2" /> {saving ? 'Saving…' : 'Save Direction'}</Button></div>}
     </div>
   );
 }
