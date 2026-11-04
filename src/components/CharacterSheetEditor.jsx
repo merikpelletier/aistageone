@@ -286,6 +286,61 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const [generationHistory, setGenerationHistory] = useState([]);
   const [selectedModel, setSelectedModel] = useState(null);
   const [pilotSelection, setPilotSelection] = useState('');
+
+  const [pilotCharacterId, setPilotCharacterId] = useState('');
+  const [pilotLookId, setPilotLookId] = useState('');
+  const { data: pilotLibrary = [], isLoading: pilotsLoading, error: pilotsError } = useQuery({
+    queryKey: ['actor-ai-pilots', userEmail],
+    enabled: Boolean(userEmail),
+    queryFn: async () => {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const userId = auth?.user?.id;
+      if (!userId) return [];
+      const { data: accesses, error: accessError } = await supabase.from('member_ai_pilots')
+        .select('id,ai_pilot_id,version_id').eq('user_id', userId);
+      if (accessError) throw accessError;
+      if (!accesses?.length) return [];
+      const ids = [...new Set(accesses.map((a) => a.ai_pilot_id))];
+      const { data: pilots, error: pilotError } = await supabase.from('ai_pilots')
+        .select('id,name,current_published_version_id').in('id', ids);
+      if (pilotError) throw pilotError;
+      const versions = [...new Set(accesses.map((a) => pilots?.find((p) => p.id === a.ai_pilot_id)?.current_published_version_id || a.version_id).filter(Boolean))];
+      const [actors, looks, additions] = await Promise.all([
+        versions.length ? supabase.from('ai_pilot_characters').select('*').in('version_id', versions).eq('is_active', true) : Promise.resolve({ data: [], error: null }),
+        versions.length ? supabase.from('ai_pilot_blocks').select('version_id,content').in('version_id', versions).eq('is_active', true).eq('block_key', 'looks') : Promise.resolve({ data: [], error: null }),
+        supabase.from('member_ai_pilot_extensions').select('*').eq('user_id', userId).eq('is_active', true).in('member_ai_pilot_id', accesses.map((a) => a.id)),
+      ]);
+      const failed = [actors, looks, additions].find((r) => r.error);
+      if (failed) throw failed.error;
+      const images = (arr) => (Array.isArray(arr) ? arr : []).map((v) => typeof v === 'string' ? v : v?.url).filter(Boolean);
+      const extraImages = (item) => images((item.content?.media || []).filter((v) => v.type === 'image' || v.mime_type?.startsWith('image/')));
+      return accesses.map((access) => {
+        const pilot = pilots?.find((p) => p.id === access.ai_pilot_id);
+        const versionId = pilot?.current_published_version_id || access.version_id;
+        const own = (additions.data || []).filter((a) => a.member_ai_pilot_id === access.id && a.operation === 'add');
+        const characters = (actors.data || []).filter((a) => a.version_id === versionId).map((a) => ({
+          id: 'official:' + a.id, source: 'Official', name: a.role_name,
+          bio: [a.description, a.narrative_function, a.behavior, a.visual_identity, a.continuity_locks].filter(Boolean).join('\n\n'),
+          traits: a.personality || '', images: images(a.reference_images),
+        })).concat(own.filter((a) => a.extension_type === 'character_style').map((a) => ({
+          id: 'personal:' + a.id, source: 'Personal', name: a.name,
+          bio: [a.content?.description, a.content?.appearance, a.content?.behavior, a.content?.continuity, a.content?.notes].filter(Boolean).join('\n\n'),
+          traits: a.content?.personality || '', images: extraImages(a),
+        })));
+        const looksList = (looks.data || []).filter((b) => b.version_id === versionId).flatMap((b) => (Array.isArray(b.content?.looks) ? b.content.looks : []).map((l, i) => ({
+          ...l, id: 'official:' + (l.id || i), source: 'Official', images: images(l.result_images),
+        }))).concat(own.filter((a) => a.extension_type === 'look').map((a) => ({
+          ...a.content, id: 'personal:' + a.id, name: a.name, source: 'Personal', images: extraImages(a),
+        })));
+        return { id: access.id, name: pilot?.name || 'AI Pilot', characters, looks: looksList };
+      });
+    },
+  });
+  const activePilot = pilotLibrary.find((p) => p.id === pilotSelection);
+  const activePilotCharacter = activePilot?.characters.find((a) => a.id === pilotCharacterId);
+  const activePilotLook = activePilot?.looks.find((a) => a.id === pilotLookId);
+
   const pricingInput = {
     aspect_ratio: aspectRatio,
     prompt: transformationPrompt.trim() || characterDescription.trim() || undefined,
