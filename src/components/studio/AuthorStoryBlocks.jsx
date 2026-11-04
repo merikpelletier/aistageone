@@ -17,7 +17,7 @@ const labelClass = 'mb-1.5 block text-xs font-black uppercase tracking-wider tex
 
 const pilotText = (...values) => values.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()).join('\n\n');
 const pilotImages = (images) => (Array.isArray(images) ? images : []).map((image) => typeof image === 'string' ? image : image?.url).filter(Boolean);
-const pilotToFotoPlay = (project, pilot, version, blocks, actors, media) => {
+const pilotToFotoPlay = (project, pilot, version, blocks, actors, media, personalAdditions = []) => {
   const block = (key) => blocks.find((item) => item.block_key === key)?.content || {};
   const series = block('series-direction');
   const scenario = block('scenario');
@@ -44,6 +44,25 @@ const pilotToFotoPlay = (project, pilot, version, blocks, actors, media) => {
       return { id: crypto.randomUUID(), source: 'ai_pilot', source_id: item.id, name: item.name || 'Location', description: item.description || '', image_url: images[0] || '', reference_images: images };
     }),
   ].filter((item) => item.name);
+  // Personal extensions complement the official version; they never update its published content.
+  const personal = personalAdditions.filter((item) => item.is_active !== false && item.operation === 'add');
+  const personalImages = (item) => pilotImages((Array.isArray(item.content?.media) ? item.content.media : []).filter((file) => file.type === 'image' || file.mime_type?.startsWith('image/')));
+  const personalMedia = (item) => (Array.isArray(item.content?.media) ? item.content.media : []).filter((file) => file.type !== 'image' && !file.mime_type?.startsWith('image/'));
+  const personalDescription = (item) => pilotText(
+    item.content?.description,
+    ...Object.entries(item.content || {}).filter(([key, value]) => !['description', 'media'].includes(key) && typeof value === 'string' && value.trim()).map(([key, value]) => key.replace(/_/g, ' ') + ': ' + value)
+  );
+  const personalCharacters = personal.filter((item) => item.extension_type === 'character_style' && item.name?.trim()).map((item) => {
+    const images = personalImages(item);
+    return { id: crypto.randomUUID(), source: 'ai_pilot_personal', source_id: item.id, name: item.name, description: personalDescription(item), image_url: images[0] || '', reference_images: images, pilot_media: personalMedia(item) };
+  });
+  const personalLocations = personal.filter((item) => ['set', 'location'].includes(item.extension_type) && item.name?.trim()).map((item) => {
+    const images = personalImages(item);
+    return { id: crypto.randomUUID(), source: 'ai_pilot_personal', source_id: item.id, name: item.name, description: personalDescription(item), image_url: images[0] || '', reference_images: images, pilot_media: personalMedia(item) };
+  });
+  const personalDirection = personal.filter((item) => !['character_style', 'set', 'location'].includes(item.extension_type)).map((item) => ({
+    source: 'ai_pilot_personal', source_id: item.id, type: item.extension_type, name: item.name, content: item.content || {},
+  }));
   return {
     ...project,
     genre: project.genre || pilot.category || '',
@@ -51,8 +70,8 @@ const pilotToFotoPlay = (project, pilot, version, blocks, actors, media) => {
     tone_rules: pilotText(series.tone) || project.tone_rules,
     story_rules: pilotText(series.rules, series.what_to_avoid) || project.story_rules,
     cover_image: project.cover_image || pilot.cover_url || '',
-    characters,
-    locations,
+    characters: [...characters, ...personalCharacters],
+    locations: [...locations, ...personalLocations],
     production_settings: {
       ...project.production_settings,
       ai_pilot_id: pilot.id,
@@ -62,6 +81,8 @@ const pilotToFotoPlay = (project, pilot, version, blocks, actors, media) => {
       ai_pilot_story_structure: structure,
       ai_pilot_scenario: scenario,
       ai_pilot_visual_direction: visuals,
+      ai_pilot_personal_additions: personal.map((item) => ({ id: item.id, source: 'ai_pilot_personal', type: item.extension_type, name: item.name, content: item.content || {} })),
+      ai_pilot_personal_direction: personalDirection,
     },
   };
 };
@@ -169,7 +190,20 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
       ]);
       const failed = [versionResult, blocksResult, charactersResult, mediaResult].find((result) => result.error);
       if (failed) throw failed.error;
-      setProject((current) => pilotToFotoPlay(current, selected, versionResult.data, blocksResult.data || [], charactersResult.data || [], mediaResult.data || []));
+      // Load only extensions belonging to the currently signed-in member and selected Pilot.
+      const { data: ownedAccess, error: accessError } = await supabase.from('member_ai_pilots')
+        .select('id').eq('user_id', user.id).eq('ai_pilot_id', selected.id);
+      if (accessError) throw accessError;
+      let personalAdditions = [];
+      if (ownedAccess?.length) {
+        const { data, error } = await supabase.from('member_ai_pilot_extensions')
+          .select('*').eq('user_id', user.id).eq('is_active', true)
+          .in('member_ai_pilot_id', ownedAccess.map((row) => row.id))
+          .order('sort_order', { ascending: true });
+        if (error) throw error;
+        personalAdditions = data || [];
+      }
+      setProject((current) => pilotToFotoPlay(current, selected, versionResult.data, blocksResult.data || [], charactersResult.data || [], mediaResult.data || [], personalAdditions));
       toast.success('AI Pilot loaded into FotoPlay');
     } catch (error) { toast.error(error.message || 'Unable to load AI Pilot'); }
     finally { setLoadingPilot(false); }
