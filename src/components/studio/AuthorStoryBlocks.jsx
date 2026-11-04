@@ -14,6 +14,58 @@ const TIME_OPTIONS = ['Dawn', 'Morning', 'Afternoon', 'Evening', 'Night', 'Late 
 const fieldClass = 'w-full rounded-2xl border-2 border-black/10 bg-white px-4 py-3 text-sm font-semibold text-black placeholder-black/35 focus:border-black/40 focus:outline-none';
 const labelClass = 'mb-1.5 block text-xs font-black uppercase tracking-wider text-black';
 
+
+const pilotText = (...values) => values.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()).join('\n\n');
+const pilotImages = (images) => (Array.isArray(images) ? images : []).map((image) => typeof image === 'string' ? image : image?.url).filter(Boolean);
+const pilotToFotoPlay = (project, pilot, version, blocks, actors, media) => {
+  const block = (key) => blocks.find((item) => item.block_key === key)?.content || {};
+  const series = block('series-direction');
+  const scenario = block('scenario');
+  const structure = block('story-structure');
+  const visuals = block('visual-direction');
+  const direction = blocks.filter((item) => item.is_active && (!Array.isArray(item.tool_targets) || !item.tool_targets.length || item.tool_targets.includes('fotoplay')))
+    .map(({ block_key, title, content, priority }) => ({ block_key, title, content, priority }));
+  const characters = actors.filter((actor) => actor.is_active !== false && actor.role_name?.trim()).map((actor) => {
+    const refs = pilotImages(actor.reference_images);
+    const extra = pilotImages(media.filter((item) => item.media_type === 'image' && item.component_type === 'character' && [actor.role_name, actor.id].includes(item.component_key)).map((item) => item.url));
+    const images = [...new Set([...refs, ...extra])];
+    return { id: crypto.randomUUID(), source: 'ai_pilot', source_id: actor.id, name: actor.role_name, description: pilotText(actor.description, actor.narrative_function, actor.personality, actor.behavior, actor.visual_identity, actor.visual_continuity, actor.wardrobe_look, actor.continuity_locks, actor.production_notes), image_url: images[0] || '', reference_images: images, pilot_character_data: actor };
+  });
+  const setEntries = Array.isArray(series.sets) ? series.sets : [];
+  const locationEntries = Array.isArray(series.locations) ? series.locations : [];
+  const locations = [
+    ...setEntries.map((set) => {
+      const location = locationEntries.find((item) => item.id === set.location_id);
+      const images = [...new Set([...pilotImages(set.reference_images), ...media.filter((item) => item.media_type === 'image' && ['set', 'location'].includes(item.component_type) && [set.name, set.id].includes(item.component_key)).map((item) => item.url)])];
+      return { id: crypto.randomUUID(), source: 'ai_pilot', source_id: set.id, name: set.name || location?.name || 'Set', description: pilotText(location?.description, set.description), image_url: images[0] || '', reference_images: images };
+    }),
+    ...locationEntries.filter((item) => !setEntries.some((set) => set.location_id === item.id)).map((item) => {
+      const images = media.filter((mediaItem) => mediaItem.media_type === 'image' && mediaItem.component_type === 'location' && [item.name, item.id].includes(mediaItem.component_key)).map((mediaItem) => mediaItem.url);
+      return { id: crypto.randomUUID(), source: 'ai_pilot', source_id: item.id, name: item.name || 'Location', description: item.description || '', image_url: images[0] || '', reference_images: images };
+    }),
+  ].filter((item) => item.name);
+  return {
+    ...project,
+    genre: project.genre || pilot.category || '',
+    story_description: pilotText(scenario.creative_brief, pilot.description) || project.story_description,
+    tone_rules: pilotText(series.tone) || project.tone_rules,
+    story_rules: pilotText(series.rules, series.what_to_avoid) || project.story_rules,
+    cover_image: project.cover_image || pilot.cover_url || '',
+    characters,
+    locations,
+    production_settings: {
+      ...project.production_settings,
+      ai_pilot_id: pilot.id,
+      ai_pilot_version_id: version.id,
+      ai_pilot_name: pilot.name,
+      ai_pilot_direction: direction,
+      ai_pilot_story_structure: structure,
+      ai_pilot_scenario: scenario,
+      ai_pilot_visual_direction: visuals,
+    },
+  };
+};
+
 const emptyProject = () => normalizeAuthorProject();
 const newSegment = (number) => ({ id: crypto.randomUUID(), number, narration_text: '', image_type: 'Wide shot', image_instruction: '', character_ids: [], location_ids: [], time_periods: [], transition_notes: '', image_url: '', narration_url: '', status: 'draft' });
 const newChapter = (count, mode, topicId) => ({ id: crypto.randomUUID(), number: count + 1, title: `Chapter ${count + 1}`, creation_mode: mode, topic_id: topicId || null, segments: Array.from({ length: 9 }, (_, index) => newSegment(index + 1)) });
@@ -27,6 +79,8 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
   const [activeChapterId, setActiveChapterId] = useState(null);
   const [shopCharacters, setShopCharacters] = useState([]);
   const [shopSets, setShopSets] = useState([]);
+  const [availablePilots, setAvailablePilots] = useState([]);
+  const [loadingPilot, setLoadingPilot] = useState(false);
 
   const loadProjects = async () => {
     setLoading(true);
@@ -85,6 +139,42 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
     loadShopSelections().catch((error) => toast.error(error.message || 'Unable to load OLO Shop selections'));
   }, []);
 
+
+  useEffect(() => {
+    let current = true;
+    const loadPilots = async () => {
+      const { data, error } = await supabase.from('ai_pilots')
+        .select('id,name,description,category,cover_url,current_published_version_id,status')
+        .eq('status', 'published').not('current_published_version_id', 'is', null).order('name');
+      if (error) throw error;
+      if (current) setAvailablePilots(data || []);
+    };
+    loadPilots().catch((error) => toast.error(error.message || 'Unable to load AI Pilots'));
+    return () => { current = false; };
+  }, []);
+
+  const loadPilot = async (pilotId) => {
+    const selected = availablePilots.find((item) => item.id === pilotId);
+    if (!selected || !project) return;
+    if ((project.characters.length || project.locations.length || project.story_description?.trim()) &&
+      !window.confirm('Load this AI Pilot? Existing story definition, characters and locations will be replaced.')) return;
+    setLoadingPilot(true);
+    try {
+      const versionId = selected.current_published_version_id;
+      const [versionResult, blocksResult, charactersResult, mediaResult] = await Promise.all([
+        supabase.from('ai_pilot_versions').select('*').eq('id', versionId).eq('is_published', true).single(),
+        supabase.from('ai_pilot_blocks').select('*').eq('version_id', versionId).eq('is_active', true),
+        supabase.from('ai_pilot_characters').select('*').eq('version_id', versionId).eq('is_active', true),
+        supabase.from('ai_pilot_media').select('*').eq('version_id', versionId).eq('is_active', true),
+      ]);
+      const failed = [versionResult, blocksResult, charactersResult, mediaResult].find((result) => result.error);
+      if (failed) throw failed.error;
+      setProject((current) => pilotToFotoPlay(current, selected, versionResult.data, blocksResult.data || [], charactersResult.data || [], mediaResult.data || []));
+      toast.success('AI Pilot loaded into FotoPlay');
+    } catch (error) { toast.error(error.message || 'Unable to load AI Pilot'); }
+    finally { setLoadingPilot(false); }
+  };
+
   const openProject = (row) => {
     const complete = row.story_description && row.characters?.length && row.locations?.length;
     setProject(normalizeAuthorProject(row));
@@ -127,7 +217,7 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
 
   if (view === 'setup' && project) return <ProjectSetup
     user={user} project={project} setProject={setProject} shopCharacters={shopCharacters} shopSets={shopSets}
-    saving={saving} onBack={() => setView(project.id ? 'workspace' : 'dashboard')} onSave={(foundationComplete) => saveProject(foundationComplete ? 'workspace' : 'setup')}
+    saving={saving} availablePilots={availablePilots} loadingPilot={loadingPilot} onLoadPilot={loadPilot} onBack={() => setView(project.id ? 'workspace' : 'dashboard')} onSave={(foundationComplete) => saveProject(foundationComplete ? 'workspace' : 'setup')}
   />;
 
   if (view === 'workspace' && project) return <AuthorProductionWorkspace
@@ -213,7 +303,7 @@ function PackItemGroup({ title, items, selected, onToggle, imageFor }) {
   return <section className="rounded-3xl bg-black p-5 text-white"><div className="mb-4 flex items-center justify-between"><h3 className="font-black text-yellow-400">{title}</h3><span className="text-xs font-bold text-white/50">{selected.length}/{items.length} selected</span></div><div className="grid gap-2 sm:grid-cols-2">{items.map((item) => { const checked = selected.includes(item.id); const image = imageFor?.(item); return <button key={item.id} onClick={() => onToggle(item.id)} className={`flex items-center gap-3 rounded-2xl border p-3 text-left ${checked ? 'border-yellow-400 bg-yellow-400/10' : 'border-white/10 bg-white/5'}`}>{image && <img src={image} alt="" className="h-12 w-12 rounded-xl object-cover" />}<div className="min-w-0 flex-1"><p className="truncate text-sm font-black">{item.name || item.title}</p><p className="line-clamp-1 text-xs text-white/45">{item.description}</p></div><span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${checked ? 'bg-yellow-400 text-black' : 'bg-white/10'}`}>{checked && <Check size={14} />}</span></button>; })}</div></section>;
 }
 
-function ProjectSetup({ user, project, setProject, shopCharacters, shopSets, saving, onBack, onSave }) {
+function ProjectSetup({ user, project, setProject, shopCharacters, shopSets, availablePilots, loadingPilot, onLoadPilot, saving, onBack, onSave }) {
   const [characterDraft, setCharacterDraft] = useState({ name: '', description: '', image_url: '', image_source: '', image_source_id: null, reference_images: [] });
   const [locationDraft, setLocationDraft] = useState({ name: '', description: '', image_url: '', image_source: '', image_source_id: null, reference_images: [] });
   const [editingCharacterId, setEditingCharacterId] = useState(null);
@@ -260,6 +350,17 @@ function ProjectSetup({ user, project, setProject, shopCharacters, shopSets, sav
     {project.production_settings?.story_pack_source && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-black bg-yellow-400 px-5 py-4"><div><p className="text-xs font-black uppercase tracking-widest">Started from Story Pack</p><p className="font-black">{project.production_settings.story_pack_source.title}</p></div><p className="max-w-xl text-xs font-semibold text-black/60">This is your private editable copy. You can change or remove every imported component without changing the original pack.</p></div>}
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(420px,.9fr)]">
       <section className="space-y-5 rounded-[2rem] bg-black/5 p-5 lg:p-7">
+        <div className="rounded-2xl border border-white/15 bg-[#181c21] p-4 text-white">
+          <label className="mb-2 block text-xs font-black uppercase tracking-wider text-white">Load an AI Pilot</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <select aria-label="Select AI Pilot" defaultValue="" disabled={loadingPilot} id="fotoplay-ai-pilot-select" className="min-w-0 flex-1 rounded-xl border border-white/20 bg-[#20242a] px-3 py-3 text-sm text-white">
+              <option value="">Choose an available AI Pilot</option>
+              {availablePilots.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}
+            </select>
+            <button type="button" disabled={loadingPilot} onClick={() => { const id = document.getElementById('fotoplay-ai-pilot-select')?.value; if (id) onLoadPilot(id); else toast.error('Select an AI Pilot'); }} className="rounded-xl bg-[#23c7be] px-4 py-3 text-sm font-black text-black disabled:opacity-50">{loadingPilot ? 'Loading…' : 'Load'}</button>
+          </div>
+          {project.production_settings?.ai_pilot_name && <p className="mt-2 text-xs text-[#23c7be]">Loaded: {project.production_settings.ai_pilot_name}</p>}
+        </div>
         <div><label className={labelClass}>Story title *</label><input className={fieldClass} value={project.title} onChange={(e) => setProject({ ...project, title: e.target.value })} placeholder="Title of your story" /></div>
         <ProjectCreditsFields
           authorName={project.author_name || user?.full_name || user?.email || ''}
