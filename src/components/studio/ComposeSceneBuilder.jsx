@@ -469,9 +469,10 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
           </div>
         ) : <div className="border border-dashed border-white/20 p-4 text-xs text-white/55">No Set selected yet.</div>}
         <div className="space-y-2">
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <button type="button" onClick={loadVault} className="bg-white/10 px-3 py-2.5 text-center text-xs font-bold text-white">{vaultOpen ? 'Close Vault' : 'Choose from Vault'}</button>
             <button type="button" onClick={loadShop} className="bg-white/10 px-3 py-2.5 text-center text-xs font-bold text-white">{shopOpen ? 'Close Assets Shop' : 'Choose from Assets Shop'}</button>
+            <button type="button" onClick={loadPilotImages} className="bg-white/10 px-3 py-2.5 text-center text-xs font-bold text-white">{pilotOpen ? 'Close AI Pilot' : 'Choose from AI Pilot'}</button>
             <label className="inline-flex cursor-pointer items-center justify-center gap-2 bg-white/10 px-3 py-2.5 text-xs font-bold text-white"><Upload size={14} /> Upload Image<input type="file" accept="image/*" className="hidden" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const { file_url } = await base44.integrations.Core.UploadFile({ file }); setUploadedAsset({ id: `upload-${Date.now()}`, name: file.name || 'Uploaded image', url: file_url, images: [file_url], selected_image: file_url, source: 'upload' }); }} /></label>
           </div>
           {uploadedAsset && <div className="border border-white/15 p-2"><div className="flex items-center gap-3"><img src={uploadedAsset.url} alt="Uploaded" className="h-16 w-16 object-cover" /><p className="text-xs font-bold text-white">{uploadedAsset.name}</p></div><div className="mt-2 grid grid-cols-3 gap-1"><button type="button" onClick={() => setSelectedSet({ ...uploadedAsset, name: uploadedAsset.name || 'Uploaded Set' })} className={`py-1.5 text-[9px] font-bold ${getAssetImage(selectedSet) === uploadedAsset.url ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{getAssetImage(selectedSet) === uploadedAsset.url ? 'Selected Set' : 'Use as Set'}</button><button type="button" onClick={() => assignCharacterAsset({ ...uploadedAsset, label: uploadedAsset.name || 'Uploaded character', character_photos: [uploadedAsset.url] })} className={`py-1.5 text-[9px] font-bold ${characters.some((character) => getCharacterImage(character.asset) === uploadedAsset.url) ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{characters.find((character) => getCharacterImage(character.asset) === uploadedAsset.url) ? `Selected ${characters.find((character) => getCharacterImage(character.asset) === uploadedAsset.url).label}` : 'Use as Character'}</button><button type="button" onClick={() => addElement('product', { ...uploadedAsset, selected_image: uploadedAsset.url })} className={`py-1.5 text-[9px] font-bold ${elements.some((element) => (element.asset?.selected_image || element.asset?.url) === uploadedAsset.url) ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{elements.some((element) => (element.asset?.selected_image || element.asset?.url) === uploadedAsset.url) ? 'Added as Prop/Product' : 'Add as Prop / Product'}</button></div></div>}
@@ -493,6 +494,36 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
           </div>
         </div>)}</div>
       </section>
+
+
+      {pilotOpen && <section id="set-ai-pilot" className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2"><Sparkles size={15} className="text-cyan-300" /><p className="text-xs font-bold uppercase text-white">My AI Pilots</p>
+          <select value={pilotFilter} onChange={(event) => setPilotFilter(event.target.value)} className="ml-auto min-w-0 bg-black px-3 py-2 text-xs text-white">
+            <option value="all">All my AI Pilots</option>
+            {pilotOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </select>
+        </div>
+        <label className="flex items-center gap-2 bg-black/50 px-3"><Search size={14} className="text-white/40" /><input value={pilotSearch} onChange={(event) => setPilotSearch(event.target.value)} placeholder="Search characters or sets" className="w-full bg-transparent py-2.5 text-xs text-white outline-none" /></label>
+        {pilotLoading && <div className="flex items-center gap-2 py-4 text-xs text-white/60"><Loader2 size={15} className="animate-spin" /> Loading AI Pilot media…</div>}
+        {pilotError && <p className="text-xs text-red-300">{pilotError}</p>}
+        {!pilotLoading && !pilotError && !visiblePilotAssets.length && <p className="border border-dashed border-white/20 p-5 text-center text-xs text-white/50">No matching images found in your AI Pilots.</p>}
+        <div className="grid max-h-[32rem] grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 lg:grid-cols-5">
+          {visiblePilotAssets.map((asset) => {
+            const selected = asset.type === 'set' ? getAssetImage(selectedSet) === asset.url : characters.some((character) => getCharacterImage(character.asset) === asset.url);
+            return <div key={asset.id} className={'space-y-1 border p-1 ' + (selected ? 'border-cyan-300' : 'border-white/10')}>
+              <AssetTile image={asset.url} label={asset.name} selected={selected} />
+              <p className="truncate px-1 text-xs font-semibold text-white">{asset.name}</p>
+              <p className="truncate px-1 text-[10px] text-white/45">{asset.pilotName} · {asset.origin}</p>
+              <button type="button" onClick={() => {
+                if (asset.type === 'set') setSelectedSet({ ...asset, label: asset.name });
+                else assignCharacterAsset({ ...asset, label: asset.name, character_photos: [asset.url] });
+              }} className={'w-full px-2 py-2 text-[10px] font-bold ' + (selected ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white')}>
+                {selected ? (asset.type === 'set' ? 'Selected Set' : 'Selected Character') : (asset.type === 'set' ? 'Use as Set' : 'Use as Character')}
+              </button>
+            </div>;
+          })}
+        </div>
+      </section>}
 
       {vaultOpen && <section id="set-vault" className="space-y-2"><p className="text-xs font-bold uppercase tracking-wider text-white">Vault</p><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setVaultFolder('all')} className={`px-3 py-1.5 text-[10px] font-bold ${vaultFolder === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>All</button><button type="button" onClick={() => setVaultFolder('unfiled')} className={`px-3 py-1.5 text-[10px] font-bold ${vaultFolder === 'unfiled' ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>Unfiled</button>{vaultFolders.map((folder) => <button key={folder.id} type="button" onClick={() => setVaultFolder(folder.id)} className={`px-3 py-1.5 text-[10px] font-bold ${vaultFolder === folder.id ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{folder.name}</button>)}</div><div className="grid max-h-72 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5 lg:grid-cols-8">{visibleVaultAssets.map((asset) => { const isSet = getAssetImage(selectedSet) === asset.url; const selectedCharacter = characters.find((character) => getCharacterImage(character.asset) === asset.url); const isElement = elements.some((element) => (element.asset?.selected_image || element.asset?.url) === asset.url); return <div key={asset.id} className={`space-y-1 border p-1 ${isSet || selectedCharacter || isElement ? 'border-cyan-300' : 'border-transparent'}`}><AssetTile image={asset.url} label={asset.name || 'Vault image'} selected={!!(isSet || selectedCharacter || isElement)} /><button type="button" onClick={() => setSelectedSet({ ...asset, name: asset.name || 'Vault set', images: [asset.url], source: 'vault' })} className={`w-full py-1 text-[9px] font-bold ${isSet ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{isSet ? 'Selected Set' : 'Use as Set'}</button><button type="button" onClick={() => assignCharacterAsset({ ...asset, label: asset.name || 'Vault character', character_photos: [asset.url] })} className={`w-full py-1 text-[9px] font-bold ${selectedCharacter ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{selectedCharacter ? `Selected ${selectedCharacter.label}` : 'Use as Character'}</button><button type="button" onClick={() => addElement('product', { ...asset, selected_image: asset.url })} className={`w-full py-1 text-[9px] font-bold ${isElement ? 'bg-cyan-300 text-black' : 'bg-white/10 text-white'}`}>{isElement ? 'Added as Prop/Product' : 'Add as Prop / Product'}</button></div>; })}</div></section>}
 
