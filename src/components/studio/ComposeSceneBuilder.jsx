@@ -146,6 +146,13 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
   const [error, setError] = useState('');
   const [vaultOpen, setVaultOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
+  const [pilotOpen, setPilotOpen] = useState(false);
+  const [pilotLoaded, setPilotLoaded] = useState(false);
+  const [pilotLoading, setPilotLoading] = useState(false);
+  const [pilotError, setPilotError] = useState('');
+  const [pilotAssets, setPilotAssets] = useState([]);
+  const [pilotFilter, setPilotFilter] = useState('all');
+  const [pilotSearch, setPilotSearch] = useState('');
   const [vaultLoaded, setVaultLoaded] = useState(false);
   const [shopLoaded, setShopLoaded] = useState(false);
   const [modelReady, setModelReady] = useState(false);
@@ -191,6 +198,86 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
     }
     setShopOpen((value) => !value);
   };
+
+
+  const loadPilotImages = async () => {
+    if (!pilotOpen && !pilotLoaded) {
+      setPilotLoading(true);
+      setPilotError('');
+      try {
+        const { data: auth, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        const uid = auth?.user?.id;
+        if (!uid) throw new Error('Sign in to access your AI Pilots.');
+        const { data: access, error: accessError } = await supabase.from('member_ai_pilots')
+          .select('id,ai_pilot_id,version_id').eq('user_id', uid);
+        if (accessError) throw accessError;
+        if (!access?.length) { setPilotAssets([]); setPilotLoaded(true); setPilotOpen(true); return; }
+        const ids = [...new Set(access.map((item) => item.ai_pilot_id))];
+        const { data: pilots, error: pilotError } = await supabase.from('ai_pilots')
+          .select('id,name,current_published_version_id').in('id', ids);
+        if (pilotError) throw pilotError;
+        const versionFor = (item) => pilots?.find((pilot) => pilot.id === item.ai_pilot_id)?.current_published_version_id || item.version_id;
+        const versionIds = [...new Set(access.map(versionFor).filter(Boolean))];
+        const [actors, blocks, media, additions] = await Promise.all([
+          versionIds.length ? supabase.from('ai_pilot_characters').select('id,version_id,role_name,description,reference_images').in('version_id', versionIds).eq('is_active', true) : Promise.resolve({ data: [], error: null }),
+          versionIds.length ? supabase.from('ai_pilot_blocks').select('id,version_id,block_key,content').in('version_id', versionIds).eq('block_key', 'series-direction').eq('is_active', true) : Promise.resolve({ data: [], error: null }),
+          versionIds.length ? supabase.from('ai_pilot_media').select('id,version_id,component_type,component_key,media_type,url').in('version_id', versionIds).eq('is_active', true).eq('media_type', 'image') : Promise.resolve({ data: [], error: null }),
+          supabase.from('member_ai_pilot_extensions').select('id,member_ai_pilot_id,extension_type,name,content,operation').eq('user_id', uid).eq('is_active', true).in('member_ai_pilot_id', access.map((item) => item.id)),
+        ]);
+        const failed = [actors, blocks, media, additions].find((result) => result.error);
+        if (failed) throw failed.error;
+        const imageUrls = (values) => (Array.isArray(values) ? values : []).map((value) => typeof value === 'string' ? value : value?.url).filter(Boolean);
+        const selections = [];
+        const push = ({ accessRow, type, name, id, description, images, origin }) => {
+          const pilot = pilots?.find((item) => item.id === accessRow.ai_pilot_id);
+          [...new Set(images)].forEach((url, index) => selections.push({
+            id: String(accessRow.id) + ':' + type + ':' + id + ':' + index,
+            pilotId: String(accessRow.ai_pilot_id), pilotName: pilot?.name || 'AI Pilot', type,
+            name: name || 'Untitled', description: description || '', origin,
+            url, images: [url], selected_image: url, source: 'ai_pilot',
+          }));
+        };
+        for (const row of access) {
+          const versionId = versionFor(row);
+          for (const actor of (actors.data || []).filter((item) => item.version_id === versionId)) {
+            const refs = imageUrls(actor.reference_images);
+            const extra = (media.data || []).filter((item) => item.version_id === versionId && item.component_type === 'character' && [actor.id, actor.role_name].includes(item.component_key)).map((item) => item.url);
+            push({ accessRow: row, type: 'character', name: actor.role_name, id: actor.id, description: actor.description, images: [...refs, ...extra], origin: 'Official' });
+          }
+          const series = (blocks.data || []).find((item) => item.version_id === versionId)?.content || {};
+          const locations = Array.isArray(series.locations) ? series.locations : [];
+          const sets = Array.isArray(series.sets) ? series.sets : [];
+          for (const set of sets) {
+            const location = locations.find((item) => item.id === set.location_id);
+            const extra = (media.data || []).filter((item) => item.version_id === versionId && ['set', 'location'].includes(item.component_type) && [set.id, set.name].includes(item.component_key)).map((item) => item.url);
+            push({ accessRow: row, type: 'set', id: set.id || set.name, name: set.name || location?.name, description: [location?.description, set.description].filter(Boolean).join('\n\n'), images: [...imageUrls(set.reference_images), ...extra], origin: 'Official' });
+          }
+          for (const location of locations.filter((item) => !sets.some((set) => set.location_id === item.id))) {
+            const extra = (media.data || []).filter((item) => item.version_id === versionId && item.component_type === 'location' && [location.id, location.name].includes(item.component_key)).map((item) => item.url);
+            push({ accessRow: row, type: 'set', id: location.id || location.name, name: location.name, description: location.description, images: [...imageUrls(location.reference_images), ...extra], origin: 'Official' });
+          }
+          for (const item of (additions.data || []).filter((item) => item.member_ai_pilot_id === row.id && item.operation === 'add')) {
+            if (!['character_style', 'set', 'location'].includes(item.extension_type)) continue;
+            const images = imageUrls((item.content?.media || []).filter((file) => file.type === 'image' || file.mime_type?.startsWith('image/')));
+            push({ accessRow: row, type: item.extension_type === 'character_style' ? 'character' : 'set', id: item.id, name: item.name, description: item.content?.description, images, origin: 'Personal' });
+          }
+        }
+        setPilotAssets(selections);
+        setPilotLoaded(true);
+      } catch (error) {
+        setPilotError(error?.message || 'Unable to load AI Pilot images');
+      } finally {
+        setPilotLoading(false);
+      }
+    }
+    setPilotOpen((value) => !value);
+  };
+  const pilotOptions = [...new Map(pilotAssets.map((item) => [item.pilotId, item.pilotName])).entries()];
+  const visiblePilotAssets = pilotAssets.filter((item) =>
+    (pilotFilter === 'all' || item.pilotId === pilotFilter) &&
+    (item.name + ' ' + item.pilotName + ' ' + item.origin + ' ' + item.type).toLowerCase().includes(pilotSearch.trim().toLowerCase())
+  );
 
   const visibleVaultAssets = useMemo(() => {
     if (vaultFolder === 'all') return vaultAssets;
