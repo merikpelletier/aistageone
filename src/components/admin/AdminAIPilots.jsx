@@ -88,7 +88,7 @@ export default function AdminAIPilots() {
       content: { creative_brief: '', scenarios: [], creative_freedom: '' },
       tool_targets: ['fotoplay', 'shoot', 'compose', 'timeline'],
       priority: 100,
-      sort_order: (blocks.find((item) => item.block_key === 'story-structure')?.sort_order ?? 3) + 0.5,
+      sort_order: Math.floor(Number(blocks.find((item) => item.block_key === 'story-structure')?.sort_order ?? 3)) + 1,
       is_active: true,
     };
     return [...blocks, scenario].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
