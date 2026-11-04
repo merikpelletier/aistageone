@@ -290,7 +290,7 @@ function PilotDetails({ access, user, onMessage }) {
             </div>
             <Button type="button" onClick={() => addMutation.mutate()} disabled={addMutation.isPending || uploading || !draft.name.trim()} className="w-full bg-[#23c7be] text-black hover:bg-[#23c7be]/85"><Plus size={16} className="mr-2"/>{addMutation.isPending ? 'Saving addition…' : 'Add to My AI Pilot'}</Button>
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );
