@@ -156,8 +156,11 @@ export default function AdminAIPilots() {
       if (error) throw error;
       return data;
     }
-    const { data, error } = await supabase.from('ai_pilot_blocks').insert(payload).select('*').single();
+    const { data, error } = await supabase.from('ai_pilot_blocks').upsert(payload, { onConflict: 'version_id,block_key' }).select('*').single();
     if (error) throw error;
+    setEditingBlock((current) => current?.block_key === data.block_key && !current.id && current.version_id === data.version_id
+      ? { ...current, id: data.id }
+      : current);
     return data;
   };
 
