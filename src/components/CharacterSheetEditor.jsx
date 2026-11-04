@@ -285,10 +285,6 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const [promptHistory, setPromptHistory] = useState([]);
   const [generationHistory, setGenerationHistory] = useState([]);
   const [selectedModel, setSelectedModel] = useState(null);
-  const [pilotSelection, setPilotSelection] = useState('');
-
-  const [pilotCharacterId, setPilotCharacterId] = useState('');
-  const [pilotLookId, setPilotLookId] = useState('');
   const { data: pilotLibrary = [], isLoading: pilotsLoading, error: pilotsError } = useQuery({
     queryKey: ['actor-ai-pilots', userEmail],
     enabled: Boolean(userEmail),
@@ -337,9 +333,6 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
       });
     },
   });
-  const activePilot = pilotLibrary.find((p) => p.id === pilotSelection);
-  const activePilotCharacter = activePilot?.characters.find((a) => a.id === pilotCharacterId);
-  const activePilotLook = activePilot?.looks.find((a) => a.id === pilotLookId);
 
   const pricingInput = {
     aspect_ratio: aspectRatio,
@@ -459,40 +452,6 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
     setLookReferences((current) => current.some((item) => item.url === asset.url) ? current : [...current, asset]);
   };
 
-
-  const loadPilotCharacter = () => {
-    if (!activePilotCharacter) return;
-    setName(activePilotCharacter.name || '');
-    setBio(activePilotCharacter.bio || '');
-    setTraits(activePilotCharacter.traits || '');
-    toast.success('AI Pilot character loaded.');
-  };
-  const loadPilotReference = () => {
-    const url = activePilotCharacter?.images?.[0];
-    if (!url) return toast.error('No reference image available for this character.');
-    setSourceSheet({ url, title: activePilotCharacter.name + ' · AI Pilot', source: 'ai_pilot', sourceAssetId: null });
-    setSourceMode('sheet');
-    setGeneratedSheet(null);
-    toast.success('Character image selected as source.');
-  };
-  const addPilotLook = () => {
-    if (!activePilotLook) return;
-    const instructions = Object.entries(activePilotLook).filter(([key, value]) =>
-      !['id', 'source', 'name', 'images', 'media', 'result_images', 'can_combine'].includes(key)
-      && typeof value === 'string' && value.trim()
-    ).map(([key, value]) => key.replace(/_/g, ' ') + ': ' + value.trim());
-    const prompt = ['Apply this look while preserving the character identity and proportions.',
-      activePilotLook.name ? 'Look: ' + activePilotLook.name : '', ...instructions].filter(Boolean).join('\n');
-    setPromptHistory((history) => [...history, transformationPrompt]);
-    setTransformationPrompt((current) => [current.trim(), prompt].filter(Boolean).join('\n\n'));
-    setLookReferences((current) => {
-      const urls = new Set(current.map((item) => item.url));
-      const newRefs = (activePilotLook.images || []).filter((url) => !urls.has(url))
-        .map((url, index) => ({ url, title: activePilotLook.name + ' · ' + (index + 1), source: 'ai_pilot', sourceAssetId: null }));
-      return [...current, ...newRefs];
-    });
-    toast.success('AI Pilot transformation prompt and references added.');
-  };
 
   const addPromptIdea = (idea) => {
     const text = idea?.content?.trim();
@@ -746,22 +705,6 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
           <main className="space-y-5">
             <section className="rounded-[28px] border border-white/10 bg-[#121214] p-5 sm:p-7">
               <StepTitle number="1" title="Identity" description="Name the character and define who they are." />
-              <div className="mb-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
-                <label className="min-w-0 text-[11px] font-bold uppercase tracking-wider text-white/50">AI Pilot
-                  <select value={pilotSelection} disabled={pilotsLoading} onChange={(event) => { setPilotSelection(event.target.value); setPilotCharacterId(''); setPilotLookId(''); }} className="mt-1.5 w-full rounded-xl border border-white/15 bg-black/35 px-3 py-2.5 text-sm font-semibold normal-case tracking-normal text-white">
-                    <option value="">{pilotsLoading ? 'Loading…' : 'My AI Pilots (optional)'}</option>
-                    {pilotLibrary.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}
-                  </select>
-                </label>
-                <label className="min-w-0 text-[11px] font-bold uppercase tracking-wider text-white/50">Character
-                  <select value={pilotCharacterId} disabled={!activePilot} onChange={(event) => setPilotCharacterId(event.target.value)} className="mt-1.5 w-full rounded-xl border border-white/15 bg-black/35 px-3 py-2.5 text-sm font-semibold normal-case tracking-normal text-white disabled:opacity-40">
-                    <option value="">Choose character</option>
-                    {activePilot?.characters.map((character) => <option key={character.id} value={character.id}>{character.name} ({character.source})</option>)}
-                  </select>
-                </label>
-                <button type="button" onClick={() => { loadPilotCharacter(); if (activePilotCharacter?.images?.length) loadPilotReference(); }} disabled={!activePilotCharacter} className="rounded-xl border border-white/20 bg-white/[0.08] px-4 py-2.5 text-sm font-bold text-white hover:bg-white/15 disabled:opacity-35">Load</button>
-              </div>
-              {pilotsError && <p className="mb-3 text-xs text-red-300">{pilotsError.message}</p>}
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-xs font-black uppercase tracking-wider text-white/60">Character name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Vesper, The Oracle..." className="mt-2 w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-3.5 text-base font-bold normal-case tracking-normal text-white outline-none placeholder:text-white/20 focus:border-amber-300/60" /></label>
                 <label className="text-xs font-black uppercase tracking-wider text-white/60">Traits<input value={traits} onChange={(event) => setTraits(event.target.value)} placeholder="Bold, mysterious, loyal" className="mt-2 w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-3.5 text-base font-bold normal-case tracking-normal text-white outline-none placeholder:text-white/20 focus:border-amber-300/60" /></label>
@@ -790,15 +733,6 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
 
             <section className="rounded-[28px] border border-white/10 bg-[#121214] p-5 sm:p-7">
               <StepTitle number="3" title="Character design" description="Combine multiple references into one character look" />
-              {activePilot && <div className="mb-4 flex flex-wrap items-end gap-2">
-                <label className="min-w-0 flex-1 text-[11px] font-bold uppercase tracking-wider text-white/50">AI Pilot transformation look
-                  <select value={pilotLookId} onChange={(event) => setPilotLookId(event.target.value)} className="mt-1.5 w-full rounded-xl border border-white/15 bg-black/35 px-3 py-2.5 text-sm font-semibold normal-case tracking-normal text-white">
-                    <option value="">Choose a look or transformation prompt</option>
-                    {activePilot.looks.map((look) => <option key={look.id} value={look.id}>{look.name || 'Unnamed look'} ({look.source})</option>)}
-                  </select>
-                </label>
-                <button type="button" onClick={addPilotLook} disabled={!activePilotLook} className="rounded-xl border border-white/20 bg-white/[0.08] px-4 py-2.5 text-sm font-bold text-white hover:bg-white/15 disabled:opacity-35">Apply look</button>
-              </div>}
               <div className="space-y-4">
                 {lookReferences.length ? (
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
