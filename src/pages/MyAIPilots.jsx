@@ -41,6 +41,25 @@ function ContentObject({ value }) {
   ))}</div>;
 }
 
+function PilotLooks({ content }) {
+  const looks = Array.isArray(content?.looks) ? content.looks : [];
+  if (!looks.length) return <p className="text-sm text-white/45">No looks available.</p>;
+  return <div className="grid gap-4 md:grid-cols-2">
+    {looks.map((look, index) => {
+      const images = Array.isArray(look.result_images) ? look.result_images.map((entry) => typeof entry === 'string' ? entry : entry?.url).filter(Boolean) : [];
+      const details = Object.fromEntries(Object.entries(look).filter(([key, value]) => !['id', 'name', 'result_images'].includes(key) && !isEmpty(value)));
+      return <div key={look.id || index} className="overflow-hidden border border-white/10 bg-[#111418]">
+        <div className="border-b border-white/10 p-3"><p className="text-base font-semibold text-white">{look.name || 'Unnamed Look'}</p>{look.type && <p className="mt-1 text-xs capitalize text-[#23c7be]">{String(look.type).replaceAll('_', ' ')}</p>}</div>
+        {images.length > 0 && <div className="grid grid-cols-2 gap-2 p-3">{images.map((url, i) => <a key={i} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden bg-black/50" title="Open look result"><img src={url} alt={`${look.name || 'Look'} result ${i + 1}`} className="aspect-[3/4] w-full object-contain" loading="lazy" /></a>)}</div>}
+        <details className="group border-t border-white/10" open={!images.length}>
+          <summary className="flex cursor-pointer list-none items-center justify-between p-3 text-sm font-semibold text-[#23c7be]">Look details <ChevronDown size={16} className="group-open:rotate-180" /></summary>
+          <div className="border-t border-white/10 p-3"><ContentObject value={details} /></div>
+        </details>
+      </div>;
+    })}
+  </div>;
+}
+
 const FORMAT_GUIDANCE = {
   fotoplay: 'FotoPlay · Nine visual/dialogue segments per chapter. The nine-season-chapter structure is separate from the nine segments inside each FotoPlay chapter.',
   audio: 'Audio drama · Adapt the episode to narration, voices, music and sound effects. No fixed duration is imposed.',
@@ -160,7 +179,7 @@ function PilotDetails({ access, user, onMessage }) {
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 text-sm font-semibold text-white hover:bg-white/[0.04]">
         {block.title || humanize(block.block_key)}<ChevronDown size={16} className="text-[#23c7be] group-open:rotate-180" />
       </summary>
-      <div className="border-t border-white/10 p-4">{block.block_key === 'scenario' ? <ScenarioGuide content={block.content || {}} /> : <ContentObject value={block.content || {}} />}</div>
+      <div className="border-t border-white/10 p-4">{block.block_key === 'scenario' ? <ScenarioGuide content={block.content || {}} /> : block.block_key === 'looks' ? <PilotLooks content={block.content || {}} /> : <ContentObject value={block.content || {}} />}</div>
     </details>
   )) : <p className="py-8 text-sm text-white/45">No direction available in this section.</p>;
   return (
