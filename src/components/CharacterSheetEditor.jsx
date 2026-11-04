@@ -816,7 +816,20 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                             </div>
                             <button type="button" onClick={() => setTemplateMenuOpen(false)} className="rounded-full bg-white/10 p-1.5 text-white/60 hover:bg-white/20 hover:text-white" aria-label="Close prompt ideas"><X size={15} /></button>
                           </div>
-                          {promptIdeasLoading ? (
+                          <div className="flex gap-2 border-b border-white/10 p-3">
+                            <button type="button" onClick={() => setPromptIdeaSource('ideas')} className={`rounded-lg px-3 py-2 text-xs font-bold ${promptIdeaSource === 'ideas' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/70'}`}>Prompt Ideas</button>
+                            <button type="button" onClick={() => setPromptIdeaSource('pilot')} className={`rounded-lg px-3 py-2 text-xs font-bold ${promptIdeaSource === 'pilot' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/70'}`}>My AI Pilots</button>
+                          </div>
+                          {promptIdeaSource === 'pilot' ? (
+                            <div className="max-h-80 space-y-3 overflow-y-auto p-3">
+                              {pilotLibrary.flatMap((pilot) => pilot.looks.map((look) => ({ pilot, look }))).length ? pilotLibrary.flatMap((pilot) => pilot.looks.map((look) => ({ pilot, look }))).map(({ pilot, look }) => (
+                                <button type="button" key={pilot.id + ':' + look.id} onClick={() => { addPilotTransformation(look); setTemplateMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2 text-left hover:border-cyan-300/50">
+                                  {look.images?.[0] ? <img src={look.images[0]} alt="" className="h-16 w-14 shrink-0 rounded-lg object-cover" /> : <div className="flex h-16 w-14 shrink-0 items-center justify-center rounded-lg bg-white/5"><WandSparkles size={18} className="text-white/35" /></div>}
+                                  <span className="min-w-0"><span className="block text-sm font-bold text-white">{look.name || 'Transformation look'}</span><span className="mt-1 block text-xs text-white/45">{pilot.name} · {look.source}</span></span>
+                                </button>
+                              )) : <p className="py-5 text-center text-sm text-white/45">No transformation looks available in your AI Pilots.</p>}
+                            </div>
+                          ) : promptIdeasLoading ? (
                             <div className="flex items-center justify-center gap-2 p-5 text-xs font-bold text-white/50"><Loader2 size={15} className="animate-spin" />Loading ideas…</div>
                           ) : promptIdeas.length ? (
                             <>
