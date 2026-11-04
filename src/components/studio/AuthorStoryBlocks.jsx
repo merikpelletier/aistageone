@@ -217,7 +217,7 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
 
   if (view === 'setup' && project) return <ProjectSetup
     user={user} project={project} setProject={setProject} shopCharacters={shopCharacters} shopSets={shopSets}
-    saving={saving} availablePilots={availablePilots} loadingPilot={loadingPilot} onLoadPilot={loadPilot} onBack={() => setView(project.id ? 'workspace' : 'dashboard')} onSave={(foundationComplete) => saveProject(foundationComplete ? 'workspace' : 'setup')}
+    availablePilots={availablePilots} loadingPilot={loadingPilot} onLoadPilot={loadPilot} saving={saving} onBack={() => setView(project.id ? 'workspace' : 'dashboard')} onSave={(foundationComplete) => saveProject(foundationComplete ? 'workspace' : 'setup')}
   />;
 
   if (view === 'workspace' && project) return <AuthorProductionWorkspace
