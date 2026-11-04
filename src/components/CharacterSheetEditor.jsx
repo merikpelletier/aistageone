@@ -459,6 +459,41 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
     setLookReferences((current) => current.some((item) => item.url === asset.url) ? current : [...current, asset]);
   };
 
+
+  const loadPilotCharacter = () => {
+    if (!activePilotCharacter) return;
+    setName(activePilotCharacter.name || '');
+    setBio(activePilotCharacter.bio || '');
+    setTraits(activePilotCharacter.traits || '');
+    toast.success('AI Pilot character loaded.');
+  };
+  const loadPilotReference = () => {
+    const url = activePilotCharacter?.images?.[0];
+    if (!url) return toast.error('No reference image available for this character.');
+    setSourceSheet({ url, title: activePilotCharacter.name + ' · AI Pilot', source: 'ai_pilot', sourceAssetId: null });
+    setSourceMode('sheet');
+    setGeneratedSheet(null);
+    toast.success('Character image selected as source.');
+  };
+  const addPilotLook = () => {
+    if (!activePilotLook) return;
+    const instructions = Object.entries(activePilotLook).filter(([key, value]) =>
+      !['id', 'source', 'name', 'images', 'media', 'result_images', 'can_combine'].includes(key)
+      && typeof value === 'string' && value.trim()
+    ).map(([key, value]) => key.replace(/_/g, ' ') + ': ' + value.trim());
+    const prompt = ['Apply this look while preserving the character identity and proportions.',
+      activePilotLook.name ? 'Look: ' + activePilotLook.name : '', ...instructions].filter(Boolean).join('\n');
+    setPromptHistory((history) => [...history, transformationPrompt]);
+    setTransformationPrompt((current) => [current.trim(), prompt].filter(Boolean).join('\n\n'));
+    setLookReferences((current) => {
+      const urls = new Set(current.map((item) => item.url));
+      const newRefs = (activePilotLook.images || []).filter((url) => !urls.has(url))
+        .map((url, index) => ({ url, title: activePilotLook.name + ' · ' + (index + 1), source: 'ai_pilot', sourceAssetId: null }));
+      return [...current, ...newRefs];
+    });
+    toast.success('AI Pilot transformation prompt and references added.');
+  };
+
   const addPromptIdea = (idea) => {
     const text = idea?.content?.trim();
     if (!text) return;
