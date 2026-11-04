@@ -744,6 +744,48 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
           </aside>
 
           <main className="space-y-5">
+            <section className="rounded-[28px] border border-cyan-300/25 bg-[#101c20] p-5 sm:p-7">
+              <div className="mb-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">AI Pilot</p>
+                <h3 className="mt-1 text-lg font-black text-white">Characters & transformation looks</h3>
+                <p className="mt-1 text-xs text-white/45">Official material and My Additions</p>
+              </div>
+              <label className="block text-xs font-black uppercase tracking-wider text-white/60">My AI Pilot
+                <select value={pilotSelection} disabled={pilotsLoading} onChange={(event) => { setPilotSelection(event.target.value); setPilotCharacterId(''); setPilotLookId(''); }} className="mt-2 w-full rounded-xl border border-white/15 bg-[#111418] px-3 py-3 text-sm font-semibold normal-case tracking-normal text-white">
+                  <option value="">{pilotsLoading ? 'Loading AI Pilots…' : 'Select an AI Pilot'}</option>
+                  {pilotLibrary.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}
+                </select>
+              </label>
+              {pilotsError && <p className="mt-3 text-xs text-red-300">{pilotsError.message}</p>}
+              {activePilot && <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div className="space-y-3">
+                  <label className="block text-xs font-black uppercase tracking-wider text-white/60">Characters
+                    <select value={pilotCharacterId} onChange={(event) => setPilotCharacterId(event.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#111418] px-3 py-3 text-sm font-semibold normal-case tracking-normal text-white">
+                      <option value="">Choose a character</option>
+                      {activePilot.characters.map((character) => <option key={character.id} value={character.id}>{character.name} ({character.source})</option>)}
+                    </select>
+                  </label>
+                  {activePilotCharacter && <>
+                    {(activePilotCharacter.images || []).length > 0 && <div className="flex gap-2 overflow-x-auto">{activePilotCharacter.images.slice(0, 5).map((url, i) => <img key={i} src={url} alt="Character reference" className="h-24 w-20 shrink-0 rounded-lg object-cover" />)}</div>}
+                    <button type="button" onClick={loadPilotCharacter} className="w-full rounded-xl bg-cyan-300 px-4 py-3 text-xs font-black text-black">Load character identity</button>
+                    {(activePilotCharacter.images || []).length > 0 && <button type="button" onClick={loadPilotReference} className="w-full rounded-xl border border-white/20 px-4 py-3 text-xs font-black text-white">Use reference as character source</button>}
+                  </>}
+                </div>
+                <div className="space-y-3">
+                  <label className="block text-xs font-black uppercase tracking-wider text-white/60">Transformation looks
+                    <select value={pilotLookId} onChange={(event) => setPilotLookId(event.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-[#111418] px-3 py-3 text-sm font-semibold normal-case tracking-normal text-white">
+                      <option value="">Choose a look / prompt</option>
+                      {activePilot.looks.map((look) => <option key={look.id} value={look.id}>{look.name || 'Unnamed look'} ({look.source})</option>)}
+                    </select>
+                  </label>
+                  {activePilotLook && <>
+                    {(activePilotLook.images || []).length > 0 && <div className="flex gap-2 overflow-x-auto">{activePilotLook.images.slice(0, 5).map((url, i) => <img key={i} src={url} alt="Look reference" className="h-24 w-20 shrink-0 rounded-lg object-cover" />)}</div>}
+                    <button type="button" onClick={addPilotLook} className="w-full rounded-xl bg-cyan-300 px-4 py-3 text-xs font-black text-black">Add transformation prompt & references</button>
+                  </>}
+                </div>
+              </div>}
+              {!pilotsLoading && !pilotLibrary.length && !pilotsError && <p className="mt-3 text-xs text-white/45">Acquired AI Pilots appear here. Actor can still be used without a Pilot.</p>}
+            </section>
             <section className="rounded-[28px] border border-white/10 bg-[#121214] p-5 sm:p-7">
               <StepTitle number="1" title="Identity" description="Name the character and define who they are." />
               <div className="grid gap-4 sm:grid-cols-2">
