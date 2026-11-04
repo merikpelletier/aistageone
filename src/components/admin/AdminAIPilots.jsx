@@ -77,6 +77,23 @@ export default function AdminAIPilots() {
     },
   });
 
+  const directionBlocks = useMemo(() => {
+    if (!selectedVersion?.id) return blocks;
+    if (blocks.some((item) => item.block_key === 'scenario')) return blocks;
+    const scenario = {
+      version_id: selectedVersion.id,
+      block_key: 'scenario',
+      block_type: 'custom',
+      title: 'Scenario',
+      content: { creative_brief: '', scenarios: [], creative_freedom: '' },
+      tool_targets: ['fotoplay', 'shoot', 'compose', 'timeline'],
+      priority: 100,
+      sort_order: (blocks.find((item) => item.block_key === 'story-structure')?.sort_order ?? 3) + 0.5,
+      is_active: true,
+    };
+    return [...blocks, scenario].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+  }, [blocks, selectedVersion?.id]);
+
   React.useEffect(() => { if (selectedPilot) setPilotDraft({ ...selectedPilot }); }, [selectedPilot]);
   React.useEffect(() => { if (versions.length && !versions.some((version) => version.id === selectedVersionId)) setSelectedVersionId(versions[0].id); }, [versions, selectedVersionId]);
   React.useEffect(() => { setVersionNotesDraft(selectedVersion?.changelog || ''); }, [selectedVersion?.id, selectedVersion?.changelog]);
@@ -357,7 +374,7 @@ export default function AdminAIPilots() {
                   <div className="border-b lg:border-b-0 lg:border-r border-white/10 bg-[#0b0d0f]">
                     <div className="p-3 border-b border-white/10"><div className="text-xs uppercase tracking-[0.18em] text-white/45">Production Direction</div></div>
                     <div className="max-h-[60vh] overflow-y-auto">
-                      {blocks.map((block) => <button key={block.id} type="button" onClick={() => selectBlock(block)} className={`w-full text-left px-3 py-3 border-b border-white/8 hover:bg-white/[0.04] ${editingBlock?.id === block.id ? 'bg-white/[0.06] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}><div className="text-sm text-white">{block.title}</div></button>)}
+                      {directionBlocks.map((block) => <button key={block.id || block.block_key} type="button" onClick={() => selectBlock(block)} className={`w-full text-left px-3 py-3 border-b border-white/8 hover:bg-white/[0.04] ${(editingBlock?.id ? editingBlock.id === block.id : editingBlock?.block_key === block.block_key) ? 'bg-white/[0.06] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}><div className="text-sm text-white">{block.title}</div></button>)}
                     </div>
                   </div>
                   <div className="p-4 md:p-5">
