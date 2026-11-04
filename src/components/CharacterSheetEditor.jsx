@@ -75,10 +75,12 @@ function SourceButton({ icon: Icon, label, onClick, tone }) {
 
 function AssetPicker({
   picker, onClose, onSelect, vaultAssets, catalogAssets, categories, subcategories,
+  pilotLibrary = [], loadingPilots = false, pilotError = null,
   loadingCatalog, catalogError, onManageVault, embedded = false,
 }) {
   const [source, setSource] = useState(picker.source || 'vault');
   const [search, setSearch] = useState('');
+  const [pilotFilter, setPilotFilter] = useState('all');
   const pattern = purposePattern(picker.purpose);
   const initialCategoryId = useMemo(() => {
     if (picker.purpose === 'look') return 'all';
@@ -94,15 +96,21 @@ function AssetPicker({
   );
   const items = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const pool = source === 'vault'
-      ? vaultAssets.filter((asset) => asset.media_type === 'image')
+    const pilotAssets = pilotLibrary.filter((pilot) => pilotFilter === 'all' || pilot.id === pilotFilter).flatMap((pilot) =>
+      (picker.purpose === 'look' ? pilot.looks : pilot.characters).filter((item) => item.images?.length).map((item) => ({
+        id: pilot.id + ':' + item.id, title: item.name, pilot_name: pilot.name,
+        origin: item.source, images: item.images, character: picker.purpose === 'look' ? null : item,
+      }))
+    );
+    const pool = source === 'vault' ? vaultAssets.filter((asset) => asset.media_type === 'image')
+      : source === 'pilot' ? pilotAssets
       : catalogAssets.filter((asset) => (
         catalogImages(asset).length
         && (catalogCategoryId === 'all' || asset.category_id === catalogCategoryId)
         && (catalogSubcategoryId === 'all' || asset.subcategory_id === catalogSubcategoryId)
       ));
     return pool.filter((asset) => !term || `${asset.name || ''} ${asset.title || ''} ${asset.actor_name || ''} ${asset.creator_name || ''} ${(asset.tags || []).join(' ')} ${categoryText(categoryById.get(asset.category_id))}`.toLowerCase().includes(term));
-  }, [catalogAssets, catalogCategoryId, catalogSubcategoryId, categoryById, search, source, vaultAssets]);
+  }, [catalogAssets, catalogCategoryId, catalogSubcategoryId, categoryById, search, source, vaultAssets, pilotLibrary, pilotFilter, picker.purpose]);
 
   return (
     <motion.div
@@ -122,15 +130,24 @@ function AssetPicker({
           <button type="button" onClick={onClose} className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20"><X size={19} /></button>
         </header>
         <div className="flex flex-col gap-3 border-b border-white/10 p-4 sm:flex-row">
-          <div className="grid grid-cols-2 gap-2 sm:w-80">
+          <div className="grid grid-cols-3 gap-2 sm:w-[31rem]">
             <button type="button" onClick={() => setSource('vault')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black ${source === 'vault' ? 'bg-amber-300 text-black' : 'bg-white/[0.06] text-white'}`}><Library size={17} />My Vault</button>
             <button type="button" onClick={() => setSource('shop')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black ${source === 'shop' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><Store size={17} />Assets Shop</button>
+            <button type="button" onClick={() => setSource('pilot')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black ${source === 'pilot' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><WandSparkles size={17} />AI Pilot</button>
           </div>
           <label className="flex flex-1 items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4">
             <Search size={17} className="text-white/45" />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search actors, characters or costumes" className="w-full bg-transparent py-3 text-sm text-white outline-none placeholder:text-white/30" />
           </label>
         </div>
+        {source === 'pilot' && <div className="border-b border-white/10 px-4 py-3 sm:px-6">
+          <label className="flex items-center gap-3 text-xs font-bold text-white/65">AI Pilot
+            <select value={pilotFilter} onChange={(event) => setPilotFilter(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black px-3 py-2 text-sm text-white">
+              <option value="all">All my AI Pilots</option>
+              {pilotLibrary.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}
+            </select>
+          </label>
+        </div>}
         {source === 'shop' && (
           <>
             <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6">
@@ -156,14 +173,18 @@ function AssetPicker({
           </>
         )}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {source === 'shop' && loadingCatalog ? (
+          {source === 'pilot' && loadingPilots ? (
+            <div className="flex h-52 items-center justify-center"><Loader2 className="animate-spin text-cyan-300" /></div>
+          ) : source === 'pilot' && pilotError ? (
+            <div className="p-8 text-center text-red-300">{pilotError.message}</div>
+          ) : source === 'shop' && loadingCatalog ? (
             <div className="flex h-52 items-center justify-center"><Loader2 className="animate-spin text-cyan-300" /></div>
           ) : source === 'shop' && catalogError ? (
             <div className="rounded-2xl border border-red-400/25 bg-red-400/10 p-8 text-center text-red-100">OLOShop could not load. Try again.</div>
           ) : items.length ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {items.map((asset) => {
-                const images = source === 'vault' ? [asset.url] : catalogImages(asset);
+                const images = source === 'vault' ? [asset.url] : source === 'pilot' ? asset.images : catalogImages(asset);
                 const category = categoryById.get(asset.category_id);
                 return (
                   <article key={`${source}-${asset.id}`} className="overflow-hidden rounded-2xl border border-white/10 bg-black transition hover:border-amber-300/50">
@@ -172,7 +193,7 @@ function AssetPicker({
                         <button
                           type="button"
                           key={`${asset.id}-${image}`}
-                          onClick={() => onSelect({ url: image, title: `${asset.title || asset.name || 'Reference'} ${index + 1}`, source, sourceAssetId: source === 'shop' ? asset.id : null })}
+                          onClick={() => onSelect({ url: image, title: `${asset.title || asset.name || 'Reference'} ${index + 1}`, source, sourceAssetId: source === 'shop' ? asset.id : null, character: source === 'pilot' ? asset.character : null })}
                           className="group relative aspect-[4/3] overflow-hidden rounded-lg bg-black"
                           title={picker.purpose === 'sheet' ? `Use image ${index + 1} as the complete reference sheet` : `Use image ${index + 1}`}
                         >
@@ -183,7 +204,7 @@ function AssetPicker({
                     </div>
                     <div className="p-3">
                       <p className="truncate text-sm font-black text-white">{asset.title || asset.name || 'Untitled'}</p>
-                      <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-wider text-white/40">{source === 'shop' ? (category?.label_en || category?.label_fr || 'OLOShop') : 'My Vault'}</p>
+                      <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-wider text-white/40">{source === 'pilot' ? `${asset.pilot_name} · ${asset.origin}` : source === 'shop' ? (category?.label_en || category?.label_fr || 'OLOShop') : 'My Vault'}</p>
                       {picker.purpose === 'sheet' && <p className="mt-2 text-[11px] leading-relaxed text-cyan-100/65">Choose the gallery image that contains the complete character sheet.</p>}
                     </div>
                   </article>
@@ -194,7 +215,7 @@ function AssetPicker({
             <div className="flex min-h-52 flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 text-center">
               <ImagePlus size={28} className="text-white/25" />
               <p className="mt-3 font-bold text-white">No matching images</p>
-              <p className="mt-1 text-sm text-white/45">{source === 'vault' ? 'Add images to your Vault or choose OLOShop.' : 'No published OLOShop asset matches this selection.'}</p>
+              <p className="mt-1 text-sm text-white/45">{source === 'vault' ? 'Add images to your Vault or choose Assets Shop.' : source === 'pilot' ? 'No matching character or look images in your AI Pilots.' : 'No published Assets Shop asset matches this selection.'}</p>
             </div>
           )}
         </div>
@@ -842,6 +863,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
         <AssetPicker
           picker={picker} onClose={() => setPicker(null)} onSelect={selectAsset}
           vaultAssets={vaultAssets} catalogAssets={catalogAssets} categories={categories} subcategories={subcategories}
+          pilotLibrary={pilotLibrary} loadingPilots={pilotsLoading} pilotError={pilotsError}
           loadingCatalog={loadingCatalog} catalogError={catalogError}
           onManageVault={() => { setPicker(null); setVaultOpen(true); }}
           embedded={embedded}
