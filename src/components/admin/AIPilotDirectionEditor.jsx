@@ -137,72 +137,85 @@ function PromptCollectionEditor({ block, setBlock, readOnly, onSave, saving }) {
 }
 
 
+const EPISODE_COUNT = 9;
+const VIDEO_PARTS = [
+  ['setup', 'Part 1 · Setup', '0–30 seconds · Establish the situation'],
+  ['development', 'Part 2 · Development', '30–60 seconds · Develop the conflict'],
+  ['turn', 'Part 3 · Turning Point', '60–90 seconds · Introduce a change or escalation'],
+  ['hook', 'Part 4 · Hook', '90–120 seconds · End with a payoff or forward hook'],
+];
+
 function ScenarioEditor({ block, setBlock, readOnly, onSave, saving }) {
   const content = block.content || {};
-  const scenarios = Array.isArray(content.scenarios) ? content.scenarios : [];
-  const [expandedId, setExpandedId] = useState(null);
+  const stored = Array.isArray(content.scenarios) ? content.scenarios : [];
+  const episodes = Array.from({ length: EPISODE_COUNT }, (_, index) => stored[index] || { id: `episode-${index + 1}`, title: '', premise: '', outline: '', scene_ideas: '', creative_options: '', parts: {} });
+  const [expandedIndex, setExpandedIndex] = useState(null);
   const updateContent = (patch) => setBlock({ ...block, content: { ...content, ...patch } });
-  const updateScenario = (id, patch) => updateContent({
-    scenarios: scenarios.map((item) => item.id === id ? { ...item, ...patch } : item),
+  const updateEpisode = (index, patch) => updateContent({
+    scenarios: [...episodes.map((ep, i) => i === index ? { ...ep, ...patch } : ep), ...stored.slice(EPISODE_COUNT)],
   });
-  const addScenario = () => {
-    const id = makeId('scenario');
-    updateContent({ scenarios: [...scenarios, { id, title: '', premise: '', outline: '', scene_ideas: '', creative_options: '' }] });
-    setExpandedId(id);
-  };
-  const removeScenario = (id) => {
-    updateContent({ scenarios: scenarios.filter((item) => item.id !== id) });
-    if (expandedId === id) setExpandedId(null);
-  };
-  const field = (label, key, value, onChange, rows = 4, placeholder = '') => (
+  const input = (label, value, onChange, rows = 4, placeholder = '') => (
     <label className="block space-y-2">
       <span className="text-xs text-white/55">{label}</span>
-      <Textarea className={CONTROL_CLASS} rows={rows} disabled={readOnly} placeholder={placeholder} value={value || ''} onChange={(event) => onChange(event.target.value)} />
+      <Textarea className={CONTROL_CLASS} rows={rows} disabled={readOnly} placeholder={placeholder} value={value || ''} onChange={(e) => onChange(e.target.value)} />
     </label>
   );
-
   return (
     <div className="max-w-4xl space-y-5">
       <div>
-        <div className="text-lg text-white">Scenario</div>
-        <p className="mt-1 text-xs text-white/45">Creative starting points for members to develop their own version of the story. These are inspiration, not mandatory scripts.</p>
+        <div className="text-lg text-white">Season Scenario</div>
+        <p className="mt-1 text-xs text-white/45">One central theme develops through nine episodes or chapters and affects the lives of the characters. The creator chooses the production format.</p>
       </div>
-      {field('Creative Brief', 'creative_brief', content.creative_brief, (value) => updateContent({ creative_brief: value }), 5, 'The dramatic universe, essential premise and opportunities for original stories.')}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-sm text-white">Scenario Ideas ({scenarios.length})</div>
-          <p className="mt-1 text-xs text-white/40">Offer one or several story directions members can explore or adapt.</p>
-        </div>
-        {!readOnly && <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={addScenario}><Plus size={14} className="mr-1" /> Add Scenario</Button>}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="border border-white/10 bg-white/[0.03] p-3"><div className="text-2xl text-white">9</div><div className="text-xs text-white/50">Episodes / chapters per season</div></div>
+        <div className="border border-white/10 bg-white/[0.03] p-3"><div className="text-2xl text-white">120s</div><div className="text-xs text-white/50">Recommended video episode</div></div>
+        <div className="border border-white/10 bg-white/[0.03] p-3"><div className="text-2xl text-white">4 × 30s</div><div className="text-xs text-white/50">Individually publishable video parts</div></div>
       </div>
-      {!scenarios.length && <div className="border border-white/10 p-5 text-sm text-white/35">No scenario ideas yet.</div>}
+      {input('Central Theme / Creative Brief', content.creative_brief, (value) => updateContent({ creative_brief: value }), 5, 'The central season theme and how it affects the characters.')}
+      <div className="border border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">
+        <div className="font-medium text-white">Production format guidance</div>
+        <p className="mt-2">FotoPlay: nine image/dialogue segments per chapter. Audio drama and e-book: adapt the nine-chapter story to narration or text without fixed running time. Video: 120 seconds per episode, planned as four 30-second parts; Shoot and Timeline may extend the result.</p>
+        <p className="mt-2 text-xs text-white/45">Video generation costs more. Plan reusable assets, images, narration and editing separately from newly generated video footage. This is guidance, not a credit estimate.</p>
+      </div>
+      <div>
+        <div className="text-sm text-white">Season Episodes (9)</div>
+        <p className="mt-1 text-xs text-white/40">Define each episode's narrative development. The four short-video parts guide the pacing without locking audio, e-book or FotoPlay into video timing.</p>
+      </div>
       <div className="space-y-2">
-        {scenarios.map((scenario, index) => {
-          const expanded = expandedId === scenario.id;
+        {episodes.map((episode, index) => {
+          const expanded = expandedIndex === index;
           return (
-            <div key={scenario.id} className="border border-white/10 bg-black/20">
-              <div className="flex min-h-11 items-center gap-2 px-2">
-                <button type="button" onClick={() => setExpandedId(expanded ? null : scenario.id)} className="flex min-w-0 flex-1 items-center gap-2 py-2 text-left">
-                  {expanded ? <ChevronDown size={16} className="shrink-0 text-white/50" /> : <ChevronRight size={16} className="shrink-0 text-white/50" />}
-                  <span className="truncate text-sm text-white">{scenario.title || `Scenario ${index + 1}`}</span>
-                </button>
-                {!readOnly && <button type="button" className={REMOVE_BUTTON_CLASS} onClick={() => removeScenario(scenario.id)} aria-label="Remove scenario" title="Remove scenario"><Trash2 size={16} /></button>}
-              </div>
-              {expanded && <div className="space-y-3 border-t border-white/10 p-3">
+            <div key={episode.id || index} className="border border-white/10 bg-black/20">
+              <button type="button" onClick={() => setExpandedIndex(expanded ? null : index)} className="flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left">
+                {expanded ? <ChevronDown size={16} className="shrink-0 text-white/50" /> : <ChevronRight size={16} className="shrink-0 text-white/50" />}
+                <span className="shrink-0 text-xs font-semibold text-[var(--studio-accent)]">EP {index + 1}</span>
+                <span className="min-w-0 truncate text-sm text-white">{episode.title || 'Untitled episode'}</span>
+              </button>
+              {expanded && <div className="space-y-4 border-t border-white/10 p-3">
                 <label className="block space-y-2">
-                  <span className="text-xs text-white/55">Scenario Title</span>
-                  <Input className={CONTROL_CLASS} disabled={readOnly} value={scenario.title || ''} placeholder="e.g. A Secret Behind the Runway" onChange={(event) => updateScenario(scenario.id, { title: event.target.value })} />
+                  <span className="text-xs text-white/55">Episode / Chapter Title</span>
+                  <Input className={CONTROL_CLASS} disabled={readOnly} value={episode.title || ''} onChange={(e) => updateEpisode(index, { title: e.target.value })} />
                 </label>
-                {field('Premise / Hook', 'premise', scenario.premise, (value) => updateScenario(scenario.id, { premise: value }), 3, 'What kicks off this possible story?')}
-                {field('Suggested Storyline', 'outline', scenario.outline, (value) => updateScenario(scenario.id, { outline: value }), 6, 'Optional narrative progression, conflicts and possible turns.')}
-                {field('Scene Inspirations', 'scene_ideas', scenario.scene_ideas, (value) => updateScenario(scenario.id, { scene_ideas: value }), 5, 'Potential situations, encounters or scenes to explore.')}
-                {field('Creative Variations', 'creative_options', scenario.creative_options, (value) => updateScenario(scenario.id, { creative_options: value }), 4, 'Alternative choices and ways to reinterpret the story.')}
+                {input('Premise / Conflict', episode.premise, (value) => updateEpisode(index, { premise: value }), 3)}
+                {input('Story Development', episode.outline, (value) => updateEpisode(index, { outline: value }), 5, 'How the season theme changes the situation and affects the characters in this episode.')}
+                <div className="space-y-3 border border-white/10 p-3">
+                  <div className="text-sm text-white">Video Breakdown · 4 × 30 seconds</div>
+                  {VIDEO_PARTS.map(([key, label, helper]) => (
+                    <label key={key} className="block space-y-1.5">
+                      <span className="text-xs text-white/65">{label}</span>
+                      <span className="block text-[11px] text-white/35">{helper}</span>
+                      <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} value={episode.parts?.[key] || ''} onChange={(e) => updateEpisode(index, { parts: { ...(episode.parts || {}), [key]: e.target.value } })} placeholder="Optional dramatic beats or shots for this part" />
+                    </label>
+                  ))}
+                </div>
+                {input('Scene Inspirations', episode.scene_ideas, (value) => updateEpisode(index, { scene_ideas: value }), 4)}
+                {input('Creative Variations', episode.creative_options, (value) => updateEpisode(index, { creative_options: value }), 3)}
               </div>}
             </div>
           );
         })}
       </div>
-      {field('Freedom to Create', 'creative_freedom', content.creative_freedom, (value) => updateContent({ creative_freedom: value }), 3, 'What members are free to reinterpret, expand, change or invent.')}
+      {input('Freedom to Create', content.creative_freedom, (value) => updateContent({ creative_freedom: value }), 3, 'What the user may reinterpret or invent while preserving the series narrative framework.')}
       {!readOnly && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={onSave} disabled={saving}><Save size={15} className="mr-2" /> {saving ? 'Saving…' : 'Save Scenario'}</Button></div>}
     </div>
   );
