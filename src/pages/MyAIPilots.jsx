@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Bot, Check, ChevronDown, ChevronLeft, ChevronUp, Loader2, Plus, Power, PowerOff, Trash2, Users, MapPin, FileText, Layers, Settings2 } from 'lucide-react';
+import { Bot, Check, ChevronDown, ChevronLeft, ChevronUp, Loader2, Plus, Power, PowerOff, Trash2, Users, MapPin, FileText, Layers, Upload, X, Music2 } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,34 @@ function PilotLooks({ content }) {
           <summary className="flex cursor-pointer list-none items-center justify-between p-3 text-sm font-semibold text-[#23c7be]">Look details <ChevronDown size={16} className="group-open:rotate-180" /></summary>
           <div className="border-t border-white/10 p-3"><ContentObject value={details} /></div>
         </details>
+      </div>;
+    })}
+  </div>;
+}
+
+
+const EXTENSION_FIELDS = {
+  character_style: [['role', 'Character / Role'], ['appearance', 'Visual identity / appearance'], ['personality', 'Personality & behavior'], ['wardrobe', 'Wardrobe / styling'], ['voice', 'Voice / performance direction'], ['continuity', 'Continuity rules']],
+  look: [['type', 'Look type'], ['colors', 'Colors / palette'], ['costume', 'Costume / garment'], ['hair', 'Hair'], ['makeup', 'Makeup'], ['style_notes', 'Style notes']],
+  set: [['location', 'Associated location'], ['environment', 'Environment / architecture'], ['lighting', 'Lighting'], ['atmosphere', 'Atmosphere'], ['continuity', 'Visual continuity']],
+  location: [['environment', 'Location description'], ['time_period', 'Period / time of day'], ['atmosphere', 'Atmosphere'], ['visual_rules', 'Visual rules']],
+  music_piece: [['genre', 'Genre / style'], ['tempo', 'Tempo / rhythm'], ['mood', 'Mood'], ['instrumentation', 'Instrumentation'], ['lyrics', 'Lyrics / vocal direction']],
+  visual_direction: [['style', 'Visual style'], ['camera', 'Camera / framing'], ['lighting', 'Lighting'], ['composition', 'Composition'], ['constraints', 'Continuity constraints']],
+};
+const ACCEPTED_PILOT_MEDIA = 'image/*,video/*,audio/*';
+const PILOT_FILE_LIMIT = 50 * 1024 * 1024;
+function AdditionMedia({ items = [] }) {
+  if (!Array.isArray(items) || !items.length) return null;
+  return <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+    {items.map((item, index) => {
+      const url = typeof item === 'string' ? item : item?.url;
+      const kind = item?.type || 'image';
+      if (!url) return null;
+      return <div key={index} className="min-w-0 overflow-hidden border border-white/10 bg-black/30">
+        {kind === 'video' ? <video src={url} controls preload="metadata" className="aspect-video w-full object-contain" /> :
+          kind === 'audio' ? <div className="p-3"><Music2 size={20} className="mb-2 text-[#23c7be]" /><audio src={url} controls className="w-full" /></div> :
+          <a href={url} target="_blank" rel="noreferrer" title="Open full image"><img src={url} alt={item?.name || 'AI Pilot reference'} loading="lazy" className="aspect-[3/4] w-full object-cover" /></a>}
+        <p className="truncate px-2 py-1.5 text-xs text-white/55">{item?.name || 'Reference media'}</p>
       </div>;
     })}
   </div>;
@@ -123,24 +151,46 @@ function ScenarioGuide({ content }) {
 
 function PilotDetails({ access, user, onMessage }) {
   const queryClient = useQueryClient();
-  const [draft, setDraft] = useState({ extension_type: 'look', name: '', description: '', notes: '' });
+  const emptyDraft = () => ({ extension_type: 'character_style', name: '', description: '', notes: '', details: {} });
+  const [draft, setDraft] = useState(emptyDraft);
+  const [files, setFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
 
   const addMutation = useMutation({
     mutationFn: async () => {
       if (!draft.name.trim()) throw new Error('Add a name first.');
-      const { error } = await supabase.from('member_ai_pilot_extensions').insert({
-        member_ai_pilot_id: access.id,
-        user_id: user.id,
-        extension_type: draft.extension_type,
-        name: draft.name.trim(),
-        content: { description: draft.description.trim(), notes: draft.notes.trim() },
-        operation: 'add',
-      });
-      if (error) throw error;
+      setUploading(Boolean(files.length));
+      try {
+        const media = [];
+        for (const file of files) {
+          if (!/^(image|video|audio)\//.test(file.type)) throw new Error('Only images, video and audio files are supported.');
+          if (file.size > PILOT_FILE_LIMIT) throw new Error('Each media file must be 50 MB or smaller.');
+          const base = file.name.replace(/\.[^.]+$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0,70) || 'media';
+          const extension = file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+          const path = user.id + '/ai-pilots/member-additions/' + access.id + '/' + Date.now() + '-' + crypto.randomUUID() + '-' + base + '.' + extension;
+          const { error: uploadError } = await supabase.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+          if (uploadError) throw uploadError;
+          const { data } = supabase.storage.from('media').getPublicUrl(path);
+          if (!data?.publicUrl) throw new Error('Unable to obtain media URL.');
+          media.push({ name: file.name, url: data.publicUrl, type: file.type.split('/')[0], mime_type: file.type });
+        }
+        const { error } = await supabase.from('member_ai_pilot_extensions').insert({
+          member_ai_pilot_id: access.id,
+          user_id: user.id,
+          extension_type: draft.extension_type,
+          name: draft.name.trim(),
+          content: { description: draft.description.trim(), notes: draft.notes.trim(), ...draft.details, media },
+          operation: 'add',
+        });
+        if (error) throw error;
+      } finally {
+        setUploading(false);
+      }
     },
     onSuccess: async () => {
-      setDraft({ extension_type: 'look', name: '', description: '', notes: '' });
+      setDraft(emptyDraft());
+      setFiles([]);
       onMessage('Personal addition saved.');
       await queryClient.invalidateQueries({ queryKey: ['my-ai-pilots', user.id] });
     },
