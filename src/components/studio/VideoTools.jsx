@@ -10,6 +10,7 @@ import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 import ShootTimelineEngine from '@/components/studio/ShootTimelineEngine';
+import { getAIPilotComponentLibrary } from '@/lib/aiPilotComponents';
 import { buildModelToolInput, getMappedModelField } from '@/components/studio/DynamicAiModelControls';
 
 const RATIOS = [
@@ -321,6 +322,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const [showVaultPicker, setShowVaultPicker] = useState(false);
   const [pickerTarget, setPickerTarget] = useState(null);
   const [showAssetsShop, setShowAssetsShop] = useState(false);
+  const [showAIPilotImages, setShowAIPilotImages] = useState(false);
+  const [pilotActionPrompts, setPilotActionPrompts] = useState([]);
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [vaultVideoUrl, setVaultVideoUrl] = useState(null);
   const [vaultSaveSource, setVaultSaveSource] = useState('shot');
@@ -354,6 +357,28 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     }
     supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email || null)).catch(() => {});
   }, [user?.email]);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const { data: auth, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        if (!auth?.user?.id) return;
+        // Only selectable production actions and blocking instructions, never unrelated AI Pilot content.
+        const all = await getAIPilotComponentLibrary({ userId: auth.user.id });
+        if (active) setPilotActionPrompts(all.filter((item) =>
+          (item.component_type === 'action_prompt' || item.component_type === 'blocking_prompt') &&
+          (!item.personal || item.source_kind !== 'member_extension' || item.data)
+        ));
+      } catch (error) {
+        // The standard action presets remain available even if the member library cannot load.
+        if (active) setPilotActionPrompts([]);
+      }
+    };
+    void load();
+    return () => { active = false; };
+  }, [userEmail]);
 
   const scenePassages = useMemo(() => String(sceneText || '')
     .split(/\n\s*\n/)
@@ -672,6 +697,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     if (target.type === 'music') setEditMusic((value) => ({ ...value, url, name: name || 'Vault music', start: 0, trim_start: 0, trim_end: 0, duration: 0, loop: false, fade_in: 0, fade_out: 0 }));
     setShowVaultPicker(false);
     setShowAssetsShop(false);
+    setShowAIPilotImages(false);
     setPickerTarget(null);
   };
 
