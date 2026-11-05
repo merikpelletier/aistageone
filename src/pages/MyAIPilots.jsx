@@ -406,7 +406,7 @@ export default function MyAIPilots({ embedded = false }) {
       <main className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6">
         {!embedded && <button type="button" onClick={() => navigate('/MemberDashboard')} className="mb-8 inline-flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white"><ChevronLeft size={18} /> Account</button>}
         <div className="mb-8 flex flex-col gap-3 border-b border-white/10 pb-6 sm:flex-row sm:items-end sm:justify-between">
-          <div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-400">AISTAGE.ONE Direction System</p><h1 className="mt-2 text-4xl font-light tracking-tight">My AI Pilots</h1><p className="mt-2 max-w-2xl text-sm text-white/50">View the published Pilot, add your own production elements, and activate it for your projects.</p></div>
+          <div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-400">AISTAGE.ONE Direction System</p><h1 className="mt-2 text-4xl font-light tracking-tight">My AI Pilots</h1><p className="mt-2 max-w-2xl text-sm text-white/50">View the published Pilot and add your own production elements.</p></div>
           <Button type="button" variant="outline" onClick={() => navigate('/Catalog')} className="border-white/20 bg-white/[0.03] text-white hover:bg-white/10">Browse Assets Shop</Button>
         </div>
         {(libraryError || message) && <div className={`mb-5 border p-4 text-sm ${libraryError ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-cyan-400/20 bg-cyan-400/10 text-cyan-100'}`}>{libraryError?.message || message}</div>}
@@ -420,7 +420,7 @@ export default function MyAIPilots({ embedded = false }) {
             const series = (access.blocks || []).find((block) => block.block_key === 'series-direction')?.content || {};
             const locationCount = (series.locations || []).length + (series.sets || []).length;
             return <section key={access.id} className="overflow-hidden border border-white/10 bg-[#111418]">
-              <div className="grid gap-5 p-4 sm:grid-cols-[120px_minmax(0,1fr)] sm:p-5 lg:grid-cols-[140px_minmax(0,1fr)_minmax(260px,300px)]">
+              <div className="grid gap-5 p-4 sm:grid-cols-[120px_minmax(0,1fr)] sm:p-5 lg:grid-cols-[140px_minmax(0,1fr)]">
                 <div className="aspect-[3/4] overflow-hidden bg-[#20242a]">{image ? <img src={image} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Bot size={38} className="text-white/25" /></div>}</div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-white/45"><span>Version {access.version?.version_number || '?'}</span><span>·</span><span>{humanize(access.access_source)}</span>{access.presentation?.creator_name && <><span>·</span><span>{access.presentation.creator_name}</span></>}</div>
@@ -429,18 +429,7 @@ export default function MyAIPilots({ embedded = false }) {
                   <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/55"><span className="border border-white/10 bg-white/[0.04] px-2.5 py-1.5">{(access.characters || []).length} Characters</span><span className="border border-white/10 bg-white/[0.04] px-2.5 py-1.5">{locationCount} Sets & Locations</span><span className="border border-white/10 bg-white/[0.04] px-2.5 py-1.5">{(access.blocks || []).length} Direction Sections</span></div>
                   <button type="button" onClick={() => setExpanded((current) => ({ ...current, [access.id]: !current[access.id] }))} className="mt-4 inline-flex items-center gap-2 border border-[#23c7be]/50 bg-[#23c7be]/10 px-3 py-2 text-sm font-semibold text-[#23c7be]">{expanded[access.id] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{expanded[access.id] ? 'Close Pilot' : 'Open Pilot'}</button>
                 </div>
-                <div className="border-t border-white/10 pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-                  <p className="text-xs font-bold uppercase tracking-wider text-white/60">Activate for a project</p>
-                  <div className="mt-3 space-y-3">
-                    <Select value={selectedProjectId} onValueChange={(value) => setSelectedProjectByPilot((current) => ({ ...current, [access.id]: value }))} disabled={projectsLoading || assignmentsLoading}>
-                      <SelectTrigger className="border-white/20 bg-[#20242a] text-white"><SelectValue placeholder={projectsLoading ? 'Loading projects…' : 'Select project'} /></SelectTrigger>
-                      <SelectContent>{projects.map((project) => <SelectItem key={project.id} value={String(project.id)}>{project.production_name || project.episode_title || 'Untitled Project'}</SelectItem>)}</SelectContent>
-                    </Select>
-                    <Button type="button" className="w-full bg-[#23c7be] text-black hover:bg-[#23c7be]/85" disabled={!selectedProjectId || activateMutation.isPending} onClick={() => activateMutation.mutate({ access, projectId: selectedProjectId })}><Power size={16} className="mr-2" />Activate AI Pilot</Button>
-                    {!projectsLoading && projects.length === 0 && <p className="text-xs text-white/45">Create a project first, then return here to assign an AI Pilot.</p>}
-                  </div>
-                  {activeAssignments.length > 0 && <div className="mt-4 space-y-2 border-t border-white/10 pt-3"><p className="text-xs font-semibold text-white/55">Active Projects · {activeAssignments.length}</p>{activeAssignments.map((assignment) => { const project = projects.find((item) => String(item.id) === String(assignment.project_id)); return <div key={assignment.id} className="flex items-center justify-between gap-2 border border-[#23c7be]/20 bg-[#23c7be]/[0.05] p-2 text-xs"><span className="min-w-0 truncate text-[#23c7be]"><Check size={13} className="mr-1 inline" />{project?.production_name || project?.episode_title || `Project ${assignment.project_id}`}</span><button type="button" onClick={() => deactivateMutation.mutate(assignment)} className="shrink-0 text-white/60 hover:text-white" aria-label="Deactivate AI Pilot"><PowerOff size={16} /></button></div>; })}</div>}
-                </div>
+
               </div>
               {expanded[access.id] && <div className="border-t border-white/10 px-4 pb-5 sm:px-5"><PilotDetails access={access} user={user} onMessage={setMessage} /></div>}
             </section>;
