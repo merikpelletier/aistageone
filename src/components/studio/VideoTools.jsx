@@ -206,6 +206,101 @@ function AssetsShopPicker({ onSelect, onClose, embedded = false }) {
   );
 }
 
+
+function ShootAIPilotImagePicker({ target, onSelect, onClose, embedded = false }) {
+  const [items, setItems] = useState([]);
+  const [search, setSearch] = useState('');
+  const [pilotFilter, setPilotFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const { data: auth, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        const userId = auth?.user?.id;
+        if (!userId) throw new Error('Sign in to access your AI Pilots.');
+        const { data: accesses, error: accessError } = await supabase.from('member_ai_pilots')
+          .select('id,ai_pilot_id,version_id').eq('user_id', userId);
+        if (accessError) throw accessError;
+        if (!accesses?.length) return;
+        const { data: pilots, error: pilotsError } = await supabase.from('ai_pilots')
+          .select('id,name,current_published_version_id').in('id', [...new Set(accesses.map((a) => a.ai_pilot_id))]);
+        if (pilotsError) throw pilotsError;
+        const versionFor = (a) => pilots?.find((p) => p.id === a.ai_pilot_id)?.current_published_version_id || a.version_id;
+        const versions = [...new Set(accesses.map(versionFor).filter(Boolean))];
+        const [actors, blocks, media, additions] = await Promise.all([
+          versions.length && target === 'cast' ? supabase.from('ai_pilot_characters').select('id,version_id,role_name,reference_images').in('version_id', versions).eq('is_active', true) : Promise.resolve({ data: [], error: null }),
+          versions.length && target === 'set' ? supabase.from('ai_pilot_blocks').select('version_id,content').in('version_id', versions).eq('block_key', 'series-direction').eq('is_active', true) : Promise.resolve({ data: [], error: null }),
+          versions.length ? supabase.from('ai_pilot_media').select('version_id,component_type,component_key,media_type,url').in('version_id', versions).eq('media_type', 'image').eq('is_active', true) : Promise.resolve({ data: [], error: null }),
+          supabase.from('member_ai_pilot_extensions').select('id,member_ai_pilot_id,extension_type,name,content,operation').eq('user_id', userId).eq('is_active', true).in('member_ai_pilot_id', accesses.map((a) => a.id)),
+        ]);
+        const failed = [actors, blocks, media, additions].find((result) => result.error);
+        if (failed) throw failed.error;
+        const urls = (list) => (Array.isArray(list) ? list : []).map((value) => typeof value === 'string' ? value : value?.url).filter(Boolean);
+        const result = [];
+        const add = (access, name, id, refs, origin) => {
+          const pilot = pilots?.find((p) => p.id === access.ai_pilot_id);
+          [...new Set(refs.filter(Boolean))].forEach((url, i) => result.push({
+            key: String(access.id) + ':' + id + ':' + i, pilotId: access.ai_pilot_id,
+            pilotName: pilot?.name || 'AI Pilot', name: name || 'Unnamed', url, origin,
+          }));
+        };
+        for (const access of accesses) {
+          const versionId = versionFor(access);
+          const additional = (additions.data || []).filter((item) => item.member_ai_pilot_id === access.id && item.operation === 'add');
+          if (target === 'cast') {
+            for (const actor of (actors.data || []).filter((item) => item.version_id === versionId)) {
+              const extra = (media.data || []).filter((item) => item.version_id === versionId && item.component_type === 'character' && [actor.id, actor.role_name].includes(item.component_key)).map((item) => item.url);
+              add(access, actor.role_name, actor.id, [...urls(actor.reference_images), ...extra], 'Official');
+            }
+          } else {
+            const series = (blocks.data || []).find((item) => item.version_id === versionId)?.content || {};
+            const sets = Array.isArray(series.sets) ? series.sets : [];
+            const locations = Array.isArray(series.locations) ? series.locations : [];
+            for (const set of sets) {
+              const extra = (media.data || []).filter((item) => item.version_id === versionId && ['set', 'location'].includes(item.component_type) && [set.id, set.name].includes(item.component_key)).map((item) => item.url);
+              add(access, set.name || locations.find((loc) => loc.id === set.location_id)?.name, set.id || set.name, [...urls(set.reference_images), ...extra], 'Official');
+            }
+            for (const location of locations.filter((loc) => !sets.some((set) => set.location_id === loc.id))) {
+              const extra = (media.data || []).filter((item) => item.version_id === versionId && item.component_type === 'location' && [location.id, location.name].includes(item.component_key)).map((item) => item.url);
+              add(access, location.name, location.id || location.name, [...urls(location.reference_images), ...extra], 'Official');
+            }
+          }
+          for (const item of additional.filter((item) => target === 'cast' ? item.extension_type === 'character_style' : ['set', 'location'].includes(item.extension_type))) {
+            const pictures = urls((item.content?.media || []).filter((file) => file.type === 'image' || file.mime_type?.startsWith('image/')));
+            add(access, item.name, item.id, pictures, 'Personal');
+          }
+        }
+        if (active) setItems(result);
+      } catch (e) { if (active) setError(e?.message || 'Could not load AI Pilot images.'); }
+      finally { if (active) setLoading(false); }
+    };
+    void load();
+    return () => { active = false; };
+  }, [target]);
+  const pilots = [...new Map(items.map((item) => [item.pilotId, item.pilotName])).entries()];
+  const shown = items.filter((item) => (pilotFilter === 'all' || item.pilotId === pilotFilter) &&
+    (item.name + ' ' + item.pilotName + ' ' + item.origin).toLowerCase().includes(search.trim().toLowerCase()));
+  return (
+    <motion.div className={(embedded ? 'fixed top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)]' : 'fixed inset-0') + ' z-[99999] flex items-center justify-center bg-black/90 p-3'} initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={onClose}>
+      <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden border border-white/10 bg-[#17191d]" onClick={(event) => event.stopPropagation()}>
+        <header className="flex items-center justify-between border-b border-white/10 p-5"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">AI Pilot · {target === 'cast' ? 'Cast' : 'Set'}</p><h3 className="text-xl font-black text-white">Choose a reference image</h3></div><button type="button" onClick={onClose} className="p-2 text-white"><X size={18} /></button></header>
+        <div className="grid gap-2 border-b border-white/10 p-4 md:grid-cols-[1fr_220px]">
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search AI Pilot images" className="border border-white/10 bg-black/30 px-4 py-3 text-sm text-white" />
+          <select value={pilotFilter} onChange={(event) => setPilotFilter(event.target.value)} className="border border-white/10 bg-black/30 px-3 py-3 text-sm text-white"><option value="all">All my AI Pilots</option>{pilots.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select>
+        </div>
+        <div className="min-h-40 flex-1 overflow-y-auto p-4">
+          {loading ? <div className="flex min-h-56 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div> : error ? <p className="p-6 text-center text-sm text-red-300">{error}</p> : shown.length ?
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{shown.map((item) => <button key={item.key} type="button" onClick={() => onSelect(item.url, item.name)} className="overflow-hidden border border-white/10 bg-black text-left hover:border-[#23c7be]"><div className="aspect-[4/3]"><img src={item.url} alt={item.name} className="h-full w-full object-contain" /></div><div className="p-2"><p className="truncate text-xs font-bold text-white">{item.name}</p><p className="truncate text-[10px] text-white/45">{item.pilotName} · {item.origin}</p></div></button>)}</div> :
+            <p className="p-10 text-center text-sm text-white/45">No matching AI Pilot images.</p>}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function VideoTools({ onClose, referenceMedia = [], productionMethod = null, block = null, character = null, user, embedded = false }) {
   const showContext = productionMethod && block;
   const [step, setStep] = useState('setup');
