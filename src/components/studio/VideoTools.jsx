@@ -598,7 +598,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     if (hasCurrentScene) {
       const completed = shotPlan.length > 0 && shotPlan.every((shot) => shot.result_url);
       try {
-        await saveScene({ status: completed ? 'completed' : (approved ? 'approved' : (shotPlan.length ? 'planned' : 'setup')) });
+        await saveScene({ status: completed ? 'complete' : (approved ? 'approved' : (shotPlan.length ? 'planned' : 'setup')) });
       } catch (error) {
         toast.error(error.message || 'Current scene could not be saved.');
         return;
