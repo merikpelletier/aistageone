@@ -232,7 +232,7 @@ function ShootAIPilotImagePicker({ target, onSelect, onClose, embedded = false }
         const versionFor = (a) => pilots?.find((p) => p.id === a.ai_pilot_id)?.current_published_version_id || a.version_id;
         const versions = [...new Set(accesses.map(versionFor).filter(Boolean))];
         const [actors, blocks, media, additions] = await Promise.all([
-          versions.length && target === 'cast' ? supabase.from('ai_pilot_characters').select('id,version_id,role_name,reference_images').in('version_id', versions).eq('is_active', true) : Promise.resolve({ data: [], error: null }),
+          versions.length && target === 'cast' ? supabase.from('ai_pilot_characters').select('*').in('version_id', versions).eq('is_active', true) : Promise.resolve({ data: [], error: null }),
           versions.length && target === 'set' ? supabase.from('ai_pilot_blocks').select('version_id,content').in('version_id', versions).eq('block_key', 'series-direction').eq('is_active', true) : Promise.resolve({ data: [], error: null }),
           versions.length ? supabase.from('ai_pilot_media').select('version_id,component_type,component_key,media_type,url').in('version_id', versions).eq('media_type', 'image').eq('is_active', true) : Promise.resolve({ data: [], error: null }),
           supabase.from('member_ai_pilot_extensions').select('id,member_ai_pilot_id,extension_type,name,content,operation').eq('user_id', userId).eq('is_active', true).in('member_ai_pilot_id', accesses.map((a) => a.id)),
@@ -241,11 +241,11 @@ function ShootAIPilotImagePicker({ target, onSelect, onClose, embedded = false }
         if (failed) throw failed.error;
         const urls = (list) => (Array.isArray(list) ? list : []).map((value) => typeof value === 'string' ? value : value?.url).filter(Boolean);
         const result = [];
-        const add = (access, name, id, refs, origin) => {
+        const add = (access, name, id, refs, origin, characterData = null) => {
           const pilot = pilots?.find((p) => p.id === access.ai_pilot_id);
           [...new Set(refs.filter(Boolean))].forEach((url, i) => result.push({
             key: String(access.id) + ':' + id + ':' + i, pilotId: access.ai_pilot_id,
-            pilotName: pilot?.name || 'AI Pilot', name: name || 'Unnamed', url, origin,
+            pilotName: pilot?.name || 'AI Pilot', name: name || 'Unnamed', url, origin, characterData,
           }));
         };
         for (const access of accesses) {
@@ -254,7 +254,12 @@ function ShootAIPilotImagePicker({ target, onSelect, onClose, embedded = false }
           if (target === 'cast') {
             for (const actor of (actors.data || []).filter((item) => item.version_id === versionId)) {
               const extra = (media.data || []).filter((item) => item.version_id === versionId && item.component_type === 'character' && [actor.id, actor.role_name].includes(item.component_key)).map((item) => item.url);
-              add(access, actor.role_name, actor.id, [...urls(actor.reference_images), ...extra], 'Official');
+              add(access, actor.role_name, actor.id, [...urls(actor.reference_images), ...extra], 'Official', {
+                name: actor.role_name,
+                voice_or_sound: [actor.voice_identity, actor.voice_delivery, actor.voice_emotional_range, actor.speech_style, actor.dialogue_style, actor.signature_speech_traits, actor.voice_continuity].filter(Boolean).join('\n'),
+                manner: [actor.physical_performance, actor.behavior].filter(Boolean).join('\n'),
+                description: [actor.description, actor.visual_identity, actor.visual_continuity, actor.wardrobe_look, actor.continuity_locks, actor.production_notes].filter(Boolean).join('\n\n'),
+              });
             }
           } else {
             const series = (blocks.data || []).find((item) => item.version_id === versionId)?.content || {};
@@ -271,7 +276,12 @@ function ShootAIPilotImagePicker({ target, onSelect, onClose, embedded = false }
           }
           for (const item of additional.filter((item) => target === 'cast' ? item.extension_type === 'character_style' : ['set', 'location'].includes(item.extension_type))) {
             const pictures = urls((item.content?.media || []).filter((file) => file.type === 'image' || file.mime_type?.startsWith('image/')));
-            add(access, item.name, item.id, pictures, 'Personal');
+            add(access, item.name, item.id, pictures, 'Personal', target === 'cast' ? {
+              name: item.name,
+              voice_or_sound: item.content?.voice || '',
+              manner: [item.content?.personality, item.content?.behavior].filter(Boolean).join('\n'),
+              description: [item.content?.description, item.content?.appearance, item.content?.wardrobe, item.content?.continuity, item.content?.notes].filter(Boolean).join('\n\n'),
+            } : null);
           }
         }
         if (active) setItems(result);
@@ -294,7 +304,7 @@ function ShootAIPilotImagePicker({ target, onSelect, onClose, embedded = false }
         </div>
         <div className="min-h-40 flex-1 overflow-y-auto p-4">
           {loading ? <div className="flex min-h-56 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div> : error ? <p className="p-6 text-center text-sm text-red-300">{error}</p> : shown.length ?
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{shown.map((item) => <button key={item.key} type="button" onClick={() => onSelect(item.url, item.name)} className="overflow-hidden border border-white/10 bg-black text-left hover:border-[#23c7be]"><div className="aspect-[4/3]"><img src={item.url} alt={item.name} className="h-full w-full object-contain" /></div><div className="p-2"><p className="truncate text-xs font-bold text-white">{item.name}</p><p className="truncate text-[10px] text-white/45">{item.pilotName} · {item.origin}</p></div></button>)}</div> :
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{shown.map((item) => <button key={item.key} type="button" onClick={() => onSelect(item.url, item.name, item.characterData)} className="overflow-hidden border border-white/10 bg-black text-left hover:border-[#23c7be]"><div className="aspect-[4/3]"><img src={item.url} alt={item.name} className="h-full w-full object-contain" /></div><div className="p-2"><p className="truncate text-xs font-bold text-white">{item.name}</p><p className="truncate text-[10px] text-white/45">{item.pilotName} · {item.origin}</p></div></button>)}</div> :
             <p className="p-10 text-center text-sm text-white/45">No matching AI Pilot images.</p>}
         </div>
       </div>
@@ -681,9 +691,9 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     await applyPickedVideoReference(data.publicUrl, file.name, target);
   };
 
-  const applyPickedImage = (url, name, target = pickerTarget) => {
+  const applyPickedImage = (url, name, target = pickerTarget, characterData = null) => {
     if (!url || !target) return;
-    if (target.type === 'cast') updateCast(target.id, { reference_url: url });
+    if (target.type === 'cast') updateCast(target.id, { reference_url: url, ...(characterData ? { name: characterData.name || name || '', voice_or_sound: characterData.voice_or_sound || '', manner: characterData.manner || '', description: characterData.description || '' } : {}) });
     if (target.type === 'set') setSetReference((value) => ({ ...value, url, name: value.name || name || 'Set' }));
     if (target.type === 'shot-reference') {
       setShotPlan((items) => items.map((shot) => {
@@ -1441,7 +1451,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
         {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} mediaType={pickerTarget?.type === 'music' ? 'audio' : (pickerTarget?.type === 'shot-video-reference' || pickerTarget?.type === 'shot-video-replacement') ? 'video' : 'image'} onSelect={(url, name) => (pickerTarget?.type === 'shot-video-reference' || pickerTarget?.type === 'shot-video-replacement') ? applyPickedVideoReference(url, name || (pickerTarget?.type === 'shot-video-replacement' ? 'Vault replacement video' : 'Vault video reference')) : applyPickedImage(url, name || (pickerTarget?.type === 'music' ? 'Vault music' : 'Vault reference'))} onClose={() => { setShowVaultPicker(false); setPickerTarget(null); }} embedded={embedded} />}
         {showAssetsShop && <AssetsShopPicker embedded={embedded} onSelect={(url, name) => applyPickedImage(url, name)} onClose={() => { setShowAssetsShop(false); setPickerTarget(null); }} />}
-        {showAIPilotImages && <ShootAIPilotImagePicker embedded={embedded} target={pickerTarget?.type === 'set' ? 'set' : 'cast'} onSelect={(url, name) => applyPickedImage(url, name)} onClose={() => { setShowAIPilotImages(false); setPickerTarget(null); }} />}
+        {showAIPilotImages && <ShootAIPilotImagePicker embedded={embedded} target={pickerTarget?.type === 'set' ? 'set' : 'cast'} onSelect={(url, name, characterData) => applyPickedImage(url, name, pickerTarget, characterData)} onClose={() => { setShowAIPilotImages(false); setPickerTarget(null); }} />}
         {showSaveVault && vaultVideoUrl && userEmail && <SaveToVaultModal userEmail={userEmail} imageUrl={vaultVideoUrl} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={() => { setShowSaveVault(false); toast.success(vaultSaveSource === 'scene' ? 'Scene saved to Vault' : 'Shot saved to Vault'); }} />}
       </motion.div>
     </div>
