@@ -1,11 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Bot, Check, ChevronDown, ChevronLeft, ChevronUp, Loader2, Plus, Power, PowerOff, Trash2, Users, MapPin, FileText, Layers, Upload, X, Music2 } from 'lucide-react';
+import { Bot, ChevronDown, ChevronLeft, ChevronUp, Loader2, Plus, Trash2, Users, MapPin, FileText, Layers, Upload, X, Music2 } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const EXTENSION_TYPES = [
   ['character_style', 'Character / Character Style'],
@@ -300,7 +299,6 @@ export default function MyAIPilots({ embedded = false }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isLoadingAuth } = useAuth();
-  const [selectedProjectByPilot, setSelectedProjectByPilot] = useState({});
   const [expanded, setExpanded] = useState({});
   const [message, setMessage] = useState('');
 
@@ -365,40 +363,6 @@ export default function MyAIPilots({ embedded = false }) {
     },
   });
 
-  const { data: projects = [], isLoading: projectsLoading } = useQuery({
-    queryKey: ['my-ai-pilot-projects', user?.email], enabled: Boolean(user?.email), queryFn: async () => {
-      const { data, error } = await supabase.from('timeline_story').select('id, production_name, episode_title, updated_date, created_date').eq('user_email', user.email).order('updated_date', { ascending: false, nullsFirst: false });
-      if (error) throw error; return data || [];
-    },
-  });
-
-  const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
-    queryKey: ['my-ai-pilot-assignments', user?.id], enabled: Boolean(user?.id), queryFn: async () => {
-      const { data, error } = await supabase.from('ai_pilot_project_assignments').select('*').eq('user_id', user.id).eq('is_active', true);
-      if (error) throw error; return data || [];
-    },
-  });
-
-  const assignmentsByPilot = useMemo(() => {
-    const map = new Map(); assignments.forEach((assignment) => { if (!map.has(assignment.ai_pilot_id)) map.set(assignment.ai_pilot_id, []); map.get(assignment.ai_pilot_id).push(assignment); }); return map;
-  }, [assignments]);
-
-  const activateMutation = useMutation({
-    mutationFn: async ({ access, projectId }) => {
-      if (!user?.id || !projectId) throw new Error('Select a project first.');
-      const { error } = await supabase.from('ai_pilot_project_assignments').upsert({ user_id: user.id, project_id: String(projectId), member_ai_pilot_id: access.id, ai_pilot_id: access.ai_pilot_id, version_id: access.version_id, is_active: true, activated_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'user_id,project_id' });
-      if (error) throw error;
-    },
-    onSuccess: () => { setMessage('AI Pilot activated for this project.'); queryClient.invalidateQueries({ queryKey: ['my-ai-pilot-assignments', user?.id] }); },
-    onError: (error) => setMessage(error?.message || 'Unable to activate AI Pilot.'),
-  });
-
-  const deactivateMutation = useMutation({
-    mutationFn: async (assignment) => { const { error } = await supabase.from('ai_pilot_project_assignments').update({ is_active: false, updated_at: new Date().toISOString() }).eq('id', assignment.id).eq('user_id', user.id); if (error) throw error; },
-    onSuccess: () => { setMessage('AI Pilot removed from the project.'); queryClient.invalidateQueries({ queryKey: ['my-ai-pilot-assignments', user?.id] }); },
-    onError: (error) => setMessage(error?.message || 'Unable to remove AI Pilot.'),
-  });
-
   if (isLoadingAuth || libraryLoading) return <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} bg-black flex items-center justify-center`}><Loader2 className="animate-spin text-white" size={34} /></div>;
 
   return (
@@ -412,8 +376,6 @@ export default function MyAIPilots({ embedded = false }) {
         {(libraryError || message) && <div className={`mb-5 border p-4 text-sm ${libraryError ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-cyan-400/20 bg-cyan-400/10 text-cyan-100'}`}>{libraryError?.message || message}</div>}
         {library.length === 0 ? <div className="border border-dashed border-white/15 px-6 py-16 text-center"><Bot className="mx-auto text-white/25" size={46} /><h2 className="mt-4 text-xl font-light">No AI Pilot in your library</h2><p className="mt-2 text-sm text-white/40">AI Pilots acquired or granted to your account will appear here.</p><Button type="button" onClick={() => navigate('/Catalog')} className="mt-6">Browse Assets Shop</Button></div> : (
           <div className="space-y-4">{library.map((access) => {
-            const activeAssignments = assignmentsByPilot.get(access.ai_pilot_id) || [];
-            const selectedProjectId = selectedProjectByPilot[access.id] || '';
             const title = access.presentation?.title || access.pilot?.name || 'AI Pilot';
             const description = access.presentation?.description || access.pilot?.description || '';
             const image = access.presentation?.featured_image || access.pilot?.cover_url || '';
