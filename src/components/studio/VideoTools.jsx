@@ -234,6 +234,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const [showMyScenes, setShowMyScenes] = useState(false);
   const [savedScenes, setSavedScenes] = useState([]);
   const [loadingScenes, setLoadingScenes] = useState(false);
+  const [deletingSceneId, setDeletingSceneId] = useState(null);
   const [promptEdits, setPromptEdits] = useState({});
   const [selectedScenePassage, setSelectedScenePassage] = useState(null);
   const [quickAddCharacterId, setQuickAddCharacterId] = useState('');
@@ -340,6 +341,49 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const nextOpen = !showMyScenes;
     setShowMyScenes(nextOpen);
     if (nextOpen) await loadMyScenes();
+  };
+
+  const deleteScene = async (scene) => {
+    if (!window.confirm(`Delete "${scene.title || 'Untitled scene'}" from My Scenes? This cannot be undone.`)) return;
+    setDeletingSceneId(scene.id);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const ownerId = authData.user?.id;
+      if (!ownerId) throw new Error('You must be signed in to delete a scene.');
+      const { data, error } = await supabase.from('shoot_scene')
+        .delete().eq('id', scene.id).eq('user_id', ownerId).select('id');
+      if (error) throw error;
+      if (!data?.some((row) => row.id === scene.id)) throw new Error('Scene not found or delete not permitted.');
+      setSavedScenes((current) => current.filter((item) => item.id !== scene.id));
+      if (sceneId === scene.id) {
+        setSceneId(null);
+        setTitle('Untitled scene');
+        setCast([newCastMember(0), newCastMember(1)]);
+        setSetReference({ name: '', url: '', description: '' });
+        setSceneText('');
+        setAspectRatio('16:9');
+        setShotPlan([]);
+        setApproved(false);
+        setActiveShotId(null);
+        setPromptEdits({});
+        setSelectedScenePassage(null);
+        setEditClips([]);
+        setSelectedEditClipId(null);
+        setEditMusic({ url: '', name: '', volume: 0.55, start: 0, trim_start: 0, trim_end: 0, duration: 0, loop: false, fade_in: 0, fade_out: 0 });
+        setEditPlayhead(0);
+        setEditTimelineZoom(1);
+        setEditPlaying(false);
+        setEditUndoStack([]);
+        setEditRatio('16:9');
+        setStep('setup');
+      }
+      toast.success('Scene deleted.');
+    } catch (error) {
+      toast.error(error?.message || 'Scene could not be deleted.');
+    } finally {
+      setDeletingSceneId(null);
+    }
   };
 
   const restoreScene = (scene) => {
@@ -1213,7 +1257,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
             <div className="flex flex-wrap gap-2"><button type="button" onClick={startNewScene} disabled={busy || exportingEdit} className="flex items-center gap-2 border border-[#23c7be]/30 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] hover:bg-[#23c7be]/20 disabled:opacity-50"><Plus size={14} /> New Scene</button><button type="button" onClick={openMyScenes} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${showMyScenes ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.05]'}`}><Folder size={14} /> My Scenes</button><button type="button" onClick={() => (step === 'edit' ? saveEditor() : saveScene().then(() => toast.success('Shoot scene saved')).catch((error) => toast.error(error.message)))} className="flex items-center gap-2 border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold"><Save size={14} /> Save</button>{!embedded && <button type="button" onClick={onClose} className="p-2"><X size={19} /></button>}</div>
           </header>
 
-          {showMyScenes && <section className="mb-5 border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">My Scenes</p><p className="text-xs text-white/45">Open one of your saved Shoot scenes.</p></div><button type="button" onClick={loadMyScenes} disabled={loadingScenes} className="bg-white/10 px-3 py-2 text-xs font-bold disabled:opacity-50">Refresh</button></div>{loadingScenes ? <div className="flex min-h-24 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div> : savedScenes.length ? <div className="grid gap-2 md:grid-cols-2">{savedScenes.map((scene) => <button key={scene.id} type="button" onClick={() => restoreScene(scene)} className="border border-white/10 bg-black/20 p-3 text-left hover:border-[#23c7be]"><div className="flex items-center justify-between gap-3"><span className="truncate text-sm font-black">{scene.title || 'Untitled scene'}</span><span className="text-[10px] font-bold uppercase text-[#8ee9e4]">{scene.status || 'setup'}</span></div><p className="mt-1 text-[10px] text-white/40">{scene.aspect_ratio || '16:9'} · {Array.isArray(scene.shot_plan) ? scene.shot_plan.length : 0} shots</p></button>)}</div> : <div className="border border-white/10 bg-black/20 p-4 text-sm text-white/45">No saved scenes yet.</div>}</section>}
+          {showMyScenes && <section className="mb-5 border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">My Scenes</p><p className="text-xs text-white/45">Open one of your saved Shoot scenes.</p></div><button type="button" onClick={loadMyScenes} disabled={loadingScenes} className="bg-white/10 px-3 py-2 text-xs font-bold disabled:opacity-50">Refresh</button></div>{loadingScenes ? <div className="flex min-h-24 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div> : savedScenes.length ? <div className="grid gap-2 md:grid-cols-2">{savedScenes.map((scene) => <div key={scene.id} className="relative border border-white/10 bg-black/20 hover:border-[#23c7be]"><button type="button" onClick={() => restoreScene(scene)} className="w-full p-3 pr-20 text-left"><div className="flex items-center justify-between gap-3"><span className="truncate text-sm font-black">{scene.title || 'Untitled scene'}</span><span className="text-[10px] font-bold uppercase text-[#8ee9e4]">{scene.status || 'setup'}</span></div><p className="mt-1 text-[10px] text-white/40">{scene.aspect_ratio || '16:9'} · {Array.isArray(scene.shot_plan) ? scene.shot_plan.length : 0} shots</p></button><button type="button" onClick={() => deleteScene(scene)} disabled={Boolean(deletingSceneId)} aria-label={`Delete ${scene.title || 'Untitled scene'}`} className="absolute bottom-3 right-3 flex items-center gap-1 bg-red-400/10 px-2 py-1.5 text-[10px] font-bold text-red-300 hover:bg-red-400/20 disabled:opacity-40">{deletingSceneId === scene.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete</button></div>)}</div> : <div className="border border-white/10 bg-black/20 p-4 text-sm text-white/45">No saved scenes yet.</div>}</section>}
 
           {showContext && <ProductionContextInfo productionMethod={productionMethod} block={block} character={character} referenceMedia={referenceMedia} />}
 
