@@ -597,7 +597,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const restoredCast = Array.isArray(scene.cast_data) ? scene.cast_data : [];
     const restoredShots = migrateShotPlan(scene?.shot_plan, restoredCast);
     const restoredStatus = scene?.status || 'setup';
-    const canShoot = ['approved', 'shooting', 'completed'].includes(restoredStatus);
+    const canShoot = ['approved', 'shooting', 'complete', 'completed'].includes(restoredStatus);
     setSceneId(scene.id);
     setSceneProjectId(scene.project_id || null);
     setSelectedProjectId(scene.project_id || 'unassigned');
