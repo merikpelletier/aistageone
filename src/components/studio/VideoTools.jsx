@@ -565,6 +565,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       setSavedScenes((current) => current.filter((item) => item.id !== scene.id));
       if (sceneId === scene.id) {
         setSceneId(null);
+        setSceneProjectId(null);
         setTitle('Untitled scene');
         setCast([newCastMember(0), newCastMember(1)]);
         setSetReference({ name: '', url: '', description: '' });
