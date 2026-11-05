@@ -124,17 +124,15 @@ function ScenarioGuide({ content }) {
             <div className="mt-3 space-y-3">
               {episode.premise && <div><p className="text-xs font-bold text-white/50">Premise / conflict</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/75">{episode.premise}</p></div>}
               {episode.outline && <div><p className="text-xs font-bold text-white/50">Story development</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/75">{episode.outline}</p></div>}
-              {format === 'video' && (
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-cyan-300">Four 30-second video parts</p>
-                  {VIDEO_PART_LABELS.map(([key,label]) => (
-                    <div key={key} className="border-l-2 border-cyan-400/30 pl-3">
-                      <div className="text-xs font-semibold text-white/70">{label}</div>
-                      <p className="mt-1 whitespace-pre-wrap text-xs text-white/60">{episode.parts?.[key] || 'Develop this part from the episode premise and story direction.'}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-cyan-300">Episode structure</p>
+                {VIDEO_PART_LABELS.map(([key, label]) => (
+                  <div key={key} className="border-l-2 border-cyan-400/30 pl-3">
+                    <div className="text-xs font-semibold text-white/70">{format === 'video' ? label : label.split(' · ')[1]}</div>
+                    <p className="mt-1 whitespace-pre-wrap text-xs text-white/60">{episode.parts?.[key] || 'Develop this part from the episode premise and story direction.'}</p>
+                  </div>
+                ))}
+              </div>
               {format === 'fotoplay' && <p className="text-xs text-white/50">Develop this chapter across nine FotoPlay segments, following the episode direction above.</p>}
               {episode.scene_ideas && <div><p className="text-xs font-bold text-white/50">Scene inspirations</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/70">{episode.scene_ideas}</p></div>}
               {episode.creative_options && <div><p className="text-xs font-bold text-white/50">Creative variations</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/70">{episode.creative_options}</p></div>}
