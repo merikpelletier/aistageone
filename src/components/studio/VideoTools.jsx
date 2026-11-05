@@ -340,6 +340,12 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const [savingEditToVault, setSavingEditToVault] = useState(false);
   const [userEmail, setUserEmail] = useState(user?.email || null);
   const [showMyScenes, setShowMyScenes] = useState(false);
+  const [showMyProjects, setShowMyProjects] = useState(false);
+  const [shootProjects, setShootProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [sceneProjectId, setSceneProjectId] = useState(null);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [projectsBusy, setProjectsBusy] = useState(false);
   const [savedScenes, setSavedScenes] = useState([]);
   const [loadingScenes, setLoadingScenes] = useState(false);
   const [deletingSceneId, setDeletingSceneId] = useState(null);
@@ -450,6 +456,77 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     };
   });
 
+  const loadShootProjects = async () => {
+    const { data: auth, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    if (!auth?.user?.id) throw new Error('Sign in to access Shoot projects.');
+    const { data, error } = await supabase.from('shoot_project')
+      .select('id,name,created_at').eq('user_id', auth.user.id).order('created_at', { ascending: true });
+    if (error) throw error;
+    setShootProjects(data || []);
+    return data || [];
+  };
+
+  useEffect(() => {
+    loadShootProjects().catch((error) => toast.error(error.message || 'Shoot projects could not load.'));
+  }, []);
+
+  const createShootProject = async () => {
+    const name = newProjectName.trim();
+    if (!name) return toast.error('Enter a project name.');
+    setProjectsBusy(true);
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const userId = auth?.user?.id;
+      if (!userId) throw new Error('Sign in to create a Shoot project.');
+      const { data, error } = await supabase.from('shoot_project')
+        .insert({ user_id: userId, name }).select('id,name,created_at').single();
+      if (error) throw error;
+      setShootProjects((items) => [...items, data]);
+      setSelectedProjectId(data.id);
+      setNewProjectName('');
+      toast.success('Shoot project created.');
+    } catch (error) { toast.error(error.message || 'Project could not be created.'); }
+    finally { setProjectsBusy(false); }
+  };
+
+  const renameShootProject = async (project) => {
+    const name = window.prompt('Rename Shoot project:', project.name)?.trim();
+    if (!name || name === project.name) return;
+    setProjectsBusy(true);
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!auth?.user?.id) throw new Error('Sign in to rename a project.');
+      const { data, error } = await supabase.from('shoot_project')
+        .update({ name, updated_at: new Date().toISOString() })
+        .eq('id', project.id).eq('user_id', auth.user.id).select('id,name,created_at').single();
+      if (error) throw error;
+      setShootProjects((items) => items.map((item) => item.id === data.id ? data : item));
+      toast.success('Project renamed.');
+    } catch (error) { toast.error(error.message || 'Project could not be renamed.'); }
+    finally { setProjectsBusy(false); }
+  };
+
+  const moveSceneToProject = async (scene, projectId) => {
+    setProjectsBusy(true);
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!auth?.user?.id) throw new Error('Sign in to move a scene.');
+      const nextId = projectId || null;
+      const { data, error } = await supabase.from('shoot_scene')
+        .update({ project_id: nextId, updated_at: new Date().toISOString() })
+        .eq('id', scene.id).eq('user_id', auth.user.id).select('id,project_id').single();
+      if (error) throw error;
+      setSavedScenes((items) => items.map((item) => item.id === data.id ? { ...item, project_id: data.project_id } : item));
+      if (sceneId === data.id) setSceneProjectId(data.project_id);
+      toast.success('Scene moved to project.');
+    } catch (error) { toast.error(error.message || 'Scene could not be moved.'); }
+    finally { setProjectsBusy(false); }
+  };
+
   const loadMyScenes = async () => {
     setLoadingScenes(true);
     try {
@@ -522,6 +599,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const restoredStatus = scene?.status || 'setup';
     const canShoot = ['approved', 'shooting', 'completed'].includes(restoredStatus);
     setSceneId(scene.id);
+    setSceneProjectId(scene.project_id || null);
+    setSelectedProjectId(scene.project_id || 'unassigned');
     setTitle(scene.title || 'Untitled scene');
     setAspectRatio(scene.aspect_ratio || '16:9');
     setCast(restoredCast);
@@ -752,6 +831,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     aspect_ratio: aspectRatio,
     cast_data: cast,
     set_reference: setReference.url ? setReference : null,
+    project_id: sceneId ? sceneProjectId : (selectedProjectId !== 'all' && selectedProjectId !== 'unassigned' ? selectedProjectId : null),
     scene_text: sceneText,
     shot_plan: shotPlan,
     status: approved ? 'approved' : (shotPlan.length ? 'planned' : 'setup'),
@@ -765,6 +845,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const { data, error } = await query;
     if (error) throw error;
     setSceneId(data.id);
+    setSceneProjectId(data.project_id || null);
     return data;
   };
 
@@ -780,6 +861,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       }
     }
     setSceneId(null);
+    setSceneProjectId(null);
     setTitle('Untitled scene');
     setCast([newCastMember(0), newCastMember(1)]);
     setSetReference({ name: '', url: '', description: '' });
