@@ -1467,10 +1467,54 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
         <div className="mx-auto max-w-7xl">
           <header className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 bg-[#17191d] px-4 py-4">
             <div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Camera size={20} /></div><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Scene Production</p><div className="flex flex-wrap items-center gap-3"><h3 className="text-xl font-black">Shoot</h3><input value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Scene name" className="min-w-[220px] max-w-[420px] flex-1 border border-white/10 bg-black/25 px-3 py-1.5 text-sm font-black text-white outline-none focus:border-[#23c7be]" placeholder="Scene name" /></div><p className="mt-1 text-xs text-white/45">Build technical shots, generate them, then finish the scene in Edit.</p></div></div>
-            <div className="flex flex-wrap gap-2"><button type="button" onClick={startNewScene} disabled={busy || exportingEdit} className="flex items-center gap-2 border border-[#23c7be]/30 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] hover:bg-[#23c7be]/20 disabled:opacity-50"><Plus size={14} /> New Scene</button><button type="button" onClick={openMyScenes} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${showMyScenes ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.05]'}`}><Folder size={14} /> My Scenes</button><button type="button" onClick={() => (step === 'edit' ? saveEditor() : saveScene().then(() => toast.success('Shoot scene saved')).catch((error) => toast.error(error.message)))} className="flex items-center gap-2 border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold"><Save size={14} /> Save</button>{!embedded && <button type="button" onClick={onClose} className="p-2"><X size={19} /></button>}</div>
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setShowMyProjects((open) => !open)} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${showMyProjects ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.05]'}`}><Folder size={14} /> My Projects</button><button type="button" onClick={startNewScene} disabled={busy || exportingEdit} className="flex items-center gap-2 border border-[#23c7be]/30 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] hover:bg-[#23c7be]/20 disabled:opacity-50"><Plus size={14} /> New Scene</button><button type="button" onClick={openMyScenes} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${showMyScenes ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.05]'}`}><Folder size={14} /> My Scenes</button><button type="button" onClick={() => (step === 'edit' ? saveEditor() : saveScene().then(() => toast.success('Shoot scene saved')).catch((error) => toast.error(error.message)))} className="flex items-center gap-2 border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold"><Save size={14} /> Save</button>{!embedded && <button type="button" onClick={onClose} className="p-2"><X size={19} /></button>}</div>
           </header>
 
-          {showMyScenes && <section className="mb-5 border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">My Scenes</p><p className="text-xs text-white/45">Open one of your saved Shoot scenes.</p></div><button type="button" onClick={loadMyScenes} disabled={loadingScenes} className="bg-white/10 px-3 py-2 text-xs font-bold disabled:opacity-50">Refresh</button></div>{loadingScenes ? <div className="flex min-h-24 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div> : savedScenes.length ? <div className="grid gap-2 md:grid-cols-2">{savedScenes.map((scene) => <div key={scene.id} className="relative border border-white/10 bg-black/20 hover:border-[#23c7be]"><button type="button" onClick={() => restoreScene(scene)} className="w-full p-3 pr-20 text-left"><div className="flex items-center justify-between gap-3"><span className="truncate text-sm font-black">{scene.title || 'Untitled scene'}</span><span className="text-[10px] font-bold uppercase text-[#8ee9e4]">{scene.status || 'setup'}</span></div><p className="mt-1 text-[10px] text-white/40">{scene.aspect_ratio || '16:9'} · {Array.isArray(scene.shot_plan) ? scene.shot_plan.length : 0} shots</p></button><button type="button" onClick={() => deleteScene(scene)} disabled={Boolean(deletingSceneId)} aria-label={`Delete ${scene.title || 'Untitled scene'}`} className="absolute bottom-3 right-3 flex items-center gap-1 bg-red-400/10 px-2 py-1.5 text-[10px] font-bold text-red-300 hover:bg-red-400/20 disabled:opacity-40">{deletingSceneId === scene.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete</button></div>)}</div> : <div className="border border-white/10 bg-black/20 p-4 text-sm text-white/45">No saved scenes yet.</div>}</section>}
+          <div className="mb-4 flex flex-wrap items-center gap-3 border border-white/10 bg-[#17191d] px-4 py-3">
+            <span className="text-xs font-black uppercase tracking-[0.12em] text-[#23c7be]">Shoot Project</span>
+            <select aria-label="Active Shoot project" value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)} className="min-w-[190px] max-w-full flex-1 bg-black/30 px-3 py-2 text-sm font-bold text-white">
+              <option value="all">All projects</option>
+              <option value="unassigned">Unassigned scenes</option>
+              {shootProjects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+            </select>
+            <span className="text-[11px] text-white/45">{selectedProjectId !== 'all' && selectedProjectId !== 'unassigned' ? 'New scenes will be saved in this project.' : 'Select a project to group new scenes.'}</span>
+          </div>
+          {showMyProjects && <section className="mb-5 space-y-3 border border-white/10 bg-[#17191d] p-4">
+            <p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">My Projects</p>
+            <div className="flex flex-wrap gap-2">
+              <input value={newProjectName} maxLength={160} onChange={(event) => setNewProjectName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void createShootProject(); }} placeholder="New Shoot project name" aria-label="New Shoot project name" className="min-w-[180px] flex-1 bg-black/30 px-3 py-2 text-sm text-white" />
+              <button type="button" onClick={createShootProject} disabled={projectsBusy || !newProjectName.trim()} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black disabled:opacity-40"><Plus size={13} className="mr-1 inline" /> Create Project</button>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">{shootProjects.map((project) => <div key={project.id} className="flex items-center gap-2 border border-white/10 bg-black/20 p-2">
+              <button type="button" onClick={() => { setSelectedProjectId(project.id); setShowMyProjects(false); setShowMyScenes(true); void loadMyScenes(); }} className="min-w-0 flex-1 truncate px-2 py-2 text-left text-sm font-bold text-white hover:text-[#8ee9e4]"><Folder size={13} className="mr-2 inline" /> {project.name}</button>
+              <button type="button" onClick={() => renameShootProject(project)} disabled={projectsBusy} className="bg-white/10 px-3 py-2 text-xs text-white/75 disabled:opacity-40">Rename</button>
+            </div>)}</div>
+            {!shootProjects.length && <p className="text-sm text-white/45">Create a Shoot project to organize your scenes.</p>}
+          </section>}
+
+          {showMyScenes && <section className="mb-5 border border-white/10 bg-[#17191d] p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">My Scenes</p><p className="text-xs text-white/45">Open saved Shoot scenes or move them between projects.</p></div>
+              <button type="button" onClick={loadMyScenes} disabled={loadingScenes} className="bg-white/10 px-3 py-2 text-xs font-bold disabled:opacity-50">Refresh</button>
+            </div>
+            {loadingScenes ? <div className="flex min-h-24 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div> :
+              (() => {
+                const visibleScenes = savedScenes.filter((scene) => selectedProjectId === 'all' || (selectedProjectId === 'unassigned' ? !scene.project_id : scene.project_id === selectedProjectId));
+                return visibleScenes.length ? <div className="grid gap-2 md:grid-cols-2">{visibleScenes.map((scene) => <div key={scene.id} className="border border-white/10 bg-black/20 hover:border-[#23c7be]">
+                  <button type="button" onClick={() => restoreScene(scene)} className="w-full p-3 text-left">
+                    <div className="flex items-center justify-between gap-3"><span className="truncate text-sm font-black">{scene.title || 'Untitled scene'}</span><span className="text-[10px] font-bold uppercase text-[#8ee9e4]">{scene.status || 'setup'}</span></div>
+                    <p className="mt-1 text-[10px] text-white/40">{scene.aspect_ratio || '16:9'} · {Array.isArray(scene.shot_plan) ? scene.shot_plan.length : 0} shots</p>
+                  </button>
+                  <div className="flex items-center justify-between gap-2 border-t border-white/10 px-3 py-2">
+                    <select aria-label={'Project for ' + (scene.title || 'Untitled scene')} value={scene.project_id || ''} disabled={projectsBusy || Boolean(deletingSceneId)} onChange={(event) => moveSceneToProject(scene, event.target.value)} className="min-w-0 flex-1 bg-[#202328] px-2 py-2 text-xs text-white/75 disabled:opacity-40">
+                      <option value="">Unassigned</option>
+                      {shootProjects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                    </select>
+                    <button type="button" onClick={() => deleteScene(scene)} disabled={Boolean(deletingSceneId) || projectsBusy} aria-label={'Delete ' + (scene.title || 'Untitled scene')} className="flex items-center gap-1 bg-red-400/10 px-2 py-2 text-[10px] font-bold text-red-300 hover:bg-red-400/20 disabled:opacity-40">{deletingSceneId === scene.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete</button>
+                  </div>
+                </div>)}</div> : <div className="border border-white/10 bg-black/20 p-4 text-sm text-white/45">No scenes in this project.</div>;
+              })()}
+          </section>}
 
           {showContext && <ProductionContextInfo productionMethod={productionMethod} block={block} character={character} referenceMedia={referenceMedia} />}
 
