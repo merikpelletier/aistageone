@@ -217,17 +217,14 @@ function PilotDetails({ access, user, onMessage }) {
   const sets = Array.isArray(series.sets) ? series.sets : [];
   const tabs = [
     ['overview', 'Overview', FileText],
+    ['scenario', 'Scenario', FileText],
     ['characters', 'Characters', Users],
     ['sets', 'Sets & Locations', MapPin],
     ['direction', 'Creative Direction', Layers],
     ['additions', 'My Additions', Plus],
   ];
-  const overviewBlocks = blocks.filter((item) => item.block_key === 'scenario');
-  const directionBlocks = blocks.filter((item) => item.block_key !== 'scenario').map((item) => {
-    if (item.block_key !== 'series-direction') return item;
-    const { locations, sets, ...direction } = item.content || {};
-    return { ...item, content: direction };
-  });
+  const scenarioBlocks = blocks.filter((item) => item.block_key === 'scenario');
+  const directionBlocks = blocks.filter((item) => !['series-direction', 'scenario'].includes(item.block_key));
   const renderBlocks = (items) => items.length ? items.map((block) => (
     <details key={block.id} className="group border border-white/10 bg-[#171b20]">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 text-sm font-semibold text-white hover:bg-white/[0.04]">
@@ -242,7 +239,8 @@ function PilotDetails({ access, user, onMessage }) {
         {tabs.map(([id, label, Icon]) => <button key={id} type="button" onClick={() => setActiveSection(id)} className={`inline-flex items-center gap-2 border px-3 py-2.5 text-xs font-semibold transition-colors ${activeSection === id ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#23c7be]' : 'border-white/10 bg-white/[0.03] text-white/65 hover:border-white/25 hover:text-white'}`}><Icon size={15} />{label}</button>)}
       </div>
       <div className="min-h-[160px] max-w-5xl">
-        {activeSection === 'overview' && <div className="space-y-3">{renderBlocks(overviewBlocks)}{access.pilot?.description && <div className="border border-white/10 bg-[#171b20] p-4"><p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#23c7be]">Series Overview</p><p className="whitespace-pre-wrap text-sm leading-relaxed text-white/75">{access.pilot.description}</p></div>}</div>}
+        {activeSection === 'overview' && <div className="space-y-3">{access.pilot?.description && <div className="border border-white/10 bg-[#171b20] p-4"><p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#23c7be]">Series Overview</p><p className="whitespace-pre-wrap text-sm leading-relaxed text-white/75">{access.pilot.description}</p></div>}</div>}
+        {activeSection === 'scenario' && <div className="space-y-3">{renderBlocks(scenarioBlocks)}</div>}
         {activeSection === 'characters' && <div className="grid gap-3 md:grid-cols-2">{characters.length ? characters.map((character) => <details key={character.id} className="group border border-white/10 bg-[#171b20] p-4"><summary className="flex cursor-pointer list-none items-center gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden bg-black/40">{(character.reference_images || []).length ? <img src={typeof character.reference_images[0] === 'string' ? character.reference_images[0] : character.reference_images[0]?.url} alt="" className="h-full w-full object-cover" /> : <Users size={20} className="text-white/30" />}</div><div className="min-w-0 flex-1"><p className="font-semibold text-white">{character.role_name}</p><p className="line-clamp-1 text-xs text-white/45">{character.narrative_function || character.description}</p></div><ChevronDown size={15} className="text-[#23c7be] group-open:rotate-180" /></summary><div className="mt-3 border-t border-white/10 pt-3"><ContentObject value={{ description: character.description, narrative_function: character.narrative_function, personality: character.personality, behavior: character.behavior, visual_identity: character.visual_identity, wardrobe_look: character.wardrobe_look, continuity_locks: character.continuity_locks, production_notes: character.production_notes }} /></div></details>) : <p className="text-sm text-white/45">No characters in this Pilot.</p>}</div>}
         {activeSection === 'sets' && <div className="grid gap-4 lg:grid-cols-2"><div><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#23c7be]">Locations · {locations.length}</p><div className="space-y-2">{locations.map((location) => <details key={location.id} className="border border-white/10 bg-[#171b20] p-3"><summary className="cursor-pointer text-sm font-semibold text-white">{location.name}</summary><p className="mt-2 whitespace-pre-wrap text-sm text-white/65">{location.description}</p></details>)}{!locations.length && <p className="text-sm text-white/45">No locations added.</p>}</div></div><div><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#23c7be]">Sets · {sets.length}</p><div className="space-y-2">{sets.map((set) => <details key={set.id} className="border border-white/10 bg-[#171b20] p-3"><summary className="cursor-pointer text-sm font-semibold text-white">{set.name}</summary><p className="mt-2 whitespace-pre-wrap text-sm text-white/65">{set.description}</p>{Array.isArray(set.reference_images) && set.reference_images.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{set.reference_images.map((image, index) => <img key={index} src={typeof image === 'string' ? image : image?.url} alt="Set reference" className="h-20 w-28 object-cover" />)}</div>}</details>)}{!sets.length && <p className="text-sm text-white/45">No sets added.</p>}</div></div></div>}
         {activeSection === 'direction' && <div className="space-y-3">{renderBlocks(directionBlocks)}</div>}
