@@ -436,7 +436,7 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
             />
           </div>
 
-          <div className="flex min-w-0 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]">
             {selectorOptions.map(option => (
               <button
                 key={option}
