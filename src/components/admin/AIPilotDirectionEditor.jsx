@@ -200,23 +200,39 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     });
   };
   const updateShots = (episodeIndex, key, shots) => applyPartPatch(episodeIndex, key, 'shot_plans', shots);
-  const proposeDialogue = async (episodeIndex, key) => {
+  const updateShotById = (episodeIndex, key, shotId, patch) => {
+    setBlock((current) => {
+      const currentContent = current.content || {};
+      const scenarios = [...(currentContent.scenarios || [])];
+      const episode = scenarios[episodeIndex] || { id: `episode-${episodeIndex + 1}` };
+      const plans = episode.shot_plans || {};
+      scenarios[episodeIndex] = {
+        ...episode,
+        shot_plans: {
+          ...plans,
+          [key]: (plans[key] || []).map((item) => item.id === shotId ? { ...item, ...patch } : item),
+        },
+      };
+      return { ...current, content: { ...currentContent, scenarios } };
+    });
+  };
+  const proposeDialogue = async (episodeIndex, key, shot) => {
     const ep = episodes[episodeIndex];
-    if (ep.dialogue_drafts?.[key] && !window.confirm('Replace the existing dialogue draft for this part?')) return;
+    if (shot.dialogue && !window.confirm('Replace the dialogue draft for this shot?')) return;
     const selected = ep.scene_resources?.[key]?.character_ids || [];
     const names = availableCharacters.filter((item) => selected.includes(item.id)).map((item) => item.name);
     setGenerationError('');
-    setGenerating(`dialogue-${episodeIndex}-${key}`);
+    setGenerating(`dialogue-${shot.id}`);
     try {
       const { data, error } = await supabase.functions.invoke('invoke-llm', { body: {
-        instructions: 'You are an experienced screenwriter. Propose concise, natural character dialogue in the same language as the supplied story. Follow existing character identities. Do not add characters. Do not rewrite the story. Output ONLY dialogue with speaker labels, no explanations.',
-        prompt: `Series brief: ${content.creative_brief || ''}\nEpisode: ${ep.title || ''}\nPremise: ${ep.premise || ''}\nStory: ${ep.outline || ''}\nScene (${key}): ${ep.parts?.[key] || ''}\nAvailable speakers: ${names.join(', ') || 'No characters selected. Do not invent speakers.'}\nWrite a short editable first draft of dialogue for this scene.`,
+        instructions: 'You are an experienced screenwriter. Draft natural, concise dialogue for exactly ONE shot. Respect the shot duration and allow time for action. Use only selected speakers, preserve story and character identities. If this shot calls for silence, return an empty dialogue. Output dialogue with speaker labels only, no explanations.',
+        prompt: `Series brief: ${content.creative_brief || ''}\nEpisode: ${ep.title || ''}\nPremise: ${ep.premise || ''}\nScene (${key}): ${ep.parts?.[key] || ''}\nShot framing: ${shot.shot_type || ''}\nShot length: ${shot.duration || 5} seconds\nShot action: ${shot.action || ''}\nCamera / blocking: ${shot.camera || ''}\nAvailable speakers: ${names.join(', ') || 'No characters selected; output no dialogue.'}\nProduce dialogue ONLY for this specific shot, not the entire segment.`,
       } });
       if (error) throw error;
       const result = typeof data === 'string' ? data : data?.text || data?.output;
-      if (typeof result !== 'string' || !result.trim()) throw new Error('The text model returned no dialogue.');
-      applyPartPatch(episodeIndex, key, 'dialogue_drafts', result.trim());
-    } catch (error) { setGenerationError(error.message || 'Unable to propose dialogue.'); }
+      if (typeof result !== 'string') throw new Error('The text model did not return a dialogue draft.');
+      updateShotById(episodeIndex, key, shot.id, { dialogue: result.trim() });
+    } catch (error) { setGenerationError(error.message || 'Unable to propose shot dialogue.'); }
     finally { setGenerating(''); }
   };
   const proposeShots = async (episodeIndex, key) => {
@@ -233,7 +249,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       const { data, error } = await supabase.functions.invoke('invoke-llm', { body: {
         instructions: 'You are a film director preparing a practical video shot list. No music inside clips. Use one stable framing per video clip, with shots between 5 and 30 seconds. Never invent cast members or locations. Return JSON only.',
         response_json_schema: schema,
-        prompt: `Produce 2 to 6 video clips for this scene, total approximately 30 seconds. Allowed shot types: ${SHOT_TYPES.join(', ')}. Allowed durations: ${CLIP_DURATIONS.join(', ')} seconds. Episode: ${ep.title || ''}. Story: ${ep.outline || ''}. Scene: ${ep.parts?.[key] || ''}. Dialogue: ${ep.dialogue_drafts?.[key] || ''}. Characters: ${characters.join(', ') || 'none selected'}. Sets: ${sets.join(', ') || 'none selected'}. Preserve the scene's exact narrative and casting.`,
+        prompt: `Produce 2 to 6 video clips for this scene, total approximately 30 seconds. Allowed shot types: ${SHOT_TYPES.join(', ')}. Allowed durations: ${CLIP_DURATIONS.join(', ')} seconds. Episode: ${ep.title || ''}. Story: ${ep.outline || ''}. Scene: ${ep.parts?.[key] || ''}. Characters: ${characters.join(', ') || 'none selected'}. Sets: ${sets.join(', ') || 'none selected'}. Preserve the scene's exact narrative and casting.`,
       } });
       if (error) throw error;
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
@@ -244,6 +260,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
         duration: CLIP_DURATIONS.includes(Number(item.duration)) ? Number(item.duration) : 5,
         action: String(item.action || ''),
         camera: String(item.camera || ''),
+        dialogue: '',
         storyboard_url: '',
       }));
       updateShots(episodeIndex, key, shots);
@@ -297,7 +314,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
           <div><div className="text-sm text-white">Shoot · Shot Plan / Storyboard</div><div className="text-[11px] text-white/40">Multiple independent shots per segment, each with its own framing and 5–30 second duration. Storyboard images are previews only, never production references.</div></div>
           {!readOnly && <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={busy} onClick={() => proposeShots(episodeIndex, key)}>Propose Shots</Button>
-            <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => updateShots(episodeIndex, key, [...shots, { id: makeId('shot'), shot_type: 'Medium Shot', duration: 5, action: '', camera: '', storyboard_url: '' }])}><Plus size={13} className="mr-1" /> Add Shot</Button>
+            <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => updateShots(episodeIndex, key, [...shots, { id: makeId('shot'), shot_type: 'Medium Shot', duration: 5, action: '', camera: '', dialogue: '', storyboard_url: '' }])}><Plus size={13} className="mr-1" /> Add Shot</Button>
           </div>}
         </div>
         {shots.map((shot, shotIndex) => (
@@ -321,6 +338,13 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
             <label className="text-xs text-white/60 block">Camera / positioning
               <Textarea className={CONTROL_CLASS} rows={2} disabled={readOnly} value={shot.camera || ''} onChange={(event) => updateShot(shot.id, { camera: event.target.value, storyboard_url: '' })} />
             </label>
+            <div className="space-y-2 border border-white/10 bg-white/[0.02] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div><div className="text-xs text-white">Shot Dialogue</div><div className="text-[11px] text-white/40">Dialogue belongs to this shot and must fit its duration. Editable or optional.</div></div>
+                {!readOnly && <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={busy} onClick={() => proposeDialogue(episodeIndex, key, shot)}>{generating === `dialogue-${shot.id}` ? 'Generating…' : 'Propose Dialogue'}</Button>}
+              </div>
+              <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} value={shot.dialogue || ''} onChange={(event) => updateShot(shot.id, { dialogue: event.target.value })} placeholder="Dialogue for this shot (optional)" />
+            </div>
             {shot.storyboard_url ? <img src={shot.storyboard_url} alt={`Illustrated storyboard shot ${shotIndex + 1}`} className="w-full max-w-md aspect-video object-contain bg-black border border-white/10" /> : <div className="w-full max-w-md aspect-video bg-black/40 border border-dashed border-white/15 flex items-center justify-center text-xs text-white/35">Illustrated preview not generated</div>}
             {!readOnly && <Button size="sm" type="button" className={SECONDARY_BUTTON_CLASS} disabled={busy} onClick={() => generateStoryboardFrame(episodeIndex, key, shot)}>{generating === `frame-${shot.id}` ? 'Generating…' : shot.storyboard_url ? 'Regenerate Illustration' : 'Generate Illustration'}</Button>}
           </div>
@@ -384,13 +408,6 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                       {resourcePicker(episode, index, key, 'character_ids', 'Characters', availableCharacters)}
                       {resourcePicker(episode, index, key, 'set_ids', 'Sets', availableSets)}
                       {shotPlanner(episode, index, key)}
-                      <div className="space-y-2 border border-white/10 bg-white/[0.02] p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div><div className="text-sm text-white">Dialogue · Editable Draft</div><div className="text-[11px] text-white/40">The AI proposes. The creator may freely rewrite, replace or remove the dialogue.</div></div>
-                          {!readOnly && <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={Boolean(generating)} onClick={() => proposeDialogue(index, key)}>{generating === `dialogue-${index}-${key}` ? 'Generating…' : 'Propose Dialogue'}</Button>}
-                        </div>
-                        <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} value={episode.dialogue_drafts?.[key] || ''} onChange={(event) => applyPartPatch(index, key, 'dialogue_drafts', event.target.value)} placeholder="Optional dialogue draft for this scene" />
-                      </div>
                     </div>
                   ))}
                 </div>
