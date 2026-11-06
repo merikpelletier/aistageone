@@ -78,7 +78,7 @@ export default function AdminAIPilots() {
   });
 
   const { data: scenarioCharacters = [] } = useQuery({
-    queryKey: ['admin-ai-pilot-characters', selectedVersion?.id],
+    queryKey: ['admin-ai-pilot-scenario-characters', selectedVersion?.id],
     enabled: Boolean(selectedVersion?.id),
     queryFn: async () => {
       const { data, error } = await supabase.from('ai_pilot_characters')
