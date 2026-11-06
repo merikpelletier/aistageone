@@ -14,6 +14,8 @@ import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
+const DEFAULT_ACTOR_SHEET_PATH = '/actor-guides/neutral-base.webp';
+
 const PHOTO_SLOTS = [
   { key: 'front', label: 'Full front', hint: 'Neutral pose', short: 'FRONT', guide: '/actor-guides/front.webp', accent: 'border-[#ff7868]' },
   { key: 'back', label: 'Full back', hint: 'Clothing details', short: 'BACK', guide: '/actor-guides/back.webp', accent: 'border-[#e7ae46]' },
@@ -248,12 +250,17 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const [traits, setTraits] = useState(Array.isArray(sheet?.character_traits) ? sheet.character_traits.join(', ') : '');
   const [photos, setPhotos] = useState(initial.photos);
   const [photoSources, setPhotoSources] = useState(initial.design.photo_sources || {});
-  const [sourceMode, setSourceMode] = useState(initial.design.source_sheet_url ? 'sheet' : 'angles');
-  const [sourceSheet, setSourceSheet] = useState(initial.design.source_sheet_url ? {
+  const [sourceMode, setSourceMode] = useState(initial.design.source_sheet_url || !sheet ? 'sheet' : 'angles');
+  const [sourceSheet, setSourceSheet] = useState(() => initial.design.source_sheet_url ? {
     url: initial.design.source_sheet_url,
     title: initial.design.source_sheet_title || 'Reference sheet',
     source: initial.design.source_sheet_source || 'vault',
     sourceAssetId: initial.design.source_sheet_asset_id || null,
+  } : !sheet ? {
+    url: typeof window !== 'undefined' ? new URL(DEFAULT_ACTOR_SHEET_PATH, window.location.origin).href : DEFAULT_ACTOR_SHEET_PATH,
+    title: 'Neutral mannequin reference',
+    source: 'default',
+    sourceAssetId: null,
   } : null);
   const [lookReferences, setLookReferences] = useState(() => {
     if (Array.isArray(initial.design.look_references) && initial.design.look_references.length) return initial.design.look_references.filter((item) => item?.url);
