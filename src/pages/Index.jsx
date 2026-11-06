@@ -347,16 +347,16 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
   const selectorOptions = useMemo(() => {
     const usedClasses = new Set(dossiers.map(d => d.class).filter(Boolean));
     const usedCategories = new Set(dossiers.map(d => d.category).filter(Boolean));
-    const classNames = dossierClasses.map(item => item.name).filter(name => usedClasses.has(name));
-    if (usedClasses.has('Story') && !classNames.includes('Story')) classNames.push('Story');
-    const categoryNames = categories.map(item => item.name).filter(name => usedCategories.has(name) && !classNames.includes(name));
-    return ['All', ...classNames, ...categoryNames];
+    const classNames = dossierClasses.map(item => item.name).filter(name => usedClasses.has(name) && name !== 'Story' && name !== 'FotoPlay');
+    const showFotoPlay = usedClasses.has('Story') || usedClasses.has('FotoPlay') || usedCategories.has('FotoPlay');
+    const categoryNames = categories.map(item => item.name).filter(name => usedCategories.has(name) && name !== 'FotoPlay' && !classNames.includes(name));
+    return ['All', ...(showFotoPlay ? ['FotoPlay'] : []), ...classNames, ...categoryNames];
   }, [categories, dossierClasses, dossiers]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return dossiers.filter((dossier) => {
-      const selectorMatch = selected === 'All' || dossier.class === selected || dossier.category === selected;
+      const selectorMatch = selected === 'All' || dossier.class === selected || dossier.category === selected || (selected === 'FotoPlay' && dossier.class === 'Story');
       if (!selectorMatch) return false;
       if (!q) return true;
       return [dossier.title, dossier.subtitle, dossier.category, dossier.class, dossier.author_name, dossier.submitted_by_name]
@@ -448,7 +448,7 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
                 onClick={() => setSelected(option)}
                 className={`whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
               >
-                {option === 'Story' ? 'FotoPlay' : option}
+                {option}
               </button>
             ))}
           </div>
