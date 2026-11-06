@@ -145,7 +145,7 @@ const VIDEO_PARTS = [
   ['hook', 'Part 4 · Hook', '90–120 seconds · End with a payoff or forward hook'],
 ];
 
-function ScenarioEditor({ block, setBlock, readOnly, onSave, saving }) {
+function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCharacters = [], availableSets = [] }) {
   const content = block.content || {};
   const stored = Array.isArray(content.scenarios) ? content.scenarios : [];
   const episodes = Array.from({ length: EPISODE_COUNT }, (_, index) => stored[index] || { id: `episode-${index + 1}`, title: '', premise: '', outline: '', scene_ideas: '', creative_options: '', parts: {} });
@@ -154,6 +154,37 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving }) {
   const updateEpisode = (index, patch) => updateContent({
     scenarios: [...episodes.map((ep, i) => i === index ? { ...ep, ...patch } : ep), ...stored.slice(EPISODE_COUNT)],
   });
+  const toggleSceneResource = (episodeIndex, partKey, field, resourceId) => {
+    const episode = episodes[episodeIndex];
+    const sceneResources = episode.scene_resources || {};
+    const scene = sceneResources[partKey] || {};
+    const selected = Array.isArray(scene[field]) ? scene[field] : [];
+    const next = selected.includes(resourceId)
+      ? selected.filter((id) => id !== resourceId)
+      : [...selected, resourceId];
+    updateEpisode(episodeIndex, {
+      scene_resources: {
+        ...sceneResources,
+        [partKey]: { ...scene, [field]: next },
+      },
+    });
+  };
+  const resourcePicker = (episode, episodeIndex, partKey, field, label, options) => {
+    const selected = episode.scene_resources?.[partKey]?.[field] || [];
+    return (
+      <div className="space-y-2">
+        <div className="text-xs text-white/65">{label}</div>
+        <div className="flex flex-wrap gap-2">
+          {options.length ? options.map((option) => (
+            <label key={option.id} className={`inline-flex items-center gap-2 border px-3 py-2 text-xs cursor-pointer ${selected.includes(option.id) ? 'border-[var(--studio-accent)] bg-white/[0.08] text-white' : 'border-white/15 text-white/60'}`}>
+              <input type="checkbox" disabled={readOnly} checked={selected.includes(option.id)} onChange={() => toggleSceneResource(episodeIndex, partKey, field, option.id)} className="accent-teal-400" />
+              {option.name}
+            </label>
+          )) : <span className="text-xs text-white/35">No {label.toLowerCase()} in this AI Pilot.</span>}
+        </div>
+      </div>
+    );
+  };
   const input = (label, value, onChange, rows = 4, placeholder = '') => (
     <label className="block space-y-2">
       <span className="text-xs text-white/55">{label}</span>
@@ -201,11 +232,15 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving }) {
                 <div className="space-y-3 border border-white/10 p-3">
                   <div className="text-sm text-white">Video Breakdown · 4 × 30 seconds</div>
                   {VIDEO_PARTS.map(([key, label, helper]) => (
-                    <label key={key} className="block space-y-1.5">
-                      <span className="text-xs text-white/65">{label}</span>
-                      <span className="block text-[11px] text-white/35">{helper}</span>
-                      <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} value={episode.parts?.[key] || ''} onChange={(e) => updateEpisode(index, { parts: { ...(episode.parts || {}), [key]: e.target.value } })} placeholder="Optional dramatic beats or shots for this part" />
-                    </label>
+                    <div key={key} className="space-y-3 border-b border-white/10 pb-4 last:border-b-0 last:pb-0">
+                      <label className="block space-y-1.5">
+                        <span className="text-xs text-white/65">{label}</span>
+                        <span className="block text-[11px] text-white/35">{helper}</span>
+                        <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} value={episode.parts?.[key] || ''} onChange={(e) => updateEpisode(index, { parts: { ...(episode.parts || {}), [key]: e.target.value } })} placeholder="Optional dramatic beats or shots for this part" />
+                      </label>
+                      {resourcePicker(episode, index, key, 'character_ids', 'Characters', availableCharacters)}
+                      {resourcePicker(episode, index, key, 'set_ids', 'Sets', availableSets)}
+                    </div>
                   ))}
                 </div>
                 {input('Scene Inspirations', episode.scene_ideas, (value) => updateEpisode(index, { scene_ideas: value }), 4)}
