@@ -77,6 +77,25 @@ export default function AdminAIPilots() {
     },
   });
 
+  const { data: scenarioCharacters = [] } = useQuery({
+    queryKey: ['admin-ai-pilot-characters', selectedVersion?.id],
+    enabled: Boolean(selectedVersion?.id),
+    queryFn: async () => {
+      const { data, error } = await supabase.from('ai_pilot_characters')
+        .select('id, role_name, is_active')
+        .eq('version_id', selectedVersion.id)
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const scenarioSets = useMemo(() => {
+    const direction = blocks.find((item) => item.block_key === 'series-direction');
+    const sets = direction?.content?.sets;
+    return Array.isArray(sets) ? sets.filter((set) => set?.id && set?.name).map((set) => ({ id: set.id, name: set.name })) : [];
+  }, [blocks]);
+
   const directionBlocks = useMemo(() => {
     if (!selectedVersion?.id) return blocks;
     if (blocks.some((item) => item.block_key === 'scenario')) return blocks;
@@ -381,7 +400,7 @@ export default function AdminAIPilots() {
                     </div>
                   </div>
                   <div className="p-4 md:p-5">
-                    <AIPilotDirectionEditor block={editingBlock} setBlock={setEditingBlock} readOnly={false} onSave={() => saveBlock.mutate()} saving={saveBlock.isPending} />
+                    <AIPilotDirectionEditor block={editingBlock} setBlock={setEditingBlock} readOnly={false} onSave={() => saveBlock.mutate()} saving={saveBlock.isPending} availableCharacters={scenarioCharacters.filter((character) => character.is_active !== false).map((character) => ({ id: character.id, name: character.role_name }))} availableSets={scenarioSets} />
                   </div>
                 </div>
               </div>}
