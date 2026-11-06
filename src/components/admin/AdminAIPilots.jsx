@@ -82,7 +82,7 @@ export default function AdminAIPilots() {
     enabled: Boolean(selectedVersion?.id),
     queryFn: async () => {
       const { data, error } = await supabase.from('ai_pilot_characters')
-        .select('id, role_name, is_active')
+        .select('id, role_name, is_active, reference_images')
         .eq('version_id', selectedVersion.id)
         .order('sort_order', { ascending: true });
       if (error) throw error;
@@ -93,7 +93,7 @@ export default function AdminAIPilots() {
   const scenarioSets = useMemo(() => {
     const direction = blocks.find((item) => item.block_key === 'series-direction');
     const sets = direction?.content?.sets;
-    return Array.isArray(sets) ? sets.filter((set) => set?.id && set?.name).map((set) => ({ id: set.id, name: set.name })) : [];
+    return Array.isArray(sets) ? sets.filter((set) => set?.id && set?.name).map((set) => ({ id: set.id, name: set.name, reference_images: set.reference_images || [] })) : [];
   }, [blocks]);
 
   const directionBlocks = useMemo(() => {
@@ -400,7 +400,7 @@ export default function AdminAIPilots() {
                     </div>
                   </div>
                   <div className="p-4 md:p-5">
-                    <AIPilotDirectionEditor block={editingBlock} setBlock={setEditingBlock} readOnly={false} onSave={() => saveBlock.mutate()} saving={saveBlock.isPending} availableCharacters={scenarioCharacters.filter((character) => character.is_active !== false).map((character) => ({ id: character.id, name: character.role_name }))} availableSets={scenarioSets} />
+                    <AIPilotDirectionEditor block={editingBlock} setBlock={setEditingBlock} readOnly={false} onSave={() => saveBlock.mutate()} saving={saveBlock.isPending} availableCharacters={scenarioCharacters.filter((character) => character.is_active !== false).map((character) => ({ id: character.id, name: character.role_name, reference_images: character.reference_images || [] }))} availableSets={scenarioSets} />
                   </div>
                 </div>
               </div>}
