@@ -323,7 +323,6 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
           <div><div className="text-sm text-white">Shoot · Shot Plan / Storyboard</div><div className="text-[11px] text-white/40">Multiple independent shots per segment, each with its own framing and 5–30 second duration. Storyboard images are previews only, never production references.</div></div>
           {!readOnly && <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={busy} onClick={() => proposeShots(episodeIndex, key)}>Propose Shots</Button>
-            <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => updateShots(episodeIndex, key, [...shots, { id: makeId('shot'), shot_type: 'Medium Shot', duration: 5, action: '', camera: '', dialogue: '', storyboard_url: '' }])}><Plus size={13} className="mr-1" /> Add Shot</Button>
           </div>}
         </div>
         {shots.map((shot, shotIndex) => (
@@ -358,6 +357,9 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
             {!readOnly && <Button size="sm" type="button" className={SECONDARY_BUTTON_CLASS} disabled={busy} onClick={() => generateStoryboardFrame(episodeIndex, key, shot)}>{generating === `frame-${shot.id}` ? 'Generating…' : shot.storyboard_url ? 'Regenerate Illustration' : 'Generate Illustration'}</Button>}
           </div>
         ))}
+        {!readOnly && <div className="flex justify-end pt-2">
+          <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => updateShots(episodeIndex, key, [...shots, { id: makeId('shot'), shot_type: 'Medium Shot', duration: 5, action: '', camera: '', dialogue: '', storyboard_url: '' }])}><Plus size={13} className="mr-1" /> Add Shot</Button>
+        </div>}
       </div>
     );
   };
