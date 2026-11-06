@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { ChevronDown, GripVertical, Play, Search, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, GripVertical, Play, Search, Sparkles } from 'lucide-react';
 import TopBanner from '@/components/TopBanner';
 
 const CLASS_ORDER = ['Videos', 'Story', 'Assets', 'Kits', 'Merchandise'];
@@ -320,6 +320,7 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('All');
   const draggingRef = useRef(false);
+  const categoryScrollRef = useRef(null);
 
   useEffect(() => {
     window.localStorage.setItem('aistage:index-browser-height', String(Math.round(panelHeight)));
@@ -436,17 +437,21 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
             />
           </div>
 
-          <div className="flex min-w-0 gap-1.5 overflow-x-auto pb-2 [scrollbar-width:thin]" onWheel={(event) => { if (event.currentTarget.scrollWidth > event.currentTarget.clientWidth) event.currentTarget.scrollLeft += event.deltaY; }}>
-            {selectorOptions.map(option => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setSelected(option)}
-                className={`whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
-              >
-                {option}
-              </button>
-            ))}
+          <div className="flex min-w-0 items-center gap-1">
+            <button type="button" aria-label="Previous categories" onClick={() => categoryScrollRef.current?.scrollBy({ left: -440, behavior: 'smooth' })} className="flex h-10 shrink-0 items-center justify-center border border-white/20 bg-black/40 px-2 text-white hover:bg-white/15"><ChevronLeft size={19} /></button>
+            <div ref={categoryScrollRef} className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-2 [scrollbar-width:thin]" onWheel={(event) => { if (event.currentTarget.scrollWidth > event.currentTarget.clientWidth && event.deltaY) event.currentTarget.scrollLeft += event.deltaY; }}>
+              {selectorOptions.map(option => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setSelected(option)}
+                  className={`whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            <button type="button" aria-label="Next categories" onClick={() => categoryScrollRef.current?.scrollBy({ left: 440, behavior: 'smooth' })} className="flex h-10 shrink-0 items-center justify-center border border-white/20 bg-black/40 px-2 text-white hover:bg-white/15"><ChevronRight size={19} /></button>
           </div>
         </div>
       </div>
