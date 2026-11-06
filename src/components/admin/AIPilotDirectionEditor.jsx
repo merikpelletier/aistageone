@@ -295,7 +295,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
         `Eligible set references: ${availableSets.filter((item) => (resources.set_ids || []).includes(item.id)).map((item) => item.name).join(', ') || 'not selected'}.`,
         'Reference images establish ONLY the appearance of characters, wardrobe, props and environment. Never copy their camera angle, subject placement, pose or framing when these conflict with the shot instructions.',
         'Style: clean expressive monochrome pencil-sketch cinematic storyboard illustration, not photorealistic. Exactly one panel, 16:9. No grid, multiple panels, captions, lettering, logos or unrelated activity.',
-      ].join('\\n');
+      ].join('\n');
       const { data, error } = await supabase.functions.invoke('generate-image', { body: {
         prompt, reference_image_urls: references, aspect_ratio: '16:9',
       } });
