@@ -424,7 +424,7 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
           </div>
         </div>
 
-        <div className="grid grid-cols-[minmax(280px,420px)_1fr] gap-3">
+        <div className="grid grid-cols-[minmax(280px,420px)_minmax(0,1fr)] gap-3">
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35" />
             <input
@@ -436,7 +436,7 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
             />
           </div>
 
-          <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex min-w-0 gap-1.5 overflow-x-auto pb-2 [scrollbar-width:thin]" onWheel={(event) => { if (event.currentTarget.scrollWidth > event.currentTarget.clientWidth) event.currentTarget.scrollLeft += event.deltaY; }}>
             {selectorOptions.map(option => (
               <button
                 key={option}
