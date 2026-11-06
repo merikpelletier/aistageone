@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '@/api/base44Client';
 import { ChevronDown, ChevronRight, Plus, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -137,6 +138,8 @@ function PromptCollectionEditor({ block, setBlock, readOnly, onSave, saving }) {
 }
 
 
+const SHOT_TYPES = ['Establishing', 'Wide Shot', 'Full Shot', 'Medium Shot', 'Medium Close-Up', 'Close-Up', 'Extreme Close-Up', 'Two Shot', 'Over-the-Shoulder', 'POV', 'Insert / Detail', 'Reaction Shot'];
+const CLIP_DURATIONS = [5, 10, 15, 20, 25, 30];
 const EPISODE_COUNT = 9;
 const VIDEO_PARTS = [
   ['setup', 'Part 1 · Setup', '0–30 seconds · Establish the situation'],
@@ -150,6 +153,8 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
   const stored = Array.isArray(content.scenarios) ? content.scenarios : [];
   const episodes = Array.from({ length: EPISODE_COUNT }, (_, index) => stored[index] || { id: `episode-${index + 1}`, title: '', premise: '', outline: '', scene_ideas: '', creative_options: '', parts: {} });
   const [expandedIndex, setExpandedIndex] = useState(null);
+  const [generating, setGenerating] = useState('');
+  const [generationError, setGenerationError] = useState('');
   const updateContent = (patch) => setBlock({ ...block, content: { ...content, ...patch } });
   const updateEpisode = (index, patch) => updateContent({
     scenarios: [...episodes.map((ep, i) => i === index ? { ...ep, ...patch } : ep), ...stored.slice(EPISODE_COUNT)],
@@ -182,6 +187,144 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
             </label>
           )) : <span className="text-xs text-white/35">No {label.toLowerCase()} in this AI Pilot.</span>}
         </div>
+      </div>
+    );
+  };
+  const applyPartPatch = (episodeIndex, key, field, value) => {
+    setBlock((current) => {
+      const currentContent = current.content || {};
+      const currentEpisodes = Array.isArray(currentContent.scenarios) ? [...currentContent.scenarios] : [];
+      const original = currentEpisodes[episodeIndex] || { id: `episode-${episodeIndex + 1}`, parts: {} };
+      currentEpisodes[episodeIndex] = { ...original, [field]: { ...(original[field] || {}), [key]: value } };
+      return { ...current, content: { ...currentContent, scenarios: currentEpisodes } };
+    });
+  };
+  const updateShots = (episodeIndex, key, shots) => applyPartPatch(episodeIndex, key, 'shot_plans', shots);
+  const proposeDialogue = async (episodeIndex, key) => {
+    const ep = episodes[episodeIndex];
+    if (ep.dialogue_drafts?.[key] && !window.confirm('Replace the existing dialogue draft for this part?')) return;
+    const selected = ep.scene_resources?.[key]?.character_ids || [];
+    const names = availableCharacters.filter((item) => selected.includes(item.id)).map((item) => item.name);
+    setGenerationError('');
+    setGenerating(`dialogue-${episodeIndex}-${key}`);
+    try {
+      const { data, error } = await supabase.functions.invoke('invoke-llm', { body: {
+        instructions: 'You are an experienced screenwriter. Propose concise, natural character dialogue in the same language as the supplied story. Follow existing character identities. Do not add characters. Do not rewrite the story. Output ONLY dialogue with speaker labels, no explanations.',
+        prompt: `Series brief: ${content.creative_brief || ''}\nEpisode: ${ep.title || ''}\nPremise: ${ep.premise || ''}\nStory: ${ep.outline || ''}\nScene (${key}): ${ep.parts?.[key] || ''}\nAvailable speakers: ${names.join(', ') || 'No characters selected. Do not invent speakers.'}\nWrite a short editable first draft of dialogue for this scene.`,
+      } });
+      if (error) throw error;
+      const result = typeof data === 'string' ? data : data?.text || data?.output;
+      if (typeof result !== 'string' || !result.trim()) throw new Error('The text model returned no dialogue.');
+      applyPartPatch(episodeIndex, key, 'dialogue_drafts', result.trim());
+    } catch (error) { setGenerationError(error.message || 'Unable to propose dialogue.'); }
+    finally { setGenerating(''); }
+  };
+  const proposeShots = async (episodeIndex, key) => {
+    const ep = episodes[episodeIndex];
+    const existing = ep.shot_plans?.[key] || [];
+    if (existing.length && !window.confirm('Replace the existing shot plan for this part?')) return;
+    const selected = ep.scene_resources?.[key] || {};
+    const characters = availableCharacters.filter((item) => (selected.character_ids || []).includes(item.id)).map((item) => item.name);
+    const sets = availableSets.filter((item) => (selected.set_ids || []).includes(item.id)).map((item) => item.name);
+    setGenerationError('');
+    setGenerating(`shots-${episodeIndex}-${key}`);
+    try {
+      const schema = { type: 'object', properties: { shots: { type: 'array', items: { type: 'object', properties: { shot_type: { type: 'string' }, duration: { type: 'integer' }, action: { type: 'string' }, camera: { type: 'string' } }, required: ['shot_type', 'duration', 'action', 'camera'] } } }, required: ['shots'] };
+      const { data, error } = await supabase.functions.invoke('invoke-llm', { body: {
+        instructions: 'You are a film director preparing a practical video shot list. No music inside clips. Use one stable framing per video clip, with shots between 5 and 30 seconds. Never invent cast members or locations. Return JSON only.',
+        response_json_schema: schema,
+        prompt: `Produce 2 to 6 video clips for this scene, total approximately 30 seconds. Allowed shot types: ${SHOT_TYPES.join(', ')}. Allowed durations: ${CLIP_DURATIONS.join(', ')} seconds. Episode: ${ep.title || ''}. Story: ${ep.outline || ''}. Scene: ${ep.parts?.[key] || ''}. Dialogue: ${ep.dialogue_drafts?.[key] || ''}. Characters: ${characters.join(', ') || 'none selected'}. Sets: ${sets.join(', ') || 'none selected'}. Preserve the scene's exact narrative and casting.`,
+      } });
+      if (error) throw error;
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      if (!Array.isArray(parsed?.shots) || !parsed.shots.length) throw new Error('The text model returned no valid shot plan.');
+      const shots = parsed.shots.slice(0, 6).map((item) => ({
+        id: makeId('shot'),
+        shot_type: SHOT_TYPES.includes(item.shot_type) ? item.shot_type : 'Medium Shot',
+        duration: CLIP_DURATIONS.includes(Number(item.duration)) ? Number(item.duration) : 5,
+        action: String(item.action || ''),
+        camera: String(item.camera || ''),
+        storyboard_url: '',
+      }));
+      updateShots(episodeIndex, key, shots);
+    } catch (error) { setGenerationError(error.message || 'Unable to propose a shot plan.'); }
+    finally { setGenerating(''); }
+  };
+  const generateStoryboardFrame = async (episodeIndex, key, shot) => {
+    const ep = episodes[episodeIndex];
+    const resources = ep.scene_resources?.[key] || {};
+    const references = [
+      ...availableCharacters.filter((item) => (resources.character_ids || []).includes(item.id)),
+      ...availableSets.filter((item) => (resources.set_ids || []).includes(item.id)),
+    ].flatMap((item) => Array.isArray(item.reference_images) ? item.reference_images : [])
+      .map((item) => typeof item === 'string' ? item : item?.url).filter(Boolean).slice(0, 14);
+    setGenerationError('');
+    setGenerating(`frame-${shot.id}`);
+    try {
+      const prompt = [
+        'Illustrated movie storyboard frame, expressive monochrome pencil sketch, clean cinematic storyboard illustration. NOT a photorealistic production frame.',
+        `Shot type: ${shot.shot_type}. Camera: ${shot.camera || 'fixed camera'}.`,
+        `Action: ${shot.action || ep.parts?.[key] || ''}.`,
+        `Scene: ${ep.parts?.[key] || ''}.`,
+        `Characters: ${availableCharacters.filter((item) => (resources.character_ids || []).includes(item.id)).map((item) => item.name).join(', ') || 'none selected'}.`,
+        `Set: ${availableSets.filter((item) => (resources.set_ids || []).includes(item.id)).map((item) => item.name).join(', ') || 'not selected'}.`,
+        'Use provided reference images for identity, wardrobe and setting continuity. No captions, letters, text, logos, music or audio.',
+      ].join('\n');
+      const { data, error } = await supabase.functions.invoke('generate-image', { body: {
+        prompt, reference_image_urls: references, aspect_ratio: '16:9',
+      } });
+      if (error) throw error;
+      const url = data?.url || data?.file_url;
+      if (!url) throw new Error('The image service did not return an image.');
+      setBlock((current) => {
+        const nextContent = current.content || {};
+        const nextEpisodes = [...(nextContent.scenarios || [])];
+        const original = nextEpisodes[episodeIndex] || {};
+        const plans = original.shot_plans || {};
+        nextEpisodes[episodeIndex] = { ...original, shot_plans: { ...plans, [key]: (plans[key] || []).map((item) => item.id === shot.id ? { ...item, storyboard_url: url } : item) } };
+        return { ...current, content: { ...nextContent, scenarios: nextEpisodes } };
+      });
+    } catch (error) { setGenerationError(error.message || 'Unable to generate storyboard image.'); }
+    finally { setGenerating(''); }
+  };
+  const shotPlanner = (episode, episodeIndex, key) => {
+    const shots = episode.shot_plans?.[key] || [];
+    const updateShot = (id, patch) => updateShots(episodeIndex, key, shots.map((shot) => shot.id === id ? { ...shot, ...patch } : shot));
+    const busy = Boolean(generating);
+    return (
+      <div className="space-y-3 border border-white/10 bg-white/[0.02] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div><div className="text-sm text-white">Shoot · Shot Plan / Storyboard</div><div className="text-[11px] text-white/40">One framing and 5–30 seconds per clip. Storyboard images are previews only, never production references.</div></div>
+          {!readOnly && <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={busy} onClick={() => proposeShots(episodeIndex, key)}>Propose Shots</Button>
+            <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => updateShots(episodeIndex, key, [...shots, { id: makeId('shot'), shot_type: 'Medium Shot', duration: 5, action: '', camera: '', storyboard_url: '' }])}><Plus size={13} className="mr-1" /> Add Shot</Button>
+          </div>}
+        </div>
+        {shots.map((shot, shotIndex) => (
+          <div key={shot.id} className="border border-white/10 p-3 space-y-2">
+            <div className="flex justify-between items-center text-xs text-white/65"><span>Shot {shotIndex + 1}</span>{!readOnly && <button type="button" onClick={() => updateShots(episodeIndex, key, shots.filter((item) => item.id !== shot.id))} aria-label="Remove shot"><Trash2 size={14} /></button>}</div>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs text-white/60">Framing
+                <select value={shot.shot_type || 'Medium Shot'} disabled={readOnly} onChange={(event) => updateShot(shot.id, { shot_type: event.target.value, storyboard_url: '' })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
+                  {SHOT_TYPES.map((type) => <option key={type}>{type}</option>)}
+                </select>
+              </label>
+              <label className="text-xs text-white/60">Clip duration
+                <select value={shot.duration || 5} disabled={readOnly} onChange={(event) => updateShot(shot.id, { duration: Number(event.target.value) })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
+                  {CLIP_DURATIONS.map((duration) => <option key={duration} value={duration}>{duration} sec</option>)}
+                </select>
+              </label>
+            </div>
+            <label className="text-xs text-white/60 block">Action
+              <Textarea className={CONTROL_CLASS} rows={2} disabled={readOnly} value={shot.action || ''} onChange={(event) => updateShot(shot.id, { action: event.target.value, storyboard_url: '' })} />
+            </label>
+            <label className="text-xs text-white/60 block">Camera / positioning
+              <Textarea className={CONTROL_CLASS} rows={2} disabled={readOnly} value={shot.camera || ''} onChange={(event) => updateShot(shot.id, { camera: event.target.value, storyboard_url: '' })} />
+            </label>
+            {shot.storyboard_url ? <img src={shot.storyboard_url} alt={`Illustrated storyboard shot ${shotIndex + 1}`} className="w-full max-w-md aspect-video object-contain bg-black border border-white/10" /> : <div className="w-full max-w-md aspect-video bg-black/40 border border-dashed border-white/15 flex items-center justify-center text-xs text-white/35">Illustrated preview not generated</div>}
+            {!readOnly && <Button size="sm" type="button" className={SECONDARY_BUTTON_CLASS} disabled={busy} onClick={() => generateStoryboardFrame(episodeIndex, key, shot)}>{generating === `frame-${shot.id}` ? 'Generating…' : shot.storyboard_url ? 'Regenerate Illustration' : 'Generate Illustration'}</Button>}
+          </div>
+        ))}
       </div>
     );
   };
@@ -240,6 +383,14 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                       </label>
                       {resourcePicker(episode, index, key, 'character_ids', 'Characters', availableCharacters)}
                       {resourcePicker(episode, index, key, 'set_ids', 'Sets', availableSets)}
+                      <div className="space-y-2 border border-white/10 bg-white/[0.02] p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div><div className="text-sm text-white">Dialogue · Editable Draft</div><div className="text-[11px] text-white/40">The AI proposes. The creator may freely rewrite, replace or remove the dialogue.</div></div>
+                          {!readOnly && <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={Boolean(generating)} onClick={() => proposeDialogue(index, key)}>{generating === `dialogue-${index}-${key}` ? 'Generating…' : 'Propose Dialogue'}</Button>}
+                        </div>
+                        <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} value={episode.dialogue_drafts?.[key] || ''} onChange={(event) => applyPartPatch(index, key, 'dialogue_drafts', event.target.value)} placeholder="Optional dialogue draft for this scene" />
+                      </div>
+                      {shotPlanner(episode, index, key)}
                     </div>
                   ))}
                 </div>
@@ -250,6 +401,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
           );
         })}
       </div>
+      {generationError && <div role="alert" className="text-sm text-red-300 border border-red-400/30 p-3">{generationError}</div>}
       {input('Freedom to Create', content.creative_freedom, (value) => updateContent({ creative_freedom: value }), 3, 'What the user may reinterpret or invent while preserving the series narrative framework.')}
       {!readOnly && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={onSave} disabled={saving}><Save size={15} className="mr-2" /> {saving ? 'Saving…' : 'Save Scenario'}</Button></div>}
     </div>
