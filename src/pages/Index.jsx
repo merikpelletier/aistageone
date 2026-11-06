@@ -347,16 +347,17 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
   const selectorOptions = useMemo(() => {
     const usedClasses = new Set(dossiers.map(d => d.class).filter(Boolean));
     const usedCategories = new Set(dossiers.map(d => d.category).filter(Boolean));
-    const classNames = dossierClasses.map(item => item.name).filter(name => usedClasses.has(name) && name !== 'Story' && name !== 'FotoPlay');
-    const showFotoPlay = usedClasses.has('Story') || usedClasses.has('FotoPlay') || usedCategories.has('FotoPlay');
+    const classNames = dossierClasses.map(item => item.name).filter(name => usedClasses.has(name) && name !== 'FotoPlay');
+    if (usedClasses.has('Story') && !classNames.includes('Story')) classNames.push('Story');
+    const showFotoPlay = usedClasses.has('FotoPlay') || usedCategories.has('FotoPlay');
     const categoryNames = categories.map(item => item.name).filter(name => usedCategories.has(name) && name !== 'FotoPlay' && !classNames.includes(name));
-    return ['All', ...(showFotoPlay ? ['FotoPlay'] : []), ...classNames, ...categoryNames];
+    return ['All', ...classNames, ...(showFotoPlay ? ['FotoPlay'] : []), ...categoryNames];
   }, [categories, dossierClasses, dossiers]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return dossiers.filter((dossier) => {
-      const selectorMatch = selected === 'All' || dossier.class === selected || dossier.category === selected || (selected === 'FotoPlay' && dossier.class === 'Story');
+      const selectorMatch = selected === 'All' || dossier.class === selected || dossier.category === selected;
       if (!selectorMatch) return false;
       if (!q) return true;
       return [dossier.title, dossier.subtitle, dossier.category, dossier.class, dossier.author_name, dossier.submitted_by_name]
