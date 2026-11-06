@@ -77,10 +77,12 @@ function SourceButton({ icon: Icon, label, onClick, tone }) {
 
 function AssetPicker({
   picker, onClose, onSelect, vaultAssets, catalogAssets, categories, subcategories,
+  pilotLibrary = [], loadingPilots = false, pilotError = null,
   loadingCatalog, catalogError, onManageVault, embedded = false,
 }) {
   const [source, setSource] = useState(picker.source || 'vault');
   const [search, setSearch] = useState('');
+  const [pilotFilter, setPilotFilter] = useState('all');
   const pattern = purposePattern(picker.purpose);
   const initialCategoryId = useMemo(() => {
     if (picker.purpose === 'look') return 'all';
@@ -96,15 +98,21 @@ function AssetPicker({
   );
   const items = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const pool = source === 'vault'
-      ? vaultAssets.filter((asset) => asset.media_type === 'image')
+    const pilotAssets = pilotLibrary.filter((pilot) => pilotFilter === 'all' || pilot.id === pilotFilter).flatMap((pilot) =>
+      (picker.purpose === 'look' ? pilot.looks : pilot.characters).filter((item) => item.images?.length).map((item) => ({
+        id: pilot.id + ':' + item.id, title: item.name, pilot_name: pilot.name,
+        origin: item.source, images: item.images, character: picker.purpose === 'look' ? null : item,
+      }))
+    );
+    const pool = source === 'vault' ? vaultAssets.filter((asset) => asset.media_type === 'image')
+      : source === 'pilot' ? pilotAssets
       : catalogAssets.filter((asset) => (
         catalogImages(asset).length
         && (catalogCategoryId === 'all' || asset.category_id === catalogCategoryId)
         && (catalogSubcategoryId === 'all' || asset.subcategory_id === catalogSubcategoryId)
       ));
     return pool.filter((asset) => !term || `${asset.name || ''} ${asset.title || ''} ${asset.actor_name || ''} ${asset.creator_name || ''} ${(asset.tags || []).join(' ')} ${categoryText(categoryById.get(asset.category_id))}`.toLowerCase().includes(term));
-  }, [catalogAssets, catalogCategoryId, catalogSubcategoryId, categoryById, search, source, vaultAssets]);
+  }, [catalogAssets, catalogCategoryId, catalogSubcategoryId, categoryById, search, source, vaultAssets, pilotLibrary, pilotFilter, picker.purpose]);
 
   return (
     <motion.div
@@ -124,15 +132,24 @@ function AssetPicker({
           <button type="button" onClick={onClose} className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20"><X size={19} /></button>
         </header>
         <div className="flex flex-col gap-3 border-b border-white/10 p-4 sm:flex-row">
-          <div className="grid grid-cols-2 gap-2 sm:w-80">
+          <div className="grid grid-cols-3 gap-2 sm:w-[31rem]">
             <button type="button" onClick={() => setSource('vault')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black ${source === 'vault' ? 'bg-amber-300 text-black' : 'bg-white/[0.06] text-white'}`}><Library size={17} />My Vault</button>
             <button type="button" onClick={() => setSource('shop')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black ${source === 'shop' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><Store size={17} />Assets Shop</button>
+            <button type="button" onClick={() => setSource('pilot')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black ${source === 'pilot' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><WandSparkles size={17} />AI Pilot</button>
           </div>
           <label className="flex flex-1 items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4">
             <Search size={17} className="text-white/45" />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search actors, characters or costumes" className="w-full bg-transparent py-3 text-sm text-white outline-none placeholder:text-white/30" />
           </label>
         </div>
+        {source === 'pilot' && <div className="border-b border-white/10 px-4 py-3 sm:px-6">
+          <label className="flex items-center gap-3 text-xs font-bold text-white/65">AI Pilot
+            <select value={pilotFilter} onChange={(event) => setPilotFilter(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black px-3 py-2 text-sm text-white">
+              <option value="all">All my AI Pilots</option>
+              {pilotLibrary.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}
+            </select>
+          </label>
+        </div>}
         {source === 'shop' && (
           <>
             <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6">
@@ -158,14 +175,18 @@ function AssetPicker({
           </>
         )}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {source === 'shop' && loadingCatalog ? (
+          {source === 'pilot' && loadingPilots ? (
+            <div className="flex h-52 items-center justify-center"><Loader2 className="animate-spin text-cyan-300" /></div>
+          ) : source === 'pilot' && pilotError ? (
+            <div className="p-8 text-center text-red-300">{pilotError.message}</div>
+          ) : source === 'shop' && loadingCatalog ? (
             <div className="flex h-52 items-center justify-center"><Loader2 className="animate-spin text-cyan-300" /></div>
           ) : source === 'shop' && catalogError ? (
             <div className="rounded-2xl border border-red-400/25 bg-red-400/10 p-8 text-center text-red-100">OLOShop could not load. Try again.</div>
           ) : items.length ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {items.map((asset) => {
-                const images = source === 'vault' ? [asset.url] : catalogImages(asset);
+                const images = source === 'vault' ? [asset.url] : source === 'pilot' ? asset.images : catalogImages(asset);
                 const category = categoryById.get(asset.category_id);
                 return (
                   <article key={`${source}-${asset.id}`} className="overflow-hidden rounded-2xl border border-white/10 bg-black transition hover:border-amber-300/50">
@@ -174,7 +195,7 @@ function AssetPicker({
                         <button
                           type="button"
                           key={`${asset.id}-${image}`}
-                          onClick={() => onSelect({ url: image, title: `${asset.title || asset.name || 'Reference'} ${index + 1}`, source, sourceAssetId: source === 'shop' ? asset.id : null })}
+                          onClick={() => onSelect({ url: image, title: `${asset.title || asset.name || 'Reference'} ${index + 1}`, source, sourceAssetId: source === 'shop' ? asset.id : null, character: source === 'pilot' ? asset.character : null })}
                           className="group relative aspect-[4/3] overflow-hidden rounded-lg bg-black"
                           title={picker.purpose === 'sheet' ? `Use image ${index + 1} as the complete reference sheet` : `Use image ${index + 1}`}
                         >
@@ -185,7 +206,7 @@ function AssetPicker({
                     </div>
                     <div className="p-3">
                       <p className="truncate text-sm font-black text-white">{asset.title || asset.name || 'Untitled'}</p>
-                      <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-wider text-white/40">{source === 'shop' ? (category?.label_en || category?.label_fr || 'OLOShop') : 'My Vault'}</p>
+                      <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-wider text-white/40">{source === 'pilot' ? `${asset.pilot_name} · ${asset.origin}` : source === 'shop' ? (category?.label_en || category?.label_fr || 'OLOShop') : 'My Vault'}</p>
                       {picker.purpose === 'sheet' && <p className="mt-2 text-[11px] leading-relaxed text-cyan-100/65">Choose the gallery image that contains the complete character sheet.</p>}
                     </div>
                   </article>
@@ -196,7 +217,7 @@ function AssetPicker({
             <div className="flex min-h-52 flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 text-center">
               <ImagePlus size={28} className="text-white/25" />
               <p className="mt-3 font-bold text-white">No matching images</p>
-              <p className="mt-1 text-sm text-white/45">{source === 'vault' ? 'Add images to your Vault or choose OLOShop.' : 'No published OLOShop asset matches this selection.'}</p>
+              <p className="mt-1 text-sm text-white/45">{source === 'vault' ? 'Add images to your Vault or choose Assets Shop.' : source === 'pilot' ? 'No matching character or look images in your AI Pilots.' : 'No published Assets Shop asset matches this selection.'}</p>
             </div>
           )}
         </div>
@@ -289,9 +310,59 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   const [savedCharacterId, setSavedCharacterId] = useState(sheet?.id || null);
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
   const [promptIdeaCategory, setPromptIdeaCategory] = useState('character-type');
+  const [promptIdeaSource, setPromptIdeaSource] = useState('ideas');
   const [promptHistory, setPromptHistory] = useState([]);
   const [generationHistory, setGenerationHistory] = useState([]);
   const [selectedModel, setSelectedModel] = useState(null);
+  const { data: pilotLibrary = [], isLoading: pilotsLoading, error: pilotsError } = useQuery({
+    queryKey: ['actor-ai-pilots', userEmail],
+    enabled: Boolean(userEmail),
+    queryFn: async () => {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const userId = auth?.user?.id;
+      if (!userId) return [];
+      const { data: accesses, error: accessError } = await supabase.from('member_ai_pilots')
+        .select('id,ai_pilot_id,version_id').eq('user_id', userId);
+      if (accessError) throw accessError;
+      if (!accesses?.length) return [];
+      const ids = [...new Set(accesses.map((a) => a.ai_pilot_id))];
+      const { data: pilots, error: pilotError } = await supabase.from('ai_pilots')
+        .select('id,name,current_published_version_id').in('id', ids);
+      if (pilotError) throw pilotError;
+      const versions = [...new Set(accesses.map((a) => pilots?.find((p) => p.id === a.ai_pilot_id)?.current_published_version_id || a.version_id).filter(Boolean))];
+      const [actors, looks, additions] = await Promise.all([
+        versions.length ? supabase.from('ai_pilot_characters').select('*').in('version_id', versions).eq('is_active', true) : Promise.resolve({ data: [], error: null }),
+        versions.length ? supabase.from('ai_pilot_blocks').select('version_id,content').in('version_id', versions).eq('is_active', true).eq('block_key', 'looks') : Promise.resolve({ data: [], error: null }),
+        supabase.from('member_ai_pilot_extensions').select('*').eq('user_id', userId).eq('is_active', true).in('member_ai_pilot_id', accesses.map((a) => a.id)),
+      ]);
+      const failed = [actors, looks, additions].find((r) => r.error);
+      if (failed) throw failed.error;
+      const images = (arr) => (Array.isArray(arr) ? arr : []).map((v) => typeof v === 'string' ? v : v?.url).filter(Boolean);
+      const extraImages = (item) => images((item.content?.media || []).filter((v) => v.type === 'image' || v.mime_type?.startsWith('image/')));
+      return accesses.map((access) => {
+        const pilot = pilots?.find((p) => p.id === access.ai_pilot_id);
+        const versionId = pilot?.current_published_version_id || access.version_id;
+        const own = (additions.data || []).filter((a) => a.member_ai_pilot_id === access.id && a.operation === 'add');
+        const characters = (actors.data || []).filter((a) => a.version_id === versionId).map((a) => ({
+          id: 'official:' + a.id, source: 'Official', name: a.role_name,
+          bio: [a.description, a.narrative_function, a.behavior, a.visual_identity, a.continuity_locks].filter(Boolean).join('\n\n'),
+          traits: a.personality || '', images: images(a.reference_images),
+        })).concat(own.filter((a) => a.extension_type === 'character_style').map((a) => ({
+          id: 'personal:' + a.id, source: 'Personal', name: a.name,
+          bio: [a.content?.description, a.content?.appearance, a.content?.behavior, a.content?.continuity, a.content?.notes].filter(Boolean).join('\n\n'),
+          traits: a.content?.personality || '', images: extraImages(a),
+        })));
+        const looksList = (looks.data || []).filter((b) => b.version_id === versionId).flatMap((b) => (Array.isArray(b.content?.looks) ? b.content.looks : []).map((l, i) => ({
+          ...l, id: 'official:' + (l.id || i), source: 'Official', images: images(l.result_images),
+        }))).concat(own.filter((a) => a.extension_type === 'look').map((a) => ({
+          ...a.content, id: 'personal:' + a.id, name: a.name, source: 'Personal', images: extraImages(a),
+        })));
+        return { id: access.id, name: pilot?.name || 'AI Pilot', characters, looks: looksList };
+      });
+    },
+  });
+
   const pricingInput = {
     aspect_ratio: aspectRatio,
     prompt: transformationPrompt.trim() || characterDescription.trim() || undefined,
@@ -410,6 +481,25 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
     setLookReferences((current) => current.some((item) => item.url === asset.url) ? current : [...current, asset]);
   };
 
+
+  const addPilotTransformation = (look) => {
+    const lines = Object.entries(look).filter(([key, value]) =>
+      !['id', 'source', 'name', 'images', 'media', 'result_images', 'can_combine'].includes(key) &&
+      typeof value === 'string' && value.trim()
+    ).map(([key, value]) => key.replace(/_/g, ' ') + ': ' + value.trim());
+    const instruction = ['Transform the character using this look while preserving identity and proportions.',
+      look.name ? 'Look: ' + look.name : '', ...lines].filter(Boolean).join('\n');
+    if (transformationPrompt.includes(instruction)) return;
+    setPromptHistory((history) => [...history, transformationPrompt]);
+    setTransformationPrompt((current) => [current.trim(), instruction].filter(Boolean).join('\n\n'));
+    setLookReferences((current) => {
+      const existing = new Set(current.map((image) => image.url));
+      return [...current, ...(look.images || []).filter((url) => !existing.has(url))
+        .map((url, index) => ({ url, title: (look.name || 'AI Pilot look') + ' ' + (index + 1), source: 'ai_pilot', sourceAssetId: null }))];
+    });
+    toast.success('AI Pilot transformation and available references added.');
+  };
+
   const addPromptIdea = (idea) => {
     const text = idea?.content?.trim();
     if (!text) return;
@@ -463,6 +553,11 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
   };
 
   const selectAsset = (asset) => {
+    if (asset.source === 'pilot' && asset.character && picker.purpose === 'sheet') {
+      setName(asset.character.name || '');
+      setBio(asset.character.bio || '');
+      setTraits(asset.character.traits || '');
+    }
     if (picker.purpose === 'look') addLookReference(asset);
     else if (picker.purpose === 'sheet') {
       setSourceSheet(asset);
@@ -679,10 +774,11 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                 </div>
                 <div className="flex flex-col justify-center">
                   <p className="text-sm leading-relaxed text-white/55">This sheet becomes the character base. Actor Studio will transform it with the selected wardrobe and your prompt while preserving the character across every view.</p>
-                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                     <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-3 text-xs font-black hover:border-white/35"><Upload size={15} />Upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event, 'sourceSheet')} /></label>
                     <SourceButton icon={Library} label="My Vault" tone="vault" onClick={() => setPicker({ purpose: 'sheet', label: 'reference sheet', source: 'vault' })} />
                     <SourceButton icon={Store} label="Assets Shop" tone="shop" onClick={() => setPicker({ purpose: 'sheet', label: 'reference sheet', source: 'shop' })} />
+                    <SourceButton icon={WandSparkles} label="AI Pilot" tone="shop" onClick={() => setPicker({ purpose: 'sheet', label: 'reference sheet', source: 'pilot' })} />
                   </div>
                 </div>
               </div>
@@ -704,10 +800,11 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                 ) : (
                   <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-black/25 px-6 text-center"><Shirt size={32} className="text-white/20" /><p className="mt-3 text-sm font-black text-white">Build a combined look</p><p className="mt-1 text-xs text-white/35">Add clothing, shoes, hair, accessories, makeup or other visual references.</p></div>
                 )}
-                <div className="grid gap-2 sm:grid-cols-3">
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-3 text-xs font-black hover:border-white/35"><Upload size={15} />Add upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event, 'look')} /></label>
                   <SourceButton icon={Library} label="Add from Vault" tone="vault" onClick={() => setPicker({ purpose: 'look', label: 'look reference', source: 'vault' })} />
                   <SourceButton icon={Store} label="Add from Assets Shop" tone="shop" onClick={() => setPicker({ purpose: 'look', label: 'look reference', source: 'shop' })} />
+                  <SourceButton icon={WandSparkles} label="Add from AI Pilot" tone="shop" onClick={() => setPicker({ purpose: 'look', label: 'look reference', source: 'pilot' })} />
                 </div>
                 <label className="block text-xs font-black uppercase tracking-wider text-white/60">Accessories and styling<textarea value={accessories} onChange={(event) => setAccessories(event.target.value)} placeholder="Explain how to combine the selected references — e.g. use the dress from reference 1, shoes from reference 2, hairstyle from reference 3..." rows={3} className="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm font-semibold normal-case tracking-normal text-white outline-none placeholder:text-white/20 focus:border-amber-300/60" /></label>
                 <div className="flex items-center justify-between gap-3">
@@ -726,7 +823,20 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                             </div>
                             <button type="button" onClick={() => setTemplateMenuOpen(false)} className="rounded-full bg-white/10 p-1.5 text-white/60 hover:bg-white/20 hover:text-white" aria-label="Close prompt ideas"><X size={15} /></button>
                           </div>
-                          {promptIdeasLoading ? (
+                          <div className="flex gap-2 border-b border-white/10 p-3">
+                            <button type="button" onClick={() => setPromptIdeaSource('ideas')} className={`rounded-lg px-3 py-2 text-xs font-bold ${promptIdeaSource === 'ideas' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/70'}`}>Prompt Ideas</button>
+                            <button type="button" onClick={() => setPromptIdeaSource('pilot')} className={`rounded-lg px-3 py-2 text-xs font-bold ${promptIdeaSource === 'pilot' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/70'}`}>My AI Pilots</button>
+                          </div>
+                          {promptIdeaSource === 'pilot' ? (
+                            <div className="max-h-80 space-y-3 overflow-y-auto p-3">
+                              {pilotLibrary.flatMap((pilot) => pilot.looks.map((look) => ({ pilot, look }))).length ? pilotLibrary.flatMap((pilot) => pilot.looks.map((look) => ({ pilot, look }))).map(({ pilot, look }) => (
+                                <button type="button" key={pilot.id + ':' + look.id} onClick={() => { addPilotTransformation(look); setTemplateMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2 text-left hover:border-cyan-300/50">
+                                  {look.images?.[0] ? <img src={look.images[0]} alt="" className="h-16 w-14 shrink-0 rounded-lg object-cover" /> : <div className="flex h-16 w-14 shrink-0 items-center justify-center rounded-lg bg-white/5"><WandSparkles size={18} className="text-white/35" /></div>}
+                                  <span className="min-w-0"><span className="block text-sm font-bold text-white">{look.name || 'Transformation look'}</span><span className="mt-1 block text-xs text-white/45">{pilot.name} · {look.source}</span></span>
+                                </button>
+                              )) : <p className="py-5 text-center text-sm text-white/45">No transformation looks available in your AI Pilots.</p>}
+                            </div>
+                          ) : promptIdeasLoading ? (
                             <div className="flex items-center justify-center gap-2 p-5 text-xs font-bold text-white/50"><Loader2 size={15} className="animate-spin" />Loading ideas…</div>
                           ) : promptIdeas.length ? (
                             <>
@@ -799,6 +909,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
         <AssetPicker
           picker={picker} onClose={() => setPicker(null)} onSelect={selectAsset}
           vaultAssets={vaultAssets} catalogAssets={catalogAssets} categories={categories} subcategories={subcategories}
+          pilotLibrary={pilotLibrary} loadingPilots={pilotsLoading} pilotError={pilotsError}
           loadingCatalog={loadingCatalog} catalogError={catalogError}
           onManageVault={() => { setPicker(null); setVaultOpen(true); }}
           embedded={embedded}

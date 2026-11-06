@@ -18,6 +18,7 @@ import SponsorRequestPage from './pages/SponsorRequest';
 import MemberListingPage from './pages/MemberListing';
 import StudioPage from './pages/Studio';
 import MyProjectsPage from './pages/MyProjects';
+import MyAIPilotsPage from './pages/MyAIPilots';
 import CampaignSubscribePage from './pages/CampaignSubscribe';
 import LoginPage from './pages/Login';
 import ResetPasswordPage from './pages/ResetPassword';
@@ -169,6 +170,7 @@ const AuthenticatedApp = () => {
       <Route path="/MemberListing" element={<PrivateRoute><LayoutWrapper currentPageName="MemberListing"><MemberListingPage /></LayoutWrapper></PrivateRoute>} />
       <Route path="/Studio" element={<PrivateRoute><LayoutWrapper currentPageName="Studio"><StudioPage /></LayoutWrapper></PrivateRoute>} />
       <Route path="/MyProjects" element={<PrivateRoute><LayoutWrapper currentPageName="MyProjects"><MyProjectsPage /></LayoutWrapper></PrivateRoute>} />
+      <Route path="/MyAIPilots" element={<PrivateRoute><LayoutWrapper currentPageName="MyAIPilots"><MyAIPilotsPage /></LayoutWrapper></PrivateRoute>} />
       <Route path="/CampaignSubscribe" element={<PrivateRoute><LayoutWrapper currentPageName="CampaignSubscribe"><CampaignSubscribePage /></LayoutWrapper></PrivateRoute>} />
       <Route path="/Login" element={<LoginPage />} />
       <Route path="/ResetPassword" element={<ResetPasswordPage />} />

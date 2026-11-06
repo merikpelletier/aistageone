@@ -10,6 +10,7 @@ import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 import ShootTimelineEngine from '@/components/studio/ShootTimelineEngine';
+import { getAIPilotComponentLibrary } from '@/lib/aiPilotComponents';
 import { buildModelToolInput, getMappedModelField } from '@/components/studio/DynamicAiModelControls';
 
 const RATIOS = [
@@ -206,6 +207,111 @@ function AssetsShopPicker({ onSelect, onClose, embedded = false }) {
   );
 }
 
+
+function ShootAIPilotImagePicker({ target, onSelect, onClose, embedded = false }) {
+  const [items, setItems] = useState([]);
+  const [search, setSearch] = useState('');
+  const [pilotFilter, setPilotFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const { data: auth, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        const userId = auth?.user?.id;
+        if (!userId) throw new Error('Sign in to access your AI Pilots.');
+        const { data: accesses, error: accessError } = await supabase.from('member_ai_pilots')
+          .select('id,ai_pilot_id,version_id').eq('user_id', userId);
+        if (accessError) throw accessError;
+        if (!accesses?.length) return;
+        const { data: pilots, error: pilotsError } = await supabase.from('ai_pilots')
+          .select('id,name,current_published_version_id').in('id', [...new Set(accesses.map((a) => a.ai_pilot_id))]);
+        if (pilotsError) throw pilotsError;
+        const versionFor = (a) => pilots?.find((p) => p.id === a.ai_pilot_id)?.current_published_version_id || a.version_id;
+        const versions = [...new Set(accesses.map(versionFor).filter(Boolean))];
+        const [actors, blocks, media, additions] = await Promise.all([
+          versions.length && target === 'cast' ? supabase.from('ai_pilot_characters').select('*').in('version_id', versions).eq('is_active', true) : Promise.resolve({ data: [], error: null }),
+          versions.length && target === 'set' ? supabase.from('ai_pilot_blocks').select('version_id,content').in('version_id', versions).eq('block_key', 'series-direction').eq('is_active', true) : Promise.resolve({ data: [], error: null }),
+          versions.length ? supabase.from('ai_pilot_media').select('version_id,component_type,component_key,media_type,url').in('version_id', versions).eq('media_type', 'image').eq('is_active', true) : Promise.resolve({ data: [], error: null }),
+          supabase.from('member_ai_pilot_extensions').select('id,member_ai_pilot_id,extension_type,name,content,operation').eq('user_id', userId).eq('is_active', true).in('member_ai_pilot_id', accesses.map((a) => a.id)),
+        ]);
+        const failed = [actors, blocks, media, additions].find((result) => result.error);
+        if (failed) throw failed.error;
+        const urls = (list) => (Array.isArray(list) ? list : []).map((value) => typeof value === 'string' ? value : value?.url).filter(Boolean);
+        const result = [];
+        const add = (access, name, id, refs, origin, characterData = null) => {
+          const pilot = pilots?.find((p) => p.id === access.ai_pilot_id);
+          [...new Set(refs.filter(Boolean))].forEach((url, i) => result.push({
+            key: String(access.id) + ':' + id + ':' + i, pilotId: access.ai_pilot_id,
+            pilotName: pilot?.name || 'AI Pilot', name: name || 'Unnamed', url, origin, characterData,
+          }));
+        };
+        for (const access of accesses) {
+          const versionId = versionFor(access);
+          const additional = (additions.data || []).filter((item) => item.member_ai_pilot_id === access.id && item.operation === 'add');
+          if (target === 'cast') {
+            for (const actor of (actors.data || []).filter((item) => item.version_id === versionId)) {
+              const extra = (media.data || []).filter((item) => item.version_id === versionId && item.component_type === 'character' && [actor.id, actor.role_name].includes(item.component_key)).map((item) => item.url);
+              add(access, actor.role_name, actor.id, [...urls(actor.reference_images), ...extra], 'Official', {
+                name: actor.role_name,
+                voice_or_sound: [actor.voice_identity, actor.voice_delivery, actor.voice_emotional_range, actor.speech_style, actor.dialogue_style, actor.signature_speech_traits, actor.voice_continuity].filter(Boolean).join('\n'),
+                manner: [actor.physical_performance, actor.behavior].filter(Boolean).join('\n'),
+                description: [actor.description, actor.visual_identity, actor.visual_continuity, actor.wardrobe_look, actor.continuity_locks, actor.production_notes].filter(Boolean).join('\n\n'),
+              });
+            }
+          } else {
+            const series = (blocks.data || []).find((item) => item.version_id === versionId)?.content || {};
+            const sets = Array.isArray(series.sets) ? series.sets : [];
+            const locations = Array.isArray(series.locations) ? series.locations : [];
+            for (const set of sets) {
+              const extra = (media.data || []).filter((item) => item.version_id === versionId && ['set', 'location'].includes(item.component_type) && [set.id, set.name].includes(item.component_key)).map((item) => item.url);
+              add(access, set.name || locations.find((loc) => loc.id === set.location_id)?.name, set.id || set.name, [...urls(set.reference_images), ...extra], 'Official');
+            }
+            for (const location of locations.filter((loc) => !sets.some((set) => set.location_id === loc.id))) {
+              const extra = (media.data || []).filter((item) => item.version_id === versionId && item.component_type === 'location' && [location.id, location.name].includes(item.component_key)).map((item) => item.url);
+              add(access, location.name, location.id || location.name, [...urls(location.reference_images), ...extra], 'Official');
+            }
+          }
+          for (const item of additional.filter((item) => target === 'cast' ? item.extension_type === 'character_style' : ['set', 'location'].includes(item.extension_type))) {
+            const pictures = urls((item.content?.media || []).filter((file) => file.type === 'image' || file.mime_type?.startsWith('image/')));
+            add(access, item.name, item.id, pictures, 'Personal', target === 'cast' ? {
+              name: item.name,
+              voice_or_sound: item.content?.voice || '',
+              manner: [item.content?.personality, item.content?.behavior].filter(Boolean).join('\n'),
+              description: [item.content?.description, item.content?.appearance, item.content?.wardrobe, item.content?.continuity, item.content?.notes].filter(Boolean).join('\n\n'),
+            } : null);
+          }
+        }
+        if (active) setItems(result);
+      } catch (e) { if (active) setError(e?.message || 'Could not load AI Pilot images.'); }
+      finally { if (active) setLoading(false); }
+    };
+    void load();
+    return () => { active = false; };
+  }, [target]);
+  const pilots = [...new Map(items.map((item) => [item.pilotId, item.pilotName])).entries()];
+  const shown = items.filter((item) => (pilotFilter === 'all' || item.pilotId === pilotFilter) &&
+    (item.name + ' ' + item.pilotName + ' ' + item.origin).toLowerCase().includes(search.trim().toLowerCase()));
+  return (
+    <motion.div className={(embedded ? 'fixed top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)]' : 'fixed inset-0') + ' z-[99999] flex items-center justify-center bg-black/90 p-3'} initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={onClose}>
+      <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden border border-white/10 bg-[#17191d]" onClick={(event) => event.stopPropagation()}>
+        <header className="flex items-center justify-between border-b border-white/10 p-5"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">AI Pilot · {target === 'cast' ? 'Cast' : 'Set'}</p><h3 className="text-xl font-black text-white">Choose a reference image</h3></div><button type="button" onClick={onClose} className="p-2 text-white"><X size={18} /></button></header>
+        <div className="grid gap-2 border-b border-white/10 p-4 md:grid-cols-[1fr_220px]">
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search AI Pilot images" className="border border-white/10 bg-black/30 px-4 py-3 text-sm text-white" />
+          <select value={pilotFilter} onChange={(event) => setPilotFilter(event.target.value)} className="border border-white/10 bg-black/30 px-3 py-3 text-sm text-white"><option value="all">All my AI Pilots</option>{pilots.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select>
+        </div>
+        <div className="min-h-40 flex-1 overflow-y-auto p-4">
+          {loading ? <div className="flex min-h-56 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div> : error ? <p className="p-6 text-center text-sm text-red-300">{error}</p> : shown.length ?
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{shown.map((item) => <button key={item.key} type="button" onClick={() => onSelect(item.url, item.name, item.characterData)} className="overflow-hidden border border-white/10 bg-black text-left hover:border-[#23c7be]"><div className="aspect-[4/3]"><img src={item.url} alt={item.name} className="h-full w-full object-contain" /></div><div className="p-2"><p className="truncate text-xs font-bold text-white">{item.name}</p><p className="truncate text-[10px] text-white/45">{item.pilotName} · {item.origin}</p></div></button>)}</div> :
+            <p className="p-10 text-center text-sm text-white/45">No matching AI Pilot images.</p>}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function VideoTools({ onClose, referenceMedia = [], productionMethod = null, block = null, character = null, user, embedded = false }) {
   const showContext = productionMethod && block;
   const [step, setStep] = useState('setup');
@@ -226,14 +332,23 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const [showVaultPicker, setShowVaultPicker] = useState(false);
   const [pickerTarget, setPickerTarget] = useState(null);
   const [showAssetsShop, setShowAssetsShop] = useState(false);
+  const [showAIPilotImages, setShowAIPilotImages] = useState(false);
+  const [pilotActionPrompts, setPilotActionPrompts] = useState([]);
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [vaultVideoUrl, setVaultVideoUrl] = useState(null);
   const [vaultSaveSource, setVaultSaveSource] = useState('shot');
   const [savingEditToVault, setSavingEditToVault] = useState(false);
   const [userEmail, setUserEmail] = useState(user?.email || null);
   const [showMyScenes, setShowMyScenes] = useState(false);
+  const [showMyProjects, setShowMyProjects] = useState(false);
+  const [shootProjects, setShootProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [sceneProjectId, setSceneProjectId] = useState(null);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [projectsBusy, setProjectsBusy] = useState(false);
   const [savedScenes, setSavedScenes] = useState([]);
   const [loadingScenes, setLoadingScenes] = useState(false);
+  const [deletingSceneId, setDeletingSceneId] = useState(null);
   const [promptEdits, setPromptEdits] = useState({});
   const [selectedScenePassage, setSelectedScenePassage] = useState(null);
   const [quickAddCharacterId, setQuickAddCharacterId] = useState('');
@@ -258,6 +373,28 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     }
     supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email || null)).catch(() => {});
   }, [user?.email]);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const { data: auth, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        if (!auth?.user?.id) return;
+        // Only selectable production actions and blocking instructions, never unrelated AI Pilot content.
+        const all = await getAIPilotComponentLibrary({ userId: auth.user.id });
+        if (active) setPilotActionPrompts(all.filter((item) =>
+          (item.component_type === 'action_prompt' || item.component_type === 'blocking_prompt') &&
+          (!item.personal || item.source_kind !== 'member_extension' || item.data)
+        ));
+      } catch (error) {
+        // The standard action presets remain available even if the member library cannot load.
+        if (active) setPilotActionPrompts([]);
+      }
+    };
+    void load();
+    return () => { active = false; };
+  }, [userEmail]);
 
   const scenePassages = useMemo(() => String(sceneText || '')
     .split(/\n\s*\n/)
@@ -319,6 +456,77 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     };
   });
 
+  const loadShootProjects = async () => {
+    const { data: auth, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    if (!auth?.user?.id) throw new Error('Sign in to access Shoot projects.');
+    const { data, error } = await supabase.from('shoot_project')
+      .select('id,name,created_at').eq('user_id', auth.user.id).order('created_at', { ascending: true });
+    if (error) throw error;
+    setShootProjects(data || []);
+    return data || [];
+  };
+
+  useEffect(() => {
+    loadShootProjects().catch((error) => toast.error(error.message || 'Shoot projects could not load.'));
+  }, []);
+
+  const createShootProject = async () => {
+    const name = newProjectName.trim();
+    if (!name) return toast.error('Enter a project name.');
+    setProjectsBusy(true);
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const userId = auth?.user?.id;
+      if (!userId) throw new Error('Sign in to create a Shoot project.');
+      const { data, error } = await supabase.from('shoot_project')
+        .insert({ user_id: userId, name }).select('id,name,created_at').single();
+      if (error) throw error;
+      setShootProjects((items) => [...items, data]);
+      setSelectedProjectId(data.id);
+      setNewProjectName('');
+      toast.success('Shoot project created.');
+    } catch (error) { toast.error(error.message || 'Project could not be created.'); }
+    finally { setProjectsBusy(false); }
+  };
+
+  const renameShootProject = async (project) => {
+    const name = window.prompt('Rename Shoot project:', project.name)?.trim();
+    if (!name || name === project.name) return;
+    setProjectsBusy(true);
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!auth?.user?.id) throw new Error('Sign in to rename a project.');
+      const { data, error } = await supabase.from('shoot_project')
+        .update({ name, updated_at: new Date().toISOString() })
+        .eq('id', project.id).eq('user_id', auth.user.id).select('id,name,created_at').single();
+      if (error) throw error;
+      setShootProjects((items) => items.map((item) => item.id === data.id ? data : item));
+      toast.success('Project renamed.');
+    } catch (error) { toast.error(error.message || 'Project could not be renamed.'); }
+    finally { setProjectsBusy(false); }
+  };
+
+  const moveSceneToProject = async (scene, projectId) => {
+    setProjectsBusy(true);
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!auth?.user?.id) throw new Error('Sign in to move a scene.');
+      const nextId = projectId || null;
+      const { data, error } = await supabase.from('shoot_scene')
+        .update({ project_id: nextId, updated_at: new Date().toISOString() })
+        .eq('id', scene.id).eq('user_id', auth.user.id).select('id,project_id').single();
+      if (error) throw error;
+      setSavedScenes((items) => items.map((item) => item.id === data.id ? { ...item, project_id: data.project_id } : item));
+      if (sceneId === data.id) setSceneProjectId(data.project_id);
+      toast.success('Scene moved to project.');
+    } catch (error) { toast.error(error.message || 'Scene could not be moved.'); }
+    finally { setProjectsBusy(false); }
+  };
+
   const loadMyScenes = async () => {
     setLoadingScenes(true);
     try {
@@ -342,12 +550,58 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     if (nextOpen) await loadMyScenes();
   };
 
+  const deleteScene = async (scene) => {
+    if (!window.confirm(`Delete "${scene.title || 'Untitled scene'}" from My Scenes? This cannot be undone.`)) return;
+    setDeletingSceneId(scene.id);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const ownerId = authData.user?.id;
+      if (!ownerId) throw new Error('You must be signed in to delete a scene.');
+      const { data, error } = await supabase.from('shoot_scene')
+        .delete().eq('id', scene.id).eq('user_id', ownerId).select('id');
+      if (error) throw error;
+      if (!data?.some((row) => row.id === scene.id)) throw new Error('Scene not found or delete not permitted.');
+      setSavedScenes((current) => current.filter((item) => item.id !== scene.id));
+      if (sceneId === scene.id) {
+        setSceneId(null);
+        setSceneProjectId(null);
+        setTitle('Untitled scene');
+        setCast([newCastMember(0), newCastMember(1)]);
+        setSetReference({ name: '', url: '', description: '' });
+        setSceneText('');
+        setAspectRatio('16:9');
+        setShotPlan([]);
+        setApproved(false);
+        setActiveShotId(null);
+        setPromptEdits({});
+        setSelectedScenePassage(null);
+        setEditClips([]);
+        setSelectedEditClipId(null);
+        setEditMusic({ url: '', name: '', volume: 0.55, start: 0, trim_start: 0, trim_end: 0, duration: 0, loop: false, fade_in: 0, fade_out: 0 });
+        setEditPlayhead(0);
+        setEditTimelineZoom(1);
+        setEditPlaying(false);
+        setEditUndoStack([]);
+        setEditRatio('16:9');
+        setStep('setup');
+      }
+      toast.success('Scene deleted.');
+    } catch (error) {
+      toast.error(error?.message || 'Scene could not be deleted.');
+    } finally {
+      setDeletingSceneId(null);
+    }
+  };
+
   const restoreScene = (scene) => {
     const restoredCast = Array.isArray(scene.cast_data) ? scene.cast_data : [];
     const restoredShots = migrateShotPlan(scene?.shot_plan, restoredCast);
     const restoredStatus = scene?.status || 'setup';
-    const canShoot = ['approved', 'shooting', 'completed'].includes(restoredStatus);
+    const canShoot = ['approved', 'shooting', 'complete', 'completed'].includes(restoredStatus);
     setSceneId(scene.id);
+    setSceneProjectId(scene.project_id || null);
+    setSelectedProjectId(scene.project_id || 'unassigned');
     setTitle(scene.title || 'Untitled scene');
     setAspectRatio(scene.aspect_ratio || '16:9');
     setCast(restoredCast);
@@ -517,9 +771,9 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     await applyPickedVideoReference(data.publicUrl, file.name, target);
   };
 
-  const applyPickedImage = (url, name, target = pickerTarget) => {
+  const applyPickedImage = (url, name, target = pickerTarget, characterData = null) => {
     if (!url || !target) return;
-    if (target.type === 'cast') updateCast(target.id, { reference_url: url });
+    if (target.type === 'cast') updateCast(target.id, { reference_url: url, ...(characterData ? { name: characterData.name || name || '', voice_or_sound: characterData.voice_or_sound || '', manner: characterData.manner || '', description: characterData.description || '' } : {}) });
     if (target.type === 'set') setSetReference((value) => ({ ...value, url, name: value.name || name || 'Set' }));
     if (target.type === 'shot-reference') {
       setShotPlan((items) => items.map((shot) => {
@@ -533,6 +787,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     if (target.type === 'music') setEditMusic((value) => ({ ...value, url, name: name || 'Vault music', start: 0, trim_start: 0, trim_end: 0, duration: 0, loop: false, fade_in: 0, fade_out: 0 }));
     setShowVaultPicker(false);
     setShowAssetsShop(false);
+    setShowAIPilotImages(false);
     setPickerTarget(null);
   };
 
@@ -577,6 +832,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     aspect_ratio: aspectRatio,
     cast_data: cast,
     set_reference: setReference.url ? setReference : null,
+    project_id: sceneId ? sceneProjectId : (selectedProjectId !== 'all' && selectedProjectId !== 'unassigned' ? selectedProjectId : null),
     scene_text: sceneText,
     shot_plan: shotPlan,
     status: approved ? 'approved' : (shotPlan.length ? 'planned' : 'setup'),
@@ -590,6 +846,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const { data, error } = await query;
     if (error) throw error;
     setSceneId(data.id);
+    setSceneProjectId(data.project_id || null);
     return data;
   };
 
@@ -598,13 +855,14 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     if (hasCurrentScene) {
       const completed = shotPlan.length > 0 && shotPlan.every((shot) => shot.result_url);
       try {
-        await saveScene({ status: completed ? 'completed' : (approved ? 'approved' : (shotPlan.length ? 'planned' : 'setup')) });
+        await saveScene({ status: completed ? 'complete' : (approved ? 'approved' : (shotPlan.length ? 'planned' : 'setup')) });
       } catch (error) {
         toast.error(error.message || 'Current scene could not be saved.');
         return;
       }
     }
     setSceneId(null);
+    setSceneProjectId(null);
     setTitle('Untitled scene');
     setCast([newCastMember(0), newCastMember(1)]);
     setSetReference({ name: '', url: '', description: '' });
@@ -1210,10 +1468,54 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
         <div className="mx-auto max-w-7xl">
           <header className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 bg-[#17191d] px-4 py-4">
             <div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Camera size={20} /></div><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Scene Production</p><div className="flex flex-wrap items-center gap-3"><h3 className="text-xl font-black">Shoot</h3><input value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Scene name" className="min-w-[220px] max-w-[420px] flex-1 border border-white/10 bg-black/25 px-3 py-1.5 text-sm font-black text-white outline-none focus:border-[#23c7be]" placeholder="Scene name" /></div><p className="mt-1 text-xs text-white/45">Build technical shots, generate them, then finish the scene in Edit.</p></div></div>
-            <div className="flex flex-wrap gap-2"><button type="button" onClick={startNewScene} disabled={busy || exportingEdit} className="flex items-center gap-2 border border-[#23c7be]/30 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] hover:bg-[#23c7be]/20 disabled:opacity-50"><Plus size={14} /> New Scene</button><button type="button" onClick={openMyScenes} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${showMyScenes ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.05]'}`}><Folder size={14} /> My Scenes</button><button type="button" onClick={() => (step === 'edit' ? saveEditor() : saveScene().then(() => toast.success('Shoot scene saved')).catch((error) => toast.error(error.message)))} className="flex items-center gap-2 border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold"><Save size={14} /> Save</button>{!embedded && <button type="button" onClick={onClose} className="p-2"><X size={19} /></button>}</div>
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setShowMyProjects((open) => !open)} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${showMyProjects ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.05]'}`}><Folder size={14} /> My Projects</button><button type="button" onClick={startNewScene} disabled={busy || exportingEdit} className="flex items-center gap-2 border border-[#23c7be]/30 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] hover:bg-[#23c7be]/20 disabled:opacity-50"><Plus size={14} /> New Scene</button><button type="button" onClick={openMyScenes} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${showMyScenes ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.05]'}`}><Folder size={14} /> My Scenes</button><button type="button" onClick={() => (step === 'edit' ? saveEditor() : saveScene().then(() => toast.success('Shoot scene saved')).catch((error) => toast.error(error.message)))} className="flex items-center gap-2 border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold"><Save size={14} /> Save</button>{!embedded && <button type="button" onClick={onClose} className="p-2"><X size={19} /></button>}</div>
           </header>
 
-          {showMyScenes && <section className="mb-5 border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">My Scenes</p><p className="text-xs text-white/45">Open one of your saved Shoot scenes.</p></div><button type="button" onClick={loadMyScenes} disabled={loadingScenes} className="bg-white/10 px-3 py-2 text-xs font-bold disabled:opacity-50">Refresh</button></div>{loadingScenes ? <div className="flex min-h-24 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div> : savedScenes.length ? <div className="grid gap-2 md:grid-cols-2">{savedScenes.map((scene) => <button key={scene.id} type="button" onClick={() => restoreScene(scene)} className="border border-white/10 bg-black/20 p-3 text-left hover:border-[#23c7be]"><div className="flex items-center justify-between gap-3"><span className="truncate text-sm font-black">{scene.title || 'Untitled scene'}</span><span className="text-[10px] font-bold uppercase text-[#8ee9e4]">{scene.status || 'setup'}</span></div><p className="mt-1 text-[10px] text-white/40">{scene.aspect_ratio || '16:9'} · {Array.isArray(scene.shot_plan) ? scene.shot_plan.length : 0} shots</p></button>)}</div> : <div className="border border-white/10 bg-black/20 p-4 text-sm text-white/45">No saved scenes yet.</div>}</section>}
+          <div className="mb-4 flex flex-wrap items-center gap-3 border border-white/10 bg-[#17191d] px-4 py-3">
+            <span className="text-xs font-black uppercase tracking-[0.12em] text-[#23c7be]">Shoot Project</span>
+            <select aria-label="Active Shoot project" value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)} className="min-w-[190px] max-w-full flex-1 bg-black/30 px-3 py-2 text-sm font-bold text-white">
+              <option value="all">All projects</option>
+              <option value="unassigned">Unassigned scenes</option>
+              {shootProjects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+            </select>
+            <span className="text-[11px] text-white/45">{selectedProjectId !== 'all' && selectedProjectId !== 'unassigned' ? 'New scenes will be saved in this project.' : 'Select a project to group new scenes.'}</span>
+          </div>
+          {showMyProjects && <section className="mb-5 space-y-3 border border-white/10 bg-[#17191d] p-4">
+            <p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">My Projects</p>
+            <div className="flex flex-wrap gap-2">
+              <input value={newProjectName} maxLength={160} onChange={(event) => setNewProjectName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void createShootProject(); }} placeholder="New Shoot project name" aria-label="New Shoot project name" className="min-w-[180px] flex-1 bg-black/30 px-3 py-2 text-sm text-white" />
+              <button type="button" onClick={createShootProject} disabled={projectsBusy || !newProjectName.trim()} className="bg-[#23c7be] px-4 py-2 text-xs font-black text-black disabled:opacity-40"><Plus size={13} className="mr-1 inline" /> Create Project</button>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">{shootProjects.map((project) => <div key={project.id} className="flex items-center gap-2 border border-white/10 bg-black/20 p-2">
+              <button type="button" onClick={() => { setSelectedProjectId(project.id); setShowMyProjects(false); setShowMyScenes(true); void loadMyScenes(); }} className="min-w-0 flex-1 truncate px-2 py-2 text-left text-sm font-bold text-white hover:text-[#8ee9e4]"><Folder size={13} className="mr-2 inline" /> {project.name}</button>
+              <button type="button" onClick={() => renameShootProject(project)} disabled={projectsBusy} className="bg-white/10 px-3 py-2 text-xs text-white/75 disabled:opacity-40">Rename</button>
+            </div>)}</div>
+            {!shootProjects.length && <p className="text-sm text-white/45">Create a Shoot project to organize your scenes.</p>}
+          </section>}
+
+          {showMyScenes && <section className="mb-5 border border-white/10 bg-[#17191d] p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">My Scenes</p><p className="text-xs text-white/45">Open saved Shoot scenes or move them between projects.</p></div>
+              <button type="button" onClick={loadMyScenes} disabled={loadingScenes} className="bg-white/10 px-3 py-2 text-xs font-bold disabled:opacity-50">Refresh</button>
+            </div>
+            {loadingScenes ? <div className="flex min-h-24 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div> :
+              (() => {
+                const visibleScenes = savedScenes.filter((scene) => selectedProjectId === 'all' || (selectedProjectId === 'unassigned' ? !scene.project_id : scene.project_id === selectedProjectId));
+                return visibleScenes.length ? <div className="grid gap-2 md:grid-cols-2">{visibleScenes.map((scene) => <div key={scene.id} className="border border-white/10 bg-black/20 hover:border-[#23c7be]">
+                  <button type="button" onClick={() => restoreScene(scene)} className="w-full p-3 text-left">
+                    <div className="flex items-center justify-between gap-3"><span className="truncate text-sm font-black">{scene.title || 'Untitled scene'}</span><span className="text-[10px] font-bold uppercase text-[#8ee9e4]">{scene.status || 'setup'}</span></div>
+                    <p className="mt-1 text-[10px] text-white/40">{scene.aspect_ratio || '16:9'} · {Array.isArray(scene.shot_plan) ? scene.shot_plan.length : 0} shots</p>
+                  </button>
+                  <div className="flex items-center justify-between gap-2 border-t border-white/10 px-3 py-2">
+                    <select aria-label={'Project for ' + (scene.title || 'Untitled scene')} value={scene.project_id || ''} disabled={projectsBusy || Boolean(deletingSceneId)} onChange={(event) => moveSceneToProject(scene, event.target.value)} className="min-w-0 flex-1 bg-[#202328] px-2 py-2 text-xs text-white/75 disabled:opacity-40">
+                      <option value="">Unassigned</option>
+                      {shootProjects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                    </select>
+                    <button type="button" onClick={() => deleteScene(scene)} disabled={Boolean(deletingSceneId) || projectsBusy} aria-label={'Delete ' + (scene.title || 'Untitled scene')} className="flex items-center gap-1 bg-red-400/10 px-2 py-2 text-[10px] font-bold text-red-300 hover:bg-red-400/20 disabled:opacity-40">{deletingSceneId === scene.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete</button>
+                  </div>
+                </div>)}</div> : <div className="border border-white/10 bg-black/20 p-4 text-sm text-white/45">No scenes in this project.</div>;
+              })()}
+          </section>}
 
           {showContext && <ProductionContextInfo productionMethod={productionMethod} block={block} character={character} referenceMedia={referenceMedia} />}
 
@@ -1221,8 +1523,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
           {step === 'setup' && <div className="space-y-5">
             <section className="border border-white/10 bg-[#17191d] p-4"><div className="grid gap-3 md:grid-cols-[1fr_460px]"><input value={title} onChange={(event) => setTitle(event.target.value)} className="border border-white/10 bg-black/30 px-4 py-3 text-sm font-bold" placeholder="Scene title" /><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{modelAspectRatios.map((ratioId) => { const ratio = RATIOS.find((item) => item.id === ratioId); return <button key={ratioId} type="button" onClick={() => setAspectRatio(ratioId)} className={`border p-2 text-xs font-bold ${aspectRatio === ratioId ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 text-white/55'}`}>{ratio?.label || ratioId}<br /><span className="font-black">{ratioId}</span></button>; })}</div></div><div className="mt-3 grid gap-3 md:grid-cols-3"><label className="text-[10px] font-black uppercase tracking-[0.08em] text-white/55">Model<select value={effectiveModel || ''} onChange={(event) => setSelectedModel(event.target.value || null)} disabled={modelsLoading || !modelOptions.length} className="mt-1 w-full border border-white/10 bg-black/30 p-3 text-sm text-white">{modelsLoading && <option>Loading models…</option>}{modelOptions.map((item) => <option key={item.model_key} value={item.model_key}>{item.name || item.model_key}{item.recommended ? ' — Recommended' : ''}</option>)}</select></label>{resolutionBinding && resolutionOptions.length > 0 && <label className="text-[10px] font-black uppercase tracking-[0.08em] text-white/55">Resolution<select value={String(resolutionValue)} onChange={(event) => updateModelParam(resolutionBinding.name, event.target.value)} className="mt-1 w-full border border-white/10 bg-black/30 p-3 text-sm text-white">{resolutionOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>}{audioBinding && <label className="text-[10px] font-black uppercase tracking-[0.08em] text-white/55">Generate audio<button type="button" onClick={() => updateModelParam(audioBinding.name, !audioValue)} className={`mt-1 w-full border p-3 text-sm font-black ${audioValue ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-black/30 text-white/65'}`}>{audioValue ? 'On' : 'Off'}</button></label>}</div></section>
-            <section className="border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Cast</p><p className="text-xs text-white/45">Master character references, voices and performance.</p></div><button type="button" onClick={() => setCast((items) => [...items, newCastMember(items.length)])} className="flex items-center gap-1 bg-white/10 px-3 py-2 text-xs font-bold"><Plus size={13} /> Cast</button></div><div className="space-y-3">{cast.map((member) => <div key={member.id} className="grid gap-3 border border-white/10 p-3 lg:grid-cols-[120px_1fr_1fr_1fr_40px]"><div className="space-y-2"><div className="aspect-square overflow-hidden border border-white/10 bg-black">{member.reference_url ? <img src={member.reference_url} alt="" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-white/25"><Users /></div>}</div><div className="grid grid-cols-3 gap-1"><label className="cursor-pointer bg-white/10 p-1 text-center"><Upload size={11} className="mx-auto" /><input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event.target.files?.[0], { type: 'cast', id: member.id }).catch((error) => toast.error(error.message))} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'cast', id: member.id }); setShowVaultPicker(true); }} className="bg-white/10 p-1"><Folder size={11} className="mx-auto" /></button><button type="button" onClick={() => { setPickerTarget({ type: 'cast', id: member.id }); setShowAssetsShop(true); }} className="bg-white/10 p-1"><ShoppingBag size={11} className="mx-auto" /></button></div></div><div className="space-y-2"><input value={member.name} onChange={(event) => updateCast(member.id, { name: event.target.value })} className="w-full bg-black/30 p-2 text-sm font-bold" placeholder="Name" /><select value={member.type} onChange={(event) => updateCast(member.id, { type: event.target.value })} className="w-full bg-black/30 p-2 text-xs"><option value="human">Human</option><option value="animal">Animal</option><option value="creature">Creature / being</option><option value="robot">Robot / synthetic</option></select></div><textarea value={member.voice_or_sound} onChange={(event) => updateCast(member.id, { voice_or_sound: event.target.value })} className="min-h-24 bg-black/30 p-2 text-xs" placeholder={member.type === 'human' ? 'Base voice: age, tone, accent, texture…' : 'Base sound / vocalization…'} /><div className="space-y-2"><textarea value={member.manner} onChange={(event) => updateCast(member.id, { manner: event.target.value })} className="min-h-11 w-full bg-black/30 p-2 text-xs" placeholder="Base manner / performance" /><textarea value={member.description} onChange={(event) => updateCast(member.id, { description: event.target.value })} className="min-h-11 w-full bg-black/30 p-2 text-xs" placeholder="Character notes" /></div><button type="button" onClick={() => setCast((items) => items.filter((item) => item.id !== member.id))} className="text-white/45"><Trash2 size={15} /></button></div>)}</div></section>
-            <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-3 text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Set</p><div className="grid gap-3 md:grid-cols-[180px_1fr]"><div><div className="aspect-video overflow-hidden border border-white/10 bg-black">{setReference.url ? <img src={setReference.url} alt="" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-white/25"><ImageIcon /></div>}</div><div className="mt-2 grid grid-cols-3 gap-1"><label className="cursor-pointer bg-white/10 p-2 text-center"><Upload size={13} className="mx-auto" /><input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event.target.files?.[0], { type: 'set' }).catch((error) => toast.error(error.message))} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'set' }); setShowVaultPicker(true); }} className="bg-white/10"><Folder size={13} className="mx-auto" /></button><button type="button" onClick={() => { setPickerTarget({ type: 'set' }); setShowAssetsShop(true); }} className="bg-white/10"><ShoppingBag size={13} className="mx-auto" /></button></div></div><div className="space-y-2"><input value={setReference.name} onChange={(event) => setSetReference((value) => ({ ...value, name: event.target.value }))} className="w-full bg-black/30 p-3 text-sm font-bold" placeholder="Set name" /><textarea value={setReference.description} onChange={(event) => setSetReference((value) => ({ ...value, description: event.target.value }))} className="min-h-28 w-full bg-black/30 p-3 text-xs" placeholder="Continuity notes only — the image remains authoritative." /></div></div></section>
+            <section className="border border-white/10 bg-[#17191d] p-4"><div className="mb-3 flex items-center justify-between"><div><p className="text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Cast</p><p className="text-xs text-white/45">Master character references, voices and performance.</p></div><button type="button" onClick={() => setCast((items) => [...items, newCastMember(items.length)])} className="flex items-center gap-1 bg-white/10 px-3 py-2 text-xs font-bold"><Plus size={13} /> Cast</button></div><div className="space-y-3">{cast.map((member) => <div key={member.id} className="grid gap-3 border border-white/10 p-3 lg:grid-cols-[120px_1fr_1fr_1fr_40px]"><div className="space-y-2"><div className="aspect-square overflow-hidden border border-white/10 bg-black">{member.reference_url ? <img src={member.reference_url} alt="" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-white/25"><Users /></div>}</div><div className="grid grid-cols-4 gap-1"><label className="cursor-pointer bg-white/10 p-1 text-center"><Upload size={11} className="mx-auto" /><input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event.target.files?.[0], { type: 'cast', id: member.id }).catch((error) => toast.error(error.message))} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'cast', id: member.id }); setShowVaultPicker(true); }} className="bg-white/10 p-1"><Folder size={11} className="mx-auto" /></button><button type="button" onClick={() => { setPickerTarget({ type: 'cast', id: member.id }); setShowAssetsShop(true); }} className="bg-white/10 p-1" title="Assets Shop"><ShoppingBag size={11} className="mx-auto" /></button><button type="button" onClick={() => { setPickerTarget({ type: 'cast', id: member.id }); setShowAIPilotImages(true); }} className="bg-white/10 p-1" title="AI Pilot characters" aria-label="Choose AI Pilot character image"><ImageIcon size={11} className="mx-auto" /></button></div></div><div className="space-y-2"><input value={member.name} onChange={(event) => updateCast(member.id, { name: event.target.value })} className="w-full bg-black/30 p-2 text-sm font-bold" placeholder="Name" /><select value={member.type} onChange={(event) => updateCast(member.id, { type: event.target.value })} className="w-full bg-black/30 p-2 text-xs"><option value="human">Human</option><option value="animal">Animal</option><option value="creature">Creature / being</option><option value="robot">Robot / synthetic</option></select></div><textarea value={member.voice_or_sound} onChange={(event) => updateCast(member.id, { voice_or_sound: event.target.value })} className="min-h-24 bg-black/30 p-2 text-xs" placeholder={member.type === 'human' ? 'Base voice: age, tone, accent, texture…' : 'Base sound / vocalization…'} /><div className="space-y-2"><textarea value={member.manner} onChange={(event) => updateCast(member.id, { manner: event.target.value })} className="min-h-11 w-full bg-black/30 p-2 text-xs" placeholder="Base manner / performance" /><textarea value={member.description} onChange={(event) => updateCast(member.id, { description: event.target.value })} className="min-h-11 w-full bg-black/30 p-2 text-xs" placeholder="Character notes" /></div><button type="button" onClick={() => setCast((items) => items.filter((item) => item.id !== member.id))} className="text-white/45"><Trash2 size={15} /></button></div>)}</div></section>
+            <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-3 text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Set</p><div className="grid gap-3 md:grid-cols-[180px_1fr]"><div><div className="aspect-video overflow-hidden border border-white/10 bg-black">{setReference.url ? <img src={setReference.url} alt="" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-white/25"><ImageIcon /></div>}</div><div className="mt-2 grid grid-cols-4 gap-1"><label className="cursor-pointer bg-white/10 p-2 text-center"><Upload size={13} className="mx-auto" /><input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event.target.files?.[0], { type: 'set' }).catch((error) => toast.error(error.message))} /></label><button type="button" onClick={() => { setPickerTarget({ type: 'set' }); setShowVaultPicker(true); }} className="bg-white/10"><Folder size={13} className="mx-auto" /></button><button type="button" onClick={() => { setPickerTarget({ type: 'set' }); setShowAssetsShop(true); }} className="bg-white/10" title="Assets Shop"><ShoppingBag size={13} className="mx-auto" /></button><button type="button" onClick={() => { setPickerTarget({ type: 'set' }); setShowAIPilotImages(true); }} className="bg-white/10" title="AI Pilot sets" aria-label="Choose AI Pilot set image"><ImageIcon size={13} className="mx-auto" /></button></div></div><div className="space-y-2"><input value={setReference.name} onChange={(event) => setSetReference((value) => ({ ...value, name: event.target.value }))} className="w-full bg-black/30 p-3 text-sm font-bold" placeholder="Set name" /><textarea value={setReference.description} onChange={(event) => setSetReference((value) => ({ ...value, description: event.target.value }))} className="min-h-28 w-full bg-black/30 p-3 text-xs" placeholder="Continuity notes only — the image remains authoritative." /></div></div></section>
             <section className="border border-white/10 bg-[#17191d] p-4"><p className="mb-2 text-xs font-black uppercase tracking-[0.15em] text-[#23c7be]">Scene</p><div className="mb-3 grid gap-2 md:grid-cols-[200px_1fr_140px]"><select value={quickAddCharacterId} onChange={(event) => setQuickAddCharacterId(event.target.value)} className="bg-black/30 p-2 text-xs text-white"><option value="">Choose character</option>{cast.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select><input value={quickAddText} onChange={(event) => setQuickAddText(event.target.value)} className="bg-black/30 p-2 text-xs text-white" placeholder="Dialogue / Action" /><button type="button" onClick={() => { const member = cast.find((item) => item.id === quickAddCharacterId); if (!member) return toast.error('Choose a character first.'); if (!quickAddText.trim()) return toast.error('Enter dialogue or action text.'); const line = `${member.name}: ${quickAddText.trim()}`; setSceneText((current) => { const trimmed = String(current || '').replace(/\s+$/, ''); return trimmed ? `${trimmed}\n\n${line}` : line; }); setQuickAddText(''); }} className="bg-[#23c7be] px-3 py-2 text-xs font-black text-black hover:bg-[#8ee9e4]">Add to Scene</button></div><textarea value={sceneText} onChange={(event) => setSceneText(event.target.value)} className="min-h-[260px] w-full bg-black/30 p-4 text-sm leading-6" placeholder="Keep the complete scene here as your source. You build the shots yourself in Cuts." /></section>
             <div className="grid gap-2 md:grid-cols-2"><Button onClick={() => saveScene().then(() => toast.success('Scene setup saved')).catch((error) => toast.error(error.message))} className="bg-white/10 text-white hover:bg-white/15 hover:text-white"><Save size={16} className="mr-2" /> Save Scene Setup</Button><Button onClick={startManualCuts} className="bg-[#23c7be] font-black text-black hover:bg-[#8ee9e4] hover:text-black"><Plus className="mr-2" /> Create Shots</Button></div>
           </div>}
@@ -1238,7 +1540,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
                 <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-3"><span className="flex h-7 w-7 items-center justify-center bg-[#23c7be]/10 text-xs font-black text-[#8ee9e4]">{index + 1}</span><input value={shot.label} onChange={(event) => updateShot(shot.id, { label: event.target.value })} className="bg-transparent text-sm font-black" /></div><button type="button" onClick={() => setShotPlan((items) => items.filter((item) => item.id !== shot.id))} className="text-white/40"><Trash2 size={14} /></button></div>
                 <div className="grid gap-2 md:grid-cols-4"><label className="text-[10px] text-white/45">Duration<div className="mt-1 flex gap-1"><input type="number" min={modelDurationMin} max={modelDurationMax} value={shot.duration} onChange={(event) => updateShot(shot.id, { duration: normalizeVideoDuration(event.target.value) })} className="min-w-0 flex-1 bg-black/30 p-2 text-xs text-white" /><button type="button" onClick={() => updateShot(shot.id, { duration: normalizeVideoDuration(Math.ceil(estimatedSpeechSeconds(shotDialogueText(shot)) + 1)) })} className="bg-white/10 px-2 text-[9px] font-bold">Fit</button></div></label><label className="text-[10px] text-white/45">Shot mode<select value={shotMode(shot)} onChange={(event) => setShotMode(shot, event.target.value)} className="mt-1 w-full bg-black/30 p-2 text-xs text-white">{SHOT_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}</select></label><label className="text-[10px] text-white/45">Framing<select value={shot.framing} onChange={(event) => updateShot(shot.id, { framing: event.target.value })} disabled={shotMode(shot) !== 'standard'} className="mt-1 w-full bg-black/30 p-2 text-xs text-white disabled:opacity-50">{shotMode(shot) === 'standard' ? STANDARD_SHOT_TYPES.map((type) => <option key={type}>{type}</option>) : <option>{shot.framing}</option>}</select></label><div><p className="text-[10px] text-white/45">Characters present — optional</p><div className="mt-1 flex min-h-9 flex-wrap gap-1 bg-black/20 p-1">{cast.map((member) => { const selected = selectedIds.includes(member.id); return <button key={member.id} type="button" onClick={() => toggleShotCharacter(shot, member.id)} className={`border px-2 py-1 text-[10px] font-bold ${selected ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.04] text-white/55'}`}>{selected ? '✓ ' : '+ '}{member.name}</button>; })}</div></div></div>
                 {renderCharacterData(shot)}
-                {shotMode(shot) === 'standard' ? <div className="mt-4 border-t border-white/10 pt-3"><div className="mb-2 flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Technical lines</p><p className="text-[10px] text-white/35">Each line = character → dialogue → emotion → action preset → editable action.</p></div><button type="button" onClick={() => updateShot(shot.id, { lines: [...(shot.lines || []), newBeat()] })} className="flex items-center gap-1 bg-white/10 px-3 py-2 text-[10px] font-bold"><Plus size={11} /> Add Line</button></div><div className="space-y-2">{(shot.lines || []).map((line, lineIndex) => <div key={line.id} className="grid gap-2 border border-white/10 bg-black/20 p-2 lg:grid-cols-[28px_160px_1fr_150px_190px_1fr_32px]"><span className="flex h-8 items-center justify-center text-[10px] font-black text-[#8ee9e4]">{lineIndex + 1}</span><select value={line.character_id || ''} onChange={(event) => updateBeat(shot.id, line.id, { character_id: event.target.value })} className="h-9 bg-[#202328] px-2 text-xs text-white"><option value="">Choose character</option>{cast.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select><textarea value={line.dialogue || ''} onChange={(event) => updateBeat(shot.id, line.id, { dialogue: event.target.value })} className="min-h-14 bg-[#202328] p-2 text-xs" placeholder="Dialogue — optional" /><input value={line.emotion || ''} onChange={(event) => updateBeat(shot.id, line.id, { emotion: event.target.value })} className="h-9 bg-[#202328] px-2 text-xs" placeholder="Emotion / delivery" /><select defaultValue="" onChange={(event) => { const preset = event.target.value; if (preset) updateBeat(shot.id, line.id, { action: preset }); event.currentTarget.value = ''; }} className="h-9 bg-[#202328] px-2 text-xs text-white"><option value="">Action preset…</option>{ACTION_PRESETS.map((preset) => <option key={preset.label} value={preset.value}>{preset.label}</option>)}</select><textarea value={line.action || ''} onChange={(event) => updateBeat(shot.id, line.id, { action: event.target.value })} className="min-h-14 bg-[#202328] p-2 text-xs" placeholder="Action — editable after preset" /><button type="button" onClick={() => updateShot(shot.id, { lines: (shot.lines || []).filter((item) => item.id !== line.id) })} className="text-white/35"><Trash2 size={13} /></button>{line.character_id && <div className="lg:col-start-3 lg:col-span-4 text-[10px] text-white/35">Base voice: {cast.find((member) => member.id === line.character_id)?.voice_or_sound || 'not defined'} · Base performance: {cast.find((member) => member.id === line.character_id)?.manner || 'not defined'}</div>}</div>)}</div></div> : <div className="mt-4 border-t border-white/10 pt-3"><label className="text-[10px] font-black uppercase text-[#23c7be]">{shotMode(shot) === 'establishing' ? 'Establishing description' : 'Insert / detail description'}<textarea value={shot.description || ''} onChange={(event) => updateShot(shot.id, { description: event.target.value })} className="mt-1 min-h-24 w-full bg-black/30 p-3 text-xs text-white" placeholder={shotMode(shot) === 'establishing' ? 'Describe what the establishing shot must show.' : 'Describe the object or detail this insert must show.'} /></label></div>}
+                {shotMode(shot) === 'standard' ? <div className="mt-4 border-t border-white/10 pt-3"><div className="mb-2 flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#23c7be]">Technical lines</p><p className="text-[10px] text-white/35">Each line = character → dialogue → emotion → action preset → editable action.</p></div><button type="button" onClick={() => updateShot(shot.id, { lines: [...(shot.lines || []), newBeat()] })} className="flex items-center gap-1 bg-white/10 px-3 py-2 text-[10px] font-bold"><Plus size={11} /> Add Line</button></div><div className="space-y-2">{(shot.lines || []).map((line, lineIndex) => <div key={line.id} className="grid gap-2 border border-white/10 bg-black/20 p-2 lg:grid-cols-[28px_160px_1fr_150px_190px_1fr_32px]"><span className="flex h-8 items-center justify-center text-[10px] font-black text-[#8ee9e4]">{lineIndex + 1}</span><select value={line.character_id || ''} onChange={(event) => updateBeat(shot.id, line.id, { character_id: event.target.value })} className="h-9 bg-[#202328] px-2 text-xs text-white"><option value="">Choose character</option>{cast.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select><textarea value={line.dialogue || ''} onChange={(event) => updateBeat(shot.id, line.id, { dialogue: event.target.value })} className="min-h-14 bg-[#202328] p-2 text-xs" placeholder="Dialogue — optional" /><input value={line.emotion || ''} onChange={(event) => updateBeat(shot.id, line.id, { emotion: event.target.value })} className="h-9 bg-[#202328] px-2 text-xs" placeholder="Emotion / delivery" /><select defaultValue="" onChange={(event) => { const preset = event.target.value; if (preset) updateBeat(shot.id, line.id, { action: preset }); event.currentTarget.value = ''; }} className="h-9 bg-[#202328] px-2 text-xs text-white"><option value="">Action preset…</option>{ACTION_PRESETS.map((preset) => <option key={preset.label} value={preset.value}>{preset.label}</option>)}{pilotActionPrompts.length > 0 && <optgroup label="AI Pilot — Action & Blocking">{pilotActionPrompts.map((item) => { const instruction = String(item.data?.text || item.data?.description || item.data?.notes || '').trim(); return instruction ? <option key={item.key} value={instruction}>{item.pilot?.name || 'AI Pilot'} · {item.label || (item.component_type === 'blocking_prompt' ? 'Blocking' : 'Action')}</option> : null; })}</optgroup>}</select><textarea value={line.action || ''} onChange={(event) => updateBeat(shot.id, line.id, { action: event.target.value })} className="min-h-14 bg-[#202328] p-2 text-xs" placeholder="Action — editable after preset" /><button type="button" onClick={() => updateShot(shot.id, { lines: (shot.lines || []).filter((item) => item.id !== line.id) })} className="text-white/35"><Trash2 size={13} /></button>{line.character_id && <div className="lg:col-start-3 lg:col-span-4 text-[10px] text-white/35">Base voice: {cast.find((member) => member.id === line.character_id)?.voice_or_sound || 'not defined'} · Base performance: {cast.find((member) => member.id === line.character_id)?.manner || 'not defined'}</div>}</div>)}</div></div> : <div className="mt-4 border-t border-white/10 pt-3"><label className="text-[10px] font-black uppercase text-[#23c7be]">{shotMode(shot) === 'establishing' ? 'Establishing description' : 'Insert / detail description'}<textarea value={shot.description || ''} onChange={(event) => updateShot(shot.id, { description: event.target.value })} className="mt-1 min-h-24 w-full bg-black/30 p-3 text-xs text-white" placeholder={shotMode(shot) === 'establishing' ? 'Describe what the establishing shot must show.' : 'Describe the object or detail this insert must show.'} /></label></div>}
                 {renderShotReferences(shot)}
                 <div className="mt-3 grid gap-2 md:grid-cols-2"><label className="text-[10px] font-black uppercase text-white/40">Camera<textarea value={shot.camera || ''} onChange={(event) => updateShot(shot.id, { camera: event.target.value })} className="mt-1 min-h-16 w-full bg-black/30 p-2 text-xs text-white" placeholder="Optional camera movement / placement" /></label><label className="text-[10px] font-black uppercase text-white/40">Sound / Ambience<textarea value={shot.sound || ''} onChange={(event) => updateShot(shot.id, { sound: event.target.value })} className="mt-1 min-h-16 w-full bg-black/30 p-2 text-xs text-white" placeholder="Optional sound / ambience" /></label></div>
                 {timingProblem && <p className="mt-2 text-xs font-bold text-red-300">Timing conflict: dialogue needs about {Math.ceil(speechSeconds)}s, but the shot is {shot.duration}s.</p>}
@@ -1276,6 +1578,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
         {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} mediaType={pickerTarget?.type === 'music' ? 'audio' : (pickerTarget?.type === 'shot-video-reference' || pickerTarget?.type === 'shot-video-replacement') ? 'video' : 'image'} onSelect={(url, name) => (pickerTarget?.type === 'shot-video-reference' || pickerTarget?.type === 'shot-video-replacement') ? applyPickedVideoReference(url, name || (pickerTarget?.type === 'shot-video-replacement' ? 'Vault replacement video' : 'Vault video reference')) : applyPickedImage(url, name || (pickerTarget?.type === 'music' ? 'Vault music' : 'Vault reference'))} onClose={() => { setShowVaultPicker(false); setPickerTarget(null); }} embedded={embedded} />}
         {showAssetsShop && <AssetsShopPicker embedded={embedded} onSelect={(url, name) => applyPickedImage(url, name)} onClose={() => { setShowAssetsShop(false); setPickerTarget(null); }} />}
+        {showAIPilotImages && <ShootAIPilotImagePicker embedded={embedded} target={pickerTarget?.type === 'set' ? 'set' : 'cast'} onSelect={(url, name, characterData) => applyPickedImage(url, name, pickerTarget, characterData)} onClose={() => { setShowAIPilotImages(false); setPickerTarget(null); }} />}
         {showSaveVault && vaultVideoUrl && userEmail && <SaveToVaultModal userEmail={userEmail} imageUrl={vaultVideoUrl} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={() => { setShowSaveVault(false); toast.success(vaultSaveSource === 'scene' ? 'Scene saved to Vault' : 'Shot saved to Vault'); }} />}
       </motion.div>
     </div>
