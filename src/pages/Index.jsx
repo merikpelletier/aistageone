@@ -312,7 +312,7 @@ function GalleryRow({ title, dossiers }) {
   );
 }
 
-function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) {
+function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularityMap, dayKey }) {
   const [panelHeight, setPanelHeight] = useState(() => {
     const saved = Number(window.localStorage.getItem('aistage:index-browser-height'));
     return Number.isFinite(saved) && saved >= 28 && saved <= 100 ? saved : 28;
@@ -345,9 +345,13 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
   }, []);
 
   const selectorOptions = useMemo(() => {
-    const categoryNames = categories.map(c => c.name).filter(Boolean);
-    return ['All', ...CLASS_ORDER, ...categoryNames.filter(name => !CLASS_ORDER.includes(name))];
-  }, [categories]);
+    const usedClasses = new Set(dossiers.map(d => d.class).filter(Boolean));
+    const usedCategories = new Set(dossiers.map(d => d.category).filter(Boolean));
+    const classNames = dossierClasses.map(item => item.name).filter(name => usedClasses.has(name));
+    if (usedClasses.has('Story') && !classNames.includes('Story')) classNames.push('Story');
+    const categoryNames = categories.map(item => item.name).filter(name => usedCategories.has(name) && !classNames.includes(name));
+    return ['All', ...classNames, ...categoryNames];
+  }, [categories, dossierClasses, dossiers]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -444,7 +448,7 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
                 onClick={() => setSelected(option)}
                 className={`whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
               >
-                {option}
+                {option === 'Story' ? 'FotoPlay' : option}
               </button>
             ))}
           </div>
@@ -461,6 +465,7 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
 export default function Index() {
   const { data: dossiers = [], isLoading } = useQuery({ queryKey: ['dossiers', 'published'], queryFn: () => base44.entities.Dossier.filter({ status: 'published' }, 'order'), staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false });
   const { data: categories = [] } = useQuery({ queryKey: ['dossierCategories'], queryFn: () => base44.entities.DossierCategory.list('name'), staleTime: 5 * 60 * 1000 });
+  const { data: dossierClasses = [] } = useQuery({ queryKey: ['dossierClasses'], queryFn: () => base44.entities.DossierClass.list('order'), staleTime: 5 * 60 * 1000 });
   const { data: ratings = [] } = useQuery({
     queryKey: ['dossierRatings', 'indexPopularity'],
     queryFn: async () => { try { return await base44.entities.DossierRating.listAll(); } catch { return []; } },
@@ -495,7 +500,7 @@ export default function Index() {
       </div>
 
       <DesktopMasonry dossiers={desktopMasonryDossiers} fillers={fillers} />
-      <DesktopClassicBrowser dossiers={dossiers} categories={categories} popularityMap={popularityMap} dayKey={dayKey} />
+      <DesktopClassicBrowser dossiers={dossiers} categories={categories} dossierClasses={dossierClasses} popularityMap={popularityMap} dayKey={dayKey} />
 
       {dossiers.length === 0 && <div className="flex items-center justify-center py-20"><p className="text-white/50 text-sm">Aucun contenu disponible</p></div>}
     </div>
