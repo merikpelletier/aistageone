@@ -294,7 +294,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     return (
       <div className="space-y-3 border border-white/10 bg-white/[0.02] p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div><div className="text-sm text-white">Shoot · Shot Plan / Storyboard</div><div className="text-[11px] text-white/40">One framing and 5–30 seconds per clip. Storyboard images are previews only, never production references.</div></div>
+          <div><div className="text-sm text-white">Shoot · Shot Plan / Storyboard</div><div className="text-[11px] text-white/40">Multiple independent shots per segment, each with its own framing and 5–30 second duration. Storyboard images are previews only, never production references.</div></div>
           {!readOnly && <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={busy} onClick={() => proposeShots(episodeIndex, key)}>Propose Shots</Button>
             <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => updateShots(episodeIndex, key, [...shots, { id: makeId('shot'), shot_type: 'Medium Shot', duration: 5, action: '', camera: '', storyboard_url: '' }])}><Plus size={13} className="mr-1" /> Add Shot</Button>
@@ -383,6 +383,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                       </label>
                       {resourcePicker(episode, index, key, 'character_ids', 'Characters', availableCharacters)}
                       {resourcePicker(episode, index, key, 'set_ids', 'Sets', availableSets)}
+                      {shotPlanner(episode, index, key)}
                       <div className="space-y-2 border border-white/10 bg-white/[0.02] p-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div><div className="text-sm text-white">Dialogue · Editable Draft</div><div className="text-[11px] text-white/40">The AI proposes. The creator may freely rewrite, replace or remove the dialogue.</div></div>
@@ -390,7 +391,6 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                         </div>
                         <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} value={episode.dialogue_drafts?.[key] || ''} onChange={(event) => applyPartPatch(index, key, 'dialogue_drafts', event.target.value)} placeholder="Optional dialogue draft for this scene" />
                       </div>
-                      {shotPlanner(episode, index, key)}
                     </div>
                   ))}
                 </div>
