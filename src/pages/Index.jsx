@@ -320,8 +320,6 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('All');
   const draggingRef = useRef(false);
-  const categoryScrollRef = useRef(null);
-  const categoryDragRef = useRef(null);
 
   useEffect(() => {
     window.localStorage.setItem('aistage:index-browser-height', String(Math.round(panelHeight)));
@@ -426,7 +424,7 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
           </div>
         </div>
 
-        <div className="grid grid-cols-[minmax(280px,420px)_minmax(0,1fr)] gap-3">
+        <div className="grid grid-cols-[minmax(280px,420px)_1fr] gap-3">
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35" />
             <input
@@ -438,37 +436,13 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
             />
           </div>
 
-          <div
-            ref={categoryScrollRef}
-            className="flex min-w-0 gap-1.5 overflow-x-auto pb-1 cursor-grab active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            onWheel={(event) => { if (event.currentTarget.scrollWidth > event.currentTarget.clientWidth && event.deltaY) event.currentTarget.scrollLeft += event.deltaY; }}
-            onPointerDown={(event) => {
-              if (event.button !== 0) return;
-              categoryDragRef.current = { x: event.clientX, scrollLeft: event.currentTarget.scrollLeft, moved: false };
-            }}
-            onPointerMove={(event) => {
-              const drag = categoryDragRef.current;
-              if (!drag || !(event.buttons & 1)) return;
-              const distance = event.clientX - drag.x;
-              if (Math.abs(distance) > 5) drag.moved = true;
-              if (drag.moved) event.currentTarget.scrollLeft = drag.scrollLeft - distance;
-            }}
-            onPointerUp={() => { if (categoryDragRef.current) categoryDragRef.current.x = null; }}
-            onPointerLeave={() => { categoryDragRef.current = null; }}
-            onClickCapture={(event) => {
-              if (categoryDragRef.current?.moved) {
-                event.preventDefault();
-                event.stopPropagation();
-              }
-              categoryDragRef.current = null;
-            }}
-          >
+          <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {selectorOptions.map(option => (
               <button
                 key={option}
                 type="button"
                 onClick={() => setSelected(option)}
-                className={`shrink-0 whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
+                className={`whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
               >
                 {option}
               </button>
