@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { ChevronDown, ChevronLeft, ChevronRight, GripVertical, Play, Search, Sparkles } from 'lucide-react';
+import { ChevronDown, GripVertical, Play, Search, Sparkles } from 'lucide-react';
 import TopBanner from '@/components/TopBanner';
 
 const CLASS_ORDER = ['Videos', 'Story', 'Assets', 'Kits', 'Merchandise'];
@@ -321,6 +321,7 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
   const [selected, setSelected] = useState('All');
   const draggingRef = useRef(false);
   const categoryScrollRef = useRef(null);
+  const categoryDragRef = useRef(null);
 
   useEffect(() => {
     window.localStorage.setItem('aistage:index-browser-height', String(Math.round(panelHeight)));
@@ -437,21 +438,41 @@ function DesktopClassicBrowser({ dossiers, categories, popularityMap, dayKey }) 
             />
           </div>
 
-          <div className="flex min-w-0 items-center gap-1">
-            <button type="button" aria-label="Previous categories" onClick={() => categoryScrollRef.current?.scrollBy({ left: -440, behavior: 'smooth' })} className="flex h-10 shrink-0 items-center justify-center border border-white/20 bg-black/40 px-2 text-white hover:bg-white/15"><ChevronLeft size={19} /></button>
-            <div ref={categoryScrollRef} className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-2 [scrollbar-width:thin]" onWheel={(event) => { if (event.currentTarget.scrollWidth > event.currentTarget.clientWidth && event.deltaY) event.currentTarget.scrollLeft += event.deltaY; }}>
-              {selectorOptions.map(option => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setSelected(option)}
-                  className={`whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-            <button type="button" aria-label="Next categories" onClick={() => categoryScrollRef.current?.scrollBy({ left: 440, behavior: 'smooth' })} className="flex h-10 shrink-0 items-center justify-center border border-white/20 bg-black/40 px-2 text-white hover:bg-white/15"><ChevronRight size={19} /></button>
+          <div
+            ref={categoryScrollRef}
+            className="flex min-w-0 gap-1.5 overflow-x-auto pb-1 cursor-grab active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            onWheel={(event) => { if (event.currentTarget.scrollWidth > event.currentTarget.clientWidth && event.deltaY) event.currentTarget.scrollLeft += event.deltaY; }}
+            onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              categoryDragRef.current = { x: event.clientX, scrollLeft: event.currentTarget.scrollLeft, moved: false };
+            }}
+            onPointerMove={(event) => {
+              const drag = categoryDragRef.current;
+              if (!drag || !(event.buttons & 1)) return;
+              const distance = event.clientX - drag.x;
+              if (Math.abs(distance) > 5) drag.moved = true;
+              if (drag.moved) event.currentTarget.scrollLeft = drag.scrollLeft - distance;
+            }}
+            onPointerUp={() => { if (categoryDragRef.current) categoryDragRef.current.x = null; }}
+            onPointerLeave={() => { categoryDragRef.current = null; }}
+            onClickCapture={(event) => {
+              if (categoryDragRef.current?.moved) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+              categoryDragRef.current = null;
+            }}
+          >
+            {selectorOptions.map(option => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setSelected(option)}
+                className={`shrink-0 whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
+              >
+                {option}
+              </button>
+            ))}
           </div>
         </div>
       </div>
