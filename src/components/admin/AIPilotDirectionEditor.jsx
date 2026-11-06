@@ -269,6 +269,12 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
   };
   const generateStoryboardFrame = async (episodeIndex, key, shot) => {
     const ep = episodes[episodeIndex];
+    const shotAction = String(shot.action || '').trim();
+    const shotCamera = String(shot.camera || '').trim();
+    if (!shotAction) {
+      setGenerationError('Describe the specific action for this shot before generating its storyboard.');
+      return;
+    }
     const resources = ep.scene_resources?.[key] || {};
     const references = [
       ...availableCharacters.filter((item) => (resources.character_ids || []).includes(item.id)),
@@ -279,14 +285,17 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     setGenerating(`frame-${shot.id}`);
     try {
       const prompt = [
-        'Illustrated movie storyboard frame, expressive monochrome pencil sketch, clean cinematic storyboard illustration. NOT a photorealistic production frame.',
-        `Shot type: ${shot.shot_type}. Camera: ${shot.camera || 'fixed camera'}.`,
-        `Action: ${shot.action || ep.parts?.[key] || ''}.`,
-        `Scene: ${ep.parts?.[key] || ''}.`,
-        `Characters: ${availableCharacters.filter((item) => (resources.character_ids || []).includes(item.id)).map((item) => item.name).join(', ') || 'none selected'}.`,
-        `Set: ${availableSets.filter((item) => (resources.set_ids || []).includes(item.id)).map((item) => item.name).join(', ') || 'not selected'}.`,
-        'Use provided reference images for identity, wardrobe and setting continuity. No captions, letters, text, logos, music or audio.',
-      ].join('\n');
+        'CREATE EXACTLY ONE FRAME FROM THE SPECIFIC SHOT INSTRUCTIONS BELOW. This is a single camera setup, NOT a montage, sequence, scene overview, or general illustration of the episode.',
+        'MANDATORY COMPOSITION AND FRAMING (higher priority than reference-image composition):',
+        `Camera framing: ${shot.shot_type || 'Medium Shot'}.`,
+        `Camera angle, positioning and composition: ${shotCamera || 'Eye-level, static composition appropriate to the specified framing.'}.`,
+        `EXACT ACTION AND MOMENT TO DEPICT: ${shotAction}.`,
+        'Depict only the precise moment described in EXACT ACTION. Frame the subjects according to Camera framing and Camera angle, positioning and composition. Do not portray other actions or moments from the overall scene.',
+        `Eligible scene characters (include only those required for this specific shot): ${availableCharacters.filter((item) => (resources.character_ids || []).includes(item.id)).map((item) => item.name).join(', ') || 'none selected'}.`,
+        `Eligible set references: ${availableSets.filter((item) => (resources.set_ids || []).includes(item.id)).map((item) => item.name).join(', ') || 'not selected'}.`,
+        'Reference images establish ONLY the appearance of characters, wardrobe, props and environment. Never copy their camera angle, subject placement, pose or framing when these conflict with the shot instructions.',
+        'Style: clean expressive monochrome pencil-sketch cinematic storyboard illustration, not photorealistic. Exactly one panel, 16:9. No grid, multiple panels, captions, lettering, logos or unrelated activity.',
+      ].join('\\n');
       const { data, error } = await supabase.functions.invoke('generate-image', { body: {
         prompt, reference_image_urls: references, aspect_ratio: '16:9',
       } });
