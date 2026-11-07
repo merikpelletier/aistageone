@@ -148,7 +148,7 @@ const VIDEO_PARTS = [
   ['hook', 'Part 4 · Hook', '90–120 seconds · End with a payoff or forward hook'],
 ];
 
-function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCharacters = [], availableSets = [] }) {
+function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCharacters = [], availableSets = [], availableLooks = [] }) {
   const content = block.content || {};
   const stored = Array.isArray(content.scenarios) ? content.scenarios : [];
   const episodes = Array.from({ length: EPISODE_COUNT }, (_, index) => stored[index] || { id: `episode-${index + 1}`, title: '', premise: '', outline: '', scene_ideas: '', creative_options: '', parts: {} });
@@ -267,35 +267,57 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     } catch (error) { setGenerationError(error.message || 'Unable to propose a shot plan.'); }
     finally { setGenerating(''); }
   };
-  const generateStoryboardFrame = async (episodeIndex, key, shot) => {
-    const ep = episodes[episodeIndex];
-    const shotAction = String(shot.action || '').trim();
-    const shotCamera = String(shot.camera || '').trim();
-    if (!shotAction) {
-      setGenerationError('Describe the specific action for this shot before generating its storyboard.');
+    const resources = ep.scene_resources?.[key] || {};
+    const eligibleSets = availableSets.filter((item) => (resources.set_ids || []).includes(item.id));
+    const set = eligibleSets.find((item) => item.id === shot.set_id) || (eligibleSets.length === 1 ? eligibleSets[0] : null);
+    if (!set) {
+      setGenerationError('Select a specific existing set for this shot before generating an illustration.');
       return;
     }
-    const resources = ep.scene_resources?.[key] || {};
+    const getUrls = (value) => (Array.isArray(value) ? value : [])
+      .map((item) => typeof item === 'string' ? item : item?.url)
+      .filter((url) => typeof url === 'string' && url.trim());
+    const setReferences = getUrls(set.reference_images);
+    if (!setReferences.length) {
+      setGenerationError('The selected set has no reference image. Add a set reference in AI Pilot first.');
+      return;
+    }
+    const eligibleCharacters = availableCharacters.filter((item) => (resources.character_ids || []).includes(item.id));
+    const visibleCharacters = eligibleCharacters.filter((item) => (Array.isArray(shot.character_ids) ? shot.character_ids : eligibleCharacters.map((person) => person.id)).includes(item.id));
+    const looks = visibleCharacters.map((character) => ({
+      character,
+      look: availableLooks.find((item) => item.id === shot.look_ids?.[character.id]),
+    }));
+    if (looks.some(({ look }) => !look)) {
+      setGenerationError('Select an existing Look for each visible character in this shot.');
+      return;
+    }
+    if (looks.some(({ look }) => !getUrls(look.result_images).length)) {
+      setGenerationError('A selected Look has no reference image. Add its result image in AI Pilot first.');
+      return;
+    }
     const references = [
-      ...availableCharacters.filter((item) => (resources.character_ids || []).includes(item.id)),
-      ...availableSets.filter((item) => (resources.set_ids || []).includes(item.id)),
-    ].flatMap((item) => Array.isArray(item.reference_images) ? item.reference_images : [])
-      .map((item) => typeof item === 'string' ? item : item?.url).filter(Boolean).slice(0, 14);
+      ...setReferences,
+      ...looks.flatMap(({ look }) => getUrls(look.result_images)),
+      ...visibleCharacters.flatMap((item) => getUrls(item.reference_images)),
+    ].filter((url, index, all) => all.indexOf(url) === index).slice(0, 14);
     setGenerationError('');
     setGenerating(`frame-${shot.id}`);
     try {
       const prompt = [
-        'CREATE EXACTLY ONE FRAME FROM THE SPECIFIC SHOT INSTRUCTIONS BELOW. This is a single camera setup, NOT a montage, sequence, scene overview, or general illustration of the episode.',
-        'MANDATORY COMPOSITION AND FRAMING (higher priority than reference-image composition):',
-        `Camera framing: ${shot.shot_type || 'Medium Shot'}.`,
-        `Camera angle, positioning and composition: ${shotCamera || 'Eye-level, static composition appropriate to the specified framing.'}.`,
-        `EXACT ACTION AND MOMENT TO DEPICT: ${shotAction}.`,
-        'Depict only the precise moment described in EXACT ACTION. Frame the subjects according to Camera framing and Camera angle, positioning and composition. Do not portray other actions or moments from the overall scene.',
-        `Eligible scene characters (include only those required for this specific shot): ${availableCharacters.filter((item) => (resources.character_ids || []).includes(item.id)).map((item) => item.name).join(', ') || 'none selected'}.`,
-        `Eligible set references: ${availableSets.filter((item) => (resources.set_ids || []).includes(item.id)).map((item) => item.name).join(', ') || 'not selected'}.`,
-        'Reference images establish ONLY the appearance of characters, wardrobe, props and environment. Never copy their camera angle, subject placement, pose or framing when these conflict with the shot instructions.',
-        'Style: clean expressive monochrome pencil-sketch cinematic storyboard illustration, not photorealistic. Exactly one panel, 16:9. No grid, multiple panels, captions, lettering, logos or unrelated activity.',
-      ].join('\n');
+        'STORYBOARD FOR ONE SPECIFIC SHOT. Follow the existing set, visible characters and assigned looks exactly. Do not invent or redesign scenery or wardrobe.',
+        `FIXED SET (mandatory, not a suggestion): ${set.name}. ${set.description || ''}`,
+        'The supplied SET REFERENCE IMAGE defines the actual location. Retain its layout, architecture, furnishings, objects and visual identity exactly. NEVER replace it with a newly imagined location.',
+        `Position inside this locked set: ${shot.set_position || 'Use the exact area appropriate to the camera direction; do not invent a new area'}.`,
+        `SHOT FRAMING: ${shot.shot_type || 'Medium Shot'}.`,
+        `SHOT CAMERA AND COMPOSITION: ${shotCamera || 'Eye level, static'}.`,
+        `EXACT MOMENT AND ACTION: ${shotAction}.`,
+        ...looks.map(({ character, look }) =>
+          `VISIBLE CHARACTER: ${character.name}. LOCKED LOOK: ${look.name}. ${[look.description, look.costume, look.garment_details, look.shoes, look.accessories, look.makeup, look.hair, look.colors].filter(Boolean).join('; ')}. Use look result reference images for exact wardrobe and hairstyle, not your own interpretation.`),
+        'Only depict the specified shot action and the listed visible characters, in the selected set. Never add unspecified characters, costumes, furniture or architecture.',
+        'References are for exact set structure, character identity and specific selected looks. Camera/framing instructions control composition, not the source-image viewpoint.',
+        'ONE 16:9 cinematic pencil-sketch storyboard panel, not photorealistic. No text, labels, grids or montage.',
+      ].join('\\n');
       const { data, error } = await supabase.functions.invoke('generate-image', { body: {
         prompt, reference_image_urls: references, aspect_ratio: '16:9',
       } });
