@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowRight, BadgeCheck, Bookmark, Coins, ImagePlus, Library, Loader2,
+  ArrowLeft, ArrowRight, BadgeCheck, Bookmark, Coins, Folder, ImagePlus, Library, Loader2,
   Search, Shirt, Store, Upload, UserRound, WandSparkles, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -78,9 +78,21 @@ function SourceButton({ icon: Icon, label, onClick, tone }) {
 function AssetPicker({
   picker, onClose, onSelect, vaultAssets, catalogAssets, categories, subcategories,
   pilotLibrary = [], loadingPilots = false, pilotError = null,
-  loadingCatalog, catalogError, onManageVault, embedded = false,
+  loadingCatalog, catalogError, onManageVault, userEmail, embedded = false,
 }) {
   const source = picker.source || 'vault';
+  const [activeVaultFolderId, setActiveVaultFolderId] = useState(null);
+  const { data: vaultFolders = [], isLoading: vaultFoldersLoading, error: vaultFoldersError } = useQuery({
+    queryKey: ['vaultFoldersForCharacterDesigner', userEmail],
+    queryFn: () => base44.entities.VaultFolder.filter({ user_email: userEmail }, 'order', null),
+    enabled: source === 'vault' && Boolean(userEmail),
+  });
+  const vaultImages = vaultAssets.filter((asset) => asset.media_type === 'image');
+  const vaultFoldersWithAssets = vaultFolders.map((folder) => ({
+    ...folder,
+    count: vaultImages.filter((asset) => asset.folder_id === folder.id).length,
+  }));
+  const unfiledCount = vaultImages.filter((asset) => !asset.folder_id).length;
   const [search, setSearch] = useState('');
   const [pilotFilter, setPilotFilter] = useState('all');
   const pattern = purposePattern(picker.purpose);
@@ -104,7 +116,7 @@ function AssetPicker({
         origin: item.source, images: item.images, character: picker.purpose === 'look' ? null : item,
       }))
     );
-    const pool = source === 'vault' ? vaultAssets.filter((asset) => asset.media_type === 'image')
+    const pool = source === 'vault' ? vaultImages.filter((asset) => activeVaultFolderId === 'unfiled' ? !asset.folder_id : asset.folder_id === activeVaultFolderId)
       : source === 'pilot' ? pilotAssets
       : catalogAssets.filter((asset) => (
         catalogImages(asset).length
@@ -112,7 +124,7 @@ function AssetPicker({
         && (catalogSubcategoryId === 'all' || asset.subcategory_id === catalogSubcategoryId)
       ));
     return pool.filter((asset) => !term || `${asset.name || ''} ${asset.title || ''} ${asset.actor_name || ''} ${asset.creator_name || ''} ${(asset.tags || []).join(' ')} ${categoryText(categoryById.get(asset.category_id))}`.toLowerCase().includes(term));
-  }, [catalogAssets, catalogCategoryId, catalogSubcategoryId, categoryById, search, source, vaultAssets, pilotLibrary, pilotFilter, picker.purpose]);
+  }, [catalogAssets, catalogCategoryId, catalogSubcategoryId, categoryById, search, source, vaultImages, activeVaultFolderId, pilotLibrary, pilotFilter, picker.purpose]);
 
   return (
     <motion.div
@@ -186,7 +198,40 @@ function AssetPicker({
           </>
         )}
         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-4">
-          {source === 'pilot' && loadingPilots ? (
+          {source === 'vault' && vaultFoldersLoading ? (
+            <div className="flex h-52 items-center justify-center"><Loader2 className="animate-spin text-cyan-300" /></div>
+          ) : source === 'vault' && vaultFoldersError ? (
+            <div className="p-6 text-sm text-red-300">Could not load Vault folders: {vaultFoldersError.message}</div>
+          ) : source === 'vault' && activeVaultFolderId === null ? (
+            <div className="space-y-3">
+              <div className="text-sm font-semibold text-white/75">My Vault · Folders</div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+                {vaultFoldersWithAssets.map((folder) => (
+                  <button key={folder.id} type="button" onClick={() => { setActiveVaultFolderId(folder.id); setSearch(''); }}
+                    className="flex min-h-24 flex-col items-start justify-between gap-3 rounded-lg border border-white/15 bg-white/[0.04] p-3 text-left transition hover:border-cyan-300/50 hover:bg-white/[0.08]">
+                    <Folder size={23} className="text-cyan-300" />
+                    <span className="max-w-full truncate text-sm font-semibold text-white">{folder.name}</span>
+                    <span className="text-xs text-white/45">{folder.count} images</span>
+                  </button>
+                ))}
+                {unfiledCount > 0 && (
+                  <button type="button" onClick={() => { setActiveVaultFolderId('unfiled'); setSearch(''); }}
+                    className="flex min-h-24 flex-col items-start justify-between gap-3 rounded-lg border border-white/15 bg-white/[0.04] p-3 text-left transition hover:border-cyan-300/50 hover:bg-white/[0.08]">
+                    <Folder size={23} className="text-white/65" />
+                    <span className="text-sm font-semibold text-white">Unfiled</span>
+                    <span className="text-xs text-white/45">{unfiledCount} images</span>
+                  </button>
+                )}
+              </div>
+              {!vaultFoldersWithAssets.length && !unfiledCount && <div className="text-sm text-white/45">No folders or images in your Vault.</div>}
+            </div>
+          ) : (
+            <>
+              {source === 'vault' && <button type="button" onClick={() => { setActiveVaultFolderId(null); setSearch(''); }}
+                className="mb-4 flex items-center gap-2 text-sm font-semibold text-white/80 hover:text-white">
+                <ArrowLeft size={16} /> My Vault / {activeVaultFolderId === 'unfiled' ? 'Unfiled' : vaultFolders.find((folder) => folder.id === activeVaultFolderId)?.name || 'Folder'}
+              </button>}
+              {source === 'pilot' && loadingPilots ? (
             <div className="flex h-52 items-center justify-center"><Loader2 className="animate-spin text-cyan-300" /></div>
           ) : source === 'pilot' && pilotError ? (
             <div className="p-8 text-center text-red-300">{pilotError.message}</div>
@@ -230,6 +275,8 @@ function AssetPicker({
               <p className="mt-3 font-bold text-white">No matching images</p>
               <p className="mt-1 text-sm text-white/45">{source === 'vault' ? 'Add images to your Vault or choose Assets Shop.' : source === 'pilot' ? 'No matching character or look images in your AI Pilots.' : 'No published Assets Shop asset matches this selection.'}</p>
             </div>
+          )}
+            </>
           )}
         </div>
         {source === 'vault' && (
@@ -420,7 +467,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
 
   const { data: vaultAssets = [], refetch: refetchVault } = useQuery({
     queryKey: ['vaultAssetsForCharacterDesigner', userEmail],
-    queryFn: () => base44.entities.VaultAsset.filter({ user_email: userEmail }, '-created_date', 300),
+    queryFn: () => base44.entities.VaultAsset.filter({ user_email: userEmail }, '-created_date', null),
     enabled: Boolean(userEmail),
   });
   const { data: categories = [] } = useQuery({
@@ -919,7 +966,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
       <AnimatePresence>{picker && (
         <AssetPicker
           picker={picker} onClose={() => setPicker(null)} onSelect={selectAsset}
-          vaultAssets={vaultAssets} catalogAssets={catalogAssets} categories={categories} subcategories={subcategories}
+          vaultAssets={vaultAssets} catalogAssets={catalogAssets} categories={categories} subcategories={subcategories} userEmail={userEmail}
           pilotLibrary={pilotLibrary} loadingPilots={pilotsLoading} pilotError={pilotsError}
           loadingCatalog={loadingCatalog} catalogError={catalogError}
           onManageVault={() => { setPicker(null); setVaultOpen(true); }}
