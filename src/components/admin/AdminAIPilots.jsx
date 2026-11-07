@@ -413,9 +413,22 @@ export default function AdminAIPilots() {
 
               {selectedVersion && <div className={activeTab === 'direction' ? '' : 'hidden'}>
                 <div className="min-h-[58vh] border border-white/10">
-                  <nav aria-label="Production Direction" className="flex w-full gap-1 overflow-x-auto border-b border-white/10 bg-[#0b0d0f] px-2 pt-2">
-                    {directionBlocks.map((block) => <button key={block.id || block.block_key} type="button" onClick={() => selectBlock(block)} className={`shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm transition-colors ${(editingBlock?.id ? editingBlock.id === block.id : editingBlock?.block_key === block.block_key) ? 'border-[var(--studio-accent)] bg-white/[0.06] text-white' : 'border-transparent text-white/55 hover:bg-white/[0.04] hover:text-white'}`}>{block.title}</button>)}
-                  </nav>
+                  <div className="flex flex-wrap items-center gap-3 border-b border-white/10 bg-[#0b0d0f] px-4 py-3">
+                    <label htmlFor="ai-pilot-direction-select" className="shrink-0 text-xs font-semibold text-white/60">Direction Section</label>
+                    <select
+                      id="ai-pilot-direction-select"
+                      aria-label="Select direction section"
+                      value={editingBlock?.block_key || ''}
+                      onChange={(event) => {
+                        const block = directionBlocks.find((item) => item.block_key === event.target.value);
+                        if (block) selectBlock(block);
+                      }}
+                      className="min-w-0 w-full max-w-md flex-1 rounded border border-white/20 bg-[#151719] px-3 py-2 text-sm text-white focus:border-[var(--studio-accent)] focus:outline-none"
+                    >
+                      <option value="">Select a section</option>
+                      {directionBlocks.map((block) => <option key={block.id || block.block_key} value={block.block_key}>{block.title}</option>)}
+                    </select>
+                  </div>
                   <div className="p-4 md:p-5">
                     <AIPilotDirectionEditor block={editingBlock} setBlock={setEditingBlock} readOnly={false} onSave={() => saveBlock.mutate()} saving={saveBlock.isPending} availableCharacters={scenarioCharacters.filter((character) => character.is_active !== false).map((character) => ({ id: character.id, name: character.role_name, reference_images: character.reference_images || [] }))} availableSets={scenarioSets} availableLooks={scenarioLooks} />
                   </div>
