@@ -69,8 +69,8 @@ function SourceButton({ icon: Icon, label, onClick, tone }) {
     ? 'border-cyan-300/25 bg-cyan-300/[0.06] text-cyan-100 hover:border-cyan-300/60'
     : 'border-amber-300/25 bg-amber-300/[0.06] text-amber-100 hover:border-amber-300/60';
   return (
-    <button type="button" onClick={onClick} className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-black transition ${style}`}>
-      <Icon size={15} />{label}
+    <button type="button" onClick={onClick} className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-black transition lg:shrink-0 lg:whitespace-nowrap lg:rounded-md lg:px-3 lg:py-2 ${style}`}>
+      <Icon size={15} className="shrink-0" />{label}
     </button>
   );
 }
@@ -832,8 +832,8 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                 </div>
                 <div className="flex flex-col justify-center">
                   <p className="text-sm leading-relaxed text-white/55">This sheet becomes the character base. Actor Studio will transform it with the selected wardrobe and your prompt while preserving the character across every view.</p>
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                    <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-3 text-xs font-black hover:border-white/35"><Upload size={15} />Upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event, 'sourceSheet')} /></label>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center">
+                    <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-3 text-xs font-black hover:border-white/35 lg:shrink-0 lg:whitespace-nowrap lg:rounded-md lg:px-3 lg:py-2"><Upload size={15} />Upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event, 'sourceSheet')} /></label>
                     <SourceButton icon={Library} label="My Vault" tone="vault" onClick={() => setPicker({ purpose: 'sheet', label: 'reference sheet', source: 'vault' })} />
                     <SourceButton icon={Store} label="Assets Shop" tone="shop" onClick={() => setPicker({ purpose: 'sheet', label: 'reference sheet', source: 'shop' })} />
                     <SourceButton icon={WandSparkles} label="AI Pilot" tone="shop" onClick={() => setPicker({ purpose: 'sheet', label: 'reference sheet', source: 'pilot' })} />
@@ -858,8 +858,8 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
                 ) : (
                   <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-black/25 px-6 text-center"><Shirt size={32} className="text-white/20" /><p className="mt-3 text-sm font-black text-white">Build a combined look</p><p className="mt-1 text-xs text-white/35">Add clothing, shoes, hair, accessories, makeup or other visual references.</p></div>
                 )}
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-3 text-xs font-black hover:border-white/35"><Upload size={15} />Add upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event, 'look')} /></label>
+                <div className="grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center">
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-3 text-xs font-black hover:border-white/35 lg:shrink-0 lg:whitespace-nowrap lg:rounded-md lg:px-3 lg:py-2"><Upload size={15} />Add upload<input type="file" accept="image/*" className="hidden" onChange={(event) => uploadImage(event, 'look')} /></label>
                   <SourceButton icon={Library} label="Add from Vault" tone="vault" onClick={() => setPicker({ purpose: 'look', label: 'look reference', source: 'vault' })} />
                   <SourceButton icon={Store} label="Add from Assets Shop" tone="shop" onClick={() => setPicker({ purpose: 'look', label: 'look reference', source: 'shop' })} />
                   <SourceButton icon={WandSparkles} label="Add from AI Pilot" tone="shop" onClick={() => setPicker({ purpose: 'look', label: 'look reference', source: 'pilot' })} />
