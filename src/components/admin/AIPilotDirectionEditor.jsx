@@ -268,6 +268,14 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     } catch (error) { setGenerationError(error.message || 'Unable to propose a shot plan.'); }
     finally { setGenerating(''); }
   };
+  const generateStoryboardFrame = async (episodeIndex, key, shot) => {
+    const ep = episodes[episodeIndex];
+    const shotAction = String(shot.action || '').trim();
+    const shotCamera = String(shot.camera || '').trim();
+    if (!shotAction) {
+      setGenerationError('Describe the specific action for this shot before generating its storyboard.');
+      return;
+    }
     const resources = ep.scene_resources?.[key] || {};
     const eligibleSets = availableSets.filter((item) => (resources.set_ids || []).includes(item.id));
     const set = shot.set_id ? eligibleSets.find((item) => item.id === shot.set_id) : (eligibleSets.length === 1 ? eligibleSets[0] : null);
