@@ -262,32 +262,36 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
         </div>
         {!readOnly && (
           <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={startNew}>
-            <Plus size={16} className="mr-1 shrink-0 text-white" strokeWidth={2.5} /> Add Character
+            <Plus size={17} className="mr-1 shrink-0" strokeWidth={2.5} style={{ color: '#ffffff', stroke: '#ffffff' }} /> Add Character
           </Button>
         )}
       </div>
 
       <div className="min-h-[520px]">
-        <nav aria-label="Select character" className="flex w-full items-center gap-2 overflow-x-auto border-b border-white/10 bg-[#0b0d0f] px-3 py-3">
-          {characters.map((character) => (
-            <div key={character.id} className={`flex shrink-0 items-center border border-white/15 transition-colors ${editingId === character.id ? 'border-[var(--studio-accent)] bg-white/[0.08]' : 'hover:bg-white/[0.04]'}`}>
-              <button type="button" onClick={() => setEditingId(character.id)}
-                className={`whitespace-nowrap px-3 py-2 text-sm ${editingId === character.id ? 'text-white' : 'text-white/65'}`}>
-                {character.role_name}
-              </button>
-              {!readOnly && (
-                <button type="button" onClick={() => confirmDelete(character)}
-                  aria-label={`Delete ${character.role_name || 'character'}`}
-                  title={`Delete ${character.role_name || 'character'}`}
-                  disabled={deleteCharacter.isPending}
-                  className="mr-1 shrink-0 rounded p-1.5 text-white/40 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40">
-                  <Trash2 size={14} />
-                </button>
-              )}
-            </div>
-          ))}
-          {!characters.length && <div className="px-2 py-2 text-sm text-white/35">No characters yet.</div>}
-        </nav>
+        <div className="flex flex-wrap items-center gap-3 border-b border-white/10 bg-[#0b0d0f] px-4 py-3">
+          <label htmlFor="ai-pilot-character-select" className="shrink-0 text-xs font-semibold text-white/60">Select Character</label>
+          <select
+            id="ai-pilot-character-select"
+            aria-label="Select character to edit"
+            value={editingId || ''}
+            onChange={(event) => setEditingId(event.target.value || null)}
+            className="min-w-0 w-full max-w-md flex-1 rounded border border-white/20 bg-[#151719] px-3 py-2 text-sm text-white focus:border-[var(--studio-accent)] focus:outline-none"
+          >
+            <option value="">Select a character</option>
+            {characters.map((character) => (
+              <option key={character.id} value={character.id}>{character.role_name}</option>
+            ))}
+          </select>
+          {!readOnly && selected && (
+            <button type="button" onClick={() => confirmDelete(selected)}
+              aria-label={`Delete ${selected.role_name || 'character'}`}
+              title={`Delete ${selected.role_name || 'character'}`}
+              disabled={deleteCharacter.isPending}
+              className="inline-flex shrink-0 items-center gap-2 rounded border border-red-400/20 px-3 py-2 text-xs text-red-300 hover:bg-red-500/10 hover:text-red-200 disabled:opacity-40">
+              <Trash2 size={15} /> Delete {selected.role_name}
+            </button>
+          )}
+        </div>
 
         <div className="p-4 md:p-5">
           {!draft ? (
