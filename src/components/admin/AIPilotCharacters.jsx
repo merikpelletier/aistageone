@@ -165,18 +165,20 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
   });
 
   const deleteCharacter = useMutation({
-    mutationFn: async () => {
-      if (!draft?.id || readOnly) return;
+    mutationFn: async (characterId) => {
+      if (!characterId || readOnly) return;
       const { error } = await supabase
         .from('ai_pilot_characters')
         .delete()
-        .eq('id', draft.id)
+        .eq('id', characterId)
         .eq('version_id', version.id);
       if (error) throw error;
     },
-    onSuccess: async () => {
-      setEditingId(null);
-      setDraft(null);
+    onSuccess: async (_, characterId) => {
+      if (editingId === characterId) {
+        setEditingId(null);
+        setDraft(null);
+      }
       await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-characters', version?.id] });
     },
     onError: (error) => alert(error?.message || 'Unable to delete character'),
@@ -243,11 +245,11 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
     }));
   };
 
-  const confirmDelete = () => {
-    if (!draft?.id || deleteCharacter.isPending) return;
-    const name = draft.role_name?.trim() || 'this character';
+  const confirmDelete = (character) => {
+    if (!character?.id || deleteCharacter.isPending) return;
+    const name = character.role_name?.trim() || 'this character';
     if (window.confirm(`Delete ${name}? This cannot be undone.`)) {
-      deleteCharacter.mutate();
+      deleteCharacter.mutate(character.id);
     }
   };
 
@@ -268,15 +270,25 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
       <div className="grid lg:grid-cols-[280px_minmax(0,1fr)] min-h-[520px]">
         <div className="border-b lg:border-b-0 lg:border-r border-white/10">
           {characters.map((character) => (
-            <button
-              key={character.id}
-              type="button"
-              onClick={() => setEditingId(character.id)}
-              className={`w-full text-left p-4 border-b border-white/10 hover:bg-white/[0.04] ${editingId === character.id ? 'bg-white/[0.07] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}
-            >
-              <div className="text-sm text-white">{character.role_name}</div>
-              <div className="text-xs text-white/40 mt-1">Character</div>
-            </button>
+            <div key={character.id} className={`flex items-center gap-1 border-b border-white/10 hover:bg-white/[0.04] ${editingId === character.id ? 'bg-white/[0.07] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}>
+              <button
+                type="button"
+                onClick={() => setEditingId(character.id)}
+                className="min-w-0 flex-1 px-4 py-3 text-left"
+              >
+                <div className="truncate text-sm text-white">{character.role_name}</div>
+                <div className="text-xs text-white/40 mt-1">Character</div>
+              </button>
+              {!readOnly && (
+                <button type="button" onClick={() => confirmDelete(character)}
+                  aria-label={`Delete ${character.role_name || 'character'}`}
+                  title={`Delete ${character.role_name || 'character'}`}
+                  disabled={deleteCharacter.isPending}
+                  className="mr-2 shrink-0 rounded p-2 text-white/35 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40">
+                  <Trash2 size={15} />
+                </button>
+              )}
+            </div>
           ))}
           {!characters.length && <div className="p-5 text-sm text-white/35">No characters yet.</div>}
         </div>
@@ -407,18 +419,6 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                 </label>
               </div>
 
-              {!readOnly && (
-                <div className="flex items-center justify-between gap-3">
-                  {draft.id ? (
-                    <Button variant="destructive" onClick={confirmDelete} disabled={deleteCharacter.isPending || saveCharacter.isPending}>
-                      <Trash2 size={15} className="mr-2" /> Delete Character
-                    </Button>
-                  ) : <div />}
-                  <Button className={PRIMARY_BUTTON_CLASS} onClick={() => saveCharacter.mutate()} disabled={saveCharacter.isPending || deleteCharacter.isPending || referenceUploading}>
-                    <Save size={15} className="mr-2" /> Save Character
-                  </Button>
-                </div>
-              )}
             </div>
           )}
         </div>
