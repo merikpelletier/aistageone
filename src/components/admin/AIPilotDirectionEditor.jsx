@@ -293,38 +293,38 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     }
     const eligibleCharacters = availableCharacters.filter((item) => (resources.character_ids || []).includes(item.id));
     const visibleCharacters = eligibleCharacters.filter((item) => (Array.isArray(shot.character_ids) ? shot.character_ids : eligibleCharacters.map((person) => person.id)).includes(item.id));
-    const looks = visibleCharacters.map((character) => ({
+    const characterReferences = visibleCharacters.map((character) => ({
       character,
-      look: availableLooks.find((item) => item.id === shot.look_ids?.[character.id]),
+      urls: getUrls(character.reference_images),
+      selectedUrl: shot.character_reference_urls?.[character.id] || '',
     }));
-    if (looks.some(({ look }) => !look)) {
-      setGenerationError('Select an existing Look for each visible character in this shot.');
+    if (characterReferences.some(({ urls }) => !urls.length)) {
+      setGenerationError('A visible character has no reference image. Add one in AI Pilot Characters first.');
       return;
     }
-    if (looks.some(({ look }) => !getUrls(look.result_images).length)) {
-      setGenerationError('A selected Look has no reference image. Add its result image in AI Pilot first.');
+    if (characterReferences.some(({ urls, selectedUrl }) => !selectedUrl || !urls.includes(selectedUrl))) {
+      setGenerationError('Select a reference image for every visible character in this shot.');
       return;
     }
     const references = [
       ...setReferences.slice(0, 4),
-      ...looks.flatMap(({ look }) => getUrls(look.result_images).slice(0, 2)),
-      ...visibleCharacters.flatMap((item) => getUrls(item.reference_images).slice(0, 1)),
+      ...characterReferences.map(({ selectedUrl }) => selectedUrl),
     ].filter((url, index, all) => all.indexOf(url) === index).slice(0, 14);
     setGenerationError('');
     setGenerating(`frame-${shot.id}`);
     try {
       const prompt = [
-        'STORYBOARD FOR ONE SPECIFIC SHOT. Follow the existing set, visible characters and assigned looks exactly. Do not invent or redesign scenery or wardrobe.',
+        'STORYBOARD FOR ONE SPECIFIC SHOT. Follow the existing set and the exact selected reference image for each visible character. Do not invent or redesign scenery or wardrobe.',
         `FIXED SET (mandatory, not a suggestion): ${set.name}. ${set.description || ''}`,
         'The supplied SET REFERENCE IMAGE defines the actual location. Retain its layout, architecture, furnishings, objects and visual identity exactly. NEVER replace it with a newly imagined location.',
         `Position inside this locked set: ${shot.set_position || 'Use the exact area appropriate to the camera direction; do not invent a new area'}.`,
         `SHOT FRAMING: ${shot.shot_type || 'Medium Shot'}.`,
         `SHOT CAMERA AND COMPOSITION: ${shotCamera || 'Eye level, static'}.`,
         `EXACT MOMENT AND ACTION: ${shotAction}.`,
-        ...looks.map(({ character, look }) =>
-          `VISIBLE CHARACTER: ${character.name}. LOCKED LOOK: ${look.name}. ${[look.description, look.costume, look.garment_details, look.shoes, look.accessories, look.makeup, look.hair, look.colors].filter(Boolean).join('; ')}. Use look result reference images for exact wardrobe and hairstyle, not your own interpretation.`),
+        ...characterReferences.map(({ character }) =>
+          `VISIBLE CHARACTER: ${character.name}. Use ONLY the explicitly selected reference photo of this character for the exact face, wardrobe, hairstyle and makeup. Do not substitute another appearance or outfit.`),
         'Only depict the specified shot action and the listed visible characters, in the selected set. Never add unspecified characters, costumes, furniture or architecture.',
-        'References are for exact set structure, character identity and specific selected looks. Camera/framing instructions control composition, not the source-image viewpoint.',
+        'References are for exact set structure, character identity and exact selected character reference images. Camera/framing instructions control composition, not the source-image viewpoint.',
         'ONE 16:9 cinematic pencil-sketch storyboard panel, not photorealistic. No text, labels, grids or montage.',
       ].join('\n');
       const { data, error } = await supabase.functions.invoke('generate-image', { body: {
@@ -384,13 +384,16 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
               <label className="block text-xs text-white/60">Position within selected set
                 <Input className={CONTROL_CLASS + ' mt-1'} disabled={readOnly} value={shot.set_position || ''} onChange={(event) => updateShot(shot.id, { set_position: event.target.value, storyboard_url: '' })} placeholder="e.g. By the entrance" />
               </label>
-              <div className="text-xs text-white/60">Visible Characters and Looks (per shot)</div>
+              <div className="text-xs text-white/60">Visible Characters · Reference Photo per Shot</div>
               {eligibleCharacters.map((character) => {
                 const included = Array.isArray(shot.character_ids) ? shot.character_ids.includes(character.id) : true;
-                const looksForCharacter = availableLooks;
+                const images = (Array.isArray(character.reference_images) ? character.reference_images : [])
+                  .map((image) => typeof image === 'string' ? image : image?.url)
+                  .filter(Boolean);
+                const chosenUrl = shot.character_reference_urls?.[character.id] || '';
                 return (
-                  <div key={character.id} className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-2">
-                    <label className="flex items-center gap-2 text-xs text-white/70 min-w-40">
+                  <div key={character.id} className="space-y-2 border-b border-white/10 pb-3">
+                    <label className="flex items-center gap-2 text-xs text-white/70">
                       <input type="checkbox" disabled={readOnly} checked={included} onChange={(event) => updateShot(shot.id, {
                         character_ids: event.target.checked
                           ? [...(Array.isArray(shot.character_ids) ? shot.character_ids : eligibleCharacters.map((item) => item.id)), character.id].filter((id, index, all) => all.indexOf(id) === index)
@@ -399,10 +402,20 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                       })} />
                       {character.name}
                     </label>
-                    {included && <select aria-label={`Look for ${character.name}`} value={shot.look_ids?.[character.id] || ''} disabled={readOnly} onChange={(event) => updateShot(shot.id, { look_ids: { ...(shot.look_ids || {}), [character.id]: event.target.value }, storyboard_url: '' })} className="min-h-9 flex-1 bg-black border border-white/20 text-white text-xs px-2">
-                      <option value="">Select existing Look</option>
-                      {looksForCharacter.map((look) => <option key={look.id} value={look.id}>{look.name}</option>)}
-                    </select>}
+                    {included && (images.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {images.map((url, index) => (
+                          <button key={`${character.id}-${index}-${url}`} type="button" disabled={readOnly}
+                            aria-label={`Select ${character.name} reference ${index + 1}`}
+                            aria-pressed={chosenUrl === url}
+                            onClick={() => updateShot(shot.id, { character_reference_urls: { ...(shot.character_reference_urls || {}), [character.id]: url }, storyboard_url: '' })}
+                            className={`relative w-20 h-28 overflow-hidden border-2 bg-black ${chosenUrl === url ? 'border-[var(--studio-accent)]' : 'border-white/20 hover:border-white/60'}`}>
+                            <img src={url} alt={`${character.name} reference ${index + 1}`} className="w-full h-full object-cover" />
+                            {chosenUrl === url && <span className="absolute top-1 right-1 rounded-full bg-[var(--studio-accent)] text-black text-xs font-bold px-1.5">✓</span>}
+                          </button>
+                        ))}
+                      </div>
+                    ) : <div className="text-xs text-white/40">No reference photos. Add them under AI Pilot → Characters.</div>)}
                   </div>
                 );
               })}
