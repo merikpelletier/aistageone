@@ -130,3 +130,96 @@ body > div.fixed.z-\[1000\] > footer button {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* Desktop Actor workspace: compact editorial layout, without changing tablet/mobile. */
+@media (min-width: 1024px) {
+  body > div.fixed.z-\[1000\] > header {
+    padding: 8px 16px !important;
+  }
+  body > div.fixed.z-\[1000\] > header .max-w-7xl > div:first-child {
+    gap: 10px !important;
+  }
+  body > div.fixed.z-\[1000\] > header .h-11.w-11 {
+    width: 30px !important;
+    height: 30px !important;
+  }
+  body > div.fixed.z-\[1000\] > header h2 {
+    font-size: 17px !important;
+    line-height: 1.3 !important;
+  }
+  body > div.fixed.z-\[1000\] .max-w-7xl.grid {
+    grid-template-columns: 210px minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 12px 16px 76px !important;
+  }
+  body > div.fixed.z-\[1000\] main {
+    gap: 10px !important;
+  }
+  body > div.fixed.z-\[1000\] main > section {
+    padding: 12px !important;
+  }
+  body > div.fixed.z-\[1000\] main > section + section {
+    margin-top: 10px !important;
+  }
+  body > div.fixed.z-\[1000\] main > section > div:first-child {
+    margin-bottom: 12px !important;
+    gap: 8px !important;
+  }
+  body > div.fixed.z-\[1000\] main > section > div:first-child h3 {
+    font-size: 15px !important;
+    line-height: 1.25 !important;
+  }
+  body > div.fixed.z-\[1000\] main > section > div:first-child p {
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+  }
+  body > div.fixed.z-\[1000\] main > section > div:first-child > span {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 12px !important;
+  }
+  body > div.fixed.z-\[1000\] main > section .gap-4 {
+    gap: 10px !important;
+  }
+  body > div.fixed.z-\[1000\] main > section input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  body > div.fixed.z-\[1000\] main > section textarea,
+  body > div.fixed.z-\[1000\] main > section select {
+    font-size: 13px !important;
+    padding: 8px 10px !important;
+    line-height: 1.35 !important;
+  }
+  body > div.fixed.z-\[1000\] main > section label {
+    font-size: 11px;
+  }
+  body > div.fixed.z-\[1000\] main > section button:not([class*="absolute"]):not([class*="fixed"]),
+  body > div.fixed.z-\[1000\] main > section label.cursor-pointer {
+    min-height: 30px;
+    padding: 6px 10px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+  body > div.fixed.z-\[1000\] main > section .min-w-64 {
+    min-width: 180px;
+  }
+  body > div.fixed.z-\[1000\] aside .p-5 {
+    padding: 12px !important;
+  }
+  body > div.fixed.z-\[1000\] aside .text-2xl {
+    font-size: 17px !important;
+  }
+  body > div.fixed.z-\[1000\] aside .mt-4 {
+    margin-top: 10px !important;
+  }
+  body > div.fixed.z-\[1000\] aside .py-2 {
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+  }
+  body > div.fixed.z-\[1000\] > footer {
+    padding: 7px 16px !important;
+  }
+  body > div.fixed.z-\[1000\] > footer button {
+    min-height: 34px !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+  }
+}
