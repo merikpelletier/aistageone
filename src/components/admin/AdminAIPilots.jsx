@@ -93,7 +93,27 @@ export default function AdminAIPilots() {
   const scenarioSets = useMemo(() => {
     const direction = blocks.find((item) => item.block_key === 'series-direction');
     const sets = direction?.content?.sets;
-    return Array.isArray(sets) ? sets.filter((set) => set?.id && set?.name).map((set) => ({ id: set.id, name: set.name, reference_images: set.reference_images || [] })) : [];
+    return Array.isArray(sets) ? sets.filter((set) => set?.id && set?.name).map((set) => ({ id: set.id, name: set.name, description: set.description || '', reference_images: set.reference_images || [] })) : [];
+  }, [blocks]);
+
+  const scenarioLooks = useMemo(() => {
+    const looksBlock = blocks.find((item) => item.block_key === 'looks');
+    return Array.isArray(looksBlock?.content?.looks)
+      ? looksBlock.content.looks.filter((look) => look?.id && look?.name).map((look) => ({
+        id: look.id,
+        name: look.name,
+        type: look.type || '',
+        description: look.description || '',
+        costume: look.costume || '',
+        garment_details: look.garment_details || '',
+        shoes: look.shoes || '',
+        accessories: look.accessories || '',
+        makeup: look.makeup || '',
+        hair: look.hair || '',
+        colors: look.colors || '',
+        result_images: look.result_images || [],
+      }))
+      : [];
   }, [blocks]);
 
   const directionBlocks = useMemo(() => {
@@ -400,7 +420,7 @@ export default function AdminAIPilots() {
                     </div>
                   </div>
                   <div className="p-4 md:p-5">
-                    <AIPilotDirectionEditor block={editingBlock} setBlock={setEditingBlock} readOnly={false} onSave={() => saveBlock.mutate()} saving={saveBlock.isPending} availableCharacters={scenarioCharacters.filter((character) => character.is_active !== false).map((character) => ({ id: character.id, name: character.role_name, reference_images: character.reference_images || [] }))} availableSets={scenarioSets} />
+                    <AIPilotDirectionEditor block={editingBlock} setBlock={setEditingBlock} readOnly={false} onSave={() => saveBlock.mutate()} saving={saveBlock.isPending} availableCharacters={scenarioCharacters.filter((character) => character.is_active !== false).map((character) => ({ id: character.id, name: character.role_name, reference_images: character.reference_images || [] }))} availableSets={scenarioSets} availableLooks={scenarioLooks} />
                   </div>
                 </div>
               </div>}
