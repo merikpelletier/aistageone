@@ -262,42 +262,38 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
         </div>
         {!readOnly && (
           <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={startNew}>
-            <Plus size={15} className="mr-1" /> Character
+            <Plus size={16} className="mr-1 shrink-0 text-white" strokeWidth={2.5} /> Add Character
           </Button>
         )}
       </div>
 
-      <div className="grid lg:grid-cols-[280px_minmax(0,1fr)] min-h-[520px]">
-        <div className="border-b lg:border-b-0 lg:border-r border-white/10">
+      <div className="min-h-[520px]">
+        <nav aria-label="Select character" className="flex w-full items-center gap-2 overflow-x-auto border-b border-white/10 bg-[#0b0d0f] px-3 py-3">
           {characters.map((character) => (
-            <div key={character.id} className={`flex items-center gap-1 border-b border-white/10 hover:bg-white/[0.04] ${editingId === character.id ? 'bg-white/[0.07] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}>
-              <button
-                type="button"
-                onClick={() => setEditingId(character.id)}
-                className="min-w-0 flex-1 px-4 py-3 text-left"
-              >
-                <div className="truncate text-sm text-white">{character.role_name}</div>
-                <div className="text-xs text-white/40 mt-1">Character</div>
+            <div key={character.id} className={`flex shrink-0 items-center border border-white/15 transition-colors ${editingId === character.id ? 'border-[var(--studio-accent)] bg-white/[0.08]' : 'hover:bg-white/[0.04]'}`}>
+              <button type="button" onClick={() => setEditingId(character.id)}
+                className={`whitespace-nowrap px-3 py-2 text-sm ${editingId === character.id ? 'text-white' : 'text-white/65'}`}>
+                {character.role_name}
               </button>
               {!readOnly && (
                 <button type="button" onClick={() => confirmDelete(character)}
                   aria-label={`Delete ${character.role_name || 'character'}`}
                   title={`Delete ${character.role_name || 'character'}`}
                   disabled={deleteCharacter.isPending}
-                  className="mr-2 shrink-0 rounded p-2 text-white/35 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40">
-                  <Trash2 size={15} />
+                  className="mr-1 shrink-0 rounded p-1.5 text-white/40 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40">
+                  <Trash2 size={14} />
                 </button>
               )}
             </div>
           ))}
-          {!characters.length && <div className="p-5 text-sm text-white/35">No characters yet.</div>}
-        </div>
+          {!characters.length && <div className="px-2 py-2 text-sm text-white/35">No characters yet.</div>}
+        </nav>
 
         <div className="p-4 md:p-5">
           {!draft ? (
             <div className="min-h-80 flex items-center justify-center text-sm text-white/35">Select or add a character.</div>
           ) : (
-            <div className="space-y-5 max-w-5xl">
+            <div className="space-y-5 w-full">
               <Section eyebrow="Character" title="Character Direction" description="Only stable information that is useful to AI production tools.">
                 <label className="space-y-2 block">
                   <span className="text-xs text-white/60">Character Name</span>
