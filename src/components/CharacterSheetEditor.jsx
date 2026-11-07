@@ -120,26 +120,26 @@ function AssetPicker({
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}
     >
       <motion.div
-        className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-white/15 bg-[#101012] shadow-2xl"
+        className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] lg:max-h-[94vh] lg:max-w-7xl border border-white/15 bg-[#101012] shadow-2xl"
         initial={{ y: 24, scale: 0.98 }} animate={{ y: 0, scale: 1 }} exit={{ y: 24, scale: 0.98 }}
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="flex items-center justify-between border-b border-white/10 p-5">
+        <header className="flex items-center justify-between border-b border-white/10 p-5 lg:px-4 lg:py-2">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-amber-300">Choose a source</p>
-            <h3 className="mt-1 text-2xl font-black text-white">{picker.purpose === 'look' ? 'Add to character look' : picker.purpose === 'costume' ? 'Find a costume' : picker.purpose === 'sheet' ? 'Choose a complete reference sheet' : `Add ${picker.label}`}</h3>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-amber-300 lg:hidden">Choose a source</p>
+            <h3 className="mt-1 text-2xl font-black text-white lg:mt-0 lg:text-lg">{picker.purpose === 'look' ? 'Add to character look' : picker.purpose === 'costume' ? 'Find a costume' : picker.purpose === 'sheet' ? 'Choose a complete reference sheet' : `Add ${picker.label}`}</h3>
           </div>
           <button type="button" onClick={onClose} className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20"><X size={19} /></button>
         </header>
-        <div className="flex flex-col gap-3 border-b border-white/10 p-4 sm:flex-row">
-          <div className="grid grid-cols-3 gap-2 sm:w-[31rem]">
-            <button type="button" onClick={() => setSource('vault')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black ${source === 'vault' ? 'bg-amber-300 text-black' : 'bg-white/[0.06] text-white'}`}><Library size={17} />My Vault</button>
-            <button type="button" onClick={() => setSource('shop')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black ${source === 'shop' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><Store size={17} />Assets Shop</button>
-            <button type="button" onClick={() => setSource('pilot')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black ${source === 'pilot' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><WandSparkles size={17} />AI Pilot</button>
+        <div className="flex flex-col gap-3 border-b border-white/10 p-4 sm:flex-row lg:items-center lg:gap-3 lg:px-4 lg:py-2">
+          <div className="grid grid-cols-3 gap-2 sm:w-[31rem] lg:w-[25rem] lg:shrink-0">
+            <button type="button" onClick={() => setSource('vault')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black lg:px-2 lg:py-2 ${source === 'vault' ? 'bg-amber-300 text-black' : 'bg-white/[0.06] text-white'}`}><Library size={17} />My Vault</button>
+            <button type="button" onClick={() => setSource('shop')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black lg:px-2 lg:py-2 ${source === 'shop' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><Store size={17} />Assets Shop</button>
+            <button type="button" onClick={() => setSource('pilot')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black lg:px-2 lg:py-2 ${source === 'pilot' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><WandSparkles size={17} />AI Pilot</button>
           </div>
           <label className="flex flex-1 items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4">
             <Search size={17} className="text-white/45" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search actors, characters or costumes" className="w-full bg-transparent py-3 text-sm text-white outline-none placeholder:text-white/30" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search actors, characters or costumes" className="w-full bg-transparent py-3 text-sm text-white outline-none placeholder:text-white/30 lg:py-2" />
           </label>
         </div>
         {source === 'pilot' && <div className="border-b border-white/10 px-4 py-3 sm:px-6">
@@ -152,29 +152,29 @@ function AssetPicker({
         </div>}
         {source === 'shop' && (
           <>
-            <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6">
+            <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6 lg:flex-nowrap lg:overflow-x-auto lg:px-4 lg:py-2">
               <span className="mr-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Category</span>
-              <button type="button" onClick={() => { setCatalogCategoryId('all'); setCatalogSubcategoryId('all'); setSearch(''); }} className={`rounded-full px-4 py-2 text-xs font-black transition ${catalogCategoryId === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>All</button>
+              <button type="button" onClick={() => { setCatalogCategoryId('all'); setCatalogSubcategoryId('all'); setSearch(''); }} className={`rounded-full px-4 py-2 text-xs font-black transition lg:shrink-0 lg:whitespace-nowrap lg:px-3 lg:py-1.5 ${catalogCategoryId === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>All</button>
               {categories.map((category) => {
                 const count = catalogAssets.filter((asset) => asset.category_id === category.id && catalogImages(asset).length).length;
                 const active = catalogCategoryId === category.id;
-                return <button type="button" key={category.id} onClick={() => { setCatalogCategoryId(category.id); setCatalogSubcategoryId('all'); setSearch(''); }} className={`rounded-full px-4 py-2 text-xs font-black transition ${active ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>{category.label_en || category.label_fr || category.key} <span className="ml-1 opacity-60">{count}</span></button>;
+                return <button type="button" key={category.id} onClick={() => { setCatalogCategoryId(category.id); setCatalogSubcategoryId('all'); setSearch(''); }} className={`rounded-full px-4 py-2 text-xs font-black transition lg:shrink-0 lg:whitespace-nowrap lg:px-3 lg:py-1.5 ${active ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>{category.label_en || category.label_fr || category.key} <span className="ml-1 opacity-60">{count}</span></button>;
               })}
             </div>
             {activeSubcategories.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6">
+              <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6 lg:flex-nowrap lg:overflow-x-auto lg:px-4 lg:py-2">
                 <span className="mr-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Subcategory</span>
-                <button type="button" onClick={() => setCatalogSubcategoryId('all')} className={`rounded-full px-4 py-2 text-xs font-black transition ${catalogSubcategoryId === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>All</button>
+                <button type="button" onClick={() => setCatalogSubcategoryId('all')} className={`rounded-full px-4 py-2 text-xs font-black transition lg:shrink-0 lg:whitespace-nowrap lg:px-3 lg:py-1.5 ${catalogSubcategoryId === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>All</button>
                 {activeSubcategories.map((subcategory) => {
                   const count = catalogAssets.filter((asset) => asset.subcategory_id === subcategory.id && catalogImages(asset).length).length;
                   const active = catalogSubcategoryId === subcategory.id;
-                  return <button type="button" key={subcategory.id} onClick={() => setCatalogSubcategoryId(subcategory.id)} className={`rounded-full px-4 py-2 text-xs font-black transition ${active ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>{subcategory.label_en || subcategory.label_fr || subcategory.key} <span className="ml-1 opacity-60">{count}</span></button>;
+                  return <button type="button" key={subcategory.id} onClick={() => setCatalogSubcategoryId(subcategory.id)} className={`rounded-full px-4 py-2 text-xs font-black transition lg:shrink-0 lg:whitespace-nowrap lg:px-3 lg:py-1.5 ${active ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>{subcategory.label_en || subcategory.label_fr || subcategory.key} <span className="ml-1 opacity-60">{count}</span></button>;
                 })}
               </div>
             )}
           </>
         )}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-4">
           {source === 'pilot' && loadingPilots ? (
             <div className="flex h-52 items-center justify-center"><Loader2 className="animate-spin text-cyan-300" /></div>
           ) : source === 'pilot' && pilotError ? (
