@@ -317,7 +317,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
         'Only depict the specified shot action and the listed visible characters, in the selected set. Never add unspecified characters, costumes, furniture or architecture.',
         'References are for exact set structure, character identity and specific selected looks. Camera/framing instructions control composition, not the source-image viewpoint.',
         'ONE 16:9 cinematic pencil-sketch storyboard panel, not photorealistic. No text, labels, grids or montage.',
-      ].join('\\n');
+      ].join('\n');
       const { data, error } = await supabase.functions.invoke('generate-image', { body: {
         prompt, reference_image_urls: references, aspect_ratio: '16:9',
       } });
@@ -339,6 +339,9 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     const shots = episode.shot_plans?.[key] || [];
     const updateShot = (id, patch) => updateShots(episodeIndex, key, shots.map((shot) => shot.id === id ? { ...shot, ...patch } : shot));
     const busy = Boolean(generating);
+    const resources = episode.scene_resources?.[key] || {};
+    const eligibleSets = availableSets.filter((item) => (resources.set_ids || []).includes(item.id));
+    const eligibleCharacters = availableCharacters.filter((item) => (resources.character_ids || []).includes(item.id));
     return (
       <div className="space-y-3 border border-white/10 bg-white/[0.02] p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -361,6 +364,40 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                   {CLIP_DURATIONS.map((duration) => <option key={duration} value={duration}>{duration} sec</option>)}
                 </select>
               </label>
+            </div>
+            <div className="space-y-3 border border-white/10 bg-black/20 p-3">
+              <label className="block text-xs text-white/60">Locked Set for this shot
+                <select value={shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')} disabled={readOnly} onChange={(event) => updateShot(shot.id, { set_id: event.target.value, storyboard_url: '' })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
+                  <option value="">Select an existing set</option>
+                  {eligibleSets.map((set) => <option key={set.id} value={set.id}>{set.name}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs text-white/60">Position within selected set
+                <Input className={CONTROL_CLASS + ' mt-1'} disabled={readOnly} value={shot.set_position || ''} onChange={(event) => updateShot(shot.id, { set_position: event.target.value, storyboard_url: '' })} placeholder="e.g. By the entrance" />
+              </label>
+              <div className="text-xs text-white/60">Visible Characters and Looks (per shot)</div>
+              {eligibleCharacters.map((character) => {
+                const included = Array.isArray(shot.character_ids) ? shot.character_ids.includes(character.id) : true;
+                const looksForCharacter = availableLooks;
+                return (
+                  <div key={character.id} className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-2">
+                    <label className="flex items-center gap-2 text-xs text-white/70 min-w-40">
+                      <input type="checkbox" disabled={readOnly} checked={included} onChange={(event) => updateShot(shot.id, {
+                        character_ids: event.target.checked
+                          ? [...(Array.isArray(shot.character_ids) ? shot.character_ids : eligibleCharacters.map((item) => item.id)), character.id].filter((id, index, all) => all.indexOf(id) === index)
+                          : (Array.isArray(shot.character_ids) ? shot.character_ids : eligibleCharacters.map((item) => item.id)).filter((id) => id !== character.id),
+                        storyboard_url: '',
+                      })} />
+                      {character.name}
+                    </label>
+                    {included && <select aria-label={`Look for ${character.name}`} value={shot.look_ids?.[character.id] || ''} disabled={readOnly} onChange={(event) => updateShot(shot.id, { look_ids: { ...(shot.look_ids || {}), [character.id]: event.target.value }, storyboard_url: '' })} className="min-h-9 flex-1 bg-black border border-white/20 text-white text-xs px-2">
+                      <option value="">Select existing Look</option>
+                      {looksForCharacter.map((look) => <option key={look.id} value={look.id}>{look.name}</option>)}
+                    </select>}
+                  </div>
+                );
+              })}
+              {!eligibleCharacters.length && <div className="text-xs text-white/40">Choose characters for this segment first.</div>}
             </div>
             <label className="text-xs text-white/60 block">Action
               <Textarea className={CONTROL_CLASS} rows={2} disabled={readOnly} value={shot.action || ''} onChange={(event) => updateShot(shot.id, { action: event.target.value, storyboard_url: '' })} />
