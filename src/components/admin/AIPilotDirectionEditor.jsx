@@ -511,8 +511,6 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
         })}
       </div>
       {generationError && <div role="alert" className="text-sm text-red-300 border border-red-400/30 p-3">{generationError}</div>}
-      {input('Freedom to Create', content.creative_freedom, (value) => updateContent({ creative_freedom: value }), 3, 'What the user may reinterpret or invent while preserving the series narrative framework.')}
-      {!readOnly && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={onSave} disabled={saving}><Save size={15} className="mr-2" /> {saving ? 'Saving…' : 'Save Scenario'}</Button></div>}
     </div>
   );
 }
