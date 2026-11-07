@@ -241,15 +241,15 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     if (existing.length && !window.confirm('Replace the existing shot plan for this part?')) return;
     const selected = ep.scene_resources?.[key] || {};
     const characters = availableCharacters.filter((item) => (selected.character_ids || []).includes(item.id)).map((item) => item.name);
-    const sets = availableSets.filter((item) => (selected.set_ids || []).includes(item.id)).map((item) => item.name);
+    const sets = availableSets.filter((item) => (selected.set_ids || []).includes(item.id));
     setGenerationError('');
     setGenerating(`shots-${episodeIndex}-${key}`);
     try {
       const schema = { type: 'object', properties: { shots: { type: 'array', items: { type: 'object', properties: { shot_type: { type: 'string' }, duration: { type: 'integer' }, action: { type: 'string' }, camera: { type: 'string' } }, required: ['shot_type', 'duration', 'action', 'camera'] } } }, required: ['shots'] };
       const { data, error } = await supabase.functions.invoke('invoke-llm', { body: {
-        instructions: 'You are a film director preparing a practical video shot list. No music inside clips. Use one stable framing per video clip, with shots between 5 and 30 seconds. Never invent cast members or locations. Return JSON only.',
+        instructions: 'You are a film director preparing a practical video shot list. No music inside clips. Use one stable framing per 5–30 second clip. All existing sets are LOCKED production assets: never invent, embellish, substitute, redesign or describe new scenery. Describe only framing, camera direction and character action inside the chosen sets. Never invent characters. Return JSON only.',
         response_json_schema: schema,
-        prompt: `Produce 2 to 6 video clips for this scene, total approximately 30 seconds. Allowed shot types: ${SHOT_TYPES.join(', ')}. Allowed durations: ${CLIP_DURATIONS.join(', ')} seconds. Episode: ${ep.title || ''}. Story: ${ep.outline || ''}. Scene: ${ep.parts?.[key] || ''}. Characters: ${characters.join(', ') || 'none selected'}. Sets: ${sets.join(', ') || 'none selected'}. Preserve the scene's exact narrative and casting.`,
+        prompt: `Produce 2 to 6 video clips for this scene, total approximately 30 seconds. Allowed shot types: ${SHOT_TYPES.join(', ')}. Allowed durations: ${CLIP_DURATIONS.join(', ')} seconds. Episode: ${ep.title || ''}. Story: ${ep.outline || ''}. Scene: ${ep.parts?.[key] || ''}. Characters: ${characters.join(', ') || 'none selected'}. Existing locked sets: ${sets.map((set) => `${set.name}: ${set.description || ''}`).join(' | ') || 'none selected'}. Do not invent any environmental details. Preserve the scene's exact narrative, original sets and casting.`,
       } });
       if (error) throw error;
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
@@ -261,6 +261,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
         action: String(item.action || ''),
         camera: String(item.camera || ''),
         dialogue: '',
+        set_id: sets.length === 1 ? sets[0].id : '',
         storyboard_url: '',
       }));
       updateShots(episodeIndex, key, shots);
@@ -269,7 +270,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
   };
     const resources = ep.scene_resources?.[key] || {};
     const eligibleSets = availableSets.filter((item) => (resources.set_ids || []).includes(item.id));
-    const set = eligibleSets.find((item) => item.id === shot.set_id) || (eligibleSets.length === 1 ? eligibleSets[0] : null);
+    const set = shot.set_id ? eligibleSets.find((item) => item.id === shot.set_id) : (eligibleSets.length === 1 ? eligibleSets[0] : null);
     if (!set) {
       setGenerationError('Select a specific existing set for this shot before generating an illustration.');
       return;
@@ -297,9 +298,9 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       return;
     }
     const references = [
-      ...setReferences,
-      ...looks.flatMap(({ look }) => getUrls(look.result_images)),
-      ...visibleCharacters.flatMap((item) => getUrls(item.reference_images)),
+      ...setReferences.slice(0, 4),
+      ...looks.flatMap(({ look }) => getUrls(look.result_images).slice(0, 2)),
+      ...visibleCharacters.flatMap((item) => getUrls(item.reference_images).slice(0, 1)),
     ].filter((url, index, all) => all.indexOf(url) === index).slice(0, 14);
     setGenerationError('');
     setGenerating(`frame-${shot.id}`);
