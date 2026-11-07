@@ -129,7 +129,7 @@ function AssetPicker({
             <p className="text-xs font-black uppercase tracking-[0.24em] text-amber-300 lg:hidden">Browse references</p>
             <h3 className="mt-1 text-2xl font-black text-white lg:mt-0 lg:text-lg">{picker.purpose === 'look' ? 'Add to character look' : picker.purpose === 'costume' ? 'Find a costume' : picker.purpose === 'sheet' ? 'Choose a complete reference sheet' : `Add ${picker.label}`}</h3>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20"><X size={19} /></button>
+          <button type="button" onClick={onClose} aria-label="Close picker" className="flex items-center justify-center rounded-full bg-white/10 p-2 text-white hover:bg-white/20 lg:h-8 lg:w-8 lg:shrink-0 lg:p-0"><X size={19} className="lg:h-4 lg:w-4" /></button>
         </header>
         <div className="flex flex-col gap-3 border-b border-white/10 p-4 sm:flex-row lg:items-center lg:gap-3 lg:px-4 lg:py-2">
           <label className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4 lg:px-3">
