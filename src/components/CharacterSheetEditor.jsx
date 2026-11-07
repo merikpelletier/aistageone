@@ -80,7 +80,7 @@ function AssetPicker({
   pilotLibrary = [], loadingPilots = false, pilotError = null,
   loadingCatalog, catalogError, onManageVault, embedded = false,
 }) {
-  const [source, setSource] = useState(picker.source || 'vault');
+  const source = picker.source || 'vault';
   const [search, setSearch] = useState('');
   const [pilotFilter, setPilotFilter] = useState('all');
   const pattern = purposePattern(picker.purpose);
@@ -126,17 +126,12 @@ function AssetPicker({
       >
         <header className="flex items-center justify-between border-b border-white/10 p-5 lg:px-4 lg:py-2">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-amber-300 lg:hidden">Choose a source</p>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-amber-300 lg:hidden">Browse references</p>
             <h3 className="mt-1 text-2xl font-black text-white lg:mt-0 lg:text-lg">{picker.purpose === 'look' ? 'Add to character look' : picker.purpose === 'costume' ? 'Find a costume' : picker.purpose === 'sheet' ? 'Choose a complete reference sheet' : `Add ${picker.label}`}</h3>
           </div>
           <button type="button" onClick={onClose} className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20"><X size={19} /></button>
         </header>
         <div className="flex flex-col gap-3 border-b border-white/10 p-4 sm:flex-row lg:items-center lg:gap-3 lg:px-4 lg:py-2">
-          <div className="grid grid-cols-3 gap-2 sm:w-[31rem] lg:w-[18rem] lg:shrink-0">
-            <button type="button" onClick={() => setSource('vault')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black lg:px-2 lg:py-1.5 lg:text-xs ${source === 'vault' ? 'bg-amber-300 text-black' : 'bg-white/[0.06] text-white'}`}><Library size={17} />My Vault</button>
-            <button type="button" onClick={() => setSource('shop')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black lg:px-2 lg:py-1.5 lg:text-xs ${source === 'shop' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><Store size={17} />Assets Shop</button>
-            <button type="button" onClick={() => setSource('pilot')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black lg:px-2 lg:py-1.5 lg:text-xs ${source === 'pilot' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><WandSparkles size={17} />AI Pilot</button>
-          </div>
           <label className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4 lg:px-3">
             <Search size={17} className="text-white/45" />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search actors, characters or costumes" className="w-full bg-transparent py-3 text-sm text-white outline-none placeholder:text-white/30 lg:py-2" />
