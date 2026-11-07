@@ -412,13 +412,10 @@ export default function AdminAIPilots() {
               {selectedVersion && <div className={activeTab === 'characters' ? '' : 'hidden'}><AIPilotCharacters ref={charactersRef} version={selectedVersion} readOnly={false} /></div>}
 
               {selectedVersion && <div className={activeTab === 'direction' ? '' : 'hidden'}>
-                <div className="grid lg:grid-cols-[260px_minmax(0,1fr)] border border-white/10 min-h-[58vh]">
-                  <div className="border-b lg:border-b-0 lg:border-r border-white/10 bg-[#0b0d0f]">
-                    <div className="p-3 border-b border-white/10"><div className="text-xs uppercase tracking-[0.18em] text-white/45">Production Direction</div></div>
-                    <div className="max-h-[60vh] overflow-y-auto">
-                      {directionBlocks.map((block) => <button key={block.id || block.block_key} type="button" onClick={() => selectBlock(block)} className={`w-full text-left px-3 py-3 border-b border-white/8 hover:bg-white/[0.04] ${(editingBlock?.id ? editingBlock.id === block.id : editingBlock?.block_key === block.block_key) ? 'bg-white/[0.06] shadow-[inset_2px_0_0_var(--studio-accent)]' : ''}`}><div className="text-sm text-white">{block.title}</div></button>)}
-                    </div>
-                  </div>
+                <div className="min-h-[58vh] border border-white/10">
+                  <nav aria-label="Production Direction" className="flex w-full gap-1 overflow-x-auto border-b border-white/10 bg-[#0b0d0f] px-2 pt-2">
+                    {directionBlocks.map((block) => <button key={block.id || block.block_key} type="button" onClick={() => selectBlock(block)} className={`shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm transition-colors ${(editingBlock?.id ? editingBlock.id === block.id : editingBlock?.block_key === block.block_key) ? 'border-[var(--studio-accent)] bg-white/[0.06] text-white' : 'border-transparent text-white/55 hover:bg-white/[0.04] hover:text-white'}`}>{block.title}</button>)}
+                  </nav>
                   <div className="p-4 md:p-5">
                     <AIPilotDirectionEditor block={editingBlock} setBlock={setEditingBlock} readOnly={false} onSave={() => saveBlock.mutate()} saving={saveBlock.isPending} availableCharacters={scenarioCharacters.filter((character) => character.is_active !== false).map((character) => ({ id: character.id, name: character.role_name, reference_images: character.reference_images || [] }))} availableSets={scenarioSets} availableLooks={scenarioLooks} />
                   </div>
