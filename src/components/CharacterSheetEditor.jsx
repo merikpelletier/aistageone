@@ -132,15 +132,31 @@ function AssetPicker({
           <button type="button" onClick={onClose} className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20"><X size={19} /></button>
         </header>
         <div className="flex flex-col gap-3 border-b border-white/10 p-4 sm:flex-row lg:items-center lg:gap-3 lg:px-4 lg:py-2">
-          <div className="grid grid-cols-3 gap-2 sm:w-[31rem] lg:w-[25rem] lg:shrink-0">
-            <button type="button" onClick={() => setSource('vault')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black lg:px-2 lg:py-2 ${source === 'vault' ? 'bg-amber-300 text-black' : 'bg-white/[0.06] text-white'}`}><Library size={17} />My Vault</button>
-            <button type="button" onClick={() => setSource('shop')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black lg:px-2 lg:py-2 ${source === 'shop' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><Store size={17} />Assets Shop</button>
-            <button type="button" onClick={() => setSource('pilot')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black lg:px-2 lg:py-2 ${source === 'pilot' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><WandSparkles size={17} />AI Pilot</button>
+          <div className="grid grid-cols-3 gap-2 sm:w-[31rem] lg:w-[18rem] lg:shrink-0">
+            <button type="button" onClick={() => setSource('vault')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black lg:px-2 lg:py-1.5 lg:text-xs ${source === 'vault' ? 'bg-amber-300 text-black' : 'bg-white/[0.06] text-white'}`}><Library size={17} />My Vault</button>
+            <button type="button" onClick={() => setSource('shop')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black lg:px-2 lg:py-1.5 lg:text-xs ${source === 'shop' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><Store size={17} />Assets Shop</button>
+            <button type="button" onClick={() => setSource('pilot')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black lg:px-2 lg:py-1.5 lg:text-xs ${source === 'pilot' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white'}`}><WandSparkles size={17} />AI Pilot</button>
           </div>
-          <label className="flex flex-1 items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4">
+          <label className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4 lg:px-3">
             <Search size={17} className="text-white/45" />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search actors, characters or costumes" className="w-full bg-transparent py-3 text-sm text-white outline-none placeholder:text-white/30 lg:py-2" />
           </label>
+          {source === 'shop' && (
+            <div className="hidden shrink-0 items-center gap-2 lg:flex">
+              <label className="sr-only" htmlFor="actor-asset-category">Category</label>
+              <select id="actor-asset-category" value={catalogCategoryId} onChange={(event) => { setCatalogCategoryId(event.target.value); setCatalogSubcategoryId('all'); setSearch(''); }} className="w-40 min-w-0 rounded-lg border border-white/15 bg-black px-2 py-2 text-xs font-semibold text-white">
+                <option value="all">All categories</option>
+                {categories.map((category) => <option key={category.id} value={category.id}>{category.label_en || category.label_fr || category.key}</option>)}
+              </select>
+              {activeSubcategories.length > 0 && <>
+                <label className="sr-only" htmlFor="actor-asset-subcategory">Subcategory</label>
+                <select id="actor-asset-subcategory" value={catalogSubcategoryId} onChange={(event) => setCatalogSubcategoryId(event.target.value)} className="w-40 min-w-0 rounded-lg border border-white/15 bg-black px-2 py-2 text-xs font-semibold text-white">
+                  <option value="all">All subcategories</option>
+                  {activeSubcategories.map((subcategory) => <option key={subcategory.id} value={subcategory.id}>{subcategory.label_en || subcategory.label_fr || subcategory.key}</option>)}
+                </select>
+              </>}
+            </div>
+          )}
         </div>
         {source === 'pilot' && <div className="border-b border-white/10 px-4 py-3 sm:px-6">
           <label className="flex items-center gap-3 text-xs font-bold text-white/65">AI Pilot
@@ -152,7 +168,7 @@ function AssetPicker({
         </div>}
         {source === 'shop' && (
           <>
-            <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6 lg:flex-nowrap lg:overflow-x-auto lg:px-4 lg:py-2">
+            <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6 lg:hidden">
               <span className="mr-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Category</span>
               <button type="button" onClick={() => { setCatalogCategoryId('all'); setCatalogSubcategoryId('all'); setSearch(''); }} className={`rounded-full px-4 py-2 text-xs font-black transition lg:shrink-0 lg:whitespace-nowrap lg:px-3 lg:py-1.5 ${catalogCategoryId === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>All</button>
               {categories.map((category) => {
@@ -162,7 +178,7 @@ function AssetPicker({
               })}
             </div>
             {activeSubcategories.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6 lg:flex-nowrap lg:overflow-x-auto lg:px-4 lg:py-2">
+              <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6 lg:hidden">
                 <span className="mr-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Subcategory</span>
                 <button type="button" onClick={() => setCatalogSubcategoryId('all')} className={`rounded-full px-4 py-2 text-xs font-black transition lg:shrink-0 lg:whitespace-nowrap lg:px-3 lg:py-1.5 ${catalogSubcategoryId === 'all' ? 'bg-cyan-300 text-black' : 'bg-white/[0.06] text-white/60 hover:text-white'}`}>All</button>
                 {activeSubcategories.map((subcategory) => {
@@ -184,19 +200,19 @@ function AssetPicker({
           ) : source === 'shop' && catalogError ? (
             <div className="rounded-2xl border border-red-400/25 bg-red-400/10 p-8 text-center text-red-100">OLOShop could not load. Try again.</div>
           ) : items.length ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-2 xl:grid-cols-5 2xl:grid-cols-6">
               {items.map((asset) => {
                 const images = source === 'vault' ? [asset.url] : source === 'pilot' ? asset.images : catalogImages(asset);
                 const category = categoryById.get(asset.category_id);
                 return (
-                  <article key={`${source}-${asset.id}`} className="overflow-hidden rounded-2xl border border-white/10 bg-black transition hover:border-amber-300/50">
+                  <article key={`${source}-${asset.id}`} className="overflow-hidden rounded-2xl border border-white/10 bg-black transition lg:rounded-lg hover:border-amber-300/50">
                     <div className={`grid gap-1 bg-zinc-900 p-1 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                       {images.map((image, index) => (
                         <button
                           type="button"
                           key={`${asset.id}-${image}`}
                           onClick={() => onSelect({ url: image, title: `${asset.title || asset.name || 'Reference'} ${index + 1}`, source, sourceAssetId: source === 'shop' ? asset.id : null, character: source === 'pilot' ? asset.character : null })}
-                          className="group relative aspect-[4/3] overflow-hidden rounded-lg bg-black"
+                          className="group relative aspect-[4/3] overflow-hidden rounded-lg bg-black lg:rounded-sm"
                           title={picker.purpose === 'sheet' ? `Use image ${index + 1} as the complete reference sheet` : `Use image ${index + 1}`}
                         >
                           <img src={image} alt={`${asset.title || asset.name || ''} ${index + 1}`} className="h-full w-full object-contain transition duration-300 group-hover:scale-105" />
@@ -204,10 +220,10 @@ function AssetPicker({
                         </button>
                       ))}
                     </div>
-                    <div className="p-3">
-                      <p className="truncate text-sm font-black text-white">{asset.title || asset.name || 'Untitled'}</p>
+                    <div className="p-3 lg:p-2">
+                      <p className="truncate text-sm font-black text-white lg:text-xs">{asset.title || asset.name || 'Untitled'}</p>
                       <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-wider text-white/40">{source === 'pilot' ? `${asset.pilot_name} · ${asset.origin}` : source === 'shop' ? (category?.label_en || category?.label_fr || 'OLOShop') : 'My Vault'}</p>
-                      {picker.purpose === 'sheet' && <p className="mt-2 text-[11px] leading-relaxed text-cyan-100/65">Choose the gallery image that contains the complete character sheet.</p>}
+                      {picker.purpose === 'sheet' && <p className="mt-2 text-[11px] leading-relaxed text-cyan-100/65 lg:hidden">Choose the gallery image that contains the complete character sheet.</p>}
                     </div>
                   </article>
                 );
