@@ -152,7 +152,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   const [images, setImages] = useState(asset?.images || []);
   const [compositionElements, setCompositionElements] = useState(Array.isArray(asset?.composition_elements) ? asset.composition_elements : []);
   const [referenceSheet, setReferenceSheet] = useState(asset?.reference_sheet || null);
-  const [detectedElements, setDetectedElements] = useState(Array.isArray(asset?.reference_sheet?.extracted_elements) ? asset.reference_sheet.extracted_elements : []);
+  const [detectedElements, setDetectedElements] = useState([]);
   const [extracting, setExtracting] = useState(false);
   const [referenceUploadingId, setReferenceUploadingId] = useState(null);
   const [savedReferenceDraft, setSavedReferenceDraft] = useState(Array.isArray(asset?.reference_sheet?.extracted_elements) ? asset.reference_sheet.extracted_elements : []);
@@ -385,7 +385,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
       description: description.trim(),
       views,
       composition_elements: elements,
-      extracted_elements: detectedElements.filter(item => item.included !== false),
+      extracted_elements: savedReferenceDraft,
     };
   };
 
@@ -408,9 +408,14 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
           ? item.image_url : await cropObject(images[0], item.bbox, index);
         extracted.push({ ...item, source_image_url: images[0], image_url: url });
       }
-      const sheet = { ...buildReferenceSheet(), extracted_elements: extracted };
+      // Existing saved references (including their edited images) are authoritative.
+      // New selections are added without regenerating or replacing old crops.
+      const existing = savedReferenceDraft;
+      const existingIds = new Set(existing.map(item => item.id));
+      const additions = extracted.filter(item => !existingIds.has(item.id));
+      const sheet = { ...buildReferenceSheet(), extracted_elements: [...existing, ...additions] };
       const saved = await handleSave(sheet);
-      if (saved) { setDetectedElements(extracted); setReferencesDirty(false); }
+      if (saved) { setDetectedElements([]); setReferencesDirty(false); }
     } catch (error) { toast.error(error.message || 'Reference sheet extraction failed.'); }
     finally { setExtracting(false); }
   };
@@ -607,7 +612,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
           <section className="border border-white/10 bg-[#17191d] p-4 sm:p-5">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#23c7be]">Set Reference Sheet</p>
             <h3 className="mt-1 text-lg font-bold text-white">Select exactly what you want to extract</h3>
-            <p className="mt-1 text-xs text-white/50">Draw a rectangle directly on the original Hero image around each piece of furniture, fixture or architectural detail to preserve. You decide what gets included. No AI object detection or invented elements.</p>
+            <p className="mt-1 text-xs text-white/50">Draw a rectangle on the Hero image to add a new element. Already saved references keep their edited images and can be changed separately below.</p>
             {images[0] ? (
               <div className="mt-4">
                 <div
@@ -631,7 +636,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                     width:`${(selectionPreview[2]-selectionPreview[0])/10}%`,height:`${(selectionPreview[3]-selectionPreview[1])/10}%`,
                   }} />}
                 </div>
-                <p className="mt-2 text-xs text-white/45">Click and drag to select an object. Repeat for as many objects as needed, then name each selection below.</p>
+                <p className="mt-2 text-xs text-white/45">Select only NEW objects here. Existing saved references and their edits are preserved below.</p>
               </div>
             ) : <p className="mt-3 text-xs text-white/45">Add a Hero set image to begin selecting objects.</p>}
             {!!detectedElements.length && <div className="mt-5 space-y-3">
@@ -666,7 +671,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
               <button type="button" onClick={createReferenceSheet} disabled={extracting || saving || Boolean(referenceUploadingId) || !detectedElements.some(item => item.included !== false)}
                 className="inline-flex items-center gap-2 bg-[#23c7be] px-4 py-2.5 text-xs font-bold text-[#071211] disabled:opacity-40">
                 {extracting ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-                Save Reference Sheet Changes
+                Add Selected References
               </button>
             </div>}
             {referenceSheet && <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
