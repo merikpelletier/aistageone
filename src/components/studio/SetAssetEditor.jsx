@@ -11,6 +11,8 @@ import SetGeneratorPanel from '@/components/studio/SetGeneratorPanel';
 import CompositionElementsPanel from '@/components/studio/CompositionElementsPanel';
 import { toast } from 'sonner';
 import SET_DESIGNER_IMAGES from '@/setDesignerImages/all';
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
+import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 
 const catalogImages = asset => [...new Set([
   asset?.featured_image,
@@ -153,7 +155,29 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   const [detectedElements, setDetectedElements] = useState(Array.isArray(asset?.reference_sheet?.extracted_elements) ? asset.reference_sheet.extracted_elements : []);
   const [extracting, setExtracting] = useState(false);
   const [referenceUploadingId, setReferenceUploadingId] = useState(null);
+  const [savedReferenceDraft, setSavedReferenceDraft] = useState(Array.isArray(asset?.reference_sheet?.extracted_elements) ? asset.reference_sheet.extracted_elements : []);
+  const [editingSavedReferenceId, setEditingSavedReferenceId] = useState(null);
+  const [enhanceReferenceId, setEnhanceReferenceId] = useState(null);
+  const [enhancePrompt, setEnhancePrompt] = useState('');
+  const [enhanceModelKey, setEnhanceModelKey] = useState('');
+  const [enhancingImage, setEnhancingImage] = useState(false);
   const [referencesDirty, setReferencesDirty] = useState(false);
+  const enhanceTarget = savedReferenceDraft.find(item => item.id === enhanceReferenceId);
+  const enhanceInput = useMemo(() => ({
+    prompt: enhancePrompt || 'Enhance detail while preserving the original object, colors, shape and composition.',
+    reference_image_urls: enhanceTarget?.image_url ? [enhanceTarget.image_url] : [],
+    aspect_ratio: '1:1',
+  }), [enhancePrompt, enhanceTarget?.image_url]);
+  const { options: enhanceModels, loading: enhanceModelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:compose_scene', kind: 'image',
+    input: enhanceInput, enabled: Boolean(enhanceReferenceId),
+  });
+  const chosenEnhanceModel = enhanceModelKey || enhanceModels.find(model => model.recommended)?.model_key || enhanceModels[0]?.model_key || '';
+  const { quote: enhanceQuote, loading: enhancePriceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:compose_scene', kind: 'image',
+    input: enhanceInput, modelKey: chosenEnhanceModel,
+    enabled: Boolean(enhanceReferenceId && chosenEnhanceModel),
+  });
   const selectionStartRef = useRef(null);
   const [selectionPreview, setSelectionPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -271,24 +295,57 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
     }]);
   };
 
-  const replaceReferenceImage = async (event, referenceId) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    if (!file.type.startsWith('image/')) return toast.error('Choose an image file.');
-    setReferenceUploadingId(referenceId);
+  const updateSavedReference = (id, patch) => {
+    setSavedReferenceDraft(current => current.map(item => item.id === id ? { ...item, ...patch } : item));
+    setReferencesDirty(true);
+  };
+
+  const saveSavedReferences = async (entries = savedReferenceDraft) => {
+    if (!referenceSheet) return;
+    if (entries.some(item => !item.name?.trim() || !item.image_url)) return toast.error('Each saved reference needs a name and image.');
+    const sheet = { ...referenceSheet, extracted_elements: entries, updated_at: new Date().toISOString() };
+    const saved = await handleSave(sheet);
+    if (saved) {
+      setSavedReferenceDraft(entries);
+      setReferencesDirty(false);
+      toast.success('Saved references updated.');
+    }
+  };
+
+  const cropSavedReference = async (file) => {
+    if (!editingSavedReferenceId) return;
+    setReferenceUploadingId(editingSavedReferenceId);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      if (!file_url) throw new Error('The improved image could not be uploaded.');
-      setDetectedElements(current => current.map(item =>
-        item.id === referenceId ? { ...item, image_url: file_url, source_image_url: images[0], replacement: true } : item));
-      setReferencesDirty(true);
-      toast.success('Replacement ready. Save the Reference Sheet to keep it.');
-    } catch (error) {
-      toast.error(error.message || 'Could not replace reference.');
-    } finally {
-      setReferenceUploadingId(null);
-    }
+      if (!file_url) throw new Error('Edited image upload failed.');
+      updateSavedReference(editingSavedReferenceId, { image_url: file_url, replacement: true });
+      setEditingSavedReferenceId(null);
+      toast.success('Image crop ready. Save Reference Sheet to keep it.');
+    } catch (error) { toast.error(error.message || 'Could not crop reference image.'); }
+    finally { setReferenceUploadingId(null); }
+  };
+
+  const enhanceSavedReference = async () => {
+    const target = savedReferenceDraft.find(item => item.id === enhanceReferenceId);
+    if (!target?.image_url || !chosenEnhanceModel || !enhancePrompt.trim() || !enhanceQuote?.credits) return toast.error('Select an image model, enter the edit direction and confirm the price.');
+    if (!window.confirm(`Generate an enhanced version for ${enhanceQuote.credits} credits? The saved original will remain unchanged until you save.`)) return;
+    setEnhancingImage(true);
+    try {
+      const res = await base44.functions.invoke('replicateGenerate', {
+        method: 'compose_scene',
+        model_key: chosenEnhanceModel,
+        prompt: `IMAGE-TO-IMAGE REFINEMENT. The supplied reference image is the mandatory source. Edit ONLY the pictured object according to the following instruction: ${enhancePrompt.trim()}. Preserve the original object's identity, geometry, structure, colors and composition unless the instruction specifically requests a change. Do not introduce unrelated objects, scenery, people or text.`,
+        reference_image_urls: [target.image_url],
+        aspect_ratio: '1:1',
+      });
+      if (res.data?.error) throw new Error(res.data.error);
+      if (!res.data?.file_url) throw new Error('No edited image returned.');
+      updateSavedReference(enhanceReferenceId, { image_url: res.data.file_url, replacement: true });
+      setEnhanceReferenceId(null);
+      setEnhancePrompt('');
+      toast.success('Enhanced draft ready. Save Reference Sheet to keep it.');
+    } catch (error) { toast.error(error.message || 'Could not enhance reference image.'); }
+    finally { setEnhancingImage(false); }
   };
 
   const cropObject = async (source, bbox, index) => {
@@ -393,7 +450,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         setProjectId(data.id);
       }
 
-      if (newSheet?.version === 1) setReferenceSheet(newSheet);
+      if (newSheet?.version === 1) { setReferenceSheet(newSheet); setSavedReferenceDraft(Array.isArray(newSheet.extracted_elements) ? newSheet.extracted_elements : []); }
       qc.invalidateQueries({ queryKey: ['setDesignerProjects'] });
       onSaved?.(saved);
       toast.success(newSheet?.version === 1 ? 'Set reference sheet created and saved' : projectId ? 'Set updated' : 'Set saved');
@@ -600,20 +657,6 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                       <img src={item.source_image_url || images[0]} alt={item.name || 'Selected area'} className="h-full w-full object-fill" />
                       <div className="pointer-events-none absolute border-2 border-[#23c7be]" style={{left:`${l/10}%`,top:`${t/10}%`,width:`${(r-l)/10}%`,height:`${(b-t)/10}%`}} />
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <label className="cursor-pointer border border-[#23c7be]/50 px-2 py-1.5 text-[11px] font-semibold text-[#8ee9e4] hover:bg-[#23c7be]/10">
-                        {referenceUploadingId === item.id ? 'Uploading…' : 'Replace / Upgrade Image'}
-                        <input type="file" accept="image/*" className="hidden" disabled={Boolean(referenceUploadingId) || saving || extracting} onChange={event => replaceReferenceImage(event, item.id)} />
-                      </label>
-                      {item.image_url && <button type="button" onClick={() => {
-                        setReferencesDirty(true);
-                        setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, image_url:'', replacement:false } : el));
-                      }} className="border border-white/15 px-2 py-1.5 text-[11px] text-white/70 hover:text-white">Use Original Crop</button>}
-                    </div>
-                    {item.image_url && <div className="overflow-hidden border border-white/10 bg-black p-2">
-                      <p className="mb-2 text-[10px] text-white/40">Current reference (saved or replacement)</p>
-                      <img src={item.image_url} alt={item.name || 'Current reference'} className="mx-auto max-h-36 w-auto object-contain" />
-                    </div>}
                     <div className="grid grid-cols-4 gap-1">
                       {['L','T','R','B'].map((label, coordinate) => <label key={label} className="text-[10px] text-white/45">{label}<input type="number" min="0" max="1000" value={item.bbox?.[coordinate] ?? 0} onChange={event => { setReferencesDirty(true); setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, bbox: el.bbox.map((v,i) => i===coordinate ? Math.max(0,Math.min(1000,Number(event.target.value))) : v), image_url:'', replacement:false } : el)); }} className="mt-1 w-full border border-white/15 bg-black px-1 py-1 text-xs text-white" /></label>)}
                     </div>
@@ -626,17 +669,34 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                 Save Reference Sheet Changes
               </button>
             </div>}
-            {referenceSheet && <div className="mt-4 border-t border-white/10 pt-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-white/60">Saved reference sheet · {referenceSheet.extracted_elements?.length || 0} selected objects</p>
-                {referencesDirty && <span className="text-xs text-[#8ee9e4]">Unsaved reference changes</span>}
+            {referenceSheet && <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-white/70">Saved Reference Sheet · {savedReferenceDraft.length} objects</p>
+                  <p className="mt-1 text-xs text-white/40">Edit each saved image here, not in the object selection above. Changes are saved only when you confirm.</p>
+                </div>
+                <button type="button" onClick={() => saveSavedReferences()} disabled={saving || Boolean(referenceUploadingId) || !referencesDirty}
+                  className="bg-[#23c7be] px-3 py-2 text-xs font-bold text-black disabled:opacity-40">
+                  {saving ? 'Saving…' : 'Save Reference Sheet Changes'}
+                </button>
               </div>
-              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-                {(referenceSheet.extracted_elements || []).map((item,index) => <div key={item.id || index} className="overflow-hidden border border-white/10 bg-black">
-                  <div className="aspect-square"><img src={item.image_url} alt={item.name} className="h-full w-full object-contain" /></div>
-                  <p className="truncate p-2 text-[11px] text-white/70">{item.name}</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {savedReferenceDraft.map((item,index) => <div key={item.id || index} className="min-w-0 space-y-2 border border-white/15 bg-black/25 p-3">
+                  <div className="aspect-[4/3] bg-black">
+                    <img src={item.image_url} alt={item.name} className="h-full w-full object-contain" />
+                  </div>
+                  <input aria-label={`Reference ${index+1} name`} value={item.name || ''} onChange={event => updateSavedReference(item.id, { name: event.target.value })}
+                    className="w-full border border-white/15 bg-black px-2 py-2 text-xs font-semibold text-white" />
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => setEditingSavedReferenceId(item.id)} className="border border-white/20 px-2 py-1.5 text-xs text-white hover:bg-white/10">Crop / Reframe</button>
+                    <button type="button" onClick={() => { setEnhanceReferenceId(item.id); setEnhancePrompt('Improve sharpness, clarity and fine detail without changing the actual object or its design.'); setEnhanceModelKey(''); }}
+                      className="border border-[#23c7be]/50 px-2 py-1.5 text-xs text-[#8ee9e4] hover:bg-[#23c7be]/10">AI Edit / Enhance</button>
+                    <button type="button" onClick={() => { if (window.confirm(`Remove ${item.name || 'this reference'} from the saved reference sheet?`)) { setSavedReferenceDraft(current => current.filter(el => el.id !== item.id)); setReferencesDirty(true); } }}
+                      className="border border-red-400/20 px-2 py-1.5 text-xs text-red-300 hover:bg-red-500/10">Remove</button>
+                  </div>
                 </div>)}
               </div>
+              {referencesDirty && <p className="text-xs text-[#8ee9e4]">You have unsaved changes to the reference sheet.</p>}
             </div>}
           </section>
 
@@ -661,6 +721,39 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         {vaultPickerOpen && <VaultPickerModal userEmail={userEmail} onSelect={handleVaultSelect} onClose={() => setVaultPickerOpen(false)} />}
         {oloPickerOpen && <OloShopSetPicker selectedImages={images.filter(Boolean)} onToggle={handleOloToggle} onClose={() => setOloPickerOpen(false)} />}
         {cropSource && <ImageCropModal imageUrl={cropSource} onConfirm={handleCropConfirm} onClose={() => setCropSource(null)} />}
+        {editingSavedReferenceId && savedReferenceDraft.find(item => item.id === editingSavedReferenceId)?.image_url && (
+          <ImageCropModal imageUrl={savedReferenceDraft.find(item => item.id === editingSavedReferenceId).image_url}
+            onConfirm={cropSavedReference} onClose={() => setEditingSavedReferenceId(null)} />
+        )}
+        {enhanceReferenceId && (
+          <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/85 p-4" onClick={() => !enhancingImage && setEnhanceReferenceId(null)}>
+            <div className="w-full max-w-2xl space-y-4 border border-white/20 bg-[#17191d] p-5 text-white" onClick={event => event.stopPropagation()}>
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="text-lg font-bold">Edit saved reference with AI</h3>
+                <button type="button" onClick={() => setEnhanceReferenceId(null)} disabled={enhancingImage} aria-label="Close AI editor"><X size={18}/></button>
+              </div>
+              {enhanceTarget?.image_url && <img src={enhanceTarget.image_url} alt={enhanceTarget.name} className="mx-auto max-h-48 w-full object-contain" />}
+              <label className="block text-xs text-white/60">Editing direction
+                <textarea rows={3} value={enhancePrompt} onChange={event => setEnhancePrompt(event.target.value)} className="mt-2 w-full border border-white/20 bg-black/30 p-3 text-sm text-white"/>
+              </label>
+              <label className="block text-xs text-white/60">AI image model
+                <select value={chosenEnhanceModel} onChange={event => setEnhanceModelKey(event.target.value)}
+                  className="mt-2 w-full border border-white/20 bg-black/30 p-3 text-sm text-white">
+                  {enhanceModelsLoading && <option value="">Loading…</option>}
+                  {!enhanceModelsLoading && !enhanceModels.length && <option value="">No image model available</option>}
+                  {enhanceModels.map(model => <option key={model.model_key} value={model.model_key}>{model.name || model.model_key}</option>)}
+                </select>
+              </label>
+              <p className="text-xs text-white/60">Cost: {enhancePriceLoading ? 'Calculating…' : enhanceQuote?.credits ? `${enhanceQuote.credits} credits` : 'Unavailable'}. The original remains saved until you approve the result.</p>
+              <button type="button" onClick={enhanceSavedReference}
+                disabled={enhancingImage || enhancePriceLoading || !enhanceQuote?.credits || !chosenEnhanceModel || !enhancePrompt.trim()}
+                className="w-full bg-[#23c7be] px-4 py-3 text-sm font-bold text-black disabled:opacity-40">
+                {enhancingImage ? 'Generating…' : 'Generate edited image'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {vaultSaveUrl && <SaveToVaultModal userEmail={userEmail} imageUrl={vaultSaveUrl} mediaType="image" onSaved={() => { setVaultSaveUrl(null); qc.invalidateQueries({ queryKey: ['vaultAssets', userEmail] }); }} onClose={() => setVaultSaveUrl(null)} />}
       </AnimatePresence>
     </motion.div>
