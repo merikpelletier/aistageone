@@ -149,6 +149,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   const [tagInput, setTagInput] = useState('');
   const [images, setImages] = useState(asset?.images || []);
   const [compositionElements, setCompositionElements] = useState(Array.isArray(asset?.composition_elements) ? asset.composition_elements : []);
+  const [referenceSheet, setReferenceSheet] = useState(asset?.reference_sheet || null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [vaultPickerOpen, setVaultPickerOpen] = useState(false);
@@ -225,7 +226,35 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   const removeTag = (tag) => setTags(prev => prev.filter(t => t !== tag));
   const setCreativeField = (label, value) => setDescription(prev => writeBriefField(prev, label, value));
 
-  const handleSave = async () => {
+  const buildReferenceSheet = () => {
+    const views = IMAGE_ROLES.map((role, index) => ({ role, url: images[index] })).filter((item) => Boolean(item.url));
+    if (!views.length) throw new Error('Add at least one set reference image before creating the sheet.');
+    const elements = compositionElements.filter((item) => item?.image_url || item?.name).map((item) => ({
+      id: item.id, image_url: item.image_url || '', name: item.name || '',
+      role: item.role || '', priority: item.priority || '', placement: item.placement || '',
+      scale: item.scale || '', instruction: item.instruction || '',
+    }));
+    return {
+      version: 1,
+      created_at: new Date().toISOString(),
+      name: name.trim(),
+      description: description.trim(),
+      views,
+      composition_elements: elements,
+    };
+  };
+
+  const createReferenceSheet = async () => {
+    try {
+      if (!name.trim()) throw new Error('Name the set before creating a reference sheet.');
+      const sheet = buildReferenceSheet();
+      await handleSave(sheet);
+    } catch (error) {
+      toast.error(error?.message || 'Could not create reference sheet.');
+    }
+  };
+
+  const handleSave = async (newSheet = null) => {
     setSaving(true);
     try {
       const payload = {
@@ -235,6 +264,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         tags,
         images,
         composition_elements: compositionElements,
+        reference_sheet: newSheet?.version === 1 ? newSheet : referenceSheet,
         updated_date: new Date().toISOString(),
       };
 
@@ -259,9 +289,10 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         setProjectId(data.id);
       }
 
+      if (newSheet?.version === 1) setReferenceSheet(newSheet);
       qc.invalidateQueries({ queryKey: ['setDesignerProjects'] });
       onSaved?.(saved);
-      toast.success(projectId ? 'Set updated' : 'Set saved');
+      toast.success(newSheet?.version === 1 ? 'Set reference sheet created and saved' : projectId ? 'Set updated' : 'Set saved');
     } catch (error) {
       console.error('Set Designer project save failed', error);
       toast.error(error?.message || 'Set could not be saved. Try again.');
@@ -410,6 +441,43 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
             {uploading && <div className="mt-3 flex items-center gap-2 text-xs font-bold text-[#8ee9e4]"><Loader2 size={14} className="animate-spin" />Adding reference...</div>}
           </section>
 
+          <section className="border border-white/10 bg-[#17191d] p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#23c7be]">Set Reference Sheet</p>
+                <h3 className="mt-1 text-lg font-bold text-white">Lock the set's visual identity</h3>
+                <p className="mt-1 text-xs text-white/50">Create one saved reference sheet from the existing views and composition elements. No new scenery or furniture is invented.</p>
+              </div>
+              <button type="button" onClick={createReferenceSheet} disabled={saving || !name.trim() || !referenceCount}
+                className="inline-flex shrink-0 items-center gap-2 rounded border border-[#23c7be] bg-[#23c7be] px-3 py-2 text-xs font-bold text-[#071211] hover:bg-[#35d8cf] disabled:cursor-not-allowed disabled:opacity-40">
+                {saving ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
+                {referenceSheet ? 'Update Reference Sheet' : 'Create Reference Sheet'}
+              </button>
+            </div>
+            {referenceSheet ? (
+              <div className="mt-4 space-y-3">
+                <div className="text-xs text-white/45">Saved reference sheet · {referenceSheet.views?.length || 0} views · {referenceSheet.composition_elements?.length || 0} fixed elements</div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                  {(referenceSheet.views || []).map((view, index) => (
+                    <div key={`view-${index}`} className="overflow-hidden border border-white/10 bg-black">
+                      <div className="aspect-video"><img src={view.url} alt={view.role} className="h-full w-full object-contain" /></div>
+                      <div className="px-2 py-1.5 text-[10px] text-white/65">{view.role}</div>
+                    </div>
+                  ))}
+                  {(referenceSheet.composition_elements || []).map((element, index) => (
+                    <div key={element.id || `element-${index}`} className="overflow-hidden border border-white/10 bg-black">
+                      <div className="flex aspect-video items-center justify-center">
+                        {element.image_url ? <img src={element.image_url} alt={element.name || 'Fixed set element'} className="h-full w-full object-contain" /> : <span className="p-2 text-center text-xs text-white/50">{element.name || 'Set element'}</span>}
+                      </div>
+                      <div className="truncate px-2 py-1.5 text-[10px] text-white/65" title={element.name}>{element.name || element.role || 'Set element'}{element.placement ? ` · ${element.placement}` : ''}</div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-white/40">This is a saved visual reference inventory for continuity, not a newly generated interpretation. Update it when you change the set.</p>
+              </div>
+            ) : <p className="mt-3 text-xs text-white/40">No reference sheet saved for this set yet.</p>}
+          </section>
+
           <section className="grid gap-3 sm:grid-cols-3">
             <div className="border border-white/10 bg-[#17191d] p-4"><Sun size={17} className="text-[#23c7be]" /><p className="mt-3 text-sm font-black">Day / Night continuity</p><p className="mt-1 text-xs leading-5 text-white/40">Use slots 7 and 8 to keep the same environment readable across lighting changes.</p></div>
             <div className="border border-white/10 bg-[#17191d] p-4"><Camera size={17} className="text-[#23c7be]" /><p className="mt-3 text-sm font-black">Camera-ready angles</p><p className="mt-1 text-xs leading-5 text-white/40">Wide, reverse and side references make the location useful beyond a single hero image.</p></div>
@@ -420,7 +488,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         <div className="sticky bottom-0 z-10 border-t border-white/10 bg-[#17191d]/95 px-5 py-3 backdrop-blur">
           <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
             <p className="hidden text-xs text-white/35 sm:block">{name.trim() ? `${name.trim()} · ${referenceCount} reference${referenceCount === 1 ? '' : 's'} · ${compositionElements.length} composition element${compositionElements.length === 1 ? '' : 's'}` : 'Name your set to create it.'}</p>
-            <button onClick={handleSave} disabled={saving || !name.trim()} className="ml-auto min-w-[210px] border border-[#23c7be] bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:border-white/10 disabled:bg-white/[0.05] disabled:text-white/30">
+            <button onClick={() => handleSave()} disabled={saving || !name.trim()} className="ml-auto min-w-[210px] border border-[#23c7be] bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:border-white/10 disabled:bg-white/[0.05] disabled:text-white/30">
               {saving ? 'SAVING...' : 'SAVE SET'}
             </button>
           </div>
