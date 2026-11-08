@@ -223,6 +223,7 @@ export default function AdminAIPilots() {
       queryClient.invalidateQueries({ queryKey: ['admin-ai-pilots'] }),
       selectedVersion?.id ? queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-blocks', selectedVersion.id] }) : Promise.resolve(),
       selectedVersion?.id ? queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-characters', selectedVersion.id] }) : Promise.resolve(),
+      selectedVersion?.id ? queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-scenario-characters', selectedVersion.id] }) : Promise.resolve(),
       selectedVersion?.id ? queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-media', selectedVersion.id] }) : Promise.resolve(),
       selectedPilotId ? queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-versions', selectedPilotId] }) : Promise.resolve(),
     ]);
