@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -152,6 +152,8 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   const [referenceSheet, setReferenceSheet] = useState(asset?.reference_sheet || null);
   const [detectedElements, setDetectedElements] = useState(Array.isArray(asset?.reference_sheet?.extracted_elements) ? asset.reference_sheet.extracted_elements : []);
   const [extracting, setExtracting] = useState(false);
+  const selectionStartRef = useRef(null);
+  const [selectionPreview, setSelectionPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [vaultPickerOpen, setVaultPickerOpen] = useState(false);
@@ -228,37 +230,42 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   const removeTag = (tag) => setTags(prev => prev.filter(t => t !== tag));
   const setCreativeField = (label, value) => setDescription(prev => writeBriefField(prev, label, value));
 
-  const detectFromHero = async () => {
-    if (!images[0]) return toast.error('Add a Hero reference first.');
-    if (detectedElements.length && !window.confirm('Replace the current extracted object selection? Saved data stays unchanged until you save.')) return;
-    setExtracting(true);
-    try {
-      const schema = {
-        type: 'object', properties: {
-          elements: { type: 'array', items: { type: 'object', properties: {
-            name: { type: 'string' }, role: { type: 'string' },
-            placement: { type: 'string' }, bbox: { type: 'array', items: { type: 'integer' } },
-          }, required: ['name', 'role', 'placement', 'bbox'] } },
-        }, required: ['elements'],
-      };
-      const { data, error } = await supabase.functions.invoke('invoke-llm', { body: {
-        image_urls: [images[0]],
-        response_json_schema: schema,
-        instructions: 'Examine ONLY the supplied image. Detect clearly visible pieces of furniture, fixtures, doors, windows, lamps, architectural details, and props. Do not invent or infer hidden objects. Each bbox is [left,top,right,bottom] in 0-1000 normalized coordinates, tightly covering the visible element. Return at most 20 separate elements. Output JSON only.',
-        prompt: 'Extract individually visible physical set elements from this exact picture, with accurate bounding rectangles. Ignore the story or creative brief and do not invent objects.',
-      } });
-      if (error) throw error;
-      const response = typeof data === 'string' ? JSON.parse(data) : data;
-      const elements = (Array.isArray(response?.elements) ? response.elements : []).slice(0, 20).map((element, index) => {
-        const bbox = Array.isArray(element.bbox) ? element.bbox.map(Number) : [];
-        if (bbox.length !== 4 || bbox.some(value => !Number.isFinite(value) || value < 0 || value > 1000) || bbox[2] <= bbox[0] || bbox[3] <= bbox[1]) return null;
-        return { id: `extracted-${Date.now()}-${index}`, name: String(element.name || 'Set element'), role: String(element.role || 'set_dressing'), placement: String(element.placement || ''), bbox, source_image_url: images[0], image_url: '', included: true };
-      }).filter(Boolean);
-      if (!elements.length) throw new Error('No reliable visible elements were detected.');
-      setDetectedElements(elements);
-      toast.success(`${elements.length} visible elements detected. Review them before saving.`);
-    } catch (error) { toast.error(error.message || 'Could not analyze this image.'); }
-    finally { setExtracting(false); }
+  const pointerPosition = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return [
+      Math.max(0, Math.min(1000, Math.round((event.clientX - rect.left) * 1000 / rect.width))),
+      Math.max(0, Math.min(1000, Math.round((event.clientY - rect.top) * 1000 / rect.height))),
+    ];
+  };
+
+  const beginSelection = (event) => {
+    if (!images[0] || extracting || saving || event.button !== 0) return;
+    const point = pointerPosition(event);
+    selectionStartRef.current = point;
+    setSelectionPreview([point[0], point[1], point[0], point[1]]);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const moveSelection = (event) => {
+    if (!selectionStartRef.current) return;
+    const [x, y] = pointerPosition(event);
+    const [sx, sy] = selectionStartRef.current;
+    setSelectionPreview([Math.min(sx,x), Math.min(sy,y), Math.max(sx,x), Math.max(sy,y)]);
+  };
+
+  const finishSelection = (event) => {
+    if (!selectionStartRef.current) return;
+    const [x, y] = pointerPosition(event);
+    const [sx, sy] = selectionStartRef.current;
+    selectionStartRef.current = null;
+    setSelectionPreview(null);
+    const bbox = [Math.min(sx,x), Math.min(sy,y), Math.max(sx,x), Math.max(sy,y)];
+    if (bbox[2]-bbox[0] < 15 || bbox[3]-bbox[1] < 15) return;
+    setDetectedElements(current => [...current, {
+      id: `manual-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+      name: '', role: 'set_dressing', placement: '',
+      bbox, source_image_url: images[0], image_url: '', included: true,
+    }]);
   };
 
   const cropObject = async (source, bbox, index) => {
@@ -308,7 +315,8 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
     setExtracting(true);
     try {
       const chosen = detectedElements.filter(item => item.included !== false);
-      if (!chosen.length) throw new Error('Extract visible elements first, then select what to keep.');
+      if (!chosen.length) throw new Error('Select at least one object from the image first.');
+      if (chosen.some(item => !item.name?.trim())) throw new Error('Name each selected element before saving.');
       const extracted = [];
       for (let index = 0; index < chosen.length; index++) {
         const item = chosen[index];
@@ -514,43 +522,70 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
           </section>
 
           <section className="border border-white/10 bg-[#17191d] p-4 sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#23c7be]">Set Reference Sheet</p>
-                <h3 className="mt-1 text-lg font-bold text-white">Extract objects from the original Set photo</h3>
-                <p className="mt-1 text-xs text-white/45">Detect furniture, fixtures and architectural details already present in the Hero image. No new objects are generated.</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#23c7be]">Set Reference Sheet</p>
+            <h3 className="mt-1 text-lg font-bold text-white">Select exactly what you want to extract</h3>
+            <p className="mt-1 text-xs text-white/50">Draw a rectangle directly on the original Hero image around each piece of furniture, fixture or architectural detail to preserve. You decide what gets included. No AI object detection or invented elements.</p>
+            {images[0] ? (
+              <div className="mt-4">
+                <div
+                  role="group" aria-label="Select object regions on the set image"
+                  className="relative w-full max-w-5xl cursor-crosshair select-none overflow-hidden border border-white/20 bg-black"
+                  style={{ touchAction: 'none' }}
+                  onPointerDown={beginSelection}
+                  onPointerMove={moveSelection}
+                  onPointerUp={finishSelection}
+                  onPointerCancel={() => { selectionStartRef.current=null; setSelectionPreview(null); }}
+                >
+                  <img src={images[0]} alt="Hero set reference: drag to select an object" className="block h-auto w-full pointer-events-none" draggable={false} />
+                  {detectedElements.filter(item => item.included !== false && item.source_image_url === images[0]).map((item, i) => {
+                    const [l,t,r,b] = item.bbox || [0,0,0,0];
+                    return <div key={item.id} className="pointer-events-none absolute border border-[#23c7be]/65 bg-[#23c7be]/10" style={{
+                      left:`${l/10}%`,top:`${t/10}%`,width:`${(r-l)/10}%`,height:`${(b-t)/10}%`,
+                    }}><span className="absolute left-0 top-0 bg-black/80 px-1 text-[10px] text-white">{item.name || `Selection ${i+1}`}</span></div>;
+                  })}
+                  {selectionPreview && <div className="pointer-events-none absolute border-2 border-[#23c7be] bg-[#23c7be]/20" style={{
+                    left:`${selectionPreview[0]/10}%`,top:`${selectionPreview[1]/10}%`,
+                    width:`${(selectionPreview[2]-selectionPreview[0])/10}%`,height:`${(selectionPreview[3]-selectionPreview[1])/10}%`,
+                  }} />}
+                </div>
+                <p className="mt-2 text-xs text-white/45">Click and drag to select an object. Repeat for as many objects as needed, then name each selection below.</p>
               </div>
-              <button type="button" onClick={detectFromHero} disabled={!images[0] || extracting || saving} className="inline-flex items-center gap-2 border border-[#23c7be]/50 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-40">
-                {extracting ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-                {extracting ? 'Extracting…' : 'Detect & Extract Elements'}
-              </button>
-            </div>
-            {!!detectedElements.length && <div className="mt-4 space-y-3">
-              <p className="text-xs text-white/50">Review the detected objects. A rectangle shows the exact area extracted from the original image. Crops retain the original background within the rectangle; this is not transparent masking.</p>
+            ) : <p className="mt-3 text-xs text-white/45">Add a Hero set image to begin selecting objects.</p>}
+            {!!detectedElements.length && <div className="mt-5 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold text-white/65">{detectedElements.length} selected regions</p>
+                <button type="button" onClick={() => {
+                  if (window.confirm('Clear the current selections? The saved reference sheet will remain unchanged until you save.')) setDetectedElements([]);
+                }} className="border border-white/15 px-3 py-1.5 text-xs text-white/70 hover:text-white">Clear selections</button>
+              </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {detectedElements.map((item, index) => {
                   const [l,t,r,b] = item.bbox || [0,0,1000,1000];
                   return <div key={item.id} className={`space-y-2 border border-white/15 p-3 ${item.included === false ? 'opacity-50' : ''}`}>
-                    <label className="flex items-center gap-2 text-xs text-white"><input type="checkbox" checked={item.included !== false} onChange={event => setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, included: event.target.checked } : el))} /> Include</label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="flex items-center gap-2 text-xs text-white"><input type="checkbox" checked={item.included !== false} onChange={event => setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, included: event.target.checked } : el))} /> Include</label>
+                      <button type="button" onClick={() => setDetectedElements(current => current.filter(el => el.id !== item.id))} className="text-xs text-red-300/75 hover:text-red-300">Remove</button>
+                    </div>
+                    <input value={item.name} placeholder={`Name selection ${index+1}`} aria-label={`Selection ${index+1} name`} onChange={event => setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, name: event.target.value } : el))} className="w-full border border-white/15 bg-black px-2 py-2 text-xs text-white" />
+                    <p className="text-[11px] text-white/45">Area in original image</p>
                     <div className="relative aspect-video overflow-hidden bg-black">
-                      <img src={item.source_image_url || images[0]} alt={item.name} className="h-full w-full object-fill" />
-                      <div className="pointer-events-none absolute border-2 border-[#23c7be]" style={{ left:`${l/10}%`,top:`${t/10}%`,width:`${(r-l)/10}%`,height:`${(b-t)/10}%` }} />
+                      <img src={item.source_image_url || images[0]} alt={item.name || 'Selected area'} className="h-full w-full object-fill" />
+                      <div className="pointer-events-none absolute border-2 border-[#23c7be]" style={{left:`${l/10}%`,top:`${t/10}%`,width:`${(r-l)/10}%`,height:`${(b-t)/10}%`}} />
                     </div>
-                    <input value={item.name} aria-label={`Object ${index+1} name`} onChange={event => setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, name: event.target.value } : el))} className="w-full border border-white/15 bg-black px-2 py-1.5 text-xs text-white" />
                     <div className="grid grid-cols-4 gap-1">
-                      {['L','T','R','B'].map((label, coord) => <label key={label} className="text-[10px] text-white/45">{label}<input type="number" min="0" max="1000" value={item.bbox?.[coord] ?? 0} onChange={event => setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, bbox: el.bbox.map((v,i) => i===coord ? Math.max(0,Math.min(1000,Number(event.target.value))) : v), image_url:'' } : el))} className="w-full border border-white/15 bg-black px-1 py-1 text-xs text-white" /></label>)}
+                      {['L','T','R','B'].map((label, coordinate) => <label key={label} className="text-[10px] text-white/45">{label}<input type="number" min="0" max="1000" value={item.bbox?.[coordinate] ?? 0} onChange={event => setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, bbox: el.bbox.map((v,i) => i===coordinate ? Math.max(0,Math.min(1000,Number(event.target.value))) : v), image_url:'' } : el))} className="mt-1 w-full border border-white/15 bg-black px-1 py-1 text-xs text-white" /></label>)}
                     </div>
-                    <p className="truncate text-[10px] text-white/40">{item.role} · {item.placement}</p>
                   </div>;
                 })}
               </div>
               <button type="button" onClick={createReferenceSheet} disabled={extracting || saving || !detectedElements.some(item => item.included !== false)}
                 className="inline-flex items-center gap-2 bg-[#23c7be] px-4 py-2.5 text-xs font-bold text-[#071211] disabled:opacity-40">
-                <Check size={15} /> Save Extracted Reference Sheet
+                {extracting ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                Save Selected Reference Sheet
               </button>
             </div>}
             {referenceSheet && <div className="mt-4 border-t border-white/10 pt-4">
-              <p className="text-xs text-white/60">Saved reference sheet · {referenceSheet.extracted_elements?.length || 0} extracted objects</p>
+              <p className="text-xs text-white/60">Saved reference sheet · {referenceSheet.extracted_elements?.length || 0} selected objects</p>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                 {(referenceSheet.extracted_elements || []).map((item,index) => <div key={item.id || index} className="overflow-hidden border border-white/10 bg-black">
                   <div className="aspect-square"><img src={item.image_url} alt={item.name} className="h-full w-full object-contain" /></div>
@@ -558,7 +593,6 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                 </div>)}
               </div>
             </div>}
-            {!referenceSheet && !detectedElements.length && <p className="mt-3 text-xs text-white/40">No extracted elements yet.</p>}
           </section>
 
           <section className="grid gap-3 sm:grid-cols-3">
