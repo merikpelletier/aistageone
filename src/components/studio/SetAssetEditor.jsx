@@ -150,6 +150,8 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   const [images, setImages] = useState(asset?.images || []);
   const [compositionElements, setCompositionElements] = useState(Array.isArray(asset?.composition_elements) ? asset.composition_elements : []);
   const [referenceSheet, setReferenceSheet] = useState(asset?.reference_sheet || null);
+  const [detectedElements, setDetectedElements] = useState(Array.isArray(asset?.reference_sheet?.extracted_elements) ? asset.reference_sheet.extracted_elements : []);
+  const [extracting, setExtracting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [vaultPickerOpen, setVaultPickerOpen] = useState(false);
@@ -226,6 +228,61 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   const removeTag = (tag) => setTags(prev => prev.filter(t => t !== tag));
   const setCreativeField = (label, value) => setDescription(prev => writeBriefField(prev, label, value));
 
+  const detectFromHero = async () => {
+    if (!images[0]) return toast.error('Add a Hero reference first.');
+    if (detectedElements.length && !window.confirm('Replace the current extracted object selection? Saved data stays unchanged until you save.')) return;
+    setExtracting(true);
+    try {
+      const schema = {
+        type: 'object', properties: {
+          elements: { type: 'array', items: { type: 'object', properties: {
+            name: { type: 'string' }, role: { type: 'string' },
+            placement: { type: 'string' }, bbox: { type: 'array', items: { type: 'integer' } },
+          }, required: ['name', 'role', 'placement', 'bbox'] } },
+        }, required: ['elements'],
+      };
+      const { data, error } = await supabase.functions.invoke('invoke-llm', { body: {
+        image_urls: [images[0]],
+        response_json_schema: schema,
+        instructions: 'Examine ONLY the supplied image. Detect clearly visible pieces of furniture, fixtures, doors, windows, lamps, architectural details, and props. Do not invent or infer hidden objects. Each bbox is [left,top,right,bottom] in 0-1000 normalized coordinates, tightly covering the visible element. Return at most 20 separate elements. Output JSON only.',
+        prompt: 'Extract individually visible physical set elements from this exact picture, with accurate bounding rectangles. Ignore the story or creative brief and do not invent objects.',
+      } });
+      if (error) throw error;
+      const response = typeof data === 'string' ? JSON.parse(data) : data;
+      const elements = (Array.isArray(response?.elements) ? response.elements : []).slice(0, 20).map((element, index) => {
+        const bbox = Array.isArray(element.bbox) ? element.bbox.map(Number) : [];
+        if (bbox.length !== 4 || bbox.some(value => !Number.isFinite(value) || value < 0 || value > 1000) || bbox[2] <= bbox[0] || bbox[3] <= bbox[1]) return null;
+        return { id: `extracted-${Date.now()}-${index}`, name: String(element.name || 'Set element'), role: String(element.role || 'set_dressing'), placement: String(element.placement || ''), bbox, source_image_url: images[0], image_url: '', included: true };
+      }).filter(Boolean);
+      if (!elements.length) throw new Error('No reliable visible elements were detected.');
+      setDetectedElements(elements);
+      toast.success(`${elements.length} visible elements detected. Review them before saving.`);
+    } catch (error) { toast.error(error.message || 'Could not analyze this image.'); }
+    finally { setExtracting(false); }
+  };
+
+  const cropObject = async (source, bbox, index) => {
+    const response = await fetch(source);
+    if (!response.ok) throw new Error('The source image could not be loaded for extraction.');
+    const bitmap = await createImageBitmap(await response.blob());
+    try {
+      const [l,t,r,b] = bbox;
+      const x = Math.floor(bitmap.width * l / 1000);
+      const y = Math.floor(bitmap.height * t / 1000);
+      const w = Math.min(bitmap.width-x, Math.max(1, Math.ceil(bitmap.width * (r-l)/1000)));
+      const h = Math.min(bitmap.height-y, Math.max(1, Math.ceil(bitmap.height * (b-t)/1000)));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Canvas cropping unavailable.');
+      context.drawImage(bitmap, x, y, w, h, 0, 0, w, h);
+      const blob = await new Promise((resolve,reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Crop failed')), 'image/png'));
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: new File([blob], `set-object-${index}.png`, { type:'image/png' }) });
+      if (!file_url) throw new Error('Extracted object could not be stored.');
+      return file_url;
+    } finally { bitmap.close(); }
+  };
+
   const buildReferenceSheet = () => {
     const views = IMAGE_ROLES.map((role, index) => ({ role, url: images[index] })).filter((item) => Boolean(item.url));
     if (!views.length) throw new Error('Add at least one set reference image before creating the sheet.');
@@ -241,17 +298,30 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
       description: description.trim(),
       views,
       composition_elements: elements,
+      extracted_elements: detectedElements.filter(item => item.included !== false),
     };
   };
 
   const createReferenceSheet = async () => {
+    if (!name.trim()) return toast.error('Name the Set first.');
+    if (!images[0]) return toast.error('Add a Hero reference first.');
+    setExtracting(true);
     try {
-      if (!name.trim()) throw new Error('Name the set before creating a reference sheet.');
-      const sheet = buildReferenceSheet();
-      await handleSave(sheet);
-    } catch (error) {
-      toast.error(error?.message || 'Could not create reference sheet.');
-    }
+      const chosen = detectedElements.filter(item => item.included !== false);
+      if (!chosen.length) throw new Error('Extract visible elements first, then select what to keep.');
+      const extracted = [];
+      for (let index = 0; index < chosen.length; index++) {
+        const item = chosen[index];
+        if (!Array.isArray(item.bbox) || item.bbox.length !== 4 || item.bbox.some(v => !Number.isFinite(v)) ||
+          item.bbox[2] <= item.bbox[0] || item.bbox[3] <= item.bbox[1]) throw new Error('Invalid bounding box; correct the selected element.');
+        const url = item.image_url && item.source_image_url === images[0] ? item.image_url : await cropObject(images[0], item.bbox, index);
+        extracted.push({ ...item, source_image_url: images[0], image_url: url });
+      }
+      const sheet = { ...buildReferenceSheet(), extracted_elements: extracted };
+      const saved = await handleSave(sheet);
+      if (saved) setDetectedElements(extracted);
+    } catch (error) { toast.error(error.message || 'Reference sheet extraction failed.'); }
+    finally { setExtracting(false); }
   };
 
   const handleSave = async (newSheet = null) => {
@@ -293,9 +363,11 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
       qc.invalidateQueries({ queryKey: ['setDesignerProjects'] });
       onSaved?.(saved);
       toast.success(newSheet?.version === 1 ? 'Set reference sheet created and saved' : projectId ? 'Set updated' : 'Set saved');
+      return saved;
     } catch (error) {
       console.error('Set Designer project save failed', error);
       toast.error(error?.message || 'Set could not be saved. Try again.');
+      return null;
     } finally {
       setSaving(false);
     }
@@ -445,37 +517,48 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#23c7be]">Set Reference Sheet</p>
-                <h3 className="mt-1 text-lg font-bold text-white">Lock the set's visual identity</h3>
-                <p className="mt-1 text-xs text-white/50">Create one saved reference sheet from the existing views and composition elements. No new scenery or furniture is invented.</p>
+                <h3 className="mt-1 text-lg font-bold text-white">Extract objects from the original Set photo</h3>
+                <p className="mt-1 text-xs text-white/45">Detect furniture, fixtures and architectural details already present in the Hero image. No new objects are generated.</p>
               </div>
-              <button type="button" onClick={createReferenceSheet} disabled={saving || !name.trim() || !referenceCount}
-                className="inline-flex shrink-0 items-center gap-2 rounded border border-[#23c7be] bg-[#23c7be] px-3 py-2 text-xs font-bold text-[#071211] hover:bg-[#35d8cf] disabled:cursor-not-allowed disabled:opacity-40">
-                {saving ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
-                {referenceSheet ? 'Update Reference Sheet' : 'Create Reference Sheet'}
+              <button type="button" onClick={detectFromHero} disabled={!images[0] || extracting || saving} className="inline-flex items-center gap-2 border border-[#23c7be]/50 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-40">
+                {extracting ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+                {extracting ? 'Extracting…' : 'Detect & Extract Elements'}
               </button>
             </div>
-            {referenceSheet ? (
-              <div className="mt-4 space-y-3">
-                <div className="text-xs text-white/45">Saved reference sheet · {referenceSheet.views?.length || 0} views · {referenceSheet.composition_elements?.length || 0} fixed elements</div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                  {(referenceSheet.views || []).map((view, index) => (
-                    <div key={`view-${index}`} className="overflow-hidden border border-white/10 bg-black">
-                      <div className="aspect-video"><img src={view.url} alt={view.role} className="h-full w-full object-contain" /></div>
-                      <div className="px-2 py-1.5 text-[10px] text-white/65">{view.role}</div>
+            {!!detectedElements.length && <div className="mt-4 space-y-3">
+              <p className="text-xs text-white/50">Review the detected objects. A rectangle shows the exact area extracted from the original image. Crops retain the original background within the rectangle; this is not transparent masking.</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {detectedElements.map((item, index) => {
+                  const [l,t,r,b] = item.bbox || [0,0,1000,1000];
+                  return <div key={item.id} className={`space-y-2 border border-white/15 p-3 ${item.included === false ? 'opacity-50' : ''}`}>
+                    <label className="flex items-center gap-2 text-xs text-white"><input type="checkbox" checked={item.included !== false} onChange={event => setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, included: event.target.checked } : el))} /> Include</label>
+                    <div className="relative aspect-video overflow-hidden bg-black">
+                      <img src={item.source_image_url || images[0]} alt={item.name} className="h-full w-full object-fill" />
+                      <div className="pointer-events-none absolute border-2 border-[#23c7be]" style={{ left:`${l/10}%`,top:`${t/10}%`,width:`${(r-l)/10}%`,height:`${(b-t)/10}%` }} />
                     </div>
-                  ))}
-                  {(referenceSheet.composition_elements || []).map((element, index) => (
-                    <div key={element.id || `element-${index}`} className="overflow-hidden border border-white/10 bg-black">
-                      <div className="flex aspect-video items-center justify-center">
-                        {element.image_url ? <img src={element.image_url} alt={element.name || 'Fixed set element'} className="h-full w-full object-contain" /> : <span className="p-2 text-center text-xs text-white/50">{element.name || 'Set element'}</span>}
-                      </div>
-                      <div className="truncate px-2 py-1.5 text-[10px] text-white/65" title={element.name}>{element.name || element.role || 'Set element'}{element.placement ? ` · ${element.placement}` : ''}</div>
+                    <input value={item.name} aria-label={`Object ${index+1} name`} onChange={event => setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, name: event.target.value } : el))} className="w-full border border-white/15 bg-black px-2 py-1.5 text-xs text-white" />
+                    <div className="grid grid-cols-4 gap-1">
+                      {['L','T','R','B'].map((label, coord) => <label key={label} className="text-[10px] text-white/45">{label}<input type="number" min="0" max="1000" value={item.bbox?.[coord] ?? 0} onChange={event => setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, bbox: el.bbox.map((v,i) => i===coord ? Math.max(0,Math.min(1000,Number(event.target.value))) : v), image_url:'' } : el))} className="w-full border border-white/15 bg-black px-1 py-1 text-xs text-white" /></label>)}
                     </div>
-                  ))}
-                </div>
-                <p className="text-xs text-white/40">This is a saved visual reference inventory for continuity, not a newly generated interpretation. Update it when you change the set.</p>
+                    <p className="truncate text-[10px] text-white/40">{item.role} · {item.placement}</p>
+                  </div>;
+                })}
               </div>
-            ) : <p className="mt-3 text-xs text-white/40">No reference sheet saved for this set yet.</p>}
+              <button type="button" onClick={createReferenceSheet} disabled={extracting || saving || !detectedElements.some(item => item.included !== false)}
+                className="inline-flex items-center gap-2 bg-[#23c7be] px-4 py-2.5 text-xs font-bold text-[#071211] disabled:opacity-40">
+                <Check size={15} /> Save Extracted Reference Sheet
+              </button>
+            </div>}
+            {referenceSheet && <div className="mt-4 border-t border-white/10 pt-4">
+              <p className="text-xs text-white/60">Saved reference sheet · {referenceSheet.extracted_elements?.length || 0} extracted objects</p>
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                {(referenceSheet.extracted_elements || []).map((item,index) => <div key={item.id || index} className="overflow-hidden border border-white/10 bg-black">
+                  <div className="aspect-square"><img src={item.image_url} alt={item.name} className="h-full w-full object-contain" /></div>
+                  <p className="truncate p-2 text-[11px] text-white/70">{item.name}</p>
+                </div>)}
+              </div>
+            </div>}
+            {!referenceSheet && !detectedElements.length && <p className="mt-3 text-xs text-white/40">No extracted elements yet.</p>}
           </section>
 
           <section className="grid gap-3 sm:grid-cols-3">
