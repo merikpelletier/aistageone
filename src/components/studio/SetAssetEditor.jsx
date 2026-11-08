@@ -152,6 +152,8 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   const [referenceSheet, setReferenceSheet] = useState(asset?.reference_sheet || null);
   const [detectedElements, setDetectedElements] = useState(Array.isArray(asset?.reference_sheet?.extracted_elements) ? asset.reference_sheet.extracted_elements : []);
   const [extracting, setExtracting] = useState(false);
+  const [referenceUploadingId, setReferenceUploadingId] = useState(null);
+  const [referencesDirty, setReferencesDirty] = useState(false);
   const selectionStartRef = useRef(null);
   const [selectionPreview, setSelectionPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -261,11 +263,32 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
     setSelectionPreview(null);
     const bbox = [Math.min(sx,x), Math.min(sy,y), Math.max(sx,x), Math.max(sy,y)];
     if (bbox[2]-bbox[0] < 15 || bbox[3]-bbox[1] < 15) return;
+    setReferencesDirty(true);
     setDetectedElements(current => [...current, {
       id: `manual-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
       name: '', role: 'set_dressing', placement: '',
       bbox, source_image_url: images[0], image_url: '', included: true,
     }]);
+  };
+
+  const replaceReferenceImage = async (event, referenceId) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return toast.error('Choose an image file.');
+    setReferenceUploadingId(referenceId);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      if (!file_url) throw new Error('The improved image could not be uploaded.');
+      setDetectedElements(current => current.map(item =>
+        item.id === referenceId ? { ...item, image_url: file_url, source_image_url: images[0], replacement: true } : item));
+      setReferencesDirty(true);
+      toast.success('Replacement ready. Save the Reference Sheet to keep it.');
+    } catch (error) {
+      toast.error(error.message || 'Could not replace reference.');
+    } finally {
+      setReferenceUploadingId(null);
+    }
   };
 
   const cropObject = async (source, bbox, index) => {
@@ -315,6 +338,8 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
     setExtracting(true);
     try {
       const chosen = detectedElements.filter(item => item.included !== false);
+      if (chosen.some(item => item.source_image_url !== images[0] && !item.replacement && !item.image_url))
+        throw new Error('A reference has a different source image. Select it again.');
       if (!chosen.length) throw new Error('Select at least one object from the image first.');
       if (chosen.some(item => !item.name?.trim())) throw new Error('Name each selected element before saving.');
       const extracted = [];
@@ -322,12 +347,13 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         const item = chosen[index];
         if (!Array.isArray(item.bbox) || item.bbox.length !== 4 || item.bbox.some(v => !Number.isFinite(v)) ||
           item.bbox[2] <= item.bbox[0] || item.bbox[3] <= item.bbox[1]) throw new Error('Invalid bounding box; correct the selected element.');
-        const url = item.image_url && item.source_image_url === images[0] ? item.image_url : await cropObject(images[0], item.bbox, index);
+        const url = item.image_url && (item.source_image_url === images[0] || item.replacement)
+          ? item.image_url : await cropObject(images[0], item.bbox, index);
         extracted.push({ ...item, source_image_url: images[0], image_url: url });
       }
       const sheet = { ...buildReferenceSheet(), extracted_elements: extracted };
       const saved = await handleSave(sheet);
-      if (saved) setDetectedElements(extracted);
+      if (saved) { setDetectedElements(extracted); setReferencesDirty(false); }
     } catch (error) { toast.error(error.message || 'Reference sheet extraction failed.'); }
     finally { setExtracting(false); }
   };
@@ -555,7 +581,9 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold text-white/65">{detectedElements.length} selected regions</p>
                 <button type="button" onClick={() => {
-                  if (window.confirm('Clear the current selections? The saved reference sheet will remain unchanged until you save.')) setDetectedElements([]);
+                  if (window.confirm('Clear the current selections? The saved reference sheet will remain unchanged until you save.')) {
+                    setDetectedElements([]); setReferencesDirty(true);
+                  }
                 }} className="border border-white/15 px-3 py-1.5 text-xs text-white/70 hover:text-white">Clear selections</button>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -563,29 +591,46 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                   const [l,t,r,b] = item.bbox || [0,0,1000,1000];
                   return <div key={item.id} className={`space-y-2 border border-white/15 p-3 ${item.included === false ? 'opacity-50' : ''}`}>
                     <div className="flex items-center justify-between gap-2">
-                      <label className="flex items-center gap-2 text-xs text-white"><input type="checkbox" checked={item.included !== false} onChange={event => setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, included: event.target.checked } : el))} /> Include</label>
-                      <button type="button" onClick={() => setDetectedElements(current => current.filter(el => el.id !== item.id))} className="text-xs text-red-300/75 hover:text-red-300">Remove</button>
+                      <label className="flex items-center gap-2 text-xs text-white"><input type="checkbox" checked={item.included !== false} onChange={event => { setReferencesDirty(true); setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, included: event.target.checked } : el)); }} /> Include</label>
+                      <button type="button" onClick={() => { setReferencesDirty(true); setDetectedElements(current => current.filter(el => el.id !== item.id)); }} className="text-xs text-red-300/75 hover:text-red-300">Remove</button>
                     </div>
-                    <input value={item.name} placeholder={`Name selection ${index+1}`} aria-label={`Selection ${index+1} name`} onChange={event => setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, name: event.target.value } : el))} className="w-full border border-white/15 bg-black px-2 py-2 text-xs text-white" />
+                    <input value={item.name} placeholder={`Name selection ${index+1}`} aria-label={`Selection ${index+1} name`} onChange={event => { setReferencesDirty(true); setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, name: event.target.value } : el)); }} className="w-full border border-white/15 bg-black px-2 py-2 text-xs text-white" />
                     <p className="text-[11px] text-white/45">Area in original image</p>
                     <div className="relative aspect-video overflow-hidden bg-black">
                       <img src={item.source_image_url || images[0]} alt={item.name || 'Selected area'} className="h-full w-full object-fill" />
                       <div className="pointer-events-none absolute border-2 border-[#23c7be]" style={{left:`${l/10}%`,top:`${t/10}%`,width:`${(r-l)/10}%`,height:`${(b-t)/10}%`}} />
                     </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="cursor-pointer border border-[#23c7be]/50 px-2 py-1.5 text-[11px] font-semibold text-[#8ee9e4] hover:bg-[#23c7be]/10">
+                        {referenceUploadingId === item.id ? 'Uploading…' : 'Replace / Upgrade Image'}
+                        <input type="file" accept="image/*" className="hidden" disabled={Boolean(referenceUploadingId) || saving || extracting} onChange={event => replaceReferenceImage(event, item.id)} />
+                      </label>
+                      {item.image_url && <button type="button" onClick={() => {
+                        setReferencesDirty(true);
+                        setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, image_url:'', replacement:false } : el));
+                      }} className="border border-white/15 px-2 py-1.5 text-[11px] text-white/70 hover:text-white">Use Original Crop</button>}
+                    </div>
+                    {item.image_url && <div className="overflow-hidden border border-white/10 bg-black p-2">
+                      <p className="mb-2 text-[10px] text-white/40">Current reference (saved or replacement)</p>
+                      <img src={item.image_url} alt={item.name || 'Current reference'} className="mx-auto max-h-36 w-auto object-contain" />
+                    </div>}
                     <div className="grid grid-cols-4 gap-1">
-                      {['L','T','R','B'].map((label, coordinate) => <label key={label} className="text-[10px] text-white/45">{label}<input type="number" min="0" max="1000" value={item.bbox?.[coordinate] ?? 0} onChange={event => setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, bbox: el.bbox.map((v,i) => i===coordinate ? Math.max(0,Math.min(1000,Number(event.target.value))) : v), image_url:'' } : el))} className="mt-1 w-full border border-white/15 bg-black px-1 py-1 text-xs text-white" /></label>)}
+                      {['L','T','R','B'].map((label, coordinate) => <label key={label} className="text-[10px] text-white/45">{label}<input type="number" min="0" max="1000" value={item.bbox?.[coordinate] ?? 0} onChange={event => { setReferencesDirty(true); setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, bbox: el.bbox.map((v,i) => i===coordinate ? Math.max(0,Math.min(1000,Number(event.target.value))) : v), image_url:'', replacement:false } : el)); }} className="mt-1 w-full border border-white/15 bg-black px-1 py-1 text-xs text-white" /></label>)}
                     </div>
                   </div>;
                 })}
               </div>
-              <button type="button" onClick={createReferenceSheet} disabled={extracting || saving || !detectedElements.some(item => item.included !== false)}
+              <button type="button" onClick={createReferenceSheet} disabled={extracting || saving || Boolean(referenceUploadingId) || !detectedElements.some(item => item.included !== false)}
                 className="inline-flex items-center gap-2 bg-[#23c7be] px-4 py-2.5 text-xs font-bold text-[#071211] disabled:opacity-40">
                 {extracting ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-                Save Selected Reference Sheet
+                Save Reference Sheet Changes
               </button>
             </div>}
             {referenceSheet && <div className="mt-4 border-t border-white/10 pt-4">
-              <p className="text-xs text-white/60">Saved reference sheet · {referenceSheet.extracted_elements?.length || 0} selected objects</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-white/60">Saved reference sheet · {referenceSheet.extracted_elements?.length || 0} selected objects</p>
+                {referencesDirty && <span className="text-xs text-[#8ee9e4]">Unsaved reference changes</span>}
+              </div>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                 {(referenceSheet.extracted_elements || []).map((item,index) => <div key={item.id || index} className="overflow-hidden border border-white/10 bg-black">
                   <div className="aspect-square"><img src={item.image_url} alt={item.name} className="h-full w-full object-contain" /></div>
