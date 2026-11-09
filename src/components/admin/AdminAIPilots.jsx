@@ -90,11 +90,36 @@ export default function AdminAIPilots() {
     },
   });
 
+  const { data: mySets = [] } = useQuery({
+    queryKey: ['admin-ai-pilot-my-sets', selectedVersion?.id],
+    enabled: Boolean(selectedVersion?.id),
+    queryFn: async () => {
+      const { data, error } = await supabase.from('set_designer_project')
+        .select('id,name,description,images,reference_sheet,updated_date')
+        .order('updated_date', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+
   const scenarioSets = useMemo(() => {
     const direction = blocks.find((item) => item.block_key === 'series-direction');
     const sets = direction?.content?.sets;
-    return Array.isArray(sets) ? sets.filter((set) => set?.id && set?.name).map((set) => ({ id: set.id, name: set.name, description: set.description || '', reference_images: set.reference_images || [] })) : [];
-  }, [blocks]);
+    return Array.isArray(sets) ? sets.filter((set) => set?.id && set?.name).map((set) => {
+      const linked = mySets.find((project) => project.id === set.my_set_id);
+      return {
+        id: set.id, name: set.name, description: set.description || '',
+        reference_images: set.reference_images || [], my_set_id: set.my_set_id || '',
+        linked_set: linked ? {
+          id: linked.id, name: linked.name, description: linked.description || '',
+          images: Array.isArray(linked.images) ? linked.images : [],
+          reference_sheet: linked.reference_sheet || null,
+        } : null,
+      };
+    }) : [];
+  }, [blocks, mySets]);
 
   const scenarioLooks = useMemo(() => {
     const looksBlock = blocks.find((item) => item.block_key === 'looks');
@@ -431,7 +456,7 @@ export default function AdminAIPilots() {
                     </select>
                   </div>
                   <div className="p-4 md:p-5">
-                    <AIPilotDirectionEditor block={editingBlock} setBlock={setEditingBlock} readOnly={false} onSave={() => saveBlock.mutate()} saving={saveBlock.isPending} availableCharacters={scenarioCharacters.filter((character) => character.is_active !== false).map((character) => ({ id: character.id, name: character.role_name, reference_images: character.reference_images || [] }))} availableSets={scenarioSets} availableLooks={scenarioLooks} />
+                    <AIPilotDirectionEditor block={editingBlock} setBlock={setEditingBlock} readOnly={false} onSave={() => saveBlock.mutate()} saving={saveBlock.isPending} availableCharacters={scenarioCharacters.filter((character) => character.is_active !== false).map((character) => ({ id: character.id, name: character.role_name, reference_images: character.reference_images || [] }))} availableSets={scenarioSets} availableLooks={scenarioLooks} mySets={mySets} />
                   </div>
                 </div>
               </div>}
