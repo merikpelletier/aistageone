@@ -24,42 +24,14 @@ const THEMES = [
   ['custom', 'Custom theme', ''],
 ];
 
-const svgTemplate = () => {
-  const cells = IDS.map((id, i) => {
-    const x = (i % 3) * 480, y = Math.floor(i / 3) * 540;
-    return `<g transform="translate(${x},${y})">
-      <rect x="3" y="3" width="474" height="534" fill="#f8f8f8" stroke="#777" stroke-width="2"/>
-      <g transform="translate(240,22)" fill="url(#body)" stroke="#999" stroke-width="1.5">
-        <ellipse cx="0" cy="55" rx="29" ry="41"/>
-        <path d="M-21 88 L-26 106 -61 115 -76 142 -84 246 -76 255 -67 247 -56 154 -47 172 -49 280 -34 296 -33 402 -36 443 -16 446 -10 402 -5 311 5 311 10 402 16 446 36 443 33 402 34 296 49 280 47 172 56 154 67 247 76 255 84 246 76 142 61 115 26 106 21 88 Z"/>
-        <path d="M-36 443 Q-50 455 -40 459 L-12 459 -16 443 M36 443 Q50 455 40 459 L12 459 16 443" />
-      </g>
-      <text x="240" y="513" fill="#181818" font-family="Arial,sans-serif" font-size="30" font-weight="700" text-anchor="middle">${id}</text>
-    </g>`;
-  }).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1080" viewBox="0 0 1440 1080">
-    <defs><linearGradient id="body" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#c9c9c9"/><stop offset=".48" stop-color="#eeeeee"/><stop offset="1" stop-color="#c4c4c4"/></linearGradient></defs>
-    <rect width="1440" height="1080" fill="white"/>${cells}</svg>`;
+// Approved six-figure sheet: fixed front-facing poses, BG-01 through BG-06.
+const TEMPLATE_PREVIEW = '/actor-guides/background-six-template.webp';
+const toTemplateFile = async () => {
+  const response = await fetch(TEMPLATE_PREVIEW);
+  if (!response.ok) throw new Error('Approved background template could not be loaded.');
+  const blob = await response.blob();
+  return new File([blob], 'background-six-template.webp', { type: 'image/webp' });
 };
-const TEMPLATE_PREVIEW = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgTemplate());
-
-const toTemplatePng = () => new Promise((resolve, reject) => {
-  const image = new Image();
-  const objectUrl = URL.createObjectURL(new Blob([svgTemplate()], { type: 'image/svg+xml' }));
-  image.onload = () => {
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = 1440; canvas.height = 1080;
-      canvas.getContext('2d').drawImage(image, 0, 0);
-      canvas.toBlob(blob => {
-        URL.revokeObjectURL(objectUrl);
-        blob ? resolve(new File([blob], 'background-six-template.png', { type: 'image/png' })) : reject(new Error('Could not prepare the template'));
-      }, 'image/png');
-    } catch (error) { URL.revokeObjectURL(objectUrl); reject(error); }
-  };
-  image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Cannot load the template')); };
-  image.src = objectUrl;
-});
 
 export default function BackgroundGroupEditor({ userEmail, onClose }) {
   const queryClient = useQueryClient();
@@ -116,7 +88,7 @@ A panel number is a positional reference, not a name to display on clothing. No 
   };
   const ensureTemplate = async () => {
     if (templateUrl) return templateUrl;
-    const url = await upload(await toTemplatePng());
+    const url = await upload(await toTemplateFile());
     setTemplateUrl(url);
     setOriginalUrl(url);
     return url;
