@@ -321,7 +321,7 @@ function StepTitle({ number, title, description }) {
   );
 }
 
-export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedded = false }) {
+export default function CharacterSheetEditor({ sheet, userEmail, onClose, onOpenBackgroundGroup, embedded = false }) {
   const queryClient = useQueryClient();
   const initial = useMemo(() => parseSavedDesign(sheet), [sheet]);
   const [name, setName] = useState(sheet?.character_name || '');
@@ -779,7 +779,13 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, embedd
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-300 text-black"><UserRound size={22} /></div>
             <div><p className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-300">Actor studio</p><h2 className="text-xl font-black sm:text-2xl">Design a complete character</h2></div>
           </div>
-          {!embedded && <button type="button" onClick={onClose} className="rounded-full border border-white/10 bg-white/[0.06] p-2.5 hover:bg-white/15"><X size={19} /></button>}
+          <div className="flex items-center gap-2">
+            {onOpenBackgroundGroup && <button type="button" onClick={onOpenBackgroundGroup}
+              className="border border-cyan-300/60 bg-cyan-300/15 px-4 py-2.5 text-xs font-black text-cyan-200 hover:bg-cyan-300/25">
+              BACKGROUND GROUP · 6 ACTORS
+            </button>}
+            {!embedded && <button type="button" onClick={onClose} className="rounded-full border border-white/10 bg-white/[0.06] p-2.5 hover:bg-white/15"><X size={19} /></button>}
+          </div>
         </div>
       </header>
 
