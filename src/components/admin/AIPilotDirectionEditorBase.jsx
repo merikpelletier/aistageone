@@ -77,7 +77,7 @@ const lookDetailConfig = {
   },
 };
 
-export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSave, saving }) {
+export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSave, saving, mySets = [] }) {
   const [expandedLocationId, setExpandedLocationId] = useState(null);
   const [expandedSetId, setExpandedSetId] = useState(null);
   const [uploadingSetId, setUploadingSetId] = useState(null);
@@ -103,6 +103,17 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
     const id = makeId('location');
     updateContent('locations', [...locations, { id, name: '', description: '' }]);
     setExpandedLocationId(id);
+  };
+
+  const addLinkedSet = (mySetId) => {
+    const project = mySets.find((item) => item.id === mySetId);
+    if (!project || sets.some((set) => set.my_set_id === mySetId)) return;
+    const id = makeId('set');
+    updateContent('sets', [...sets, {
+      id, name: project.name || 'Unnamed set', description: project.description || '',
+      location_id: '', reference_images: [], my_set_id: project.id,
+    }]);
+    setExpandedSetId(id);
   };
 
   const addSet = () => {
@@ -594,7 +605,15 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
                 <div className="text-sm text-white">Sets <span className="text-white/35">({sets.length})</span></div>
                 <div className="text-xs text-white/35 mt-1">Compact list. Open only the set you want to edit.</div>
               </div>
-              {!readOnly && <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={addSet}><Plus size={14} /> Add Set</Button>}
+              {!readOnly && <div className="flex flex-wrap gap-2 items-center">
+                <select aria-label="Add existing set from My Sets" defaultValue="" onChange={(event) => { addLinkedSet(event.target.value); event.target.value = ''; }}
+                  className="h-9 min-w-48 max-w-sm border border-white/20 bg-[#151719] px-2 text-xs text-white">
+                  <option value="">Add from My Sets…</option>
+                  {mySets.filter((item) => !sets.some((set) => set.my_set_id === item.id)).map((item) =>
+                    <option key={item.id} value={item.id}>{item.name || 'Unnamed set'}</option>)}
+                </select>
+                <Button size="sm" className={SECONDARY_BUTTON_CLASS} onClick={addSet}><Plus size={14} /> Add Set</Button>
+              </div>}
             </div>
 
             {!sets.length && <div className="text-sm text-white/30 py-2">No sets yet.</div>}
@@ -621,6 +640,27 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
                             <SelectTrigger className={SELECT_TRIGGER_CLASS}><SelectValue placeholder="Associated location" /></SelectTrigger>
                             <SelectContent><SelectItem value="none">No location</SelectItem>{locations.map((item) => <SelectItem key={item.id} value={item.id}>{item.name || 'Unnamed location'}</SelectItem>)}</SelectContent>
                           </Select>
+                        </div>
+                        <div className="space-y-2 border border-white/10 bg-white/[0.02] p-3">
+                          <label className="block text-xs text-white/60">Linked Studio Set (My Sets)
+                            <select value={set.my_set_id || ''} disabled={readOnly} onChange={(event) => {
+                              const project = mySets.find((item) => item.id === event.target.value);
+                              updateSet(set.id, { my_set_id: project?.id || '' });
+                            }} className="mt-2 block h-9 w-full max-w-lg border border-white/20 bg-[#151719] px-2 text-sm text-white">
+                              <option value="">Standalone AI Pilot Set (existing images only)</option>
+                              {mySets.map((item) => <option key={item.id} value={item.id}>{item.name || 'Unnamed set'}</option>)}
+                            </select>
+                          </label>
+                          {set.my_set_id && (() => {
+                            const linked = mySets.find((item) => item.id === set.my_set_id);
+                            if (!linked) return <p className="text-xs text-amber-300">Linked Studio Set is unavailable. Existing AI Pilot photos are retained.</p>;
+                            const elements = linked.reference_sheet?.extracted_elements || [];
+                            return <div className="space-y-2">
+                              <p className="text-xs text-white/60">Linked: {linked.name} · {elements.length} reference elements · {(linked.images || []).filter(Boolean).length} set views. No images are copied.</p>
+                              {!!elements.length && <div className="flex flex-wrap gap-2">{elements.slice(0, 10).map((item, index) =>
+                                <div key={item.id || index} className="w-20 space-y-1"><img src={item.image_url} alt={item.name || 'Set object'} className="h-16 w-full border border-white/15 bg-black object-contain" /><div className="truncate text-[10px] text-white/60">{item.name}</div></div>)}</div>}
+                            </div>;
+                          })()}
                         </div>
                         <Textarea className={CONTROL_CLASS} rows={4} disabled={readOnly} placeholder="Precise description of this set for production and AI generation" value={set.description || ''} onChange={(event) => updateSet(set.id, { description: event.target.value })} />
                         <div className="space-y-3 border-t border-white/10 pt-3">
