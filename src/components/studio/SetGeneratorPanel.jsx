@@ -35,6 +35,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   const [generating, setGenerating] = useState('');
   const [selectedModel, setSelectedModel] = useState(null);
   const [reverseDirection, setReverseDirection] = useState('');
+  const [reverseType, setReverseType] = useState('auto');
   const heroImage = images?.[0] || null;
   const setReferences = (images || []).filter(Boolean).slice(0, 3);
   const compositionRefs = (compositionElements || []).map(item => item?.image_url).filter(Boolean);
@@ -106,9 +107,16 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     }
   };
 
-  const viewInstruction = (label, instruction) => label === 'Reverse' && reverseDirection.trim()
-    ? `${instruction}\n\nUSER-DEFINED REVERSE VIEW — PRIORITY: ${reverseDirection.trim()}\nThis describes the otherwise unseen opposite side of the set. Respect the supplied details as the source of truth. Keep architectural and furniture continuity with the Hero wherever both views overlap. Do not invent additional features in the area described by the user.`
-    : instruction;
+  const REVERSE_DIRECTIONS = {
+    auto: `First identify from the supplied Hero image whether this is an interior room, an exterior building entrance, or another type of space. Generate the natural camera reverse for THAT actual location: for a room, face the opposite side of the room from the other end; for a building entrance, position the camera by the entrance facing back toward the camera's original approach, showing the arrival area rather than copying the façade; for other locations, reverse the original camera's line of sight. Keep the known scene coherent; when the opposite side is not visible in the Hero, infer a plausible continuation rather than claiming its layout is known.`,
+    interior: `INTERIOR REVERSE. Place the camera across the same room, point it toward the original Hero camera's side and show the opposite direction of the space. Maintain room dimensions, furniture identity, doors and windows that are visible in both angles. Surfaces not shown in the Hero must be plausible extrapolations, NOT mirrored copies of the visible wall.`,
+    entrance: `EXTERIOR ENTRANCE REVERSE. Position the camera near the building entrance, looking outward toward the approach and grounds where the original Hero camera was located. The main façade is behind the camera and must NOT appear as a repeated background. Show a plausible arrival area while preserving all visible entrance features, steps, canopy and landscaping that would naturally remain in frame. Maintain the same light and weather.`,
+    rear: `REAR EXTERIOR VIEW, not a 180-degree camera reverse. Show the other physical side of this same building, retaining its design vocabulary, scale, materials, roofline and landscape. Because the Hero does not reveal the rear elevation, depict a plausible continuation and do not copy, mirror or repeat the front façade.`,
+  };
+  const viewInstruction = (label, instruction) => {
+    if (label !== 'Reverse') return instruction;
+    return `${reverseType === 'interior' ? instruction : ''}\n\nREVERSE VIEW DIRECTION:\n${REVERSE_DIRECTIONS[reverseType] || REVERSE_DIRECTIONS.auto}\n${reverseDirection.trim() ? `ADDITIONAL USER DETAILS (take precedence for unseen areas): ${reverseDirection.trim()}` : ''}\nThis is a distinct viewpoint, not a mirror, crop or zoom of the Hero image. Do not imply that unseen architecture is known with certainty.`;
+  };
 
   const generateView = async (index, label, instruction) => {
     if (!heroImage || !effectiveModel) return;
@@ -210,13 +218,34 @@ export default function SetGeneratorPanel({ name, description, images, setImages
               GENERATE ALL VIEWS{creditsPerImage ? ` · ${creditsPerImage * 7} CREDITS` : ''}
             </button>
           </div>
-          <div className="mb-4 space-y-2 border border-white/15 bg-black/20 p-4">
-            <label htmlFor="reverse-direction" className="block text-xs font-bold text-white/80">Reverse · Describe the unseen side (optional)</label>
-            <p className="text-xs leading-5 text-white/50">A Hero photograph does not show what is behind the camera. For a reliable reverse angle, describe the opposite wall, openings, furniture and their positions, or use an existing verified Reverse image instead. This instruction applies only to Reverse, including Generate All Views.</p>
-            <textarea id="reverse-direction" value={reverseDirection} onChange={(event) => setReverseDirection(event.target.value)}
-              disabled={Boolean(generating)} rows={3}
-              placeholder="Example: Opposite wall has two tall windows, a centered double doorway and a staircase on the right. The dining table remains between the camera and the doorway."
-              className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-[#23c7be] focus:outline-none" />
+          <div className="mb-4 space-y-3 border border-white/15 bg-black/20 p-4">
+            <p className="text-xs font-bold text-white/80">Reverse camera · Choose the view</p>
+            <p className="text-xs leading-5 text-white/50">No camera terminology or prompt required. Choose what you want to see; Set writes the camera instructions automatically.</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                ['auto', 'Automatic reverse', 'Let Set choose according to the Hero'],
+                ['interior', 'Opposite side of the room', 'Interior reverse angle'],
+                ['entrance', 'Looking away from the building', 'View outward from its entrance'],
+                ['rear', 'Back of the building', 'Rear exterior, not a camera reverse'],
+              ].map(([value, label, detail]) => (
+                <button key={value} type="button" disabled={Boolean(generating)}
+                  aria-pressed={reverseType === value}
+                  onClick={() => setReverseType(value)}
+                  className={`border px-3 py-2.5 text-left transition disabled:opacity-40 ${reverseType === value ? 'border-[#23c7be] bg-[#23c7be]/10' : 'border-white/15 bg-black/20 hover:border-white/40'}`}>
+                  <span className="block text-xs font-bold text-white">{label}</span>
+                  <span className="mt-1 block text-[11px] text-white/50">{detail}</span>
+                </button>
+              ))}
+            </div>
+            <details>
+              <summary className="cursor-pointer text-xs text-white/60 hover:text-white">Optional: add details for the unseen area</summary>
+              <textarea id="reverse-direction" value={reverseDirection} onChange={(event) => setReverseDirection(event.target.value)}
+                disabled={Boolean(generating)} rows={3}
+                aria-label="Additional reverse view details"
+                placeholder="For example: a circular driveway and palm-lined approach"
+                className="mt-2 w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-[#23c7be] focus:outline-none" />
+            </details>
+            <p className="text-[11px] text-white/40">Unseen areas are inferred by AI and may not exactly match the real architecture.</p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {VIEW_SPECS.map(([label, instruction], offset) => {
