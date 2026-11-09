@@ -9,8 +9,10 @@ export default function SetDesignerWorkspace({ userEmail }) {
   const [selectedProject, setSelectedProject] = useState(null);
   const [creating, setCreating] = useState(false);
 
-  const { data: projects = [], isLoading, error } = useQuery({
-    queryKey: ['setDesignerProjects'],
+  const { data: projects = [], isLoading, isFetching, error } = useQuery({
+    // The workspace needs full project records (name, images and reference data).
+    // Keep this separate from other consumers of the generic projects cache.
+    queryKey: ['setDesignerProjects', 'workspace-full-records', userEmail],
     queryFn: async () => {
       const { data, error: queryError } = await supabase
         .from('set_designer_project')
@@ -19,6 +21,7 @@ export default function SetDesignerWorkspace({ userEmail }) {
       if (queryError) throw queryError;
       return data || [];
     },
+    refetchOnMount: 'always',
   });
 
   const openNew = () => {
@@ -70,7 +73,7 @@ export default function SetDesignerWorkspace({ userEmail }) {
           </button>
         </div>
 
-        {isLoading ? (
+        {isLoading || isFetching ? (
           <div className="flex min-h-72 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div>
         ) : error ? (
           <div className="border border-red-400/20 bg-red-400/10 p-6 text-sm text-red-100">Your saved sets could not be loaded.</div>
