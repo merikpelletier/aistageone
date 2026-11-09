@@ -38,7 +38,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   const [reverseType, setReverseType] = useState('auto');
   const [viewAdjustments, setViewAdjustments] = useState({});
   const adjustView = (label, value) => setViewAdjustments(current => ({ ...current, [label]: value }));
-  const adjustmentInstruction = label => viewAdjustments[label]?.trim() ? `\n\nUSER ADJUSTMENT FOR ${label.toUpperCase()} VIEW: ${viewAdjustments[label].trim()}\nApply this adjustment while keeping the set consistent with its references.` : '';
+  const adjustmentInstruction = label => viewAdjustments[label]?.trim() ? `\n\nHIGHEST PRIORITY — USER ADJUSTMENT FOR ${label.toUpperCase()} VIEW:\n${viewAdjustments[label].trim()}\nMake this requested change visibly and precisely in the generated image. For features the user explicitly changes (including windows, doors or walls), the instruction OVERRIDES the reference image and the general continuity/preservation rules above. Preserve only the other, unaffected parts of the same set. Do not reintroduce a feature the user asked to remove.` : '';
   const heroImage = images?.[0] || null;
   const setReferences = (images || []).filter(Boolean).slice(0, 3);
   const compositionRefs = (compositionElements || []).map(item => item?.image_url).filter(Boolean);
@@ -117,16 +117,17 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     rear: `REAR EXTERIOR VIEW, not a 180-degree camera reverse. Show the other physical side of this same building, retaining its design vocabulary, scale, materials, roofline and landscape. Because the Hero does not reveal the rear elevation, depict a plausible continuation and do not copy, mirror or repeat the front façade.`,
   };
   const viewInstruction = (label, instruction) => {
-    if (label !== 'Reverse') return instruction + adjustmentInstruction(label);
-    return `${reverseType === 'interior' ? instruction : ''}\n\nREVERSE VIEW DIRECTION:\n${REVERSE_DIRECTIONS[reverseType] || REVERSE_DIRECTIONS.auto}\n${reverseDirection.trim() ? `ADDITIONAL USER DETAILS (take precedence for unseen areas): ${reverseDirection.trim()}` : ''}\nThis is a distinct viewpoint, not a mirror, crop or zoom of the Hero image. Do not imply that unseen architecture is known with certainty.${adjustmentInstruction(label)}`;
+    if (label !== 'Reverse') return instruction;
+    return `${reverseType === 'interior' ? instruction : ''}\n\nREVERSE VIEW DIRECTION:\n${REVERSE_DIRECTIONS[reverseType] || REVERSE_DIRECTIONS.auto}\n${reverseDirection.trim() ? `ADDITIONAL USER DETAILS (take precedence for unseen areas): ${reverseDirection.trim()}` : ''}\nThis is a distinct viewpoint, not a mirror, crop or zoom of the Hero image. Do not imply that unseen architecture is known with certainty.`;
   };
 
   const generateView = async (index, label, instruction) => {
     if (!heroImage || !effectiveModel) return;
     setGenerating(label);
     try {
-      const prompt = buildViewPrompt(name, description, viewInstruction(label, instruction), compositionElements);
-      const refs = [heroImage, ...compositionRefs];
+      const prompt = buildViewPrompt(name, description, viewInstruction(label, instruction), compositionElements) + adjustmentInstruction(label);
+      const existingView = images?.[index];
+      const refs = viewAdjustments[label]?.trim() && existingView ? [existingView, heroImage, ...compositionRefs] : [heroImage, ...compositionRefs];
       const url = await runGeneration(prompt, refs);
       setImages(current => {
         const next = [...current];
@@ -150,8 +151,10 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         const [label, instruction] = VIEW_SPECS[offset];
         const index = offset + 1;
         setGenerating(label);
-        const prompt = buildViewPrompt(name, description, viewInstruction(label, instruction), compositionElements);
-        const url = await runGeneration(prompt, [heroImage, ...compositionRefs]);
+        const prompt = buildViewPrompt(name, description, viewInstruction(label, instruction), compositionElements) + adjustmentInstruction(label);
+        const existingView = images?.[index];
+        const refs = viewAdjustments[label]?.trim() && existingView ? [existingView, heroImage, ...compositionRefs] : [heroImage, ...compositionRefs];
+        const url = await runGeneration(prompt, refs);
         setImages(current => {
           const next = [...current];
           while (next.length <= index) next.push(null);
@@ -210,9 +213,14 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         </button>
       </div>
 
-      <div className="mt-3">
-        <label htmlFor="set-view-adjustment-hero" className="mb-2 block text-xs font-bold text-white/70">Hero · Adjustment instructions</label>
-        <textarea id="set-view-adjustment-hero" value={viewAdjustments.Hero || ''} onChange={event => adjustView('Hero', event.target.value)} disabled={Boolean(generating)} rows={2} placeholder="Optional: specify what to adjust in the Hero view" className="w-full border border-white/15 bg-black/25 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
+      <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
+        <div className="aspect-video overflow-hidden border border-white/15 bg-black">
+          {heroImage ? <img src={heroImage} alt="Current Hero view" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-xs text-white/40">No Hero image yet</div>}
+        </div>
+        <div>
+          <label htmlFor="set-view-adjustment-hero" className="mb-2 block text-xs font-bold text-white/70">Hero · Adjustment instructions</label>
+          <textarea id="set-view-adjustment-hero" value={viewAdjustments.Hero || ''} onChange={event => adjustView('Hero', event.target.value)} disabled={Boolean(generating)} rows={4} placeholder="Optional: specify what to adjust in the Hero view" className="w-full border border-white/15 bg-black/25 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
+        </div>
       </div>
 
       {heroImage && (
@@ -255,14 +263,17 @@ export default function SetGeneratorPanel({ name, description, images, setImages
             </details>
             <p className="text-[11px] text-white/40">Unseen areas are inferred by AI and may not exactly match the real architecture.</p>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 lg:grid-cols-2">
             {VIEW_SPECS.map(([label, instruction], offset) => {
               const index = offset + 1;
               const exists = Boolean(images?.[index]);
               const busy = generating === label;
               return <div key={label} className={`border p-3 ${exists ? 'border-[#23c7be]/35 bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}>
                 <label htmlFor={`set-view-adjustment-${label}`} className="block text-xs font-black text-white">{label.toUpperCase()}</label>
-                <textarea id={`set-view-adjustment-${label}`} value={viewAdjustments[label] || ''} onChange={event => adjustView(label, event.target.value)} disabled={Boolean(generating)} rows={2} placeholder={`Optional ${label.toLowerCase()} view adjustment`} className="mt-2 w-full border border-white/15 bg-black/25 px-2 py-2 text-xs text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
+                <div className="mt-2 aspect-video overflow-hidden border border-white/15 bg-black">
+                  {exists ? <img src={images[index]} alt={`Current ${label} view`} className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-xs text-white/35">No {label} image yet</div>}
+                </div>
+                <textarea id={`set-view-adjustment-${label}`} value={viewAdjustments[label] || ''} onChange={event => adjustView(label, event.target.value)} disabled={Boolean(generating)} rows={3} placeholder={`Optional ${label.toLowerCase()} view adjustment`} className="mt-2 w-full border border-white/15 bg-black/25 px-2 py-2 text-xs text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
                 <button type="button" onClick={() => generateView(index, label, instruction)} disabled={Boolean(generating) || !effectiveModel} className="mt-2 w-full border border-[#23c7be]/35 px-2 py-2 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/10 disabled:opacity-40">
                   {busy ? 'GENERATING...' : exists ? `REGENERATE${creditsPerImage ? ` · ${creditsPerImage}` : ''}` : `GENERATE${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
                 </button>
