@@ -11,8 +11,6 @@ const VIEW_SPECS = [
   ['Left', `Generate a TRUE FLAT LEFT-SIDE VIEW of the SAME set, as a straight-on side elevation. Show the LEFT wall or side of the location DIRECTLY FROM THE FRONT, with the camera optical axis perpendicular (90 degrees) to that wall, level and centered. The wall plane must be parallel to the image plane, with horizontal and vertical architectural lines straight and squared. This is NOT a camera angle across the room: do not aim toward the center, do not show a corner or adjacent wall in three-quarter perspective, do not use diagonal framing, and do not create a cinematic oblique view. The output must clearly present the left side face-on. Preserve the established set identity, materials, fixtures and object positions where visible. Do not mirror, crop, or lightly reframe the Hero image.`],
   ['Right', `Generate a TRUE FLAT RIGHT-SIDE VIEW of the SAME set, as a straight-on side elevation. Show the RIGHT wall or side of the location DIRECTLY FROM THE FRONT, with the camera optical axis perpendicular (90 degrees) to that wall, level and centered. The wall plane must be parallel to the image plane, with horizontal and vertical architectural lines straight and squared. This is NOT a camera angle across the room: do not aim toward the center, do not show a corner or adjacent wall in three-quarter perspective, do not use diagonal framing, and do not create a cinematic oblique view. The output must clearly present the right side face-on. Preserve the established set identity, materials, fixtures and object positions where visible. Do not mirror, crop, or lightly reframe the Hero image.`],
   ['Detail', `Move the camera physically close to one distinctive architectural, material, furniture or required composition element that already exists in the Hero image. Create a true close detail shot from the SAME set, not a wide room view. Preserve the exact material, finish, lighting and design language.`],
-  ['Day', `Keep the SAME physical camera position and composition as the Hero image, but change ONLY the time and lighting to convincing daytime. Preserve architecture, furniture, object placement, lens perspective and framing. Do not redesign the set.`],
-  ['Night', `Keep the SAME physical camera position and composition as the Hero image, but change ONLY the time and lighting to convincing nighttime. Preserve architecture, furniture, object placement, lens perspective and framing. Do not redesign the set.`],
 ];
 
 const humanize = value => String(value || '').replace(/_/g, ' ');
@@ -63,7 +61,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     setActiveTimes(current => ({ ...current, [label]: time }));
     setEditRegions(current => ({ ...current, [label]: null }));
   };
-  const timeSwitcher = (label, index) => (
+  const timeSwitcher = label => (
     <div className="mt-2 flex items-center gap-2">
       {['day', 'night'].map(time => (
         <button key={time} type="button" onClick={() => chooseTime(label, time)} disabled={Boolean(generating)}
@@ -397,7 +395,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
         <EditableImage label="Hero" url={viewUrl('Hero', 0)} box={editBox('Hero')} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} />
         <div>
-          {timeSwitcher('Hero', 0)}
+          {timeSwitcher('Hero')}
           <label htmlFor="set-view-adjustment-hero" className="mb-2 block text-xs font-bold text-white/70">Hero · Adjustment instructions</label>
           <textarea id="set-view-adjustment-hero" value={viewAdjustments.Hero || ''} onChange={event => adjustView('Hero', event.target.value)} disabled={Boolean(generating)} rows={4} placeholder="Describe only the change you want" className="w-full border border-white/15 bg-black/25 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
           <p className="mt-1 text-xs text-white/45">Drag on the image to select an area. Only that area will be edited.</p>
@@ -416,7 +414,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
               <p className="mt-1 text-xs text-white/40">Choose the angles you need. Composition elements keep the same physical placement across views.</p>
             </div>
             <button type="button" onClick={generateAllViews} disabled={Boolean(generating) || !effectiveModel} className="border border-[#23c7be]/35 bg-[#23c7be]/10 px-4 py-2.5 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/15 disabled:opacity-40">
-              GENERATE ALL VIEWS{creditsPerImage ? ` · ${creditsPerImage * 7} CREDITS` : ''}
+              GENERATE ALL VIEWS{creditsPerImage ? ` · ${creditsPerImage * VIEW_SPECS.length} CREDITS` : ''}
             </button>
           </div>
           <div className="mb-4 space-y-3 border border-white/15 bg-black/20 p-4">
@@ -450,7 +448,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
           </div>
           <div className="mb-4 border border-white/15 bg-black/20 p-3">
             <div className="text-xs font-black text-white">HERO — DAY / NIGHT</div>
-            {timeSwitcher('Hero', 0)}
+            {timeSwitcher('Hero')}
             <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
               <img src={viewUrl('Hero', 0) || heroImage} alt={`Hero ${timeFor('Hero')} view`} className="aspect-video w-full max-w-md object-contain bg-black" />
               <button type="button" onClick={() => generateNight('Hero', 0)} disabled={Boolean(generating) || !effectiveModel || !heroImage}
@@ -467,7 +465,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
               const busy = generating === label;
               return <div key={label} className={`border p-3 ${exists ? 'border-[#23c7be]/35 bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}>
                 <label htmlFor={`set-view-adjustment-${label}`} className="block text-xs font-black text-white">{label.toUpperCase()}</label>
-                {timeSwitcher(label, index)}
+                {timeSwitcher(label)}
                 <div className="mt-2"><EditableImage label={label} url={viewUrl(label, index)} box={editBox(label)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} /></div>
                 <textarea id={`set-view-adjustment-${label}`} value={viewAdjustments[label] || ''} onChange={event => adjustView(label, event.target.value)} disabled={Boolean(generating)} rows={3} placeholder="Describe only the change you want" className="mt-2 w-full border border-white/15 bg-black/25 px-2 py-2 text-xs text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
                 <p className="mt-1 text-[11px] text-white/45">Drag on the image to select the area to change.</p>
