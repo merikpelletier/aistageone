@@ -331,24 +331,43 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       setGenerationError('Select a reference image for every visible character in this shot.');
       return;
     }
-    // The first image is the sole camera/environment authority for a linked Set.
-    // Do not append the legacy AI Pilot reference photos or other camera angles.
-    const references = [
-      ...setViewReferences,
-      ...elementReferences,
-      ...characterReferences.map(({ selectedUrl }) => selectedUrl),
-    ].filter((url, index, all) => all.indexOf(url) === index);
+    // Every supplied image must have an explicit role in the same sequence sent to the model.
+    // Names and database IDs alone do not tell an image model which picture depicts whom.
+    const referenceEntries = [
+      ...setViewReferences.map((url) => ({ url, kind: 'set', name: selectedViewName })),
+      ...selectedElementUrls.map((url) => ({
+        url, kind: 'prop',
+        name: sheetElements.find((item) => item.image_url === url)?.name || 'Selected set object',
+      })),
+      ...characterReferences.map(({ character, selectedUrl }) => ({
+        url: selectedUrl, kind: 'character', name: character.name,
+      })),
+    ];
+    const referenceUrls = referenceEntries.map((item) => item.url);
+    if (new Set(referenceUrls).size !== referenceUrls.length) {
+      setGenerationError('Two reference roles point to the same image. Select a distinct reference image for each character or set object before generating.');
+      return;
+    }
+    const references = referenceUrls;
     if (references.length > 14) {
       setGenerationError('Too many visual references for one storyboard. Select fewer Set Reference Sheet elements; no references were silently discarded.');
       return;
     }
+    const referenceManifest = referenceEntries.map((entry, index) => {
+      const imageNumber = index + 1;
+      if (entry.kind === 'set') return `IMAGE ${imageNumber}: SET CAMERA VIEW (${entry.name}). This image determines the environment, camera direction, perspective and architecture; it is not a character or accessory reference.`;
+      if (entry.kind === 'prop') return `IMAGE ${imageNumber}: PHYSICAL SET OBJECT — ${entry.name}. Use this object's exact appearance if it is visible in the selected shot. Do not reinterpret it as the entire location.`;
+      return `IMAGE ${imageNumber}: CHARACTER IDENTITY AND EXACT SELECTED LOOK — ${entry.name}. This image belongs ONLY to ${entry.name}; preserve the face, hair, outfit and body appearance shown. Never use this image for another character.`;
+    }).join('\n');
     setGenerationError('');
     setGenerating(`frame-${shot.id}`);
     try {
       const prompt = [
         'STORYBOARD FOR ONE SPECIFIC SHOT. Follow the existing set and the exact selected reference image for each visible character. Do not invent or redesign scenery or wardrobe.',
         `FIXED SET (mandatory, not a suggestion): ${set.name}. ${linked?.description || set.description || ''}`,
-        'CAMERA / SET HIERARCHY: Reference image 1 is the ONLY spatial authority for the environment and camera position. Additional images, if provided, are selected props and character identity references — NOT alternate camera angles.',
+        'REFERENCE IMAGE INDEX — THE NUMBER IS THE EXACT POSITION IN THE ATTACHED IMAGE ARRAY (starting at 1). Use this mapping rather than guessing identity from names, IDs or file URLs:',
+        referenceManifest,
+        'CAMERA / SET HIERARCHY: IMAGE 1 is the ONLY spatial authority for the environment and camera position. All subsequent images are props and character identity references — NOT alternate camera angles.',
         ...(selectedViewUrl ? [
           `LOCKED CAMERA VIEW: ${selectedViewName}. Preserve the SAME viewing direction, visible architecture, perspective, foreground, background and left/right relationships as reference image 1.`,
           'Do not reverse the viewpoint, turn the camera toward the opposite wall, switch to the building façade, invent another entrance or move the set to satisfy the action.',
@@ -357,14 +376,14 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
           'Use reference image 1 as the authoritative set viewpoint, without combining or inventing alternate angles.',
         ]),
         ...(selectedElements.length ? [
-          `LOCKED SET REFERENCE SHEET ELEMENTS: ${selectedElements.map((item) => item.name).join('; ')}. Each corresponding reference image shows the exact physical object to retain. Never redesign or substitute it.`,
+          'LOCKED SET OBJECTS: Preserve the exact selected object references using the numbered IMAGE INDEX above. Never redesign or substitute them.',
         ] : []),
         `Position inside this locked set: ${shot.set_position || 'Use the exact area appropriate to the camera direction; do not invent a new area'}.`,
         `SHOT FRAMING: ${shot.shot_type || 'Medium Shot'}.`,
         `SHOT CAMERA AND COMPOSITION (subject framing and blocking only; may NOT change the locked viewpoint): ${shotCamera || 'Eye level, static'}.`,
         `EXACT MOMENT AND ACTION: ${shotAction}.`,
         ...characterReferences.map(({ character }) =>
-          `VISIBLE CHARACTER: ${character.name}. Use ONLY the explicitly selected reference photo of this character for the exact face, wardrobe, hairstyle and makeup. Do not substitute another appearance or outfit.`),
+          `VISIBLE CHARACTER IN THE ACTION: ${character.name}. Bind this name only to its assigned CHARACTER IMAGE in the image index above. No swapping faces, outfits or character identities.`),
         'Only depict the specified shot action and the listed visible characters, in the selected set. Never add unspecified characters, costumes, furniture or architecture.',
         'The locked Set camera view controls viewpoint and perspective. Shot camera and framing text controls only the visible subjects within that view. Never let shot text override the Set view.',
         'ONE 16:9 cinematic pencil-sketch storyboard panel, not photorealistic. No text, labels, grids or montage.',
