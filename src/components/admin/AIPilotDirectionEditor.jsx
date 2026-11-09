@@ -362,6 +362,27 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       if (entry.kind === 'prop') return `IMAGE ${imageNumber}: PHYSICAL SET OBJECT — ${entry.name}. Use this object's exact appearance if it is visible in the selected shot. Do not reinterpret it as the entire location.`;
       return `IMAGE ${imageNumber}: CHARACTER — ${entry.name}; SELECTED REFERENCE / LOOK — ${entry.look}. This image belongs ONLY to ${entry.name}; preserve the face, hair, outfit and body appearance shown. Never use this image for another character.`;
     }).join('\n');
+    // Translate natural character names only in the outgoing generation prompt.
+    // Stored Scenario text and the author's wording remain unchanged.
+    const characterImageIds = referenceEntries
+      .map((entry, index) => ({ ...entry, imageNumber: index + 1 }))
+      .filter((entry) => entry.kind === 'character' && entry.name?.trim());
+    const namesByLength = [...characterImageIds].sort((a, b) => b.name.length - a.name.length);
+    const escapedNames = namesByLength.map((entry) => entry.name.replace(/[.*+?^${}()|[\]\\]/g, '\\    setGenerationError('');
+    setGenerating(`frame-${shot.id}`);
+    try {
+      const prompt = ['));
+    const characterNamePattern = escapedNames.length
+      ? new RegExp(`(^|[^\\p{L}\\p{N}_])(${escapedNames.join('|')})(?=$|[^\\p{L}\\p{N}_])`, 'giu')
+      : null;
+    const identifyCharacters = (value) => {
+      const source = String(value || '');
+      if (!characterNamePattern) return source;
+      return source.replace(characterNamePattern, (match, prefix, name) => {
+        const found = namesByLength.find((entry) => entry.name.toLocaleLowerCase() === name.toLocaleLowerCase());
+        return found ? `${prefix}${name} (IMAGE ${found.imageNumber})` : match;
+      });
+    };
     setGenerationError('');
     setGenerating(`frame-${shot.id}`);
     try {
@@ -381,10 +402,10 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
         ...(selectedElements.length ? [
           'LOCKED SET OBJECTS: Preserve the exact selected object references using the numbered IMAGE INDEX above. Never redesign or substitute them.',
         ] : []),
-        `Position inside this locked set: ${shot.set_position || 'Use the exact area appropriate to the camera direction; do not invent a new area'}.`,
+        `Position inside this locked set: ${identifyCharacters(shot.set_position || 'Use the exact area appropriate to the camera direction; do not invent a new area')}.`,
         `SHOT FRAMING: ${shot.shot_type || 'Medium Shot'}.`,
-        `SHOT CAMERA AND COMPOSITION (subject framing and blocking only; may NOT change the locked viewpoint): ${shotCamera || 'Eye level, static'}.`,
-        `EXACT MOMENT AND ACTION: ${shotAction}.`,
+        `SHOT CAMERA AND COMPOSITION (subject framing and blocking only; may NOT change the locked viewpoint): ${identifyCharacters(shotCamera || 'Eye level, static')}.`,
+        `EXACT MOMENT AND ACTION: ${identifyCharacters(shotAction)}.`,
         ...characterReferences.map(({ character }) =>
           `VISIBLE CHARACTER IN THE ACTION: ${character.name}. Bind this name only to its assigned CHARACTER IMAGE in the image index above. No swapping faces, outfits or character identities.`),
         'Only depict the specified shot action and the listed visible characters, in the selected set. Never add unspecified characters, costumes, furniture or architecture.',
