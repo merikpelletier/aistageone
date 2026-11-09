@@ -45,7 +45,7 @@ const EditableImage = ({ label, url, box, onStart, onMove, onEnd, onCancel }) =>
   </div>
 );
 
-export default function SetGeneratorPanel({ name, description, images, setImages, compositionElements = [] }) {
+export default function SetGeneratorPanel({ name, description, images, setImages, viewVariants = {}, setViewVariants, compositionElements = [] }) {
   const [mode, setMode] = useState(images?.filter(Boolean).length ? 'reference' : 'scratch');
   const [masterOpen, setMasterOpen] = useState(!images?.[0]);
   const [generating, setGenerating] = useState('');
@@ -56,6 +56,42 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   const [editRegions, setEditRegions] = useState({});
   const [drawingRegion, setDrawingRegion] = useState(null);
   const [editPreview, setEditPreview] = useState(null);
+  const [activeTimes, setActiveTimes] = useState({});
+  const timeFor = label => activeTimes[label] || 'day';
+  const viewUrl = (label, index) => timeFor(label) === 'night' ? viewVariants?.[label]?.night || null : images?.[index] || null;
+  const chooseTime = (label, time) => {
+    setActiveTimes(current => ({ ...current, [label]: time }));
+    setEditRegions(current => ({ ...current, [label]: null }));
+  };
+  const timeSwitcher = (label, index) => (
+    <div className="mt-2 flex items-center gap-2">
+      {['day', 'night'].map(time => (
+        <button key={time} type="button" onClick={() => chooseTime(label, time)} disabled={Boolean(generating)}
+          aria-pressed={timeFor(label) === time}
+          className={`border px-3 py-1.5 text-xs font-bold ${timeFor(label) === time ? 'border-[#23c7be] bg-[#23c7be]/20 text-[#8ee9e4]' : 'border-white/15 text-white/60'}`}>
+          {time === 'day' ? 'DAY' : 'NIGHT'}{time === 'night' && viewVariants?.[label]?.night ? ' ✓' : ''}
+        </button>
+      ))}
+      {timeFor(label) === 'night' && !viewVariants?.[label]?.night && <span className="text-[11px] text-white/45">Night version not created</span>}
+    </div>
+  );
+  const nightPrompt = label => `Transform the supplied existing ${label} production view of the exact same set into a believable nighttime photograph. This is an image-to-image LIGHTING AND TIME-OF-DAY conversion, NOT a new view. Keep the camera in the EXACT same position, with identical framing, perspective, architecture, floor plan, doors, windows, furniture, props, textures, and object positions. Do not add, remove, move, replace, or redesign any object. The entire scene must read as NIGHT: dark outdoor sky and grounds seen through all windows, credible illuminated outdoor entrances where relevant, realistic interior practical lights, sconces and fixtures, atmospheric contrast and accurate reflections. Preserve geometry and all non-lighting details; no new people, logos or text. No cropping, mirroring or camera movement. 16:9.`;
+  const generateNight = async (label, index) => {
+    const source = images?.[index];
+    if (!source || !effectiveModel) return;
+    setGenerating(label);
+    try {
+      const url = await runGeneration(nightPrompt(label), [source]);
+      setViewVariants(current => ({ ...current, [label]: { ...(current?.[label] || {}), night: url } }));
+      chooseTime(label, 'night');
+      toast.success(`${label} Night version ready. Save the set to keep it.`);
+    } catch (error) {
+      console.error(`Night variant generation failed for ${label}`, error);
+      toast.error(error.message || 'Night conversion failed. The Day view is unchanged.');
+    } finally {
+      setGenerating('');
+    }
+  };
   const adjustView = (label, value) => setViewAdjustments(current => ({ ...current, [label]: value }));
   const adjustmentInstruction = label => viewAdjustments[label]?.trim() ? `\n\nHIGHEST PRIORITY — USER ADJUSTMENT FOR ${label.toUpperCase()} VIEW:\n${viewAdjustments[label].trim()}\nMake this requested change visibly and precisely in the generated image. For features the user explicitly changes (including windows, doors or walls), the instruction OVERRIDES the reference image and the general continuity/preservation rules above. Preserve only the other, unaffected parts of the same set. Do not reintroduce a feature the user asked to remove.` : '';
   const heroImage = images?.[0] || null;
@@ -158,7 +194,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     return editRegions[label];
   };
   const localEdit = async (label, index) => {
-    const originalUrl = images?.[index];
+    const originalUrl = viewUrl(label, index);
     const region = editRegions[label];
     const adjustment = viewAdjustments[label]?.trim();
     if (!originalUrl || !region || !adjustment || !effectiveModel) {
@@ -189,7 +225,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       // Only selected pixels are replaced. All other original pixels are preserved.
       ctx.drawImage(changed, x, y, width, height);
       const mergedUrl = await uploadPng(await toBlob(composite), 'set-local-adjustment.png');
-      setEditPreview({ label, index, before: originalUrl, after: mergedUrl });
+      setEditPreview({ label, index, time: timeFor(label), before: originalUrl, after: mergedUrl });
       toast.success('Adjustment ready for review. The original view has not been replaced.');
     } catch (error) {
       console.error('Set local adjustment failed', error);
@@ -200,11 +236,18 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   };
   const acceptEdit = () => {
     if (!editPreview) return;
-    setImages(current => {
-      const next = [...current];
-      next[editPreview.index] = editPreview.after;
-      return next;
-    });
+    if (editPreview.time === 'night') {
+      setViewVariants(current => ({
+        ...current,
+        [editPreview.label]: { ...(current?.[editPreview.label] || {}), night: editPreview.after },
+      }));
+    } else {
+      setImages(current => {
+        const next = [...current];
+        next[editPreview.index] = editPreview.after;
+        return next;
+      });
+    }
     setEditRegions(current => ({ ...current, [editPreview.label]: null }));
     setEditPreview(null);
     toast.success('Adjustment applied to the view. Save your set to keep this change.');
@@ -232,6 +275,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         next[0] = url;
         return next.slice(0, 8);
       });
+      chooseTime('Hero', 'day');
       toast.success('Hero set generated');
     } catch (error) {
       console.error('Set Hero generation failed', error);
@@ -265,6 +309,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         next[index] = url;
         return next.slice(0, 8);
       });
+      chooseTime(label, 'day');
       toast.success(`${label} view generated`);
     } catch (error) {
       console.error(`Set ${label} generation failed`, error);
@@ -350,12 +395,13 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
-        <EditableImage label="Hero" url={heroImage} box={editBox('Hero')} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} />
+        <EditableImage label="Hero" url={viewUrl('Hero', 0)} box={editBox('Hero')} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} />
         <div>
+          {timeSwitcher('Hero', 0)}
           <label htmlFor="set-view-adjustment-hero" className="mb-2 block text-xs font-bold text-white/70">Hero · Adjustment instructions</label>
           <textarea id="set-view-adjustment-hero" value={viewAdjustments.Hero || ''} onChange={event => adjustView('Hero', event.target.value)} disabled={Boolean(generating)} rows={4} placeholder="Describe only the change you want" className="w-full border border-white/15 bg-black/25 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
           <p className="mt-1 text-xs text-white/45">Drag on the image to select an area. Only that area will be edited.</p>
-          <button type="button" onClick={() => localEdit('Hero', 0)} disabled={!heroImage || !editRegions.Hero || !viewAdjustments.Hero?.trim() || Boolean(generating) || !effectiveModel}
+          <button type="button" onClick={() => localEdit('Hero', 0)} disabled={!viewUrl('Hero', 0) || !editRegions.Hero || !viewAdjustments.Hero?.trim() || Boolean(generating) || !effectiveModel}
             className="mt-2 w-full border border-[#23c7be]/50 px-3 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">{generating === 'Hero' ? 'APPLYING...' : 'APPLY ADJUSTMENT'}</button>
         </div>
       </div>
@@ -402,20 +448,37 @@ export default function SetGeneratorPanel({ name, description, images, setImages
             </details>
             <p className="text-[11px] text-white/40">Unseen areas are inferred by AI and may not exactly match the real architecture.</p>
           </div>
+          <div className="mb-4 border border-white/15 bg-black/20 p-3">
+            <div className="text-xs font-black text-white">HERO — DAY / NIGHT</div>
+            {timeSwitcher('Hero', 0)}
+            <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+              <img src={viewUrl('Hero', 0) || heroImage} alt={`Hero ${timeFor('Hero')} view`} className="aspect-video w-full max-w-md object-contain bg-black" />
+              <button type="button" onClick={() => generateNight('Hero', 0)} disabled={Boolean(generating) || !effectiveModel || !heroImage}
+                className="border border-[#23c7be]/40 px-3 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">
+                {generating === 'Hero' ? 'GENERATING...' : viewVariants?.Hero?.night ? 'REGENERATE NIGHT' : 'CREATE NIGHT VERSION'}
+                {creditsPerImage ? ` · ${creditsPerImage}` : ''}
+              </button>
+            </div>
+          </div>
           <div className="grid gap-3 lg:grid-cols-2">
             {VIEW_SPECS.map(([label, instruction], offset) => {
               const index = offset + 1;
-              const exists = Boolean(images?.[index]);
+              const exists = Boolean(viewUrl(label, index));
               const busy = generating === label;
               return <div key={label} className={`border p-3 ${exists ? 'border-[#23c7be]/35 bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}>
                 <label htmlFor={`set-view-adjustment-${label}`} className="block text-xs font-black text-white">{label.toUpperCase()}</label>
-                <div className="mt-2"><EditableImage label={label} url={images[index]} box={editBox(label)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} /></div>
+                {timeSwitcher(label, index)}
+                <div className="mt-2"><EditableImage label={label} url={viewUrl(label, index)} box={editBox(label)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} /></div>
                 <textarea id={`set-view-adjustment-${label}`} value={viewAdjustments[label] || ''} onChange={event => adjustView(label, event.target.value)} disabled={Boolean(generating)} rows={3} placeholder="Describe only the change you want" className="mt-2 w-full border border-white/15 bg-black/25 px-2 py-2 text-xs text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
                 <p className="mt-1 text-[11px] text-white/45">Drag on the image to select the area to change.</p>
                 <button type="button" onClick={() => localEdit(label, index)} disabled={!exists || !editRegions[label] || !viewAdjustments[label]?.trim() || Boolean(generating) || !effectiveModel}
                   className="mt-2 w-full border border-[#23c7be]/50 px-2 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">{busy ? 'APPLYING...' : 'APPLY ADJUSTMENT'}</button>
+                {images?.[index] && <button type="button" onClick={() => generateNight(label, index)} disabled={Boolean(generating) || !effectiveModel}
+                  className="mt-2 w-full border border-white/20 px-2 py-2 text-xs font-black text-white/80 disabled:opacity-30">
+                  {busy ? 'GENERATING...' : viewVariants?.[label]?.night ? 'REGENERATE NIGHT VERSION' : 'CREATE NIGHT VERSION'}{creditsPerImage ? ` · ${creditsPerImage}` : ''}
+                </button>}
                 <button type="button" onClick={() => generateView(index, label, instruction)} disabled={Boolean(generating) || !effectiveModel} className="mt-2 w-full border border-[#23c7be]/35 px-2 py-2 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/10 disabled:opacity-40">
-                  {busy ? 'GENERATING...' : exists ? `REGENERATE${creditsPerImage ? ` · ${creditsPerImage}` : ''}` : `GENERATE${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
+                  {busy ? 'GENERATING...' : images?.[index] ? `REGENERATE DAY${creditsPerImage ? ` · ${creditsPerImage}` : ''}` : `GENERATE DAY${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
                 </button>
               </div>;
             })}
