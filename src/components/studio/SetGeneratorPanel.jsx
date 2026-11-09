@@ -37,6 +37,9 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   const [reverseDirection, setReverseDirection] = useState('');
   const [reverseType, setReverseType] = useState('auto');
   const [viewAdjustments, setViewAdjustments] = useState({});
+  const [editRegions, setEditRegions] = useState({});
+  const [drawingRegion, setDrawingRegion] = useState(null);
+  const [editPreview, setEditPreview] = useState(null);
   const adjustView = (label, value) => setViewAdjustments(current => ({ ...current, [label]: value }));
   const adjustmentInstruction = label => viewAdjustments[label]?.trim() ? `\n\nHIGHEST PRIORITY — USER ADJUSTMENT FOR ${label.toUpperCase()} VIEW:\n${viewAdjustments[label].trim()}\nMake this requested change visibly and precisely in the generated image. For features the user explicitly changes (including windows, doors or walls), the instruction OVERRIDES the reference image and the general continuity/preservation rules above. Preserve only the other, unaffected parts of the same set. Do not reintroduce a feature the user asked to remove.` : '';
   const heroImage = images?.[0] || null;
@@ -65,18 +68,128 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   });
   const creditsPerImage = priceQuote?.credits || null;
 
-  const runGeneration = async (prompt, refs = []) => {
+  const runGeneration = async (prompt, refs = [], ratio = '16:9') => {
     if (!effectiveModel) throw new Error('No AI model available for Set Designer');
     const res = await base44.functions.invoke('replicateGenerate', {
       method: 'compose_scene',
       prompt,
       reference_image_urls: refs,
-      aspect_ratio: '16:9',
+      aspect_ratio: ratio,
       model_key: effectiveModel,
     });
     if (res.data?.error) throw new Error(res.data.error);
     if (!res.data?.file_url) throw new Error('Generation returned no image');
     return res.data.file_url;
+  };
+
+
+  // Local image edit: work on a selected crop, then composite its result back into
+  // the untouched source pixels. This is NOT a new full-frame camera generation.
+  const loadImage = url => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('The image could not be loaded for local editing.'));
+    img.src = url;
+  });
+  const toBlob = canvas => new Promise((resolve, reject) =>
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Image export failed.')), 'image/png')
+  );
+  const uploadPng = async (blob, name) => {
+    const { file_url } = await base44.integrations.Core.UploadFile({
+      file: new File([blob], name, { type: 'image/png' }),
+    });
+    if (!file_url) throw new Error('Edited image upload failed.');
+    return file_url;
+  };
+  const pointOnImage = event => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return {
+      x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height)),
+    };
+  };
+  const beginRegion = (event, label) => {
+    if (generating) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const point = pointOnImage(event);
+    setDrawingRegion({ label, start: point, end: point });
+  };
+  const moveRegion = event => {
+    if (!drawingRegion) return;
+    setDrawingRegion(current => current ? { ...current, end: pointOnImage(event) } : null);
+  };
+  const finishRegion = event => {
+    if (!drawingRegion) return;
+    const end = pointOnImage(event);
+    const { start, label } = drawingRegion;
+    const region = {
+      x: Math.min(start.x, end.x), y: Math.min(start.y, end.y),
+      width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y),
+    };
+    if (region.width >= 0.015 && region.height >= 0.015) {
+      setEditRegions(current => ({ ...current, [label]: region }));
+    }
+    setDrawingRegion(null);
+  };
+  const editBox = label => {
+    if (drawingRegion?.label === label) {
+      const { start, end } = drawingRegion;
+      return { x: Math.min(start.x, end.x), y: Math.min(start.y, end.y), width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y) };
+    }
+    return editRegions[label];
+  };
+  const localEdit = async (label, index) => {
+    const originalUrl = images?.[index];
+    const region = editRegions[label];
+    const adjustment = viewAdjustments[label]?.trim();
+    if (!originalUrl || !region || !adjustment || !effectiveModel) {
+      toast.error('Select an area on the image and describe the adjustment first.');
+      return;
+    }
+    setGenerating(label);
+    try {
+      const original = await loadImage(originalUrl);
+      const x = Math.round(region.x * original.naturalWidth);
+      const y = Math.round(region.y * original.naturalHeight);
+      const width = Math.min(original.naturalWidth - x, Math.max(1, Math.round(region.width * original.naturalWidth)));
+      const height = Math.min(original.naturalHeight - y, Math.max(1, Math.round(region.height * original.naturalHeight)));
+      const crop = document.createElement('canvas');
+      crop.width = width;
+      crop.height = height;
+      crop.getContext('2d').drawImage(original, x, y, width, height, 0, 0, width, height);
+      const cropUrl = await uploadPng(await toBlob(crop), 'set-edit-source.png');
+      const ratio = width / height >= 1.55 ? '16:9' : width / height >= 1.15 ? '4:3' : width / height >= 0.85 ? '1:1' : width / height >= 0.65 ? '3:4' : '9:16';
+      const prompt = `Edit the supplied image crop, not an entire scene. Preserve the framing, lighting, existing structures, and everything not mentioned. Apply exactly this change to the supplied image crop: ${adjustment}. This image is a portion of a larger approved production set. No new camera angle, no restaging, no additional people, no text.`;
+      const changedUrl = await runGeneration(prompt, [cropUrl], ratio);
+      const changed = await loadImage(changedUrl);
+      const composite = document.createElement('canvas');
+      composite.width = original.naturalWidth;
+      composite.height = original.naturalHeight;
+      const ctx = composite.getContext('2d');
+      ctx.drawImage(original, 0, 0);
+      // Only selected pixels are replaced. All other original pixels are preserved.
+      ctx.drawImage(changed, x, y, width, height);
+      const mergedUrl = await uploadPng(await toBlob(composite), 'set-local-adjustment.png');
+      setEditPreview({ label, index, before: originalUrl, after: mergedUrl });
+      toast.success('Adjustment ready for review. The original view has not been replaced.');
+    } catch (error) {
+      console.error('Set local adjustment failed', error);
+      toast.error(error.message || 'Local adjustment failed. Your original image is unchanged.');
+    } finally {
+      setGenerating('');
+    }
+  };
+  const acceptEdit = () => {
+    if (!editPreview) return;
+    setImages(current => {
+      const next = [...current];
+      next[editPreview.index] = editPreview.after;
+      return next;
+    });
+    setEditRegions(current => ({ ...current, [editPreview.label]: null }));
+    setEditPreview(null);
+    toast.success('Adjustment applied to the view. Save your set to keep this change.');
   };
 
   const generateHero = async () => {
@@ -126,8 +239,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     setGenerating(label);
     try {
       const prompt = buildViewPrompt(name, description, viewInstruction(label, instruction), compositionElements) + adjustmentInstruction(label);
-      const existingView = images?.[index];
-      const refs = viewAdjustments[label]?.trim() && existingView ? [existingView, heroImage, ...compositionRefs] : [heroImage, ...compositionRefs];
+      const refs = [heroImage, ...compositionRefs];
       const url = await runGeneration(prompt, refs);
       setImages(current => {
         const next = [...current];
@@ -152,8 +264,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         const index = offset + 1;
         setGenerating(label);
         const prompt = buildViewPrompt(name, description, viewInstruction(label, instruction), compositionElements) + adjustmentInstruction(label);
-        const existingView = images?.[index];
-        const refs = viewAdjustments[label]?.trim() && existingView ? [existingView, heroImage, ...compositionRefs] : [heroImage, ...compositionRefs];
+        const refs = [heroImage, ...compositionRefs];
         const url = await runGeneration(prompt, refs);
         setImages(current => {
           const next = [...current];
@@ -169,6 +280,24 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     } finally {
       setGenerating('');
     }
+  };
+
+  const EditableImage = ({ label, url }) => {
+    const box = editBox(label);
+    return (
+      <div className="relative aspect-video overflow-hidden border border-white/15 bg-black select-none"
+        style={{ touchAction: 'none', cursor: url ? 'crosshair' : 'default' }}
+        onPointerDown={event => url && beginRegion(event, label)}
+        onPointerMove={moveRegion}
+        onPointerUp={finishRegion}
+        onPointerCancel={() => setDrawingRegion(null)}
+      >
+        {url ? <img src={url} alt={`Current ${label} view — drag to select the area to adjust`} draggable={false} className="h-full w-full object-contain pointer-events-none" /> :
+          <div className="flex h-full items-center justify-center text-xs text-white/35">No {label} image yet</div>}
+        {box && <div className="pointer-events-none absolute border-2 border-[#23c7be] bg-[#23c7be]/15"
+          style={{ left: `${box.x * 100}%`, top: `${box.y * 100}%`, width: `${box.width * 100}%`, height: `${box.height * 100}%` }} />}
+      </div>
+    );
   };
 
   return (
@@ -214,12 +343,13 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
-        <div className="aspect-video overflow-hidden border border-white/15 bg-black">
-          {heroImage ? <img src={heroImage} alt="Current Hero view" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-xs text-white/40">No Hero image yet</div>}
-        </div>
+        <EditableImage label="Hero" url={heroImage} />
         <div>
           <label htmlFor="set-view-adjustment-hero" className="mb-2 block text-xs font-bold text-white/70">Hero · Adjustment instructions</label>
-          <textarea id="set-view-adjustment-hero" value={viewAdjustments.Hero || ''} onChange={event => adjustView('Hero', event.target.value)} disabled={Boolean(generating)} rows={4} placeholder="Optional: specify what to adjust in the Hero view" className="w-full border border-white/15 bg-black/25 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
+          <textarea id="set-view-adjustment-hero" value={viewAdjustments.Hero || ''} onChange={event => adjustView('Hero', event.target.value)} disabled={Boolean(generating)} rows={4} placeholder="Describe only the change you want" className="w-full border border-white/15 bg-black/25 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
+          <p className="mt-1 text-xs text-white/45">Drag on the image to select an area. Only that area will be edited.</p>
+          <button type="button" onClick={() => localEdit('Hero', 0)} disabled={!heroImage || !editRegions.Hero || !viewAdjustments.Hero?.trim() || Boolean(generating) || !effectiveModel}
+            className="mt-2 w-full border border-[#23c7be]/50 px-3 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">{generating === 'Hero' ? 'APPLYING...' : 'APPLY ADJUSTMENT'}</button>
         </div>
       </div>
 
@@ -270,15 +400,32 @@ export default function SetGeneratorPanel({ name, description, images, setImages
               const busy = generating === label;
               return <div key={label} className={`border p-3 ${exists ? 'border-[#23c7be]/35 bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}>
                 <label htmlFor={`set-view-adjustment-${label}`} className="block text-xs font-black text-white">{label.toUpperCase()}</label>
-                <div className="mt-2 aspect-video overflow-hidden border border-white/15 bg-black">
-                  {exists ? <img src={images[index]} alt={`Current ${label} view`} className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-xs text-white/35">No {label} image yet</div>}
-                </div>
-                <textarea id={`set-view-adjustment-${label}`} value={viewAdjustments[label] || ''} onChange={event => adjustView(label, event.target.value)} disabled={Boolean(generating)} rows={3} placeholder={`Optional ${label.toLowerCase()} view adjustment`} className="mt-2 w-full border border-white/15 bg-black/25 px-2 py-2 text-xs text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
+                <div className="mt-2"><EditableImage label={label} url={images[index]} /></div>
+                <textarea id={`set-view-adjustment-${label}`} value={viewAdjustments[label] || ''} onChange={event => adjustView(label, event.target.value)} disabled={Boolean(generating)} rows={3} placeholder="Describe only the change you want" className="mt-2 w-full border border-white/15 bg-black/25 px-2 py-2 text-xs text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
+                <p className="mt-1 text-[11px] text-white/45">Drag on the image to select the area to change.</p>
+                <button type="button" onClick={() => localEdit(label, index)} disabled={!exists || !editRegions[label] || !viewAdjustments[label]?.trim() || Boolean(generating) || !effectiveModel}
+                  className="mt-2 w-full border border-[#23c7be]/50 px-2 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">{busy ? 'APPLYING...' : 'APPLY ADJUSTMENT'}</button>
                 <button type="button" onClick={() => generateView(index, label, instruction)} disabled={Boolean(generating) || !effectiveModel} className="mt-2 w-full border border-[#23c7be]/35 px-2 py-2 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/10 disabled:opacity-40">
                   {busy ? 'GENERATING...' : exists ? `REGENERATE${creditsPerImage ? ` · ${creditsPerImage}` : ''}` : `GENERATE${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
                 </button>
               </div>;
             })}
+          </div>
+        </div>
+      )}
+      {editPreview && (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-5xl space-y-4 bg-[#17191d] p-5">
+            <h3 className="text-lg font-black text-white">Review {editPreview.label} adjustment</h3>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div><p className="mb-2 text-xs text-white/60">Original</p><img src={editPreview.before} alt="Unchanged original view" className="w-full" /></div>
+              <div><p className="mb-2 text-xs text-white/60">Adjusted preview</p><img src={editPreview.after} alt="Locally adjusted view" className="w-full" /></div>
+            </div>
+            <p className="text-xs text-white/55">Only the selected area is replaced. The original remains unchanged until you accept.</p>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setEditPreview(null)} className="border border-white/20 px-5 py-2 text-sm text-white">DISCARD</button>
+              <button type="button" onClick={acceptEdit} className="bg-[#23c7be] px-5 py-2 text-sm font-black text-black">ACCEPT ADJUSTMENT</button>
+            </div>
           </div>
         </div>
       )}
