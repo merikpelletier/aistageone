@@ -286,9 +286,17 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     const getUrls = (value) => (Array.isArray(value) ? value : [])
       .map((item) => typeof item === 'string' ? item : item?.url)
       .filter((url) => typeof url === 'string' && url.trim());
-    const setReferences = getUrls(set.reference_images);
-    if (!setReferences.length) {
-      setGenerationError('The selected set has no reference image. Add a set reference in AI Pilot first.');
+    const linked = set.linked_set;
+    const sheetViews = (linked?.reference_sheet?.views || []).map((view) => view?.url).filter(Boolean);
+    const studioViews = (linked?.images || []).filter((url) => typeof url === 'string' && url.trim());
+    const setReferences = [...new Set([...studioViews, ...sheetViews, ...getUrls(set.reference_images)])];
+    const sheetElements = (linked?.reference_sheet?.extracted_elements || []).filter((element) => element?.image_url);
+    const selectedElementUrls = Array.isArray(shot.set_element_reference_urls) ? shot.set_element_reference_urls : [];
+    const selectedElements = selectedElementUrls.map((url) => sheetElements.find((item) => item.image_url === url))
+      .filter(Boolean);
+    const elementReferences = selectedElementUrls.filter((url) => typeof url === 'string' && url.trim());
+    if (!setReferences.length && !elementReferences.length) {
+      setGenerationError('This shot needs an existing Set reference image or a saved Set Reference Sheet.');
       return;
     }
     const eligibleCharacters = availableCharacters.filter((item) => (resources.character_ids || []).includes(item.id));
@@ -307,7 +315,8 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       return;
     }
     const references = [
-      ...setReferences.slice(0, 4),
+      ...setReferences.slice(0, 3),
+      ...elementReferences.slice(0, 7),
       ...characterReferences.map(({ selectedUrl }) => selectedUrl),
     ].filter((url, index, all) => all.indexOf(url) === index).slice(0, 14);
     setGenerationError('');
@@ -315,8 +324,11 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     try {
       const prompt = [
         'STORYBOARD FOR ONE SPECIFIC SHOT. Follow the existing set and the exact selected reference image for each visible character. Do not invent or redesign scenery or wardrobe.',
-        `FIXED SET (mandatory, not a suggestion): ${set.name}. ${set.description || ''}`,
+        `FIXED SET (mandatory, not a suggestion): ${set.name}. ${linked?.description || set.description || ''}`,
         'The supplied SET REFERENCE IMAGE defines the actual location. Retain its layout, architecture, furnishings, objects and visual identity exactly. NEVER replace it with a newly imagined location.',
+        ...(selectedElements.length ? [
+          `LOCKED SET REFERENCE SHEET ELEMENTS: ${selectedElements.map((item) => item.name).join('; ')}. Each corresponding reference image shows the exact physical object to retain. Never redesign or substitute it.`,
+        ] : []),
         `Position inside this locked set: ${shot.set_position || 'Use the exact area appropriate to the camera direction; do not invent a new area'}.`,
         `SHOT FRAMING: ${shot.shot_type || 'Medium Shot'}.`,
         `SHOT CAMERA AND COMPOSITION: ${shotCamera || 'Eye level, static'}.`,
@@ -376,11 +388,42 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
             </div>
             <div className="space-y-3 border border-white/10 bg-black/20 p-3">
               <label className="block text-xs text-white/60">Locked Set for this shot
-                <select value={shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')} disabled={readOnly} onChange={(event) => updateShot(shot.id, { set_id: event.target.value, storyboard_url: '' })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
+                <select value={shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')} disabled={readOnly} onChange={(event) => updateShot(shot.id, { set_id: event.target.value, set_element_reference_urls: [], storyboard_url: '' })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
                   <option value="">Select an existing set</option>
                   {eligibleSets.map((set) => <option key={set.id} value={set.id}>{set.name}</option>)}
                 </select>
               </label>
+              {(() => {
+                const selectedSetId = shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '');
+                const selectedSet = eligibleSets.find((item) => item.id === selectedSetId);
+                const linked = selectedSet?.linked_set;
+                if (!selectedSet?.my_set_id) return null;
+                if (!linked) return <p className="text-xs text-amber-300">Linked My Set is not accessible. Existing AI Pilot set references remain available.</p>;
+                const items = (linked.reference_sheet?.extracted_elements || []).filter((element) => element?.image_url);
+                const chosenUrls = Array.isArray(shot.set_element_reference_urls) ? shot.set_element_reference_urls : [];
+                return <div className="space-y-2 border border-white/15 bg-white/[0.02] p-3">
+                  <div className="text-xs font-semibold text-white/70">My Sets · {linked.name}</div>
+                  <p className="text-[11px] text-white/45">Select Reference Sheet elements to lock for this shot. The stored image URLs preserve the chosen reference even if the Set is edited later.</p>
+                  {!items.length ? <p className="text-xs text-white/45">This linked Set has no saved reference elements yet. Its principal views remain available.</p> :
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                      {items.map((element, index) => {
+                        const checked = chosenUrls.includes(element.image_url);
+                        return <label key={element.id || index} className={`cursor-pointer overflow-hidden border p-2 ${checked ? 'border-[var(--studio-accent)] bg-white/[0.07]' : 'border-white/15'}`}>
+                          <div className="flex items-start gap-1.5 text-[11px] text-white/75">
+                            <input type="checkbox" disabled={readOnly} checked={checked} onChange={(event) => {
+                              const urls = event.target.checked
+                                ? [...chosenUrls, element.image_url]
+                                : chosenUrls.filter((url) => url !== element.image_url);
+                              updateShot(shot.id, { set_element_reference_urls: [...new Set(urls)], storyboard_url: '' });
+                            }} />
+                            <span className="min-w-0 break-words">{element.name || 'Reference element'}</span>
+                          </div>
+                          <img src={element.image_url} alt={element.name || 'Set reference'} className="mt-2 h-24 w-full bg-black object-contain" />
+                        </label>;
+                      })}
+                    </div>}
+                </div>;
+              })()}
               <label className="block text-xs text-white/60">Position within selected set
                 <Input className={CONTROL_CLASS + ' mt-1'} disabled={readOnly} value={shot.set_position || ''} onChange={(event) => updateShot(shot.id, { set_position: event.target.value, storyboard_url: '' })} placeholder="e.g. By the entrance" />
               </label>
