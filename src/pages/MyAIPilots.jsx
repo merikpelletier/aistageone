@@ -334,6 +334,13 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
                   </label>
                   {linked ? <div className="mt-3 space-y-2">
                     <p className="text-xs text-[#23c7be]">My Sets · {linked.name} · {sheetItems.length} reference elements</p>
+                    {!!(linked.images || []).filter(Boolean).length && <div className="space-y-2">
+                      <p className="text-[11px] font-semibold text-white/60">Camera Views</p>
+                      <div className="grid grid-cols-2 gap-2">{linked.images.map((url, index) => url ? <div key={index} className="border border-white/10 bg-black p-2">
+                        <img src={url} alt={['Hero','Wide','Reverse','Left','Right','Detail','Day','Night'][index] || 'Set view'} className="h-24 w-full object-contain" />
+                        <p className="mt-1 text-[11px] text-white/65">{['Hero','Wide','Reverse','Left','Right','Detail','Day','Night'][index] || `View ${index+1}`}</p>
+                      </div> : null)}</div>
+                    </div>}
                     {!!sheetItems.length && <div className="grid grid-cols-2 gap-2">{sheetItems.map((item,index) =>
                       <div key={item.id || index} className="border border-white/10 bg-black p-2"><img src={item.image_url} alt={item.name} className="h-24 w-full object-contain" /><p className="mt-1 truncate text-[11px] text-white/65">{item.name}</p></div>)}</div>}
                   </div> : <p className="mt-2 text-[11px] text-white/45">Connect a Set from My Sets to use your personal Reference Sheet. The published AI Pilot remains unchanged.</p>}
