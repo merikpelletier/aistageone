@@ -290,6 +290,8 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     const sheetViews = (linked?.reference_sheet?.views || []).map((view) => view?.url).filter(Boolean);
     const studioViews = (linked?.images || []).filter((url) => typeof url === 'string' && url.trim());
     const setReferences = [...new Set([...studioViews, ...sheetViews, ...getUrls(set.reference_images)])];
+    const selectedViewUrl = shot.set_view_reference_url || '';
+    const setViewReferences = selectedViewUrl ? [selectedViewUrl] : setReferences.slice(0, 3);
     const sheetElements = (linked?.reference_sheet?.extracted_elements || []).filter((element) => element?.image_url);
     const selectedElementUrls = Array.isArray(shot.set_element_reference_urls) ? shot.set_element_reference_urls : [];
     const selectedElements = selectedElementUrls.map((url) => sheetElements.find((item) => item.image_url === url))
@@ -315,7 +317,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       return;
     }
     const references = [
-      ...setReferences.slice(0, 3),
+      ...setViewReferences,
       ...elementReferences,
       ...characterReferences.map(({ selectedUrl }) => selectedUrl),
     ].filter((url, index, all) => all.indexOf(url) === index);
@@ -330,6 +332,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
         'STORYBOARD FOR ONE SPECIFIC SHOT. Follow the existing set and the exact selected reference image for each visible character. Do not invent or redesign scenery or wardrobe.',
         `FIXED SET (mandatory, not a suggestion): ${set.name}. ${linked?.description || set.description || ''}`,
         'The supplied SET REFERENCE IMAGE defines the actual location. Retain its layout, architecture, furnishings, objects and visual identity exactly. NEVER replace it with a newly imagined location.',
+        ...(selectedViewUrl ? ['The explicitly chosen SET CAMERA VIEW is the primary framing and spatial reference for this shot. Respect its viewpoint; do not default to the Hero angle.'] : []),
         ...(selectedElements.length ? [
           `LOCKED SET REFERENCE SHEET ELEMENTS: ${selectedElements.map((item) => item.name).join('; ')}. Each corresponding reference image shows the exact physical object to retain. Never redesign or substitute it.`,
         ] : []),
@@ -392,7 +395,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
             </div>
             <div className="space-y-3 border border-white/10 bg-black/20 p-3">
               <label className="block text-xs text-white/60">Locked Set for this shot
-                <select value={shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')} disabled={readOnly} onChange={(event) => updateShot(shot.id, { set_id: event.target.value, set_element_reference_urls: [], storyboard_url: '' })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
+                <select value={shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')} disabled={readOnly} onChange={(event) => updateShot(shot.id, { set_id: event.target.value, set_view_reference_url: '', set_element_reference_urls: [], storyboard_url: '' })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
                   <option value="">Select an existing set</option>
                   {eligibleSets.map((set) => <option key={set.id} value={set.id}>{set.name}</option>)}
                 </select>
@@ -403,10 +406,32 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                 const linked = selectedSet?.linked_set;
                 if (!selectedSet?.my_set_id) return null;
                 if (!linked) return <p className="text-xs text-amber-300">Linked My Set is not accessible. Existing AI Pilot set references remain available.</p>;
+                const viewLabels = ['Hero', 'Wide', 'Reverse', 'Left', 'Right', 'Detail', 'Day', 'Night'];
+                const views = (Array.isArray(linked.images) ? linked.images : [])
+                  .map((url, index) => ({ url, label: viewLabels[index] || `View ${index + 1}` }))
+                  .filter((view) => typeof view.url === 'string' && view.url.trim());
                 const items = (linked.reference_sheet?.extracted_elements || []).filter((element) => element?.image_url);
                 const chosenUrls = Array.isArray(shot.set_element_reference_urls) ? shot.set_element_reference_urls : [];
                 return <div className="space-y-2 border border-white/15 bg-white/[0.02] p-3">
                   <div className="text-xs font-semibold text-white/70">My Sets · {linked.name}</div>
+                  <div className="space-y-2 border-b border-white/10 pb-3">
+                    <p className="text-xs font-semibold text-white/70">Camera view for this shot</p>
+                    <p className="text-[11px] text-white/45">Choose Hero, Reverse or another existing view. The chosen angle guides storyboard generation instead of automatically using the first views.</p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                      {views.map((view) => {
+                        const selected = shot.set_view_reference_url === view.url;
+                        return <button type="button" key={view.url} disabled={readOnly}
+                          aria-pressed={selected}
+                          onClick={() => updateShot(shot.id, { set_view_reference_url: selected ? '' : view.url, storyboard_url: '' })}
+                          className={`min-w-0 border p-2 text-left ${selected ? 'border-[var(--studio-accent)] bg-white/[0.07]' : 'border-white/15 hover:border-white/40'}`}>
+                          <img src={view.url} alt={view.label + ' Set view'} className="h-24 w-full bg-black object-contain" />
+                          <span className="mt-1 block text-xs text-white">{view.label}{selected ? ' ✓' : ''}</span>
+                        </button>;
+                      })}
+                    </div>
+                    {!views.length && <p className="text-xs text-white/45">No saved views on this Set yet.</p>}
+                    {!!views.length && !shot.set_view_reference_url && <p className="text-[11px] text-white/40">No angle selected: storyboard uses the existing automatic view references.</p>}
+                  </div>
                   <p className="text-[11px] text-white/45">Select Reference Sheet elements to lock for this shot. The stored image URLs preserve the chosen reference even if the Set is edited later.</p>
                   {!items.length ? <p className="text-xs text-white/45">This linked Set has no saved reference elements yet. Its principal views remain available.</p> :
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
