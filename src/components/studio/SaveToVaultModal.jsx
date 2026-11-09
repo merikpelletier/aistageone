@@ -13,7 +13,7 @@ const FOLDER_COLORS = [
   { key: 'pink', dot: 'bg-pink-500', ring: 'ring-pink-500' },
 ];
 
-export default function SaveToVaultModal({ userEmail, imageUrl, mediaType = 'image', onSaved, onClose }) {
+export default function SaveToVaultModal({ userEmail, imageUrl, mediaType = 'image', suggestedName, onSaved, onClose }) {
   const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState(null); // null = Unfiled
@@ -23,7 +23,7 @@ export default function SaveToVaultModal({ userEmail, imageUrl, mediaType = 'ima
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const defaultName = mediaType === 'video' ? 'My video' : mediaType === 'audio' ? 'My audio' : 'My image';
-  const [name, setName] = useState(defaultName);
+  const [name, setName] = useState(suggestedName || defaultName);
 
   const loadFolders = async () => {
     const f = await base44.entities.VaultFolder.filter({ user_email: userEmail }, 'order', null).catch(() => []);
