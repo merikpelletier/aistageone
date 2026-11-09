@@ -287,17 +287,32 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       .map((item) => typeof item === 'string' ? item : item?.url)
       .filter((url) => typeof url === 'string' && url.trim());
     const linked = set.linked_set;
+    if (set.my_set_id && !linked) {
+      setGenerationError('The linked My Set is unavailable. Reconnect it before generating this shot.');
+      return;
+    }
     const sheetViews = (linked?.reference_sheet?.views || []).map((view) => view?.url).filter(Boolean);
     const studioViews = (linked?.images || []).filter((url) => typeof url === 'string' && url.trim());
     const setReferences = [...new Set([...studioViews, ...sheetViews, ...getUrls(set.reference_images)])];
     const selectedViewUrl = shot.set_view_reference_url || '';
-    const setViewReferences = selectedViewUrl ? [selectedViewUrl] : setReferences.slice(0, 3);
+    if (linked && !selectedViewUrl) {
+      setGenerationError('Choose a Camera View from the linked My Set before generating. Automatic mixed-angle references are disabled for linked Sets.');
+      return;
+    }
+    if (selectedViewUrl && !/^https?:\/\//i.test(selectedViewUrl)) {
+      setGenerationError('The selected Camera View is invalid. Choose a saved Set view again.');
+      return;
+    }
+    const setViewReferences = selectedViewUrl ? [selectedViewUrl] : setReferences.slice(0, 1);
+    const viewNames = ['Hero', 'Wide', 'Reverse', 'Left', 'Right', 'Detail', 'Day', 'Night'];
+    const selectedViewIndex = studioViews.indexOf(selectedViewUrl);
+    const selectedViewName = selectedViewIndex >= 0 ? viewNames[selectedViewIndex] || 'Custom View' : 'Saved Camera View';
     const sheetElements = (linked?.reference_sheet?.extracted_elements || []).filter((element) => element?.image_url);
     const selectedElementUrls = Array.isArray(shot.set_element_reference_urls) ? shot.set_element_reference_urls : [];
     const selectedElements = selectedElementUrls.map((url) => sheetElements.find((item) => item.image_url === url))
       .filter(Boolean);
     const elementReferences = selectedElementUrls.filter((url) => typeof url === 'string' && url.trim());
-    if (!setReferences.length && !elementReferences.length) {
+    if (!setViewReferences.length) {
       setGenerationError('This shot needs an existing Set reference image or a saved Set Reference Sheet.');
       return;
     }
@@ -316,6 +331,8 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       setGenerationError('Select a reference image for every visible character in this shot.');
       return;
     }
+    // The first image is the sole camera/environment authority for a linked Set.
+    // Do not append the legacy AI Pilot reference photos or other camera angles.
     const references = [
       ...setViewReferences,
       ...elementReferences,
@@ -331,19 +348,25 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       const prompt = [
         'STORYBOARD FOR ONE SPECIFIC SHOT. Follow the existing set and the exact selected reference image for each visible character. Do not invent or redesign scenery or wardrobe.',
         `FIXED SET (mandatory, not a suggestion): ${set.name}. ${linked?.description || set.description || ''}`,
-        'The supplied SET REFERENCE IMAGE defines the actual location. Retain its layout, architecture, furnishings, objects and visual identity exactly. NEVER replace it with a newly imagined location.',
-        ...(selectedViewUrl ? ['The explicitly chosen SET CAMERA VIEW is the primary framing and spatial reference for this shot. Respect its viewpoint; do not default to the Hero angle.'] : []),
+        'CAMERA / SET HIERARCHY: Reference image 1 is the ONLY spatial authority for the environment and camera position. Additional images, if provided, are selected props and character identity references — NOT alternate camera angles.',
+        ...(selectedViewUrl ? [
+          `LOCKED CAMERA VIEW: ${selectedViewName}. Preserve the SAME viewing direction, visible architecture, perspective, foreground, background and left/right relationships as reference image 1.`,
+          'Do not reverse the viewpoint, turn the camera toward the opposite wall, switch to the building façade, invent another entrance or move the set to satisfy the action.',
+          'If the described action occurs elsewhere or conflicts with the locked camera view, stage only the visible portion of that action from this viewpoint. Never relocate the camera or redesign the environment.',
+        ] : [
+          'Use reference image 1 as the authoritative set viewpoint, without combining or inventing alternate angles.',
+        ]),
         ...(selectedElements.length ? [
           `LOCKED SET REFERENCE SHEET ELEMENTS: ${selectedElements.map((item) => item.name).join('; ')}. Each corresponding reference image shows the exact physical object to retain. Never redesign or substitute it.`,
         ] : []),
         `Position inside this locked set: ${shot.set_position || 'Use the exact area appropriate to the camera direction; do not invent a new area'}.`,
         `SHOT FRAMING: ${shot.shot_type || 'Medium Shot'}.`,
-        `SHOT CAMERA AND COMPOSITION: ${shotCamera || 'Eye level, static'}.`,
+        `SHOT CAMERA AND COMPOSITION (subject framing and blocking only; may NOT change the locked viewpoint): ${shotCamera || 'Eye level, static'}.`,
         `EXACT MOMENT AND ACTION: ${shotAction}.`,
         ...characterReferences.map(({ character }) =>
           `VISIBLE CHARACTER: ${character.name}. Use ONLY the explicitly selected reference photo of this character for the exact face, wardrobe, hairstyle and makeup. Do not substitute another appearance or outfit.`),
         'Only depict the specified shot action and the listed visible characters, in the selected set. Never add unspecified characters, costumes, furniture or architecture.',
-        'References are for exact set structure, character identity and exact selected character reference images. Camera/framing instructions control composition, not the source-image viewpoint.',
+        'The locked Set camera view controls viewpoint and perspective. Shot camera and framing text controls only the visible subjects within that view. Never let shot text override the Set view.',
         'ONE 16:9 cinematic pencil-sketch storyboard panel, not photorealistic. No text, labels, grids or montage.',
       ].join('\n');
       const { data, error } = await supabase.functions.invoke('generate-image', { body: {
@@ -416,13 +439,13 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                   <div className="text-xs font-semibold text-white/70">My Sets · {linked.name}</div>
                   <div className="space-y-2 border-b border-white/10 pb-3">
                     <p className="text-xs font-semibold text-white/70">Camera view for this shot</p>
-                    <p className="text-[11px] text-white/45">Choose Hero, Reverse or another existing view. The chosen angle guides storyboard generation instead of automatically using the first views.</p>
+                    <p className="text-[11px] text-white/45">Required: select exactly one Set camera view. It is the authoritative viewpoint for storyboard generation; other views and old Set photos will not be mixed in.</p>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                       {views.map((view) => {
                         const selected = shot.set_view_reference_url === view.url;
                         return <button type="button" key={view.url} disabled={readOnly}
                           aria-pressed={selected}
-                          onClick={() => updateShot(shot.id, { set_view_reference_url: selected ? '' : view.url, storyboard_url: '' })}
+                          onClick={() => updateShot(shot.id, { set_view_reference_url: view.url, storyboard_url: '' })}
                           className={`min-w-0 border p-2 text-left ${selected ? 'border-[var(--studio-accent)] bg-white/[0.07]' : 'border-white/15 hover:border-white/40'}`}>
                           <img src={view.url} alt={view.label + ' Set view'} className="h-24 w-full bg-black object-contain" />
                           <span className="mt-1 block text-xs text-white">{view.label}{selected ? ' ✓' : ''}</span>
@@ -430,7 +453,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                       })}
                     </div>
                     {!views.length && <p className="text-xs text-white/45">No saved views on this Set yet.</p>}
-                    {!!views.length && !shot.set_view_reference_url && <p className="text-[11px] text-white/40">No angle selected: storyboard uses the existing automatic view references.</p>}
+                    {!!views.length && !shot.set_view_reference_url && <p className="text-[11px] text-amber-300">Choose a Camera View to enable storyboard generation for this Set.</p>}
                   </div>
                   <p className="text-[11px] text-white/45">Select Reference Sheet elements to lock for this shot. The stored image URLs preserve the chosen reference even if the Set is edited later.</p>
                   {!items.length ? <p className="text-xs text-white/45">This linked Set has no saved reference elements yet. Its principal views remain available.</p> :
