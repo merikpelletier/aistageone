@@ -95,7 +95,7 @@ const FORMAT_GUIDANCE = {
 };
 const VIDEO_PART_LABELS = [['setup','0–30s · Setup'], ['development','30–60s · Development'], ['turn','60–90s · Turning point'], ['hook','90–120s · Hook']];
 
-function ScenarioGuide({ content }) {
+function ScenarioGuide({ content, sets = [], extensions = [], userSets = [], onSaveShotReferences, savingShot = '' }) {
   const [format, setFormat] = useState('fotoplay');
   const episodes = Array.from({ length: 9 }, (_, index) => (Array.isArray(content?.scenarios) ? content.scenarios[index] : null) || {});
   return (
@@ -132,6 +132,34 @@ function ScenarioGuide({ content }) {
                   </div>
                 ))}
               </div>
+              {format === 'video' && VIDEO_PART_LABELS.map(([partKey]) => (episode.shot_plans?.[partKey] || []).map((shot, index) => {
+                const resources = episode.scene_resources?.[partKey] || {};
+                const eligible = sets.filter(set => (resources.set_ids || []).includes(set.id));
+                const selected = eligible.find(set => set.id === shot.set_id) || (eligible.length === 1 ? eligible[0] : null);
+                const memberLink = extensions.find(entry => entry.extension_type === 'set' && entry.operation === 'replace' && entry.target_item_id === selected?.id);
+                const resolved = userSets.find(project => project.id === memberLink?.content?.my_set_id) || userSets.find(project => project.id === selected?.my_set_id);
+                const shotItems = (resolved?.reference_sheet?.extracted_elements || []).filter(item => item.image_url);
+                const override = extensions.find(entry => entry.extension_type === 'set_reference' && entry.target_item_id === shot.id);
+                const urls = Array.isArray(override?.content?.reference_urls) ? override.content.reference_urls : (shot.set_element_reference_urls || []);
+                return <div key={shot.id || index} className="mt-2 space-y-2 border border-white/10 bg-white/[0.02] p-3">
+                  <div className="text-xs font-semibold text-white">Shot {index+1} · {shot.shot_type || 'Shot'}{selected?.name ? ` · ${selected.name}` : ''}</div>
+                  {shot.action && <p className="text-xs text-white/60">{shot.action}</p>}
+                  {shotItems.length ? <>
+                    <p className="text-[11px] text-white/45">Select visual references from your linked My Set. Saved only for your AI Pilot.</p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{shotItems.map(item => {
+                      const checked = urls.includes(item.image_url);
+                      return <label key={item.id || item.image_url} className={`cursor-pointer border p-2 ${checked ? 'border-[#23c7be]' : 'border-white/15'}`}>
+                        <input type="checkbox" checked={checked} disabled={savingShot === shot.id} onChange={event => {
+                          const next = event.target.checked ? [...urls,item.image_url] : urls.filter(url => url !== item.image_url);
+                          onSaveShotReferences(shot.id, selected.id, [...new Set(next)]);
+                        }} />
+                        <img src={item.image_url} alt={item.name || 'Reference'} className="mt-2 h-20 w-full bg-black object-contain" />
+                        <span className="block truncate text-[11px] text-white/70">{item.name || 'Reference'}</span>
+                      </label>;
+                    })}</div>
+                  </> : <p className="text-[11px] text-white/40">To select shot references, connect a My Set with a saved Reference Sheet in Sets & Locations.</p>}
+                </div>;
+              }))}
               {format === 'fotoplay' && <p className="text-xs text-white/50">Develop this chapter across nine FotoPlay segments, following the episode direction above.</p>}
               {episode.scene_ideas && <div><p className="text-xs font-bold text-white/50">Scene inspirations</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/70">{episode.scene_ideas}</p></div>}
               {episode.creative_options && <div><p className="text-xs font-bold text-white/50">Creative variations</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/70">{episode.creative_options}</p></div>}
@@ -146,13 +174,61 @@ function ScenarioGuide({ content }) {
   );
 }
 
-function PilotDetails({ access, user, onMessage }) {
+function PilotDetails({ access, user, onMessage, userSets = [] }) {
   const queryClient = useQueryClient();
   const emptyDraft = () => ({ extension_type: 'character_style', name: '', description: '', notes: '', details: {} });
   const [draft, setDraft] = useState(emptyDraft);
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
+  const [savingSet, setSavingSet] = useState('');
+  const [savingShot, setSavingShot] = useState('');
+  const saveSetLink = async (setId, mySetId) => {
+    setSavingSet(setId);
+    try {
+      const previous = (access.extensions || []).find(entry => entry.extension_type === 'set' && entry.operation === 'replace' && entry.target_item_id === setId);
+      if (previous) {
+        const { error } = await supabase.from('member_ai_pilot_extensions').update({
+          content: { ...(previous.content || {}), my_set_id: mySetId },
+          is_active: true,
+        }).eq('id', previous.id).eq('user_id', user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('member_ai_pilot_extensions').insert({
+          member_ai_pilot_id: access.id, user_id: user.id,
+          extension_type: 'set', operation: 'replace', target_item_id: setId,
+          name: 'My Set Link', content: { my_set_id: mySetId },
+        });
+        if (error) throw error;
+      }
+      await queryClient.invalidateQueries({ queryKey: ['my-ai-pilots', user.id] });
+      onMessage('Personal Set link saved.');
+    } catch (error) { onMessage(error.message || 'Could not link My Set.'); }
+    finally { setSavingSet(''); }
+  };
+
+  const saveShotReferences = async (shotId, setId, urls) => {
+    setSavingShot(shotId);
+    try {
+      const previous = (access.extensions || []).find(entry => entry.extension_type === 'set_reference' && entry.target_item_id === shotId);
+      const payload = { source_set_id: setId, reference_urls: urls };
+      if (previous) {
+        const { error } = await supabase.from('member_ai_pilot_extensions').update({ content: payload })
+          .eq('id', previous.id).eq('user_id', user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('member_ai_pilot_extensions').insert({
+          member_ai_pilot_id: access.id, user_id: user.id,
+          extension_type: 'set_reference', operation: 'replace', target_item_id: shotId,
+          name: 'Shot Set References', content: payload,
+        });
+        if (error) throw error;
+      }
+      await queryClient.invalidateQueries({ queryKey: ['my-ai-pilots', user.id] });
+    } catch (error) { onMessage(error.message || 'Could not save shot references.'); }
+    finally { setSavingShot(''); }
+  };
+
 
   const addMutation = useMutation({
     mutationFn: async () => {
@@ -227,7 +303,7 @@ function PilotDetails({ access, user, onMessage }) {
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 text-sm font-semibold text-white hover:bg-white/[0.04]">
         {block.title || humanize(block.block_key)}<ChevronDown size={16} className="text-[#23c7be] group-open:rotate-180" />
       </summary>
-      <div className="border-t border-white/10 p-4">{block.block_key === 'scenario' ? <ScenarioGuide content={block.content || {}} /> : block.block_key === 'looks' ? <PilotLooks content={block.content || {}} /> : <ContentObject value={block.content || {}} />}</div>
+      <div className="border-t border-white/10 p-4">{block.block_key === 'scenario' ? <ScenarioGuide content={block.content || {}} sets={sets} extensions={access.extensions || []} userSets={userSets} onSaveShotReferences={saveShotReferences} savingShot={savingShot} /> : block.block_key === 'looks' ? <PilotLooks content={block.content || {}} /> : <ContentObject value={block.content || {}} />}</div>
     </details>
   )) : <p className="py-8 text-sm text-white/45">No direction available in this section.</p>;
   return (
@@ -239,7 +315,32 @@ function PilotDetails({ access, user, onMessage }) {
         {activeSection === 'overview' && <div className="space-y-3">{access.pilot?.description && <div className="border border-white/10 bg-[#171b20] p-4"><p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#23c7be]">Series Overview</p><p className="whitespace-pre-wrap text-sm leading-relaxed text-white/75">{access.pilot.description}</p></div>}</div>}
         {activeSection === 'scenario' && <div className="space-y-3">{renderBlocks(scenarioBlocks)}</div>}
         {activeSection === 'characters' && <div className="grid gap-3 md:grid-cols-2">{characters.length ? characters.map((character) => <details key={character.id} className="group border border-white/10 bg-[#171b20] p-4"><summary className="flex cursor-pointer list-none items-center gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden bg-black/40">{(character.reference_images || []).length ? <img src={typeof character.reference_images[0] === 'string' ? character.reference_images[0] : character.reference_images[0]?.url} alt="" className="h-full w-full object-cover" /> : <Users size={20} className="text-white/30" />}</div><div className="min-w-0 flex-1"><p className="font-semibold text-white">{character.role_name}</p><p className="line-clamp-1 text-xs text-white/45">{character.narrative_function || character.description}</p></div><ChevronDown size={15} className="text-[#23c7be] group-open:rotate-180" /></summary><div className="mt-3 border-t border-white/10 pt-3"><ContentObject value={{ description: character.description, narrative_function: character.narrative_function, personality: character.personality, behavior: character.behavior, visual_identity: character.visual_identity, wardrobe_look: character.wardrobe_look, continuity_locks: character.continuity_locks, production_notes: character.production_notes }} /></div></details>) : <p className="text-sm text-white/45">No characters in this Pilot.</p>}</div>}
-        {activeSection === 'sets' && <div className="grid gap-4 lg:grid-cols-2"><div><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#23c7be]">Locations · {locations.length}</p><div className="space-y-2">{locations.map((location) => <details key={location.id} className="border border-white/10 bg-[#171b20] p-3"><summary className="cursor-pointer text-sm font-semibold text-white">{location.name}</summary><p className="mt-2 whitespace-pre-wrap text-sm text-white/65">{location.description}</p></details>)}{!locations.length && <p className="text-sm text-white/45">No locations added.</p>}</div></div><div><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#23c7be]">Sets · {sets.length}</p><div className="space-y-2">{sets.map((set) => <details key={set.id} className="border border-white/10 bg-[#171b20] p-3"><summary className="cursor-pointer text-sm font-semibold text-white">{set.name}</summary><p className="mt-2 whitespace-pre-wrap text-sm text-white/65">{set.description}</p>{Array.isArray(set.reference_images) && set.reference_images.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{set.reference_images.map((image, index) => <img key={index} src={typeof image === 'string' ? image : image?.url} alt="Set reference" className="h-20 w-28 object-cover" />)}</div>}</details>)}{!sets.length && <p className="text-sm text-white/45">No sets added.</p>}</div></div></div>}
+        {activeSection === 'sets' && <div className="grid gap-4 lg:grid-cols-2"><div><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#23c7be]">Locations · {locations.length}</p><div className="space-y-2">{locations.map((location) => <details key={location.id} className="border border-white/10 bg-[#171b20] p-3"><summary className="cursor-pointer text-sm font-semibold text-white">{location.name}</summary><p className="mt-2 whitespace-pre-wrap text-sm text-white/65">{location.description}</p></details>)}{!locations.length && <p className="text-sm text-white/45">No locations added.</p>}</div></div><div><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#23c7be]">Sets · {sets.length}</p><div className="space-y-2">{sets.map((set) => {
+                const override = (access.extensions || []).find(entry => entry.extension_type === 'set' && entry.operation === 'replace' && entry.target_item_id === set.id);
+                const linkedId = override?.content?.my_set_id ?? set.my_set_id ?? '';
+                const linked = userSets.find(item => item.id === linkedId);
+                const sheetItems = (linked?.reference_sheet?.extracted_elements || []).filter(item => item.image_url);
+                return <details key={set.id} className="border border-white/10 bg-[#171b20] p-3">
+                  <summary className="cursor-pointer text-sm font-semibold text-white">{set.name}</summary>
+                  {set.description && <p className="mt-2 whitespace-pre-wrap text-sm text-white/65">{set.description}</p>}
+                  <label className="mt-3 block text-xs text-white/65">My Set for this AI Pilot
+                    <select value={linkedId && userSets.some(item => item.id === linkedId) ? linkedId : ''}
+                      disabled={savingSet === set.id}
+                      onChange={event => saveSetLink(set.id, event.target.value)}
+                      className="mt-2 w-full border border-white/20 bg-[#151719] p-2 text-sm text-white">
+                      <option value="">No personal Set linked</option>
+                      {userSets.map(item => <option key={item.id} value={item.id}>{item.name || 'Unnamed Set'}</option>)}
+                    </select>
+                  </label>
+                  {linked ? <div className="mt-3 space-y-2">
+                    <p className="text-xs text-[#23c7be]">My Sets · {linked.name} · {sheetItems.length} reference elements</p>
+                    {!!sheetItems.length && <div className="grid grid-cols-2 gap-2">{sheetItems.map((item,index) =>
+                      <div key={item.id || index} className="border border-white/10 bg-black p-2"><img src={item.image_url} alt={item.name} className="h-24 w-full object-contain" /><p className="mt-1 truncate text-[11px] text-white/65">{item.name}</p></div>)}</div>}
+                  </div> : <p className="mt-2 text-[11px] text-white/45">Connect a Set from My Sets to use your personal Reference Sheet. The published AI Pilot remains unchanged.</p>}
+                  {Array.isArray(set.reference_images) && set.reference_images.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{set.reference_images.map((image,index) =>
+                    <img key={index} src={typeof image === 'string' ? image : image?.url} alt="Original AI Pilot set" className="h-20 w-28 object-contain bg-black" />)}</div>}
+                </details>;
+              })}{!sets.length && <p className="text-sm text-white/45">No sets added.</p>}</div></div></div>}
         {activeSection === 'direction' && <div className="space-y-3">{renderBlocks(directionBlocks)}</div>}
         {activeSection === 'additions' && <div className="max-w-5xl space-y-5">
           <div><h3 className="text-lg font-semibold text-white">My Additions</h3><p className="mt-1 text-sm text-white/50">Your personal characters, sets and directions do not change the published AI Pilot.</p></div>
@@ -363,6 +464,20 @@ export default function MyAIPilots({ embedded = false }) {
     },
   });
 
+  const { data: mySets = [] } = useQuery({
+    queryKey: ['my-ai-pilots-my-sets', user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      const { data, error } = await supabase.from('set_designer_project')
+        .select('id,name,description,images,reference_sheet,updated_date')
+        .eq('created_by_id', user.id)
+        .order('updated_date', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    refetchOnWindowFocus: true,
+  });
+
   if (isLoadingAuth || libraryLoading) return <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} bg-black flex items-center justify-center`}><Loader2 className="animate-spin text-white" size={34} /></div>;
 
   return (
@@ -393,7 +508,7 @@ export default function MyAIPilots({ embedded = false }) {
                 </div>
 
               </div>
-              {expanded[access.id] && <div className="border-t border-white/10 px-4 pb-5 sm:px-5"><PilotDetails access={access} user={user} onMessage={setMessage} /></div>}
+              {expanded[access.id] && <div className="border-t border-white/10 px-4 pb-5 sm:px-5"><PilotDetails access={access} user={user} onMessage={setMessage} userSets={mySets} /></div>}
             </section>;
           })}</div>
         )}
