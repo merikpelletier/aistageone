@@ -94,8 +94,12 @@ export default function AdminAIPilots() {
     queryKey: ['admin-ai-pilot-my-sets', selectedVersion?.id],
     enabled: Boolean(selectedVersion?.id),
     queryFn: async () => {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!auth?.user?.id) return [];
       const { data, error } = await supabase.from('set_designer_project')
         .select('id,name,description,images,reference_sheet,updated_date')
+        .eq('created_by_id', auth.user.id)
         .order('updated_date', { ascending: false });
       if (error) throw error;
       return data || [];
