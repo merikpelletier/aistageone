@@ -34,6 +34,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   const [mode, setMode] = useState(images?.filter(Boolean).length ? 'reference' : 'scratch');
   const [generating, setGenerating] = useState('');
   const [selectedModel, setSelectedModel] = useState(null);
+  const [reverseDirection, setReverseDirection] = useState('');
   const heroImage = images?.[0] || null;
   const setReferences = (images || []).filter(Boolean).slice(0, 3);
   const compositionRefs = (compositionElements || []).map(item => item?.image_url).filter(Boolean);
@@ -105,11 +106,15 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     }
   };
 
+  const viewInstruction = (label, instruction) => label === 'Reverse' && reverseDirection.trim()
+    ? `${instruction}\n\nUSER-DEFINED REVERSE VIEW — PRIORITY: ${reverseDirection.trim()}\nThis describes the otherwise unseen opposite side of the set. Respect the supplied details as the source of truth. Keep architectural and furniture continuity with the Hero wherever both views overlap. Do not invent additional features in the area described by the user.`
+    : instruction;
+
   const generateView = async (index, label, instruction) => {
     if (!heroImage || !effectiveModel) return;
     setGenerating(label);
     try {
-      const prompt = buildViewPrompt(name, description, instruction, compositionElements);
+      const prompt = buildViewPrompt(name, description, viewInstruction(label, instruction), compositionElements);
       const refs = [heroImage, ...compositionRefs];
       const url = await runGeneration(prompt, refs);
       setImages(current => {
@@ -134,7 +139,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         const [label, instruction] = VIEW_SPECS[offset];
         const index = offset + 1;
         setGenerating(label);
-        const prompt = buildViewPrompt(name, description, instruction, compositionElements);
+        const prompt = buildViewPrompt(name, description, viewInstruction(label, instruction), compositionElements);
         const url = await runGeneration(prompt, [heroImage, ...compositionRefs]);
         setImages(current => {
           const next = [...current];
@@ -204,6 +209,14 @@ export default function SetGeneratorPanel({ name, description, images, setImages
             <button type="button" onClick={generateAllViews} disabled={Boolean(generating) || !effectiveModel} className="border border-[#23c7be]/35 bg-[#23c7be]/10 px-4 py-2.5 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/15 disabled:opacity-40">
               GENERATE ALL VIEWS{creditsPerImage ? ` · ${creditsPerImage * 7} CREDITS` : ''}
             </button>
+          </div>
+          <div className="mb-4 space-y-2 border border-white/15 bg-black/20 p-4">
+            <label htmlFor="reverse-direction" className="block text-xs font-bold text-white/80">Reverse · Describe the unseen side (optional)</label>
+            <p className="text-xs leading-5 text-white/50">A Hero photograph does not show what is behind the camera. For a reliable reverse angle, describe the opposite wall, openings, furniture and their positions, or use an existing verified Reverse image instead. This instruction applies only to Reverse, including Generate All Views.</p>
+            <textarea id="reverse-direction" value={reverseDirection} onChange={(event) => setReverseDirection(event.target.value)}
+              disabled={Boolean(generating)} rows={3}
+              placeholder="Example: Opposite wall has two tall windows, a centered double doorway and a staircase on the right. The dining table remains between the camera and the doorway."
+              className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-[#23c7be] focus:outline-none" />
           </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {VIEW_SPECS.map(([label, instruction], offset) => {
