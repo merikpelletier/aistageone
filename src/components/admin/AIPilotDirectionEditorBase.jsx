@@ -657,6 +657,13 @@ export default function AIPilotDirectionEditor({ block, setBlock, readOnly, onSa
                             const elements = linked.reference_sheet?.extracted_elements || [];
                             return <div className="space-y-2">
                               <p className="text-xs text-white/60">Linked: {linked.name} · {elements.length} reference elements · {(linked.images || []).filter(Boolean).length} set views. No images are copied.</p>
+                              {!!(linked.images || []).filter(Boolean).length && <div className="space-y-1">
+                                <p className="text-[11px] font-semibold text-white/60">Camera Views</p>
+                                <div className="flex flex-wrap gap-2">{linked.images.map((url, index) => url ? <div key={index} className="w-24 space-y-1">
+                                  <img src={url} alt={['Hero', 'Wide', 'Reverse', 'Left', 'Right', 'Detail', 'Day', 'Night'][index] || 'Set view'} className="h-16 w-full border border-white/15 bg-black object-contain" />
+                                  <p className="text-[10px] text-white/60">{['Hero', 'Wide', 'Reverse', 'Left', 'Right', 'Detail', 'Day', 'Night'][index] || `View ${index + 1}`}</p>
+                                </div> : null)}</div>
+                              </div>}
                               {!!elements.length && <div className="flex flex-wrap gap-2">{elements.slice(0, 10).map((item, index) =>
                                 <div key={item.id || index} className="w-20 space-y-1"><img src={item.image_url} alt={item.name || 'Set object'} className="h-16 w-full border border-white/15 bg-black object-contain" /><div className="truncate text-[10px] text-white/60">{item.name}</div></div>)}</div>}
                             </div>;
