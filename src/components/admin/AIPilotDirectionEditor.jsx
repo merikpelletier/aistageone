@@ -543,6 +543,58 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                 );
               })}
               {!eligibleCharacters.length && <div className="text-xs text-white/40">Choose characters for this segment first.</div>}
+              {(() => {
+                const selectedSet = eligibleSets.find((item) => item.id === (shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')));
+                const linked = selectedSet?.linked_set;
+                const viewNames = ['Hero', 'Wide', 'Reverse', 'Left', 'Right', 'Detail', 'Day', 'Night'];
+                const studioViews = (linked?.images || []).filter((url) => typeof url === 'string' && url.trim());
+                const selectedView = shot.set_view_reference_url || '';
+                const selectedViewIndex = studioViews.indexOf(selectedView);
+                const fallbackSetUrl = (selectedSet?.reference_images || []).map((image) => typeof image === 'string' ? image : image?.url).find(Boolean) || '';
+                const setUrl = selectedView || (linked ? '' : (studioViews[0] || fallbackSetUrl));
+                const selectedElements = (shot.set_element_reference_urls || []).map((url) => ({
+                  url, kind: 'SET OBJECT', name: (linked?.reference_sheet?.extracted_elements || []).find((element) => element.image_url === url)?.name || 'Selected Set object',
+                }));
+                const visibleCharacters = eligibleCharacters.filter((person) => !Array.isArray(shot.character_ids) || shot.character_ids.includes(person.id));
+                const selectedPeople = visibleCharacters.map((person) => {
+                  const url = shot.character_reference_urls?.[person.id] || '';
+                  const image = (person.reference_images || []).find((ref) => (typeof ref === 'string' ? ref : ref?.url) === url);
+                  return { url, kind: 'CHARACTER', name: person.name, look: (typeof image === 'object' && image?.name) || 'Unlabeled look' };
+                });
+                const entries = [
+                  ...(setUrl ? [{ url: setUrl, kind: 'SET CAMERA VIEW', name: selectedView ? (viewNames[selectedViewIndex] || 'Selected View') : 'Default Set reference' }] : []),
+                  ...selectedElements,
+                  ...selectedPeople.filter((person) => person.url),
+                ];
+                const missing = [
+                  ...(!setUrl ? ['Camera View / Set image'] : []),
+                  ...selectedPeople.filter((person) => !person.url).map((person) => person.name),
+                ];
+                const mapText = entries.map((entry, index) => `IMAGE ${index + 1} — ${entry.kind}: ${entry.name}${entry.look ? ` — ${entry.look}` : ''}`).join('\n');
+                return <div className="space-y-2 border border-[var(--studio-accent)]/50 bg-white/[0.03] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-white">Reference IDs for this shot</p>
+                    <button type="button" disabled={!entries.length} onClick={() => navigator.clipboard.writeText(mapText)}
+                      className="border border-white/20 px-3 py-1.5 text-xs text-white hover:border-white/60 disabled:opacity-40">Copy reference IDs</button>
+                  </div>
+                  <p className="text-[11px] text-white/55">These are the exact image numbers in the storyboard prompt and image request. Use IMAGE 1, IMAGE 2, etc. in your shot directions; numbering updates when selections change.</p>
+                  {!!missing.length && <p className="text-xs text-amber-300">Select the missing references: {missing.join(', ')}</p>}
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {entries.map((entry, index) => (
+                      <div key={`${entry.url}-${index}`} className="flex items-center gap-2 border border-white/15 bg-black/30 p-2">
+                        <img src={entry.url} alt={entry.name} className="h-20 w-16 shrink-0 bg-black object-contain" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-[var(--studio-accent)]">IMAGE {index + 1}</p>
+                          <p className="text-[10px] text-white/60">{entry.kind}</p>
+                          <p className="break-words text-xs text-white">{entry.name}</p>
+                          {entry.look && <p className="break-words text-[11px] text-white/65">{entry.look}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {!entries.length && <p className="text-xs text-white/50">No selected references yet.</p>}
+                </div>;
+              })()}
             </div>
             <label className="text-xs text-white/60 block">Action
               <Textarea className={CONTROL_CLASS} rows={2} disabled={readOnly} value={shot.action || ''} onChange={(event) => updateShot(shot.id, { action: event.target.value, storyboard_url: '' })} />
