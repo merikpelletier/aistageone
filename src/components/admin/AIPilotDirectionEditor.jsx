@@ -448,7 +448,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
             <div className="flex justify-between items-center text-xs text-white/65"><span>Shot {shotIndex + 1}</span>{!readOnly && <button type="button" onClick={() => updateShots(episodeIndex, key, shots.filter((item) => item.id !== shot.id))} aria-label="Remove shot"><Trash2 size={14} /></button>}</div>
             <div className="grid grid-cols-2 gap-2">
               <label className="text-xs text-white/60">Framing
-                <select value={shot.shot_type || 'Medium Shot'} disabled={readOnly} onChange={(event) => updateShot(shot.id, { shot_type: event.target.value, storyboard_url: '' })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
+                <select value={shot.shot_type || 'Medium Shot'} disabled={readOnly} onChange={(event) => updateShot(shot.id, { shot_type: event.target.value })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
                   {SHOT_TYPES.map((type) => <option key={type}>{type}</option>)}
                 </select>
               </label>
@@ -460,7 +460,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
             </div>
             <div className="space-y-3 border border-white/10 bg-black/20 p-3">
               <label className="block text-xs text-white/60">Locked Set for this shot
-                <select value={shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')} disabled={readOnly} onChange={(event) => updateShot(shot.id, { set_id: event.target.value, set_view_reference_url: '', set_element_reference_urls: [], storyboard_url: '' })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
+                <select value={shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')} disabled={readOnly} onChange={(event) => updateShot(shot.id, { set_id: event.target.value, set_view_reference_url: '', set_element_reference_urls: [] })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
                   <option value="">Select an existing set</option>
                   {eligibleSets.map((set) => <option key={set.id} value={set.id}>{set.name}</option>)}
                 </select>
@@ -487,7 +487,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                         const selected = shot.set_view_reference_url === view.url;
                         return <button type="button" key={view.url} disabled={readOnly}
                           aria-pressed={selected}
-                          onClick={() => updateShot(shot.id, { set_view_reference_url: view.url, storyboard_url: '' })}
+                          onClick={() => updateShot(shot.id, { set_view_reference_url: view.url })}
                           className={`min-w-0 border p-2 text-left ${selected ? 'border-[var(--studio-accent)] bg-white/[0.07]' : 'border-white/15 hover:border-white/40'}`}>
                           <img src={view.url} alt={view.label + ' Set view'} className="h-24 w-full bg-black object-contain" />
                           <span className="mt-1 block text-xs text-white">{view.label}{selected ? ' ✓' : ''}</span>
@@ -508,7 +508,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                               const urls = event.target.checked
                                 ? [...chosenUrls, element.image_url]
                                 : chosenUrls.filter((url) => url !== element.image_url);
-                              updateShot(shot.id, { set_element_reference_urls: [...new Set(urls)], storyboard_url: '' });
+                              updateShot(shot.id, { set_element_reference_urls: [...new Set(urls)] });
                             }} />
                             <span className="min-w-0 break-words">{element.name || 'Reference element'}</span>
                           </div>
@@ -519,7 +519,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                 </div>;
               })()}
               <label className="block text-xs text-white/60">Position within selected set
-                <Input className={CONTROL_CLASS + ' mt-1'} disabled={readOnly} value={shot.set_position || ''} onChange={(event) => updateShot(shot.id, { set_position: event.target.value, storyboard_url: '' })} placeholder="e.g. By the entrance" />
+                <Input className={CONTROL_CLASS + ' mt-1'} disabled={readOnly} value={shot.set_position || ''} onChange={(event) => updateShot(shot.id, { set_position: event.target.value })} placeholder="e.g. By the entrance" />
               </label>
               <div className="text-xs text-white/60">Visible Characters · Identified Look per Shot</div>
               {eligibleCharacters.map((character) => {
@@ -539,7 +539,6 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                         character_ids: event.target.checked
                           ? [...(Array.isArray(shot.character_ids) ? shot.character_ids : eligibleCharacters.map((item) => item.id)), character.id].filter((id, index, all) => all.indexOf(id) === index)
                           : (Array.isArray(shot.character_ids) ? shot.character_ids : eligibleCharacters.map((item) => item.id)).filter((id) => id !== character.id),
-                        storyboard_url: '',
                       })} />
                       {character.name}
                     </label>
@@ -549,7 +548,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                           <button key={`${character.id}-${index}-${url}`} type="button" disabled={readOnly}
                             aria-label={`Select ${character.name} — ${name || `Reference ${index + 1}`}`}
                             aria-pressed={chosenUrl === url}
-                            onClick={() => updateShot(shot.id, { character_reference_urls: { ...(shot.character_reference_urls || {}), [character.id]: url }, storyboard_url: '' })}
+                            onClick={() => updateShot(shot.id, { character_reference_urls: { ...(shot.character_reference_urls || {}), [character.id]: url } })}
                             title={`${character.name} — ${name || `Reference ${index + 1}`}`}
                             className={`relative w-32 min-h-36 flex flex-col overflow-hidden border-2 bg-black text-left ${chosenUrl === url ? 'border-[var(--studio-accent)]' : 'border-white/20 hover:border-white/60'}`}>
                             <img src={url} alt={`${character.name} — ${name || `Reference ${index + 1}`}`} className="h-28 w-full object-contain" />
@@ -617,10 +616,10 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
               })()}
             </div>
             <label className="text-xs text-white/60 block">Action
-              <Textarea className={CONTROL_CLASS} rows={2} disabled={readOnly} value={shot.action || ''} onChange={(event) => updateShot(shot.id, { action: event.target.value, storyboard_url: '' })} />
+              <Textarea className={CONTROL_CLASS} rows={2} disabled={readOnly} value={shot.action || ''} onChange={(event) => updateShot(shot.id, { action: event.target.value })} />
             </label>
             <label className="text-xs text-white/60 block">Camera / positioning
-              <Textarea className={CONTROL_CLASS} rows={2} disabled={readOnly} value={shot.camera || ''} onChange={(event) => updateShot(shot.id, { camera: event.target.value, storyboard_url: '' })} />
+              <Textarea className={CONTROL_CLASS} rows={2} disabled={readOnly} value={shot.camera || ''} onChange={(event) => updateShot(shot.id, { camera: event.target.value })} />
             </label>
             <div className="space-y-2 border border-white/10 bg-white/[0.02] p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
