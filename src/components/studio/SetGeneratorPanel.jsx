@@ -42,7 +42,7 @@ const EditableImage = ({ label, url, box, onStart, onMove, onEnd, onCancel }) =>
   </div>
 );
 
-export default function SetGeneratorPanel({ name, description, images, setImages, viewVariants = {}, setViewVariants, compositionElements = [] }) {
+export default function SetGeneratorPanel({ name, description, images, setImages, viewVariants = {}, setViewVariants, zoneShots = [], setZoneShots, compositionElements = [] }) {
   const [mode, setMode] = useState(images?.filter(Boolean).length ? 'reference' : 'scratch');
   const [masterOpen, setMasterOpen] = useState(!images?.[0]);
   const [generating, setGenerating] = useState('');
@@ -54,8 +54,14 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   const [drawingRegion, setDrawingRegion] = useState(null);
   const [editPreview, setEditPreview] = useState(null);
   const [activeTimes, setActiveTimes] = useState({});
+  const [zoneDraft, setZoneDraft] = useState(null);
+  const zoneFor = label => label.startsWith('Zone:') ? zoneShots.find(shot => `Zone:${shot.id}` === label) : null;
   const timeFor = label => activeTimes[label] || 'day';
-  const viewUrl = (label, index) => timeFor(label) === 'night' ? viewVariants?.[label]?.night || null : images?.[index] || null;
+  const viewUrl = (label, index) => {
+    const zone = zoneFor(label);
+    if (zone) return (timeFor(label) === 'night' ? zone.night : zone.day) || null;
+    return timeFor(label) === 'night' ? viewVariants?.[label]?.night || null : images?.[index] || null;
+  };
   const chooseTime = (label, time) => {
     setActiveTimes(current => ({ ...current, [label]: time }));
     setEditRegions(current => ({ ...current, [label]: null }));
@@ -66,20 +72,25 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         <button key={time} type="button" onClick={() => chooseTime(label, time)} disabled={Boolean(generating)}
           aria-pressed={timeFor(label) === time}
           className={`border px-3 py-1.5 text-xs font-bold ${timeFor(label) === time ? 'border-[#23c7be] bg-[#23c7be]/20 text-[#8ee9e4]' : 'border-white/15 text-white/60'}`}>
-          {time === 'day' ? 'DAY' : 'NIGHT'}{time === 'night' && viewVariants?.[label]?.night ? ' ✓' : ''}
+          {time === 'day' ? 'DAY' : 'NIGHT'}{time === 'night' && (zoneFor(label)?.night || viewVariants?.[label]?.night) ? ' ✓' : ''}
         </button>
       ))}
-      {timeFor(label) === 'night' && !viewVariants?.[label]?.night && <span className="text-[11px] text-white/45">Night version not created</span>}
+      {timeFor(label) === 'night' && !(zoneFor(label)?.night || viewVariants?.[label]?.night) && <span className="text-[11px] text-white/45">Night version not created</span>}
     </div>
   );
   const nightPrompt = label => `Transform the supplied existing ${label} production view of the exact same set into a believable nighttime photograph. This is an image-to-image LIGHTING AND TIME-OF-DAY conversion, NOT a new view. Keep the camera in the EXACT same position, with identical framing, perspective, architecture, floor plan, doors, windows, furniture, props, textures, and object positions. Do not add, remove, move, replace, or redesign any object. The entire scene must read as NIGHT: dark outdoor sky and grounds seen through all windows, credible illuminated outdoor entrances where relevant, realistic interior practical lights, sconces and fixtures, atmospheric contrast and accurate reflections. Preserve geometry and all non-lighting details; no new people, logos or text. No cropping, mirroring or camera movement. 16:9.`;
   const generateNight = async (label, index) => {
-    const source = images?.[index];
+    const zone = zoneFor(label);
+    const source = zone ? zone.day : images?.[index];
     if (!source || !effectiveModel) return;
     setGenerating(label);
     try {
       const url = await runGeneration(nightPrompt(label), [source]);
-      setViewVariants(current => ({ ...current, [label]: { ...(current?.[label] || {}), night: url } }));
+      if (zone) {
+        setZoneShots(current => current.map(shot => shot.id === zone.id ? { ...shot, night: url } : shot));
+      } else {
+        setViewVariants(current => ({ ...current, [label]: { ...(current?.[label] || {}), night: url } }));
+      }
       chooseTime(label, 'night');
       toast.success(`${label} Night version ready. Save the set to keep it.`);
     } catch (error) {
@@ -89,6 +100,100 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       setGenerating('');
     }
   };
+  const createZoneShot = async () => {
+    if (!zoneDraft || !effectiveModel) return;
+    const { parent, index, region, sourceTime, sourceUrl, type, intent, instruction, label } = zoneDraft;
+    if (!sourceUrl || !region) return toast.error('Select an area in the source image first.');
+    setGenerating('ZoneShot');
+    try {
+      const original = await loadImage(sourceUrl);
+      const x = Math.round(region.x * original.naturalWidth);
+      const y = Math.round(region.y * original.naturalHeight);
+      const width = Math.max(1, Math.min(original.naturalWidth - x, Math.round(region.width * original.naturalWidth)));
+      const height = Math.max(1, Math.min(original.naturalHeight - y, Math.round(region.height * original.naturalHeight)));
+      const crop = document.createElement('canvas');
+      crop.width = width; crop.height = height;
+      crop.getContext('2d').drawImage(original, x, y, width, height, 0, 0, width, height);
+      const croppedUrl = await uploadPng(await toBlob(crop), 'set-zone-selection.png');
+      const framing = {
+        wide: 'A wider focused shot with context around the selected zone.',
+        medium: 'A medium shot centered on the selected zone and its important objects.',
+        close: 'A closer shot, bringing the selected zone forward with minimal surrounding context.',
+        detail: 'A tight detailed shot of the objects and architecture specifically inside the selected zone.',
+      }[type] || 'A medium focused shot.';
+      const prompt = `Create a distinct 16:9 production shot of the SAME location, based specifically on the FIRST image reference, which is the selected zone cropped from the existing ${parent} view. The second image is the full parent shot solely to preserve continuity. Focus only on the zone selected in the first image. ${framing} Purpose: ${intent || 'production coverage'}. Director instruction: ${instruction || 'Preserve visible details faithfully'}. Preserve recognizable architecture, exact furniture and prop identity, materials, visual geography, and ${sourceTime} lighting; do not invent a new set or unrelated objects. This is a derived camera shot, NOT a simple scaled crop. No people or text.`;
+      const url = await runGeneration(prompt, [croppedUrl, sourceUrl]);
+      const id = `zone_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const shot = {
+        id, parent, parent_index: index, source_time: sourceTime, selection: region,
+        type, intent, instruction, label: (label || '').trim() || `${parent} ${type} zone`,
+        day: sourceTime === 'day' ? url : null,
+        night: sourceTime === 'night' ? url : null,
+      };
+      setZoneShots(current => [...current, shot]);
+      setActiveTimes(current => ({ ...current, [`Zone:${id}`]: sourceTime }));
+      setEditRegions(current => ({ ...current, [parent]: null }));
+      setZoneDraft(null);
+      toast.success('Zone Shot created. Save the set to keep it.');
+    } catch (error) {
+      console.error('Create Zone Shot failed', error);
+      toast.error(error.message || 'Zone Shot creation failed; source views were not changed.');
+    } finally {
+      setGenerating('');
+    }
+  };
+  const beginZone = (label, index) => {
+    const region = editRegions[label];
+    const sourceUrl = viewUrl(label, index);
+    if (!region || !sourceUrl) return toast.error('Drag on the image to select the zone first.');
+    setZoneDraft({ parent: label, index, region: { ...region }, sourceUrl, sourceTime: timeFor(label),
+      type: 'medium', intent: 'Character area', instruction: '', label: '' });
+  };
+  const zoneForm = label => zoneDraft?.parent === label ? (
+    <div className="mt-3 space-y-2 border border-[#23c7be]/40 bg-black/35 p-3">
+      <p className="text-xs font-black text-[#8ee9e4]">CREATE ZONE SHOT — {label}</p>
+      <input aria-label="Zone Shot name" value={zoneDraft.label} onChange={event => setZoneDraft(d => ({ ...d, label: event.target.value }))}
+        placeholder="Shot name — e.g. Lounge beneath staircase" className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white" />
+      <select aria-label="Zone Shot framing" value={zoneDraft.type} onChange={event => setZoneDraft(d => ({ ...d, type: event.target.value }))}
+        className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white">
+        <option value="wide">Wide Zone</option><option value="medium">Medium Zone</option><option value="close">Close Zone</option><option value="detail">Detail Zone</option>
+      </select>
+      <select aria-label="Zone Shot purpose" value={zoneDraft.intent} onChange={event => setZoneDraft(d => ({ ...d, intent: event.target.value }))}
+        className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white">
+        {['Establishing focus', 'Cinematic insert', 'Character area', 'Prop area', 'Architecture focus'].map(v => <option key={v}>{v}</option>)}
+      </select>
+      <textarea aria-label="Zone Shot directions" rows={2} value={zoneDraft.instruction} onChange={event => setZoneDraft(d => ({ ...d, instruction: event.target.value }))}
+        placeholder="Optional: describe what to emphasize in this zone" className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white" />
+      <div className="flex gap-2">
+        <button type="button" disabled={Boolean(generating) || !effectiveModel} onClick={createZoneShot}
+          className="bg-[#23c7be] px-3 py-2 text-xs font-black text-black disabled:opacity-40">
+          {generating === 'ZoneShot' ? 'GENERATING...' : `GENERATE ZONE SHOT${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
+        </button>
+        <button type="button" onClick={() => setZoneDraft(null)} className="border border-white/20 px-3 py-2 text-xs text-white">CANCEL</button>
+      </div>
+    </div>
+  ) : null;
+  const zoneCards = parent => zoneShots.filter(shot => shot.parent === parent).map(shot => {
+    const key = `Zone:${shot.id}`;
+    const url = viewUrl(key, -1);
+    return <div key={shot.id} className="mt-3 space-y-2 border border-white/20 bg-[#121518] p-3">
+      <input aria-label="Rename Zone Shot" value={shot.label || ''} onChange={event => setZoneShots(current => current.map(s => s.id === shot.id ? { ...s, label: event.target.value } : s))}
+        className="w-full border-b border-white/20 bg-transparent py-1 text-sm font-bold text-white" />
+      <p className="text-[11px] text-white/50">{shot.type} · derived from {parent} ({shot.source_time})</p>
+      {timeSwitcher(key)}
+      <EditableImage label={key} url={url} box={editBox(key)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} />
+      <textarea aria-label="Zone Shot adjustment" value={viewAdjustments[key] || ''} onChange={event => adjustView(key, event.target.value)}
+        rows={2} placeholder="Adjustment instructions for this Zone Shot" className="w-full border border-white/15 bg-black/25 p-2 text-xs text-white" />
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => localEdit(key, -1)} disabled={!url || !editRegions[key] || !viewAdjustments[key]?.trim() || Boolean(generating) || !effectiveModel}
+          className="border border-[#23c7be]/40 px-3 py-2 text-xs text-[#8ee9e4] disabled:opacity-30">APPLY ADJUSTMENT</button>
+        <button type="button" onClick={() => generateNight(key, -1)} disabled={!shot.day || Boolean(generating) || !effectiveModel}
+          className="border border-white/20 px-3 py-2 text-xs text-white disabled:opacity-30">{shot.night ? 'REGENERATE NIGHT' : 'CREATE NIGHT VERSION'}</button>
+        <button type="button" onClick={() => setZoneShots(current => current.filter(s => s.id !== shot.id))}
+          className="border border-red-400/30 px-3 py-2 text-xs text-red-200">DELETE</button>
+      </div>
+    </div>;
+  });
   const adjustView = (label, value) => setViewAdjustments(current => ({ ...current, [label]: value }));
   const adjustmentInstruction = label => viewAdjustments[label]?.trim() ? `\n\nHIGHEST PRIORITY — USER ADJUSTMENT FOR ${label.toUpperCase()} VIEW:\n${viewAdjustments[label].trim()}\nMake this requested change visibly and precisely in the generated image. For features the user explicitly changes (including windows, doors or walls), the instruction OVERRIDES the reference image and the general continuity/preservation rules above. Preserve only the other, unaffected parts of the same set. Do not reintroduce a feature the user asked to remove.` : '';
   const heroImage = images?.[0] || null;
@@ -233,7 +338,10 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   };
   const acceptEdit = () => {
     if (!editPreview) return;
-    if (editPreview.time === 'night') {
+    if (editPreview.label.startsWith('Zone:')) {
+      const zoneId = editPreview.label.slice(5);
+      setZoneShots(current => current.map(shot => shot.id === zoneId ? { ...shot, [editPreview.time]: editPreview.after } : shot));
+    } else if (editPreview.time === 'night') {
       setViewVariants(current => ({
         ...current,
         [editPreview.label]: { ...(current?.[editPreview.label] || {}), night: editPreview.after },
@@ -456,6 +564,10 @@ export default function SetGeneratorPanel({ name, description, images, setImages
                 {creditsPerImage ? ` · ${creditsPerImage}` : ''}
               </button>
             </div>
+            <button type="button" onClick={() => beginZone('Hero', 0)} disabled={!viewUrl('Hero', 0) || Boolean(generating)}
+              className="mt-3 border border-[#23c7be]/40 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-30">CREATE ZONE SHOT · SELECT AREA ABOVE FIRST</button>
+            {zoneForm('Hero')}
+            {zoneCards('Hero')}
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             {VIEW_SPECS.map(([label, instruction], offset) => {
@@ -474,6 +586,10 @@ export default function SetGeneratorPanel({ name, description, images, setImages
                   className="mt-2 w-full border border-white/20 px-2 py-2 text-xs font-black text-white/80 disabled:opacity-30">
                   {busy ? 'GENERATING...' : viewVariants?.[label]?.night ? 'REGENERATE NIGHT VERSION' : 'CREATE NIGHT VERSION'}{creditsPerImage ? ` · ${creditsPerImage}` : ''}
                 </button>}
+                <button type="button" onClick={() => beginZone(label, index)} disabled={!viewUrl(label, index) || Boolean(generating)}
+                  className="mt-2 w-full border border-[#23c7be]/40 px-2 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">CREATE ZONE SHOT · SELECT AREA ABOVE FIRST</button>
+                {zoneForm(label)}
+                {zoneCards(label)}
                 <button type="button" onClick={() => generateView(index, label, instruction)} disabled={Boolean(generating) || !effectiveModel} className="mt-2 w-full border border-[#23c7be]/35 px-2 py-2 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/10 disabled:opacity-40">
                   {busy ? 'GENERATING...' : images?.[index] ? `REGENERATE DAY${creditsPerImage ? ` · ${creditsPerImage}` : ''}` : `GENERATE DAY${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
                 </button>
