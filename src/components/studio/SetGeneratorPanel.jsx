@@ -47,6 +47,8 @@ const EditableImage = ({ label, url, box, onStart, onMove, onEnd, onCancel }) =>
 
 export default function SetGeneratorPanel({ name, description, images, setImages, compositionElements = [] }) {
   const [mode, setMode] = useState(images?.filter(Boolean).length ? 'reference' : 'scratch');
+  const [masterOpen, setMasterOpen] = useState(!images?.[0]);
+  React.useEffect(() => { if (heroImage) setMasterOpen(false); }, [heroImage]);
   const [generating, setGenerating] = useState('');
   const [selectedModel, setSelectedModel] = useState(null);
   const [reverseDirection, setReverseDirection] = useState('');
@@ -301,7 +303,13 @@ export default function SetGeneratorPanel({ name, description, images, setImages
 
   return (
     <section className="set-generator-panel border border-white/10 bg-[#17191d] p-5 sm:p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <button type="button" onClick={() => setMasterOpen(open => !open)} aria-expanded={masterOpen}
+        className="flex w-full items-center justify-between gap-3 border-b border-white/10 pb-3 text-left">
+        <span className="text-sm font-black uppercase tracking-widest text-[#23c7be]">Master Set Creation</span>
+        <span className="text-xs text-white/65">{masterOpen ? 'Collapse ▲' : 'Expand ▼'}</span>
+      </button>
+      {masterOpen && <>
+      <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex items-center gap-2 text-[#23c7be]"><Sparkles size={16} /><span className="text-[10px] font-black uppercase tracking-[0.18em]">Generate the set</span></div>
           <h3 className="mt-1 text-xl font-black text-white">Create from scratch or build from references</h3>
@@ -351,6 +359,8 @@ export default function SetGeneratorPanel({ name, description, images, setImages
             className="mt-2 w-full border border-[#23c7be]/50 px-3 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">{generating === 'Hero' ? 'APPLYING...' : 'APPLY ADJUSTMENT'}</button>
         </div>
       </div>
+
+      </>}
 
       {heroImage && (
         <div className="mt-5 border-t border-white/10 pt-5">
