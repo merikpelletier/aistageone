@@ -231,13 +231,15 @@ function ShootAIPilotImagePicker({ target, onSelect, onClose, embedded = false }
         if (pilotsError) throw pilotsError;
         const versionFor = (a) => pilots?.find((p) => p.id === a.ai_pilot_id)?.current_published_version_id || a.version_id;
         const versions = [...new Set(accesses.map(versionFor).filter(Boolean))];
-        const [actors, blocks, media, additions] = await Promise.all([
+        const [actors, blocks, media, additions, mySets] = await Promise.all([
           versions.length && target === 'cast' ? supabase.from('ai_pilot_characters').select('*').in('version_id', versions).eq('is_active', true) : Promise.resolve({ data: [], error: null }),
           versions.length && target === 'set' ? supabase.from('ai_pilot_blocks').select('version_id,content').in('version_id', versions).eq('block_key', 'series-direction').eq('is_active', true) : Promise.resolve({ data: [], error: null }),
           versions.length ? supabase.from('ai_pilot_media').select('version_id,component_type,component_key,media_type,url').in('version_id', versions).eq('media_type', 'image').eq('is_active', true) : Promise.resolve({ data: [], error: null }),
-          supabase.from('member_ai_pilot_extensions').select('id,member_ai_pilot_id,extension_type,name,content,operation').eq('user_id', userId).eq('is_active', true).in('member_ai_pilot_id', accesses.map((a) => a.id)),
+          supabase.from('member_ai_pilot_extensions').select('id,member_ai_pilot_id,extension_type,name,content,operation,target_item_id').eq('user_id', userId).eq('is_active', true).in('member_ai_pilot_id', accesses.map((a) => a.id)),
+          target === 'set' ? supabase.from('set_designer_project').select('id,name,images,reference_sheet')
+            .eq('created_by_id', userId) : Promise.resolve({ data: [], error: null }),
         ]);
-        const failed = [actors, blocks, media, additions].find((result) => result.error);
+        const failed = [actors, blocks, media, additions, mySets].find((result) => result.error);
         if (failed) throw failed.error;
         const urls = (list) => (Array.isArray(list) ? list : []).map((value) => typeof value === 'string' ? value : value?.url).filter(Boolean);
         const result = [];
@@ -267,7 +269,13 @@ function ShootAIPilotImagePicker({ target, onSelect, onClose, embedded = false }
             const locations = Array.isArray(series.locations) ? series.locations : [];
             for (const set of sets) {
               const extra = (media.data || []).filter((item) => item.version_id === versionId && ['set', 'location'].includes(item.component_type) && [set.id, set.name].includes(item.component_key)).map((item) => item.url);
-              add(access, set.name || locations.find((loc) => loc.id === set.location_id)?.name, set.id || set.name, [...urls(set.reference_images), ...extra], 'Official');
+              const memberLink = (additions.data || []).find((entry) => entry.member_ai_pilot_id === access.id && entry.extension_type === 'set' && entry.operation === 'replace' && entry.target_item_id === set.id);
+              const linkedId = memberLink?.content?.my_set_id ?? set.my_set_id;
+              const linked = (mySets.data || []).find((item) => item.id === linkedId);
+              const sheetImages = (linked?.reference_sheet?.extracted_elements || []).map((element) => element.image_url).filter(Boolean);
+              const linkedViews = Array.isArray(linked?.images) ? linked.images.filter(Boolean) : [];
+              add(access, set.name || locations.find((loc) => loc.id === set.location_id)?.name, set.id || set.name,
+                [...linkedViews, ...urls(set.reference_images), ...extra, ...sheetImages], linked ? 'My Set · Reference Sheet' : 'Official');
             }
             for (const location of locations.filter((loc) => !sets.some((set) => set.location_id === loc.id))) {
               const extra = (media.data || []).filter((item) => item.version_id === versionId && item.component_type === 'location' && [location.id, location.name].includes(item.component_key)).map((item) => item.url);
