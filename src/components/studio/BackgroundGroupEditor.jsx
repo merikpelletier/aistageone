@@ -1,11 +1,20 @@
 import React, { useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, Upload, WandSparkles, RotateCcw } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { toast } from 'sonner';
+import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 
 const IDS = ['BG-01', 'BG-02', 'BG-03', 'BG-04', 'BG-05', 'BG-06'];
+const GROUP_META_TAG = 'background-group-data:';
+const decodeGroup = asset => {
+  try {
+    const entry = Array.isArray(asset?.style_tags) && asset.style_tags.find(tag => typeof tag === 'string' && tag.startsWith(GROUP_META_TAG));
+    return entry ? JSON.parse(decodeURIComponent(entry.slice(GROUP_META_TAG.length))) : {};
+  } catch { return {}; }
+};
 const THEMES = [
   ['hotel', 'Luxury hotel guests', 'Elegant hotel guests, varied adult ages and appearances, polished upscale wardrobes; understated, believable extras.'],
   ['press', 'Press and media', 'Professional journalists, photographers and editors; smart practical clothing with discreet media accessories.'],
@@ -52,22 +61,30 @@ const toTemplatePng = () => new Promise((resolve, reject) => {
   image.src = objectUrl;
 });
 
-export default function BackgroundGroupEditor({ sheet, userEmail, onClose }) {
-  const saved = (() => {
-    try { return JSON.parse(sheet?.character_photos?.[0] || '{}')._design?.background_group || {}; }
-    catch { return {}; }
-  })();
-  const [name, setName] = useState(sheet?.character_name || '');
-  const [theme, setTheme] = useState(saved.theme || 'hotel');
-  const [themePrompt, setThemePrompt] = useState(saved.theme_prompt || THEMES[0][2]);
-  const [directions, setDirections] = useState(saved.directions || Object.fromEntries(IDS.map(id => [id, ''])));
-  const [selected, setSelected] = useState(saved.selected || IDS);
+export default function BackgroundGroupEditor({ userEmail, onClose }) {
+  const queryClient = useQueryClient();
+  const [loadedAsset, setLoadedAsset] = useState(null);
+  const saved = decodeGroup(loadedAsset);
+  const { data: savedGroups = [], isLoading: groupsLoading } = useQuery({
+    queryKey: ['actor-background-groups', userEmail],
+    enabled: Boolean(userEmail),
+    queryFn: async () => {
+      const assets = await base44.entities.VaultAsset.filter({ user_email: userEmail }, '-created_date', null);
+      return (assets || []).filter(asset => asset.asset_category === 'background_group');
+    },
+  });
+  const [name, setName] = useState('');
+  const [theme, setTheme] = useState('hotel');
+  const [themePrompt, setThemePrompt] = useState(THEMES[0][2]);
+  const [directions, setDirections] = useState(Object.fromEntries(IDS.map(id => [id, ''])));
+  const [selected, setSelected] = useState(IDS);
   const [sourceMode, setSourceMode] = useState('current');
-  const [templateUrl, setTemplateUrl] = useState(saved.template_url || '');
-  const [currentUrl, setCurrentUrl] = useState(saved.current_url || sheet?.voice_sample_url || '');
-  const [originalUrl, setOriginalUrl] = useState(saved.original_url || saved.template_url || '');
+  const [templateUrl, setTemplateUrl] = useState('');
+  const [currentUrl, setCurrentUrl] = useState('');
+  const [originalUrl, setOriginalUrl] = useState('');
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showVaultSave, setShowVaultSave] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
   const activeUrl = sourceMode === 'original' ? (originalUrl || templateUrl) : (currentUrl || originalUrl || templateUrl);
@@ -125,27 +142,50 @@ A panel number is a positional reference, not a name to display on clothing. No 
       toast.error(error.message || 'Could not generate the group');
     } finally { setGenerating(false); }
   };
-  const save = async () => {
+  const backgroundMetadata = () => ({
+    version: 1, theme, theme_prompt: themePrompt, directions, selected,
+    template_url: templateUrl, original_url: originalUrl || templateUrl,
+    current_url: currentUrl, ids: IDS, layout: '2x3',
+  });
+  const save = () => {
     if (!name.trim()) return toast.error('Name this background group.');
     if (!currentUrl) return toast.error('Generate the background group first.');
+    setShowVaultSave(true);
+  };
+  const handleVaultSaved = async asset => {
     setSaving(true);
     try {
-      const design = {
-        background_group: { version: 1, theme, theme_prompt: themePrompt, directions, selected,
-          template_url: templateUrl, original_url: originalUrl || templateUrl, current_url: currentUrl,
-          ids: IDS, layout: '2x3' },
-        source_mode: 'sheet', source_sheet_url: currentUrl, aspect_ratio: '4:3',
-      };
-      const data = {
-        user_email: userEmail, character_name: name.trim(), character_bio: themePrompt,
-        character_traits: ['Background Group'], character_photos: [JSON.stringify({ _design: design })],
-        voice_sample_url: currentUrl, notes: 'Background group · 6 numbered actors',
-      };
-      if (sheet?.id) await base44.entities.CharacterSheet.update(sheet.id, data);
-      else await base44.entities.CharacterSheet.create(data);
-      toast.success('Background Group saved in Actor.');
-    } catch (error) { console.error('Save background group failed', error); toast.error(error.message || 'Save failed'); }
-    finally { setSaving(false); }
+      await base44.entities.VaultAsset.update(asset.id, {
+        asset_category: 'background_group',
+        actor_name: name.trim(),
+        tags: ['Background Group', THEMES.find(t => t[0] === theme)?.[1] || 'Custom', ...IDS],
+        style_tags: [GROUP_META_TAG + encodeURIComponent(JSON.stringify(backgroundMetadata()))],
+        aspect_ratio: '4:3',
+      });
+      setLoadedAsset({ ...asset, asset_category: 'background_group' });
+      await queryClient.invalidateQueries({ queryKey: ['actor-background-groups', userEmail] });
+      await queryClient.invalidateQueries({ queryKey: ['vaultAssets', userEmail] });
+      await queryClient.invalidateQueries({ queryKey: ['vaultAssetsForCharacterDesigner', userEmail] });
+      setShowVaultSave(false);
+      toast.success('Background Group saved in your Vault folder.');
+    } catch (error) {
+      console.error('Background group Vault metadata save failed', error);
+      toast.error('Image saved, but group details could not be finalized. Please check My Vault.');
+    } finally { setSaving(false); }
+  };
+  const loadGroup = asset => {
+    const record = decodeGroup(asset);
+    setLoadedAsset(asset);
+    setName(asset.name || '');
+    setTheme(record.theme || 'custom');
+    setThemePrompt(record.theme_prompt || '');
+    setDirections(record.directions || Object.fromEntries(IDS.map(id => [id, ''])));
+    setSelected(record.selected || IDS);
+    setTemplateUrl(record.template_url || '');
+    setOriginalUrl(record.original_url || record.template_url || '');
+    setCurrentUrl(record.current_url || asset.url || '');
+    setSourceMode('current');
+    toast.success('Background Group loaded from My Vault.');
   };
   const fieldClass = 'w-full border border-white/15 bg-black/30 px-3 py-3 text-sm text-white outline-none focus:border-cyan-300';
   return <div className="min-h-screen bg-[#202328] px-4 py-5 pb-24 text-white sm:px-7">
@@ -158,6 +198,18 @@ A panel number is a positional reference, not a name to display on clothing. No 
       </div>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
         <div className="space-y-3">
+          <div className="border border-white/15 bg-[#141619] p-3">
+            <p className="mb-2 text-xs font-black uppercase tracking-wide text-cyan-200">My Vault · Background Groups</p>
+            {groupsLoading ? <p className="text-xs text-white/50">Loading your groups...</p> : savedGroups.length ? (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {savedGroups.map(asset => <button key={asset.id} type="button" onClick={() => loadGroup(asset)}
+                  className="border border-white/15 bg-black/25 p-2 text-left hover:border-cyan-300/50">
+                  <img src={asset.url} alt="" className="aspect-[4/3] w-full bg-white object-contain" />
+                  <p className="mt-1 truncate text-xs font-bold text-white">{asset.name}</p>
+                </button>)}
+              </div>
+            ) : <p className="text-xs text-white/50">No saved groups yet. Generate one and save it in a Vault folder.</p>}
+          </div>
           <img src={preview} alt="Six numbered background actor template or generated sheet" className="w-full border border-white/15 bg-white object-contain" />
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => setSourceMode('original')} className={`border px-3 py-2 text-xs font-bold ${sourceMode === 'original' ? 'border-cyan-300 text-cyan-300' : 'border-white/20'}`}>USE ORIGINAL TEMPLATE</button>
@@ -206,11 +258,13 @@ A panel number is a positional reference, not a name to display on clothing. No 
             <button type="button" onClick={generate} disabled={generating || !modelKey || uploading} className="flex items-center gap-2 bg-cyan-300 px-4 py-3 text-xs font-black text-black disabled:opacity-40">
               {generating ? <Loader2 className="animate-spin" size={16}/> : <WandSparkles size={16}/>}GENERATE GROUP {quoteLoading ? '' : quote?.credits ? `· ${quote.credits} credits` : ''}</button>
             <button type="button" onClick={save} disabled={saving || !currentUrl} className="border border-cyan-300 px-4 py-3 text-xs font-black text-cyan-200 disabled:opacity-35">
-              {saving ? 'SAVING...' : 'SAVE BACKGROUND GROUP'}</button>
+              {saving ? 'SAVING...' : 'SAVE TO MY VAULT'}</button>
             <button type="button" onClick={() => setSourceMode('original')} className="flex items-center gap-1 border border-white/20 px-3 py-3 text-xs font-bold"><RotateCcw size={14}/>RESET SOURCE</button>
           </div>
         </div>
       </div>
     </div>
+    {showVaultSave && currentUrl && <SaveToVaultModal userEmail={userEmail} imageUrl={currentUrl} mediaType="image"
+      suggestedName={name.trim()} onSaved={handleVaultSaved} onClose={() => setShowVaultSave(false)} />}
   </div>;
 }
