@@ -650,7 +650,11 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const aspectBinding = getMappedModelField(effectiveModelOption, 'aspect_ratio');
   const modelAspectRatios = Array.isArray(aspectBinding?.schema?.enum) && aspectBinding.schema.enum.length ? aspectBinding.schema.enum.map(String) : RATIOS.map((ratio) => ratio.id);
   const referenceBinding = getMappedModelField(effectiveModelOption, 'reference_images');
-  const modelReferenceMax = Number.isFinite(Number(referenceBinding?.schema?.maxItems)) ? Number(referenceBinding.schema.maxItems) : 7;
+  // Kling 4.0 allows 10 image inputs in total. Its schema omits maxItems,
+  // so do not apply the generic seven-image fallback to this model.
+  const modelReferenceMax = Number.isFinite(Number(referenceBinding?.schema?.maxItems))
+    ? (effectiveModel === 'kwaivgi/kling-v4.0' ? Math.min(10, Number(referenceBinding.schema.maxItems)) : Number(referenceBinding.schema.maxItems))
+    : (effectiveModel === 'kwaivgi/kling-v4.0' ? 10 : 7);
   const resolutionBinding = getMappedModelField(effectiveModelOption, 'resolution');
   const resolutionOptions = Array.isArray(resolutionBinding?.schema?.enum) ? resolutionBinding.schema.enum.map(String) : [];
   const resolutionValue = resolutionBinding ? (modelParams[resolutionBinding.name] ?? resolutionBinding.schema?.default ?? resolutionOptions[0] ?? '') : '';
@@ -910,13 +914,13 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const roleById = new Map(characterRefs.map((ref) => [ref.member.id, ref.role.replace(' REFERENCE', '')]));
     const imageNumberByShotReferenceId = new Map(refs.map((ref, index) => [ref.shotReference?.id, index + 1]).filter(([id]) => id));
     const referenceRules = refs.map((ref, index) => {
-      if (ref.shotReference) return `SHOT VISUAL REFERENCE = Image ${index + 1}. Use Image ${index + 1} exactly as supplied when the shot instructions call for it. Do not redesign, reinterpret or replace its visible content.`;
-      if (!ref.member) return `${ref.role} = Image ${index + 1}. Use this exact set as the physical location master. Do not redesign, reinterpret, move, remove, resize, recolor or substitute architecture, furniture, props, materials or lighting fixtures.`;
+      if (ref.shotReference) return `SHOT VISUAL REFERENCE = ${effectiveModel === 'kwaivgi/kling-v4.0' ? `@image_${index + 1}` : `Image ${index + 1}`}. Use the specified image exactly when the shot calls for it. Do not redesign or replace its visible content.`;
+      if (!ref.member) return `${ref.role} = ${effectiveModel === 'kwaivgi/kling-v4.0' ? `@image_${index + 1}` : `Image ${index + 1}`}. Use this exact set as the physical location master. Do not redesign, reinterpret, move, remove, resize, recolor or substitute architecture, furniture, props, materials or lighting fixtures.`;
       const member = ref.member;
       const voice = member.voice_or_sound ? ` BASE VOICE / SOUND: ${member.voice_or_sound}.` : '';
       const manner = member.manner ? ` BASE PERFORMANCE: ${member.manner}.` : '';
       const notes = member.description ? ` CHARACTER NOTES: ${member.description}.` : '';
-      return `${ref.role} = Image ${index + 1}. IDENTITY: "${member.name || 'Unnamed character'}". This exact picture is assigned ONLY to this named character. Match its face, body, hairstyle, wardrobe and accessories; never swap it with another actor or infer identity from image filenames. The image is authoritative.${voice}${manner}${notes}`;
+      return `${ref.role} = ${effectiveModel === 'kwaivgi/kling-v4.0' ? `@image_${index + 1}` : `Image ${index + 1}`}. IDENTITY: "${member.name || 'Unnamed character'}". This exact picture is assigned ONLY to this named character. Match its face, body, hairstyle, wardrobe and accessories; never swap it with another actor or infer identity from image filenames. The image is authoritative.${voice}${manner}${notes}`;
     }).join(' ');
     const framingRule = `FRAMING LOCK: ${shot.framing} is mandatory. Do not substitute a different shot size, angle or composition.`;
     let contentRule = '';
@@ -934,7 +938,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       contentRule = `${label}: ${shot.description || 'No description specified.'}`;
     }
     const transitionImageNumber = imageNumberByShotReferenceId.get(shot.transition_reference_id);
-    const transitionRule = transitionImageNumber && String(shot.transition_instruction || '').trim() ? ` TRANSITION: After the listed shot action/beats, ${String(shot.transition_instruction).trim()} to Image ${transitionImageNumber}. Image ${transitionImageNumber} becomes the specified visual target; do not substitute another image.` : '';
+    const transitionImageTag = transitionImageNumber ? (effectiveModel === 'kwaivgi/kling-v4.0' ? `@image_${transitionImageNumber}` : `Image ${transitionImageNumber}`) : '';
+    const transitionRule = transitionImageTag && String(shot.transition_instruction || '').trim() ? ` TRANSITION: After the listed shot action/beats, ${String(shot.transition_instruction).trim()} to ${transitionImageTag}. ${transitionImageTag} becomes the specified visual target; do not substitute another image.` : '';
     return `${referenceRules} ${framingRule} ${contentRule}${transitionRule} ${shot.camera ? `CAMERA NOTES: ${shot.camera}.` : ''} ${shot.sound ? `SOUND / AMBIENCE: ${shot.sound}.` : ''} Preserve exact reference identities, exact set continuity, wardrobe, eyelines and screen direction. Duration ${shot.duration} seconds.`;
   };
 
