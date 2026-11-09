@@ -899,7 +899,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     if (setReference.url) refs.push({ role: 'SET REFERENCE', url: setReference.url, member: null, shotReference: null });
     shotCast(shot).filter((member) => member.reference_url).forEach((member, index) => refs.push({ role: `CHARACTER ${index + 1} REFERENCE`, url: member.reference_url, member, shotReference: null }));
     (Array.isArray(shot.shot_references) ? shot.shot_references : []).filter((ref) => ref.url).forEach((shotReference) => refs.push({ role: 'SHOT VISUAL REFERENCE', url: shotReference.url, member: null, shotReference }));
-    return refs.slice(0, modelReferenceMax);
+    return refs;
   };
 
   const shotReferenceUrls = (shot) => shotReferences(shot).map((ref) => ref.url);
@@ -916,7 +916,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       const voice = member.voice_or_sound ? ` BASE VOICE / SOUND: ${member.voice_or_sound}.` : '';
       const manner = member.manner ? ` BASE PERFORMANCE: ${member.manner}.` : '';
       const notes = member.description ? ` CHARACTER NOTES: ${member.description}.` : '';
-      return `${ref.role} = Image ${index + 1}. Use this exact character reference. Do not invent or redescribe appearance, face, hair, body, wardrobe or accessories. The image is authoritative.${voice}${manner}${notes}`;
+      return `${ref.role} = Image ${index + 1}. IDENTITY: "${member.name || 'Unnamed character'}". This exact picture is assigned ONLY to this named character. Match its face, body, hairstyle, wardrobe and accessories; never swap it with another actor or infer identity from image filenames. The image is authoritative.${voice}${manner}${notes}`;
     }).join(' ');
     const framingRule = `FRAMING LOCK: ${shot.framing} is mandatory. Do not substitute a different shot size, angle or composition.`;
     let contentRule = '';
@@ -964,6 +964,9 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     if (shot.framing === 'Over-the-shoulder' && selectedCast.length < 2) return toast.error('Over-the-shoulder requires two selected characters.');
     if (selectedCast.some((member) => !member.reference_url)) return toast.error('Every selected character needs a reference image.');
     if (!setReference.url) return toast.error('Add a set reference before generating this shot.');
+    const requiredRefs = shotReferences(shot);
+    if (requiredRefs.length > modelReferenceMax) return toast.error(`This shot has ${requiredRefs.length} visual references, but the selected video model supports ${modelReferenceMax}. Reduce references or select a model with a higher limit. No identity reference will be discarded.`);
+    if (new Set(requiredRefs.map((ref) => ref.url)).size !== requiredRefs.length) return toast.error('The same image is assigned to multiple roles in this shot. Select distinct reference images so character identities are unambiguous.');
     if (shotMode(shot) === 'standard') {
       const incompleteBeat = (shot.lines || []).find((line) => (line.dialogue || line.action) && !line.character_id);
       if (incompleteBeat) return toast.error('Every active dialogue/action line must be assigned to a character.');
@@ -987,12 +990,12 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
         duration: normalizeVideoDuration(shot.duration),
         aspect_ratio: aspectRatio,
         prompt: finalPrompt,
-        reference_images: refs.slice(0, modelReferenceMax),
+        reference_images: refs,
       });
       const startData = await invokeGenerateVideo({
         async_mode: true,
         prompt: finalPrompt,
-        reference_image_urls: refs.slice(0, modelReferenceMax),
+        reference_image_urls: refs,
         duration: normalizeVideoDuration(shot.duration),
         aspect_ratio: aspectRatio,
         engine: 'video',
