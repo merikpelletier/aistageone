@@ -150,6 +150,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   const [tags, setTags] = useState(asset?.tags || []);
   const [tagInput, setTagInput] = useState('');
   const [images, setImages] = useState(asset?.images || []);
+  const [viewVariants, setViewVariants] = useState(asset?.reference_sheet?.view_variants || {});
   const [compositionElements, setCompositionElements] = useState(Array.isArray(asset?.composition_elements) ? asset.composition_elements : []);
   const [referenceSheet, setReferenceSheet] = useState(asset?.reference_sheet || null);
   const [detectedElements, setDetectedElements] = useState([]);
@@ -492,7 +493,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         tags,
         images,
         composition_elements: compositionElements,
-        reference_sheet: newSheet?.version === 1 ? newSheet : referenceSheet,
+        reference_sheet: { ...(newSheet?.version === 1 ? newSheet : referenceSheet || {}), view_variants: viewVariants },
         updated_date: new Date().toISOString(),
       };
 
@@ -572,7 +573,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         </div>
 
         <div className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 pb-28 sm:px-5">
-          <SetGeneratorPanel name={name} description={description} images={images} setImages={setImages} compositionElements={compositionElements} />
+          <SetGeneratorPanel name={name} description={description} images={images} setImages={setImages} viewVariants={viewVariants} setViewVariants={setViewVariants} compositionElements={compositionElements} />
 
           <details key={heroImage ? 'master-ready' : 'master-empty'} defaultOpen={!heroImage} className="border border-white/10 bg-[#17191d]">
             <summary className="cursor-pointer p-4 text-sm font-black uppercase tracking-wider text-[#23c7be]">Master Set Details & Creative Direction — {heroImage ? 'Expand to edit' : 'Required for creation'}</summary>
