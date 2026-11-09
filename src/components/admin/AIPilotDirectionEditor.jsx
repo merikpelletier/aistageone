@@ -368,10 +368,9 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       .map((entry, index) => ({ ...entry, imageNumber: index + 1 }))
       .filter((entry) => entry.kind === 'character' && entry.name?.trim());
     const namesByLength = [...characterImageIds].sort((a, b) => b.name.length - a.name.length);
-    const escapedNames = namesByLength.map((entry) => entry.name.replace(/[.*+?^${}()|[\]\\]/g, '\\    setGenerationError('');
-    setGenerating(`frame-${shot.id}`);
-    try {
-      const prompt = ['));
+    const escapedNames = namesByLength.map((entry) => Array.from(entry.name)
+      .map((char) => '[](){}.*+?^$|'.includes(char) || char.charCodeAt(0) === 92 ? String.fromCharCode(92) + char : char)
+      .join(''));
     const characterNamePattern = escapedNames.length
       ? new RegExp(`(^|[^\\p{L}\\p{N}_])(${escapedNames.join('|')})(?=$|[^\\p{L}\\p{N}_])`, 'giu')
       : null;
