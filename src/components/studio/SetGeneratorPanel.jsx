@@ -557,7 +557,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
             <div className="text-xs font-black text-white">HERO — DAY / NIGHT</div>
             {timeSwitcher('Hero')}
             <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-              <img src={viewUrl('Hero', 0) || heroImage} alt={`Hero ${timeFor('Hero')} view`} className="aspect-video w-full max-w-md object-contain bg-black" />
+              <div className="w-full max-w-md"><EditableImage label="Hero" url={viewUrl('Hero', 0)} box={editBox('Hero')} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} /></div>
               <button type="button" onClick={() => generateNight('Hero', 0)} disabled={Boolean(generating) || !effectiveModel || !heroImage}
                 className="border border-[#23c7be]/40 px-3 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">
                 {generating === 'Hero' ? 'GENERATING...' : viewVariants?.Hero?.night ? 'REGENERATE NIGHT' : 'CREATE NIGHT VERSION'}
