@@ -39,7 +39,7 @@ const writeBriefField = (text, label, value) => {
   return clean ? `${clean}\n${line}` : line;
 };
 
-function OloShopSetPicker({ selectedImages, onToggle, onClose }) {
+function OloShopSetPicker({ selectedImages = [], onToggle, onSelect, onClose }) {
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('all');
   const { data: categories = [] } = useQuery({
@@ -89,9 +89,9 @@ function OloShopSetPicker({ selectedImages, onToggle, onClose }) {
               const selectedCount = gallery.filter(url => selectedImages.includes(url)).length;
               return <article key={asset.id} className={`overflow-hidden rounded-[4px] border bg-black transition ${selectedCount ? 'border-[#23c7be]' : 'border-white/10'}`}>
                 <div className={`grid gap-1 bg-zinc-900 p-1 ${gallery.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>{gallery.map((url, index) => {
-                  const selected = selectedImages.includes(url);
-                  const full = !selected && selectedImages.filter(Boolean).length >= 8;
-                  return <button key={`${asset.id}-${url}`} onClick={() => onToggle(url)} disabled={full} className={`group relative aspect-[4/3] overflow-hidden rounded-[3px] border transition ${selected ? 'border-[#23c7be]' : 'border-transparent hover:border-[#23c7be]/60'} ${full ? 'cursor-not-allowed opacity-35' : ''}`} title={`Use image ${index + 1} of ${asset.title || 'this asset'}`}>
+                  const selected = !onSelect && selectedImages.includes(url);
+                  const full = !onSelect && !selected && selectedImages.filter(Boolean).length >= 8;
+                  return <button key={`${asset.id}-${url}`} onClick={() => onSelect ? onSelect(url, asset.title) : onToggle(url)} disabled={full} className={`group relative aspect-[4/3] overflow-hidden rounded-[3px] border transition ${selected ? 'border-[#23c7be]' : 'border-transparent hover:border-[#23c7be]/60'} ${full ? 'cursor-not-allowed opacity-35' : ''}`} title={`Use image ${index + 1} of ${asset.title || 'this asset'}`}>
                     <img src={url} alt={`${asset.title || 'Assets Shop asset'} · image ${index + 1}`} className="h-full w-full object-contain transition duration-300 group-hover:scale-105" />
                     <span className={`absolute bottom-1.5 right-1.5 rounded-[3px] px-2 py-0.5 text-[9px] font-black ${selected ? 'bg-[#23c7be] text-black' : 'bg-black/80 text-white'}`}>{selected ? 'Selected' : `${index + 1}/${gallery.length}`}</span>
                   </button>;
@@ -101,7 +101,7 @@ function OloShopSetPicker({ selectedImages, onToggle, onClose }) {
             })}</div>
             : <div className="flex min-h-64 items-center justify-center rounded-[4px] border border-dashed border-white/15 text-sm text-white/45">No published Assets Shop item matches this search.</div>}
         </div>
-        <footer className="flex items-center justify-between border-t border-white/10 p-4"><span className="text-xs font-bold text-white/50">{selectedImages.filter(Boolean).length}/8 set images selected</span><button onClick={onClose} className="rounded-[3px] bg-[#23c7be] px-6 py-3 text-sm font-black text-black">Done</button></footer>
+        <footer className="flex items-center justify-between border-t border-white/10 p-4"><span className="text-xs font-bold text-white/50">{onSelect ? 'Choose one image to add to the Reference Sheet' : `${selectedImages.filter(Boolean).length}/8 set images selected`}</span><button onClick={onClose} className="rounded-[3px] bg-[#23c7be] px-6 py-3 text-sm font-black text-black">Done</button></footer>
       </motion.div>
     </motion.div>
   );
@@ -161,6 +161,11 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   const [enhancePrompt, setEnhancePrompt] = useState('');
   const [enhanceModelKey, setEnhanceModelKey] = useState('');
   const [enhancingImage, setEnhancingImage] = useState(false);
+  const [referenceSource, setReferenceSource] = useState(null);
+  const [newReferencePrompt, setNewReferencePrompt] = useState('');
+  const [newReferenceModel, setNewReferenceModel] = useState('');
+  const [newReferenceGenerating, setNewReferenceGenerating] = useState(false);
+  const [newReferenceUploading, setNewReferenceUploading] = useState(false);
   const [referencesDirty, setReferencesDirty] = useState(false);
   const enhanceTarget = savedReferenceDraft.find(item => item.id === enhanceReferenceId);
   const enhanceInput = useMemo(() => ({
@@ -177,6 +182,18 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
     service: 'replicateGenerate:compose_scene', kind: 'image',
     input: enhanceInput, modelKey: chosenEnhanceModel,
     enabled: Boolean(enhanceReferenceId && chosenEnhanceModel),
+  });
+  const newReferenceInput = useMemo(() => ({
+    prompt: newReferencePrompt, aspect_ratio: '1:1', reference_image_urls: [],
+  }), [newReferencePrompt]);
+  const { options: newReferenceModels, loading: newReferenceModelsLoading } = useAiModelOptions({
+    service: 'replicateGenerate:compose_scene', kind: 'image', input: newReferenceInput,
+    enabled: referenceSource === 'prompt' && Boolean(newReferencePrompt.trim()),
+  });
+  const chosenNewReferenceModel = newReferenceModel || newReferenceModels.find(model => model.recommended)?.model_key || newReferenceModels[0]?.model_key || '';
+  const { quote: newReferenceQuote, loading: newReferencePriceLoading } = useAiPriceQuote({
+    service: 'replicateGenerate:compose_scene', kind: 'image', input: newReferenceInput,
+    modelKey: chosenNewReferenceModel, enabled: referenceSource === 'prompt' && Boolean(chosenNewReferenceModel && newReferencePrompt.trim()),
   });
   const selectionStartRef = useRef(null);
   const [selectionPreview, setSelectionPreview] = useState(null);
@@ -293,6 +310,51 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
       name: '', role: 'set_dressing', placement: '',
       bbox, source_image_url: images[0], image_url: '', included: true,
     }]);
+  };
+
+  const addExternalReference = (url, proposedName = 'New Reference') => {
+    if (!url) return;
+    setSavedReferenceDraft(current => [...current, {
+      id: `external-${crypto.randomUUID()}`,
+      name: String(proposedName || 'New Reference').slice(0, 140),
+      image_url: url, source_image_url: url, role: 'set_dressing', placement: '',
+      replacement: true, included: true,
+    }]);
+    setReferencesDirty(true);
+    setReferenceSource(null);
+    toast.success('Reference added to the sheet. Save changes to keep it.');
+  };
+
+  const uploadExternalReference = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return toast.error('Choose an image.');
+    setNewReferenceUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      if (!file_url) throw new Error('Upload returned no image.');
+      addExternalReference(file_url, file.name.replace(/\\.[^.]+$/, ''));
+    } catch (error) { toast.error(error.message || 'Could not upload reference.'); }
+    finally { setNewReferenceUploading(false); }
+  };
+
+  const generateExternalReference = async () => {
+    if (!newReferencePrompt.trim() || !chosenNewReferenceModel || !newReferenceQuote?.credits) return toast.error('Enter a prompt and choose a priced image model.');
+    if (!window.confirm(`Generate one reference for ${newReferenceQuote.credits} credits?`)) return;
+    setNewReferenceGenerating(true);
+    try {
+      const result = await base44.functions.invoke('replicateGenerate', {
+        method: 'compose_scene', model_key: chosenNewReferenceModel,
+        prompt: `Create a single clean, high-quality production reference image of the following set element: ${newReferencePrompt.trim()}. Isolate the specified subject clearly on a neutral grey studio background. No unrelated objects, no people, no text.`,
+        reference_image_urls: [], aspect_ratio: '1:1',
+      });
+      if (result.data?.error) throw new Error(result.data.error);
+      if (!result.data?.file_url) throw new Error('Image model returned no file.');
+      addExternalReference(result.data.file_url, newReferencePrompt.trim().slice(0, 100));
+      setNewReferencePrompt('');
+    } catch (error) { toast.error(error.message || 'Could not generate reference.'); }
+    finally { setNewReferenceGenerating(false); }
   };
 
   const updateSavedReference = (id, patch) => {
@@ -685,6 +747,34 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                   {saving ? 'Saving…' : 'Save Reference Sheet Changes'}
                 </button>
               </div>
+              <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
+                <span className="mr-2 text-xs font-semibold text-white/65">Add Reference</span>
+                <label className="cursor-pointer border border-white/20 px-3 py-2 text-xs text-white hover:bg-white/10">
+                  {newReferenceUploading ? 'Uploading…' : 'Upload'}
+                  <input type="file" accept="image/*" disabled={newReferenceUploading || saving} className="hidden" onChange={uploadExternalReference} />
+                </label>
+                <button type="button" onClick={() => setReferenceSource('vault')} className="border border-white/20 px-3 py-2 text-xs text-white hover:bg-white/10">My Vault</button>
+                <button type="button" onClick={() => setReferenceSource('shop')} className="border border-white/20 px-3 py-2 text-xs text-white hover:bg-white/10">Assets Shop</button>
+                <button type="button" onClick={() => { setReferenceSource(current => current === 'prompt' ? null : 'prompt'); setNewReferenceModel(''); }} className="border border-[#23c7be]/50 px-3 py-2 text-xs text-[#8ee9e4] hover:bg-[#23c7be]/10">Create with Prompt</button>
+              </div>
+              {referenceSource === 'prompt' && <div className="space-y-3 border border-white/15 bg-black/25 p-4">
+                <label className="block text-xs text-white/60">Describe the new object or reference
+                  <textarea rows={3} value={newReferencePrompt} onChange={event => setNewReferencePrompt(event.target.value)} placeholder="A white porcelain place setting, silver flatware, neutral grey backdrop…" className="mt-2 w-full border border-white/20 bg-black p-3 text-sm text-white" />
+                </label>
+                <label className="block text-xs text-white/60">Image model
+                  <select value={chosenNewReferenceModel} onChange={event => setNewReferenceModel(event.target.value)} className="mt-2 w-full border border-white/20 bg-black p-3 text-sm text-white">
+                    {newReferenceModelsLoading && <option value="">Loading models…</option>}
+                    {!newReferenceModelsLoading && !newReferenceModels.length && <option value="">No image model available</option>}
+                    {newReferenceModels.map(model => <option key={model.model_key} value={model.model_key}>{model.name || model.model_key}</option>)}
+                  </select>
+                </label>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-xs text-white/50">Generation cost: {newReferencePriceLoading ? 'Calculating…' : newReferenceQuote?.credits ? `${newReferenceQuote.credits} credits` : 'Unavailable'}</span>
+                  <button type="button" onClick={generateExternalReference} disabled={newReferenceGenerating || newReferencePriceLoading || !newReferenceQuote?.credits || !chosenNewReferenceModel || !newReferencePrompt.trim()} className="bg-[#23c7be] px-4 py-2.5 text-xs font-bold text-black disabled:opacity-40">
+                    {newReferenceGenerating ? 'Generating…' : 'Generate Reference'}
+                  </button>
+                </div>
+              </div>}
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {savedReferenceDraft.map((item,index) => <div key={item.id || index} className="min-w-0 space-y-2 border border-white/15 bg-black/25 p-3">
                   <div className="aspect-[4/3] bg-black">
@@ -724,6 +814,8 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
 
       <AnimatePresence>
         {vaultPickerOpen && <VaultPickerModal userEmail={userEmail} onSelect={handleVaultSelect} onClose={() => setVaultPickerOpen(false)} />}
+        {referenceSource === 'vault' && <VaultPickerModal userEmail={userEmail} onSelect={url => addExternalReference(url, 'Vault Reference')} onClose={() => setReferenceSource(null)} />}
+        {referenceSource === 'shop' && <OloShopSetPicker onSelect={addExternalReference} onClose={() => setReferenceSource(null)} />}
         {oloPickerOpen && <OloShopSetPicker selectedImages={images.filter(Boolean)} onToggle={handleOloToggle} onClose={() => setOloPickerOpen(false)} />}
         {cropSource && <ImageCropModal imageUrl={cropSource} onConfirm={handleCropConfirm} onClose={() => setCropSource(null)} />}
         {editingSavedReferenceId && savedReferenceDraft.find(item => item.id === editingSavedReferenceId)?.image_url && (
