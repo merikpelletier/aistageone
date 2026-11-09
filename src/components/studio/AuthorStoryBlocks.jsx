@@ -17,7 +17,7 @@ const labelClass = 'mb-1.5 block text-xs font-black uppercase tracking-wider tex
 
 const pilotText = (...values) => values.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()).join('\n\n');
 const pilotImages = (images) => (Array.isArray(images) ? images : []).map((image) => typeof image === 'string' ? image : image?.url).filter(Boolean);
-const pilotToFotoPlay = (project, pilot, version, blocks, actors, media, personalAdditions = []) => {
+const pilotToFotoPlay = (project, pilot, version, blocks, actors, media, personalAdditions = [], mySets = []) => {
   const block = (key) => blocks.find((item) => item.block_key === key)?.content || {};
   const series = block('series-direction');
   const scenario = block('scenario');
@@ -36,8 +36,25 @@ const pilotToFotoPlay = (project, pilot, version, blocks, actors, media, persona
   const locations = [
     ...setEntries.map((set) => {
       const location = locationEntries.find((item) => item.id === set.location_id);
-      const images = [...new Set([...pilotImages(set.reference_images), ...media.filter((item) => item.media_type === 'image' && ['set', 'location'].includes(item.component_type) && [set.name, set.id].includes(item.component_key)).map((item) => item.url)])];
-      return { id: crypto.randomUUID(), source: 'ai_pilot', source_id: set.id, name: set.name || location?.name || 'Set', description: pilotText(location?.description, set.description), image_url: images[0] || '', reference_images: images };
+      const personalLink = personalAdditions.find((entry) => entry.extension_type === 'set' && entry.operation === 'replace' && entry.target_item_id === set.id);
+      const linkedId = personalLink?.content?.my_set_id ?? set.my_set_id;
+      const linked = mySets.find((project) => project.id === linkedId);
+      const sheet = linked?.reference_sheet || null;
+      const sheetImages = (sheet?.extracted_elements || []).map((item) => item.image_url).filter(Boolean);
+      const baseImages = [...new Set([
+        ...(Array.isArray(linked?.images) ? linked.images.filter(Boolean) : []),
+        ...pilotImages(set.reference_images),
+        ...media.filter((item) => item.media_type === 'image' && ['set', 'location'].includes(item.component_type) && [set.name, set.id].includes(item.component_key)).map((item) => item.url),
+      ])];
+      const images = [...new Set([...baseImages, ...sheetImages])];
+      return {
+        id: crypto.randomUUID(), source: 'ai_pilot', source_id: set.id,
+        my_set_id: linked?.id || null,
+        name: set.name || location?.name || 'Set',
+        description: pilotText(location?.description, linked?.description || set.description),
+        image_url: images[0] || '', reference_images: images,
+        reference_sheet: sheet,
+      };
     }),
     ...locationEntries.filter((item) => !setEntries.some((set) => set.location_id === item.id)).map((item) => {
       const images = media.filter((mediaItem) => mediaItem.media_type === 'image' && mediaItem.component_type === 'location' && [item.name, item.id].includes(mediaItem.component_key)).map((mediaItem) => mediaItem.url);
@@ -83,6 +100,13 @@ const pilotToFotoPlay = (project, pilot, version, blocks, actors, media, persona
       ai_pilot_visual_direction: visuals,
       ai_pilot_personal_additions: personal.map((item) => ({ id: item.id, source: 'ai_pilot_personal', type: item.extension_type, name: item.name, content: item.content || {} })),
       ai_pilot_personal_direction: personalDirection,
+      ai_pilot_shot_set_references: personalAdditions
+        .filter((item) => item.extension_type === 'set_reference' && item.operation === 'replace')
+        .map((item) => ({
+          shot_id: item.target_item_id,
+          source_set_id: item.content?.source_set_id || '',
+          reference_urls: Array.isArray(item.content?.reference_urls) ? item.content.reference_urls : [],
+        })),
     },
   };
 };
@@ -203,7 +227,11 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
         if (error) throw error;
         personalAdditions = data || [];
       }
-      setProject((current) => pilotToFotoPlay(current, selected, versionResult.data, blocksResult.data || [], charactersResult.data || [], mediaResult.data || [], personalAdditions));
+      const { data: mySets, error: setsError } = await supabase.from('set_designer_project')
+        .select('id,name,description,images,reference_sheet')
+        .eq('created_by_id', user.id);
+      if (setsError) throw setsError;
+      setProject((current) => pilotToFotoPlay(current, selected, versionResult.data, blocksResult.data || [], charactersResult.data || [], mediaResult.data || [], personalAdditions, mySets || []));
       toast.success('AI Pilot loaded into FotoPlay');
     } catch (error) { toast.error(error.message || 'Unable to load AI Pilot'); }
     finally { setLoadingPilot(false); }
