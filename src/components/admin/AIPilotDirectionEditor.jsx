@@ -322,6 +322,8 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       character,
       urls: getUrls(character.reference_images),
       selectedUrl: shot.character_reference_urls?.[character.id] || '',
+      selectedName: (Array.isArray(character.reference_images) ? character.reference_images : [])
+        .find((image) => (typeof image === 'string' ? image : image?.url) === shot.character_reference_urls?.[character.id])?.name || '',
     }));
     if (characterReferences.some(({ urls }) => !urls.length)) {
       setGenerationError('A visible character has no reference image. Add one in AI Pilot Characters first.');
@@ -339,8 +341,9 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
         url, kind: 'prop',
         name: sheetElements.find((item) => item.image_url === url)?.name || 'Selected set object',
       })),
-      ...characterReferences.map(({ character, selectedUrl }) => ({
+      ...characterReferences.map(({ character, selectedUrl, selectedName }) => ({
         url: selectedUrl, kind: 'character', name: character.name,
+        look: selectedName || 'Unlabeled reference',
       })),
     ];
     const referenceUrls = referenceEntries.map((item) => item.url);
@@ -357,7 +360,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       const imageNumber = index + 1;
       if (entry.kind === 'set') return `IMAGE ${imageNumber}: SET CAMERA VIEW (${entry.name}). This image determines the environment, camera direction, perspective and architecture; it is not a character or accessory reference.`;
       if (entry.kind === 'prop') return `IMAGE ${imageNumber}: PHYSICAL SET OBJECT — ${entry.name}. Use this object's exact appearance if it is visible in the selected shot. Do not reinterpret it as the entire location.`;
-      return `IMAGE ${imageNumber}: CHARACTER IDENTITY AND EXACT SELECTED LOOK — ${entry.name}. This image belongs ONLY to ${entry.name}; preserve the face, hair, outfit and body appearance shown. Never use this image for another character.`;
+      return `IMAGE ${imageNumber}: CHARACTER — ${entry.name}; SELECTED REFERENCE / LOOK — ${entry.look}. This image belongs ONLY to ${entry.name}; preserve the face, hair, outfit and body appearance shown. Never use this image for another character.`;
     }).join('\n');
     setGenerationError('');
     setGenerating(`frame-${shot.id}`);
@@ -498,12 +501,16 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
               <label className="block text-xs text-white/60">Position within selected set
                 <Input className={CONTROL_CLASS + ' mt-1'} disabled={readOnly} value={shot.set_position || ''} onChange={(event) => updateShot(shot.id, { set_position: event.target.value, storyboard_url: '' })} placeholder="e.g. By the entrance" />
               </label>
-              <div className="text-xs text-white/60">Visible Characters · Reference Photo per Shot</div>
+              <div className="text-xs text-white/60">Visible Characters · Identified Look per Shot</div>
               {eligibleCharacters.map((character) => {
                 const included = Array.isArray(shot.character_ids) ? shot.character_ids.includes(character.id) : true;
                 const images = (Array.isArray(character.reference_images) ? character.reference_images : [])
-                  .map((image) => typeof image === 'string' ? image : image?.url)
-                  .filter(Boolean);
+                  .map((image, index) => ({
+                    url: typeof image === 'string' ? image : image?.url,
+                    name: typeof image === 'string' ? '' : String(image?.name || '').trim(),
+                    index,
+                  }))
+                  .filter((image) => image.url);
                 const chosenUrl = shot.character_reference_urls?.[character.id] || '';
                 return (
                   <div key={character.id} className="space-y-2 border-b border-white/10 pb-3">
@@ -518,13 +525,15 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                     </label>
                     {included && (images.length ? (
                       <div className="flex flex-wrap gap-2">
-                        {images.map((url, index) => (
+                        {images.map(({ url, name, index }) => (
                           <button key={`${character.id}-${index}-${url}`} type="button" disabled={readOnly}
-                            aria-label={`Select ${character.name} reference ${index + 1}`}
+                            aria-label={`Select ${character.name} — ${name || `Reference ${index + 1}`}`}
                             aria-pressed={chosenUrl === url}
                             onClick={() => updateShot(shot.id, { character_reference_urls: { ...(shot.character_reference_urls || {}), [character.id]: url }, storyboard_url: '' })}
-                            className={`relative w-20 h-28 overflow-hidden border-2 bg-black ${chosenUrl === url ? 'border-[var(--studio-accent)]' : 'border-white/20 hover:border-white/60'}`}>
-                            <img src={url} alt={`${character.name} reference ${index + 1}`} className="w-full h-full object-cover" />
+                            title={`${character.name} — ${name || `Reference ${index + 1}`}`}
+                            className={`relative w-32 min-h-36 flex flex-col overflow-hidden border-2 bg-black text-left ${chosenUrl === url ? 'border-[var(--studio-accent)]' : 'border-white/20 hover:border-white/60'}`}>
+                            <img src={url} alt={`${character.name} — ${name || `Reference ${index + 1}`}`} className="h-28 w-full object-contain" />
+                            <span className="block w-full px-1.5 py-1 text-[10px] leading-4 text-white/80 break-words">{name || `Reference ${index + 1} (unnamed)`}</span>
                             {chosenUrl === url && <span className="absolute top-1 right-1 rounded-full bg-[var(--studio-accent)] text-black text-xs font-bold px-1.5">✓</span>}
                           </button>
                         ))}
