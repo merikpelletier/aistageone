@@ -18,6 +18,7 @@ const DEFAULT_HOME_ITEMS = [
   { key: 'fotoplay', label: 'FotoPlay', description: 'Interactive AI storytelling', icon: 'BookOpen', background_image: '', visible: true, order: 5 },
 ];
 import CharacterSheetEditor from '@/components/CharacterSheetEditor';
+import BackgroundGroupEditor from '@/components/studio/BackgroundGroupEditor';
 import SetDesignerWorkspace from '@/components/studio/SetDesignerWorkspace';
 import KitProductionRoom from '@/components/KitProductionRoom';
 import VoiceRecorder from '@/components/studio/VoiceRecorder';
@@ -450,6 +451,7 @@ export default function Studio() {
   const [pitchProjectId, setPitchProjectId] = useState(null);
   const [libraryTab, setLibraryTab] = useState('kits');
   const [editingActor, setEditingActor] = useState(null);
+  const [backgroundMode, setBackgroundMode] = useState(false);
   const [editingSet, setEditingSet] = useState(null);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [showAudioUploader, setShowAudioUploader] = useState(false);
@@ -917,7 +919,15 @@ export default function Studio() {
       )}
 
       <AnimatePresence>
-        {editingActor !== null && <CharacterSheetEditor embedded key="actor-editor" sheet={editingActor || null} userEmail={user?.email} onClose={() => setEditingActor(null)} />}
+        {editingActor !== null && (backgroundMode ?
+          <BackgroundGroupEditor key="background-group-editor" sheet={null} userEmail={user?.email} onClose={() => setBackgroundMode(false)} /> :
+          <div>
+            <div className="flex justify-end bg-[#202328] px-5 py-3">
+              <button type="button" onClick={() => setBackgroundMode(true)} className="border border-cyan-300/50 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-300/20">CREATE BACKGROUND GROUP · 6 ACTORS</button>
+            </div>
+            <CharacterSheetEditor embedded key="actor-editor" sheet={editingActor || null} userEmail={user?.email} onClose={() => setEditingActor(null)} />
+          </div>
+        )}
       </AnimatePresence>
       </div>
       </div>
