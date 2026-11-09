@@ -8,8 +8,8 @@ import { toast } from 'sonner';
 const VIEW_SPECS = [
   ['Wide', `Move the camera significantly farther back from the Hero camera position and use a noticeably wider field of view. Reveal substantially more of the SAME room on the left, right, foreground and ceiling/floor. The result must NOT reuse the Hero framing or crop. Keep the same architectural geometry and object positions.`],
   ['Reverse', `Relocate the camera to the OPPOSITE SIDE of the room, approximately 180 degrees around the set from the Hero camera position, and point it back toward the exact area where the Hero camera was standing. Show the opposite wall and reverse the spatial relationships. The result must be unmistakably different from the Hero composition. Do NOT reproduce, mirror, crop, zoom or lightly reframe the Hero image.`],
-  ['Left', `Relocate the camera clearly to the LEFT side of the Hero camera position, approximately 70 to 100 degrees around the room, and aim across the SAME set toward the center. Reveal surfaces and architectural elements that were hidden from the Hero viewpoint. Do NOT reproduce, mirror, crop or slightly reframe the Hero composition.`],
-  ['Right', `Relocate the camera clearly to the RIGHT side of the Hero camera position, approximately 70 to 100 degrees around the room, and aim across the SAME set toward the center. Reveal surfaces and architectural elements that were hidden from the Hero viewpoint. Do NOT reproduce, mirror, crop or slightly reframe the Hero composition.`],
+  ['Left', `Relocate the camera clearly to the LEFT side of the Hero camera position, to face the LEFT side of the same set straight on. Position the camera directly opposite that side, with its optical axis perpendicular to the left wall or side elevation, not diagonally across the room. Keep the camera level, without an oblique three-quarter angle. Show the left side clearly and preserve the set geometry, furniture and materials. Do NOT mirror, crop or merely reframe the Hero image.`],
+  ['Right', `Relocate the camera clearly to the RIGHT side of the Hero camera position, to face the RIGHT side of the same set straight on. Position the camera directly opposite that side, with its optical axis perpendicular to the right wall or side elevation, not diagonally across the room. Keep the camera level, without an oblique three-quarter angle. Show the right side clearly and preserve the set geometry, furniture and materials. Do NOT mirror, crop or merely reframe the Hero image.`],
   ['Detail', `Move the camera physically close to one distinctive architectural, material, furniture or required composition element that already exists in the Hero image. Create a true close detail shot from the SAME set, not a wide room view. Preserve the exact material, finish, lighting and design language.`],
   ['Day', `Keep the SAME physical camera position and composition as the Hero image, but change ONLY the time and lighting to convincing daytime. Preserve architecture, furniture, object placement, lens perspective and framing. Do not redesign the set.`],
   ['Night', `Keep the SAME physical camera position and composition as the Hero image, but change ONLY the time and lighting to convincing nighttime. Preserve architecture, furniture, object placement, lens perspective and framing. Do not redesign the set.`],
@@ -36,12 +36,15 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   const [selectedModel, setSelectedModel] = useState(null);
   const [reverseDirection, setReverseDirection] = useState('');
   const [reverseType, setReverseType] = useState('auto');
+  const [viewAdjustments, setViewAdjustments] = useState({});
+  const adjustView = (label, value) => setViewAdjustments(current => ({ ...current, [label]: value }));
+  const adjustmentInstruction = label => viewAdjustments[label]?.trim() ? `\n\nUSER ADJUSTMENT FOR ${label.toUpperCase()} VIEW: ${viewAdjustments[label].trim()}\nApply this adjustment while keeping the set consistent with its references.` : '';
   const heroImage = images?.[0] || null;
   const setReferences = (images || []).filter(Boolean).slice(0, 3);
   const compositionRefs = (compositionElements || []).map(item => item?.image_url).filter(Boolean);
   const referenceCount = mode === 'reference' ? setReferences.length : 0;
   const canGenerateHero = useMemo(() => Boolean(name?.trim() || description?.trim()), [name, description]);
-  const heroPrompt = useMemo(() => buildHeroPrompt(name, description, compositionElements), [name, description, compositionElements]);
+  const heroPrompt = useMemo(() => buildHeroPrompt(name, description, compositionElements) + adjustmentInstruction('Hero'), [name, description, compositionElements, viewAdjustments.Hero]);
   const heroRefs = useMemo(() => [...(mode === 'reference' ? setReferences : []), ...compositionRefs], [mode, setReferences.join('|'), compositionRefs.join('|')]);
   const pricingInput = useMemo(() => ({
     prompt: heroPrompt,
@@ -114,8 +117,8 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     rear: `REAR EXTERIOR VIEW, not a 180-degree camera reverse. Show the other physical side of this same building, retaining its design vocabulary, scale, materials, roofline and landscape. Because the Hero does not reveal the rear elevation, depict a plausible continuation and do not copy, mirror or repeat the front façade.`,
   };
   const viewInstruction = (label, instruction) => {
-    if (label !== 'Reverse') return instruction;
-    return `${reverseType === 'interior' ? instruction : ''}\n\nREVERSE VIEW DIRECTION:\n${REVERSE_DIRECTIONS[reverseType] || REVERSE_DIRECTIONS.auto}\n${reverseDirection.trim() ? `ADDITIONAL USER DETAILS (take precedence for unseen areas): ${reverseDirection.trim()}` : ''}\nThis is a distinct viewpoint, not a mirror, crop or zoom of the Hero image. Do not imply that unseen architecture is known with certainty.`;
+    if (label !== 'Reverse') return instruction + adjustmentInstruction(label);
+    return `${reverseType === 'interior' ? instruction : ''}\n\nREVERSE VIEW DIRECTION:\n${REVERSE_DIRECTIONS[reverseType] || REVERSE_DIRECTIONS.auto}\n${reverseDirection.trim() ? `ADDITIONAL USER DETAILS (take precedence for unseen areas): ${reverseDirection.trim()}` : ''}\nThis is a distinct viewpoint, not a mirror, crop or zoom of the Hero image. Do not imply that unseen architecture is known with certainty.${adjustmentInstruction(label)}`;
   };
 
   const generateView = async (index, label, instruction) => {
@@ -207,6 +210,11 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         </button>
       </div>
 
+      <div className="mt-3">
+        <label htmlFor="set-view-adjustment-hero" className="mb-2 block text-xs font-bold text-white/70">Hero · Adjustment instructions</label>
+        <textarea id="set-view-adjustment-hero" value={viewAdjustments.Hero || ''} onChange={event => adjustView('Hero', event.target.value)} disabled={Boolean(generating)} rows={2} placeholder="Optional: specify what to adjust in the Hero view" className="w-full border border-white/15 bg-black/25 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
+      </div>
+
       {heroImage && (
         <div className="mt-5 border-t border-white/10 pt-5">
           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -252,9 +260,13 @@ export default function SetGeneratorPanel({ name, description, images, setImages
               const index = offset + 1;
               const exists = Boolean(images?.[index]);
               const busy = generating === label;
-              return <button key={label} type="button" onClick={() => generateView(index, label, instruction)} disabled={Boolean(generating) || !effectiveModel} className={`border px-3 py-3 text-left text-xs font-black transition ${exists ? 'border-[#23c7be]/35 bg-[#23c7be]/10 text-[#8ee9e4]' : 'border-white/10 bg-black/20 text-white hover:border-white/30'} disabled:opacity-40`}>
-                {busy ? 'GENERATING...' : exists ? `${label.toUpperCase()} · REGENERATE${creditsPerImage ? ` · ${creditsPerImage}` : ''}` : `GENERATE ${label.toUpperCase()}${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
-              </button>;
+              return <div key={label} className={`border p-3 ${exists ? 'border-[#23c7be]/35 bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}>
+                <label htmlFor={`set-view-adjustment-${label}`} className="block text-xs font-black text-white">{label.toUpperCase()}</label>
+                <textarea id={`set-view-adjustment-${label}`} value={viewAdjustments[label] || ''} onChange={event => adjustView(label, event.target.value)} disabled={Boolean(generating)} rows={2} placeholder={`Optional ${label.toLowerCase()} view adjustment`} className="mt-2 w-full border border-white/15 bg-black/25 px-2 py-2 text-xs text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
+                <button type="button" onClick={() => generateView(index, label, instruction)} disabled={Boolean(generating) || !effectiveModel} className="mt-2 w-full border border-[#23c7be]/35 px-2 py-2 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/10 disabled:opacity-40">
+                  {busy ? 'GENERATING...' : exists ? `REGENERATE${creditsPerImage ? ` · ${creditsPerImage}` : ''}` : `GENERATE${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
+                </button>
+              </div>;
             })}
           </div>
         </div>
