@@ -316,9 +316,13 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     }
     const references = [
       ...setReferences.slice(0, 3),
-      ...elementReferences.slice(0, 7),
+      ...elementReferences,
       ...characterReferences.map(({ selectedUrl }) => selectedUrl),
-    ].filter((url, index, all) => all.indexOf(url) === index).slice(0, 14);
+    ].filter((url, index, all) => all.indexOf(url) === index);
+    if (references.length > 14) {
+      setGenerationError('Too many visual references for one storyboard. Select fewer Set Reference Sheet elements; no references were silently discarded.');
+      return;
+    }
     setGenerationError('');
     setGenerating(`frame-${shot.id}`);
     try {
