@@ -48,7 +48,6 @@ const EditableImage = ({ label, url, box, onStart, onMove, onEnd, onCancel }) =>
 export default function SetGeneratorPanel({ name, description, images, setImages, compositionElements = [] }) {
   const [mode, setMode] = useState(images?.filter(Boolean).length ? 'reference' : 'scratch');
   const [masterOpen, setMasterOpen] = useState(!images?.[0]);
-  React.useEffect(() => { if (heroImage) setMasterOpen(false); }, [heroImage]);
   const [generating, setGenerating] = useState('');
   const [selectedModel, setSelectedModel] = useState(null);
   const [reverseDirection, setReverseDirection] = useState('');
@@ -60,6 +59,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   const adjustView = (label, value) => setViewAdjustments(current => ({ ...current, [label]: value }));
   const adjustmentInstruction = label => viewAdjustments[label]?.trim() ? `\n\nHIGHEST PRIORITY — USER ADJUSTMENT FOR ${label.toUpperCase()} VIEW:\n${viewAdjustments[label].trim()}\nMake this requested change visibly and precisely in the generated image. For features the user explicitly changes (including windows, doors or walls), the instruction OVERRIDES the reference image and the general continuity/preservation rules above. Preserve only the other, unaffected parts of the same set. Do not reintroduce a feature the user asked to remove.` : '';
   const heroImage = images?.[0] || null;
+  React.useEffect(() => { if (heroImage) setMasterOpen(false); }, [heroImage]);
   const setReferences = (images || []).filter(Boolean).slice(0, 3);
   const compositionRefs = (compositionElements || []).map(item => item?.image_url).filter(Boolean);
   const referenceCount = mode === 'reference' ? setReferences.length : 0;
