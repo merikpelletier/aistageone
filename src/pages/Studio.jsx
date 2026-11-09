@@ -921,12 +921,7 @@ export default function Studio() {
       <AnimatePresence>
         {editingActor !== null && (backgroundMode ?
           <BackgroundGroupEditor key="background-group-editor" sheet={null} userEmail={user?.email} onClose={() => setBackgroundMode(false)} /> :
-          <div>
-            <div className="flex justify-end bg-[#202328] px-5 py-3">
-              <button type="button" onClick={() => setBackgroundMode(true)} className="border border-cyan-300/50 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-300/20">CREATE BACKGROUND GROUP · 6 ACTORS</button>
-            </div>
-            <CharacterSheetEditor embedded key="actor-editor" sheet={editingActor || null} userEmail={user?.email} onClose={() => setEditingActor(null)} />
-          </div>
+          <CharacterSheetEditor embedded key="actor-editor" sheet={editingActor || null} userEmail={user?.email} onOpenBackgroundGroup={() => setBackgroundMode(true)} onClose={() => setEditingActor(null)} />
         )}
       </AnimatePresence>
       </div>
