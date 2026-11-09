@@ -30,6 +30,21 @@ const buildHeroPrompt = (name, description, compositionElements = []) => `Create
 
 const buildViewPrompt = (name, description, instruction, compositionElements = []) => `${buildHeroPrompt(name, description, compositionElements)}\n\nCAMERA CONTINUITY TASK:\nThe supplied Hero image defines a real three-dimensional set. Treat it as a spatial reference, not as a composition to copy. Infer the room geometry, architecture, furniture placement, windows, doors, stairs, fixtures, materials and proportions from it.\n\n${instruction}\n\nNON-NEGOTIABLE CONTINUITY RULES:\n- This must be the exact SAME location and production set, never a redesign.\n- Preserve architecture, dimensions, materials, furniture, fixtures, windows, doors, stairs and object placement.\n- Preserve the visual identity and palette.\n- Preserve the SAME physical placement of all composition elements within the set. Their apparent position, scale, occlusion and visibility must change naturally according to the new camera angle.\n- Required composition elements must not be omitted or substituted.\n- For camera-angle views, physically relocate the virtual camera in the inferred 3D space. Do not fake a new angle by mirroring, cropping, zooming or making a small framing change.\n- The new viewpoint must show correct parallax and reveal/occlude elements according to the new camera position.\n- No people, no added text.\n- 16:9 cinematic production reference image.`;
 
+const EditableImage = ({ label, url, box, onStart, onMove, onEnd, onCancel }) => (
+  <div className="relative aspect-video overflow-hidden border border-white/15 bg-black select-none"
+    style={{ touchAction: 'none', cursor: url ? 'crosshair' : 'default' }}
+    onPointerDown={event => url && onStart(event, label)}
+    onPointerMove={onMove}
+    onPointerUp={onEnd}
+    onPointerCancel={onCancel}
+  >
+    {url ? <img src={url} alt={`Current ${label} view — drag to select the area to adjust`} draggable={false} className="h-full w-full object-contain pointer-events-none" /> :
+      <div className="flex h-full items-center justify-center text-xs text-white/35">No {label} image yet</div>}
+    {box && <div className="pointer-events-none absolute border-2 border-[#23c7be] bg-[#23c7be]/15"
+      style={{ left: `${box.x * 100}%`, top: `${box.y * 100}%`, width: `${box.width * 100}%`, height: `${box.height * 100}%` }} />}
+  </div>
+);
+
 export default function SetGeneratorPanel({ name, description, images, setImages, compositionElements = [] }) {
   const [mode, setMode] = useState(images?.filter(Boolean).length ? 'reference' : 'scratch');
   const [generating, setGenerating] = useState('');
@@ -282,23 +297,6 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     }
   };
 
-  const EditableImage = ({ label, url }) => {
-    const box = editBox(label);
-    return (
-      <div className="relative aspect-video overflow-hidden border border-white/15 bg-black select-none"
-        style={{ touchAction: 'none', cursor: url ? 'crosshair' : 'default' }}
-        onPointerDown={event => url && beginRegion(event, label)}
-        onPointerMove={moveRegion}
-        onPointerUp={finishRegion}
-        onPointerCancel={() => setDrawingRegion(null)}
-      >
-        {url ? <img src={url} alt={`Current ${label} view — drag to select the area to adjust`} draggable={false} className="h-full w-full object-contain pointer-events-none" /> :
-          <div className="flex h-full items-center justify-center text-xs text-white/35">No {label} image yet</div>}
-        {box && <div className="pointer-events-none absolute border-2 border-[#23c7be] bg-[#23c7be]/15"
-          style={{ left: `${box.x * 100}%`, top: `${box.y * 100}%`, width: `${box.width * 100}%`, height: `${box.height * 100}%` }} />}
-      </div>
-    );
-  };
 
   return (
     <section className="set-generator-panel border border-white/10 bg-[#17191d] p-5 sm:p-6">
@@ -343,7 +341,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
-        <EditableImage label="Hero" url={heroImage} />
+        <EditableImage label="Hero" url={heroImage} box={editBox('Hero')} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} />
         <div>
           <label htmlFor="set-view-adjustment-hero" className="mb-2 block text-xs font-bold text-white/70">Hero · Adjustment instructions</label>
           <textarea id="set-view-adjustment-hero" value={viewAdjustments.Hero || ''} onChange={event => adjustView('Hero', event.target.value)} disabled={Boolean(generating)} rows={4} placeholder="Describe only the change you want" className="w-full border border-white/15 bg-black/25 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
@@ -400,7 +398,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
               const busy = generating === label;
               return <div key={label} className={`border p-3 ${exists ? 'border-[#23c7be]/35 bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}>
                 <label htmlFor={`set-view-adjustment-${label}`} className="block text-xs font-black text-white">{label.toUpperCase()}</label>
-                <div className="mt-2"><EditableImage label={label} url={images[index]} /></div>
+                <div className="mt-2"><EditableImage label={label} url={images[index]} box={editBox(label)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} /></div>
                 <textarea id={`set-view-adjustment-${label}`} value={viewAdjustments[label] || ''} onChange={event => adjustView(label, event.target.value)} disabled={Boolean(generating)} rows={3} placeholder="Describe only the change you want" className="mt-2 w-full border border-white/15 bg-black/25 px-2 py-2 text-xs text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
                 <p className="mt-1 text-[11px] text-white/45">Drag on the image to select the area to change.</p>
                 <button type="button" onClick={() => localEdit(label, index)} disabled={!exists || !editRegions[label] || !viewAdjustments[label]?.trim() || Boolean(generating) || !effectiveModel}
