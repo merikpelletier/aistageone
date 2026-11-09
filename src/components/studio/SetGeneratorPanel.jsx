@@ -173,15 +173,17 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       </div>
     </div>
   ) : null;
-  const zoneCards = parent => zoneShots.filter(shot => shot.parent === parent).map(shot => {
+  const zoneCards = () => zoneShots.map(shot => {
     const key = `Zone:${shot.id}`;
     const url = viewUrl(key, -1);
-    return <div key={shot.id} className="mt-3 space-y-2 border border-white/20 bg-[#121518] p-3">
+    return <div key={shot.id} className="min-w-0 space-y-2 border border-white/20 bg-[#121518] p-3">
       <input aria-label="Rename Zone Shot" value={shot.label || ''} onChange={event => setZoneShots(current => current.map(s => s.id === shot.id ? { ...s, label: event.target.value } : s))}
         className="w-full border-b border-white/20 bg-transparent py-1 text-sm font-bold text-white" />
-      <p className="text-[11px] text-white/50">{shot.type} · derived from {parent} ({shot.source_time})</p>
+      <p className="text-[11px] text-white/50">ZONE SHOT · {shot.type} · from {shot.parent} ({shot.source_time})</p>
       {timeSwitcher(key)}
       <EditableImage label={key} url={url} box={editBox(key)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} />
+      <details className="border-t border-white/10 pt-2">
+        <summary className="cursor-pointer text-xs font-bold text-[#8ee9e4]">EDIT ZONE SHOT</summary>
       <textarea aria-label="Zone Shot adjustment" value={viewAdjustments[key] || ''} onChange={event => adjustView(key, event.target.value)}
         rows={2} placeholder="Adjustment instructions for this Zone Shot" className="w-full border border-white/15 bg-black/25 p-2 text-xs text-white" />
       <div className="flex flex-wrap gap-2">
@@ -192,6 +194,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         <button type="button" onClick={() => setZoneShots(current => current.filter(s => s.id !== shot.id))}
           className="border border-red-400/30 px-3 py-2 text-xs text-red-200">DELETE</button>
       </div>
+      </details>
     </div>;
   });
   const adjustView = (label, value) => setViewAdjustments(current => ({ ...current, [label]: value }));
@@ -567,7 +570,6 @@ export default function SetGeneratorPanel({ name, description, images, setImages
             <button type="button" onClick={() => beginZone('Hero', 0)} disabled={!viewUrl('Hero', 0) || Boolean(generating)}
               className="mt-3 border border-[#23c7be]/40 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-30">CREATE ZONE SHOT · SELECT AREA ABOVE FIRST</button>
             {zoneForm('Hero')}
-            {zoneCards('Hero')}
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             {VIEW_SPECS.map(([label, instruction], offset) => {
@@ -589,12 +591,12 @@ export default function SetGeneratorPanel({ name, description, images, setImages
                 <button type="button" onClick={() => beginZone(label, index)} disabled={!viewUrl(label, index) || Boolean(generating)}
                   className="mt-2 w-full border border-[#23c7be]/40 px-2 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">CREATE ZONE SHOT · SELECT AREA ABOVE FIRST</button>
                 {zoneForm(label)}
-                {zoneCards(label)}
                 <button type="button" onClick={() => generateView(index, label, instruction)} disabled={Boolean(generating) || !effectiveModel} className="mt-2 w-full border border-[#23c7be]/35 px-2 py-2 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/10 disabled:opacity-40">
                   {busy ? 'GENERATING...' : images?.[index] ? `REGENERATE DAY${creditsPerImage ? ` · ${creditsPerImage}` : ''}` : `GENERATE DAY${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
                 </button>
               </div>;
             })}
+            {zoneCards()}
           </div>
         </div>
       )}
