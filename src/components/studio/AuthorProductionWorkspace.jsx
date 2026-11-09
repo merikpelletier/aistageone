@@ -526,16 +526,17 @@ function SegmentDirector({ userEmail, project, chapter, segment, previous, isCur
     ...locationReferences.flatMap(({ item, images }) => images.map((url) => ({ url, role: 'SET', name: item.name }))),
     ...characterReferences.flatMap(({ item, images }) => images.map((url) => ({ url, role: 'CHARACTER', name: item.name }))),
   ];
-  const productionReferenceUrls = productionReferenceEntries.map((entry) => entry.url);
-  const productionReferenceIssue = productionReferenceUrls.length > 14
-    ? `This segment has ${productionReferenceUrls.length} selected images, but image production supports 14. Deselect references before generating; none will be silently dropped.`
-    : new Set(productionReferenceUrls).size !== productionReferenceUrls.length
-      ? 'One image is assigned to more than one production identity. Choose distinct images for the chapter master, Set and characters.'
-      : '';
-  const referenceUrls = productionReferenceUrls;
-  const productionReferenceIndex = productionReferenceEntries.map((entry, index) =>
-    `IMAGE ${index + 1}: ${entry.role} — ${entry.name}. ${entry.role === 'CHARACTER' ? 'This image defines only the named character and their selected look; never swap identities.' : entry.role === 'SET' ? 'This image defines the named production location, not another character or Set.' : 'This image is the chapter continuity master; do not misidentify it as a character reference.'}`
-  ).join('\n');
+  // Deduplicate shared images without losing their roles; the numbered index must
+  // always match the exact image array given to the model.
+  const referenceUrls = uniqueImages(productionReferenceEntries.map((entry) => entry.url));
+  const productionReferenceIssue = referenceUrls.length > 14
+    ? `This segment has ${referenceUrls.length} production reference images, but image production supports 14. Deselect references before generating; none will be silently dropped.`
+    : '';
+  const productionReferenceIndex = referenceUrls.map((url, index) => {
+    const assigned = productionReferenceEntries.filter((entry) => entry.url === url);
+    const roles = assigned.map((entry) => `${entry.role} — ${entry.name}`).join(' / ');
+    return `IMAGE ${index + 1}: ${roles}. ${assigned.some((entry) => entry.role === 'CHARACTER') ? 'Use this visual identity only for the named character; do not swap identities or wardrobes. ' : ''}${assigned.some((entry) => entry.role === 'SET') ? 'Use this visual only for its named location and chosen angle. ' : ''}The image number is its actual position in the image array supplied to the model.`;
+  }).join('\\n');
   const checkedProductionReferences = () => {
     if (productionReferenceIssue) { toast.error(productionReferenceIssue); return false; }
     return true;
@@ -681,7 +682,7 @@ function SegmentDirector({ userEmail, project, chapter, segment, previous, isCur
                   <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-white/5">{leaf.image_url ? <img src={leaf.image_url} alt="Leaf panel" className="h-full w-full object-cover" /> : <ImageIcon className="text-white/25" />}</div>
                   <textarea value={leaf.prompt || ''} onChange={(event) => applyLeaf({ prompt: event.target.value })} rows={4} className={dark} placeholder="Specific look, action and composition for this panel" />
                   <div className="flex gap-2">
-                    <button type="button" onClick={async () => { if (!leaf.prompt?.trim()) return toast.error('Write a prompt for this part first'); if (!locationReferences.length) return toast.error('The selected location needs a reference image'); setBusy(leafBusyKey); try { const response = await base44.integrations.Core.GenerateImage({ prompt: framePrompt({ ...panel, prompt: leaf.prompt, shot: panel.shot }, index), reference_image_urls: referenceUrls, aspect_ratio: panelRatio }); if (!response?.file_url) throw new Error('No image returned'); applyLeaf({ image_url: response.file_url, source_prompt: leaf.prompt }); } catch (error) { toast.error(error.message || 'Generation failed'); } finally { setBusy(''); } }} disabled={!isCurrent || busy === leafBusyKey || !leaf.prompt?.trim()} className={`${action} flex-1 bg-yellow-400 text-black`}>{busy === leafBusyKey ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />} Generate</button>
+                    <button type="button" onClick={async () => { if (!leaf.prompt?.trim()) return toast.error('Write a prompt for this part first'); if (!checkedProductionReferences()) return; if (!locationReferences.length) return toast.error('The selected location needs a reference image'); setBusy(leafBusyKey); try { const response = await base44.integrations.Core.GenerateImage({ prompt: framePrompt({ ...panel, prompt: leaf.prompt, shot: panel.shot }, index), reference_image_urls: referenceUrls, aspect_ratio: panelRatio }); if (!response?.file_url) throw new Error('No image returned'); applyLeaf({ image_url: response.file_url, source_prompt: leaf.prompt }); } catch (error) { toast.error(error.message || 'Generation failed'); } finally { setBusy(''); } }} disabled={!isCurrent || busy === leafBusyKey || !leaf.prompt?.trim()} className={`${action} flex-1 bg-yellow-400 text-black`}>{busy === leafBusyKey ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />} Generate</button>
                     <label className={`${action} flex-1 cursor-pointer bg-white/10 text-white`}>{busy === `${leafBusyKey}-upload` ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Upload<input type="file" accept="image/*" className="hidden" disabled={!isCurrent} onChange={async (event) => { const file = event.target.files?.[0]; event.target.value = ''; if (!file) return; setBusy(`${leafBusyKey}-upload`); try { const uploaded = await base44.integrations.Core.UploadFile({ file }); if (!uploaded?.file_url) throw new Error('Upload failed'); applyLeaf({ image_url: uploaded.file_url, source_prompt: leaf.prompt }); } catch (error) { toast.error(error.message || 'Upload failed'); } finally { setBusy(''); } }} /></label>
                   </div>
                 </div>;
