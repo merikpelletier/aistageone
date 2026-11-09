@@ -574,7 +574,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         <div className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 pb-28 sm:px-5">
           <SetGeneratorPanel name={name} description={description} images={images} setImages={setImages} compositionElements={compositionElements} />
 
-          <details key={heroImage ? 'master-ready' : 'master-empty'} open={!heroImage} className="border border-white/10 bg-[#17191d]">
+          <details key={heroImage ? 'master-ready' : 'master-empty'} defaultOpen={!heroImage} className="border border-white/10 bg-[#17191d]">
             <summary className="cursor-pointer p-4 text-sm font-black uppercase tracking-wider text-[#23c7be]">Master Set Details & Creative Direction — {heroImage ? 'Expand to edit' : 'Required for creation'}</summary>
           <section className="overflow-hidden border-t border-white/10 bg-[#17191d]">
             <div className="grid lg:grid-cols-[1.35fr_0.65fr]">
