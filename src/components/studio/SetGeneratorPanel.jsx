@@ -132,7 +132,8 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   };
   const moveRegion = event => {
     if (!drawingRegion) return;
-    setDrawingRegion(current => current ? { ...current, end: pointOnImage(event) } : null);
+    const end = pointOnImage(event);
+    setDrawingRegion(current => current ? { ...current, end } : null);
   };
   const finishRegion = event => {
     if (!drawingRegion) return;
