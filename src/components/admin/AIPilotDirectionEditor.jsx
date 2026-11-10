@@ -548,7 +548,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
             </div>
             <div className="space-y-3 border border-white/10 bg-black/20 p-3">
               <label className="block text-xs text-white/60">Locked Set for this shot
-                <select value={shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')} disabled={readOnly} onChange={(event) => updateShot(shot.id, { set_id: event.target.value, set_view_reference_url: '', set_element_reference_urls: [] })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
+                <select value={shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')} disabled={readOnly} onChange={(event) => updateShot(shot.id, { set_id: event.target.value, set_view_reference_url: '', set_base_image_url: '', set_element_reference_urls: [] })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
                   <option value="">Select an existing set</option>
                   {eligibleSets.map((set) => <option key={set.id} value={set.id}>{set.name}</option>)}
                 </select>
@@ -585,7 +585,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                     <div className="flex items-center gap-2">
                       <span className="shrink-0 text-xs font-semibold text-white/70">Camera view</span>
                       {shot.set_view_reference_url && <img src={shot.set_view_reference_url} alt="Selected camera view" className="h-9 w-14 shrink-0 bg-black object-contain" />}
-                      <span className="min-w-0 flex-1 truncate text-xs text-white/75">{views.find(view => view.url === shot.set_view_reference_url)?.label || 'Choose a view'}</span>
+                      <span className="min-w-0 flex-1 truncate text-xs text-white/75">{views.find(view => view.url === shot.set_view_reference_url)?.label || 'Choose a view'}{shot.set_base_image_url === shot.set_view_reference_url && shot.set_view_reference_url ? ' · Base Scene selected' : ''}</span>
                       <button type="button" onClick={() => setOpenViewPickerId(current => current === shot.id ? null : shot.id)} className="shrink-0 border border-white/25 px-2 py-1 text-xs text-white">{openViewPickerId === shot.id ? 'Close' : shot.set_view_reference_url ? 'Change' : 'Choose'}</button>
                     </div>
                     {(!shot.set_view_reference_url || openViewPickerId === shot.id) && <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -593,7 +593,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                         const selected = shot.set_view_reference_url === view.url;
                         return <button type="button" key={view.url} disabled={readOnly}
                           aria-pressed={selected}
-                          onClick={() => { updateShot(shot.id, { set_view_reference_url: view.url }); setOpenViewPickerId(null); }}
+                          onClick={() => { updateShot(shot.id, { set_view_reference_url: view.url, set_base_image_url: view.url }); setOpenViewPickerId(null); }}
                           className={`min-w-0 border p-2 text-left ${selected ? 'border-[var(--studio-accent)] bg-white/[0.07]' : 'border-white/15 hover:border-white/40'}`}>
                           <img src={view.url} alt={view.label + ' Set view'} className="h-24 w-full bg-black object-contain" />
                           <span className="mt-1 block text-xs text-white">{view.label}{selected ? ' ✓' : ''}</span>
