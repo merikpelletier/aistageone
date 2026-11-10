@@ -158,6 +158,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
   const [activeSceneKey, setActiveSceneKey] = useState('setup');
   const [openViewPickerId, setOpenViewPickerId] = useState(null);
   const [openLookPickerKey, setOpenLookPickerKey] = useState(null);
+  const [activeImageReference, setActiveImageReference] = useState(null);
   const [generating, setGenerating] = useState('');
   const [generationError, setGenerationError] = useState('');
   const updateContent = (patch) => setBlock({ ...block, content: { ...content, ...patch } });
@@ -751,6 +752,8 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
               shot={shot}
               episode={episode}
               episodes={episodes}
+              activeImageReference={activeImageReference}
+              setActiveImageReference={setActiveImageReference}
               partKey={key}
               selectedSet={eligibleSets.find((item) => item.id === (shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')))}
               visibleCharacters={eligibleCharacters.filter((person) => !Array.isArray(shot.character_ids) || shot.character_ids.includes(person.id))}
