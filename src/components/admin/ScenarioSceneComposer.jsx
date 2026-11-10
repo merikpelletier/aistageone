@@ -64,7 +64,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   const [folderId, setFolderId] = useState('all');
   const [search, setSearch] = useState('');
   const [placingId, setPlacingId] = useState('');
-  const [placementOpen, setPlacementOpen] = useState(false);
+  const [placementOpen, setPlacementOpen] = useState(true);
   const [composing, setComposing] = useState(false);
   const [promptError, setPromptError] = useState('');
   const legacyScene = episode.scene_compositions?.[partKey] || {};
