@@ -750,6 +750,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
             <ScenarioSceneComposer
               shot={shot}
               episode={episode}
+              episodes={episodes}
               partKey={key}
               selectedSet={eligibleSets.find((item) => item.id === (shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')))}
               visibleCharacters={eligibleCharacters.filter((person) => !Array.isArray(shot.character_ids) || shot.character_ids.includes(person.id))}
