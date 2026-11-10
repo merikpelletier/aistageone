@@ -83,7 +83,7 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], pa
           sourceShot.hero_preview_url && {
             id: episodeIndex + ':' + sceneKey + ':' + sourceShot.id + ':hero',
             url: sourceShot.hero_preview_url,
-            label: 'EP ' + (episodeIndex + 1) + ' · ' + (sceneLabels[sceneKey] || sceneKey) + ' · Hero Preview',
+            label: 'EP ' + (episodeIndex + 1) + ' · ' + (sceneLabels[sceneKey] || sceneKey) + ' · Shot ' + (shotIndex + 1) + ' · Hero Preview',
           },
         ].filter(Boolean)
       )
@@ -330,13 +330,13 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], pa
             const picked = continuityOptions.find(option => option.id === event.target.value);
             onShotChange({ continuity_reference: picked ? { source_id: picked.id, url: picked.url, label: picked.label, target: continuityTarget } : null });
           }}>
-          <option value="">No continuity image</option>
-          {continuityOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+          <option value="" style={{ backgroundColor: '#111719', color: '#ffffff' }}>No continuity image</option>
+          {continuityOptions.map(option => <option key={option.id} value={option.id} style={{ backgroundColor: '#111719', color: '#ffffff' }}>{option.label}</option>)}
         </select>
         <select aria-label="Continuity reference usage" className={FIELD + ' w-auto'} value={continuityTarget} disabled={readOnly || !continuityUrl}
           onChange={event => onShotChange({ continuity_reference: { ...continuity, target: event.target.value } })}>
-          <option value="base">Base Scene</option>
-          <option value="preview">Hero Preview</option>
+          <option value="base" style={{ backgroundColor: '#111719', color: '#ffffff' }}>Base Scene</option>
+          <option value="preview" style={{ backgroundColor: '#111719', color: '#ffffff' }}>Hero Preview</option>
         </select>
       </div>
       {continuityUrl && <div className="flex items-center gap-2">
