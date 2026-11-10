@@ -153,7 +153,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
   const content = block.content || {};
   const stored = Array.isArray(content.scenarios) ? content.scenarios : [];
   const episodes = Array.from({ length: EPISODE_COUNT }, (_, index) => stored[index] || { id: `episode-${index + 1}`, title: '', premise: '', outline: '', scene_ideas: '', creative_options: '', parts: {} });
-  const [expandedIndex, setExpandedIndex] = useState(null);
+  const [expandedIndex, setExpandedIndex] = useState(0);
   const [expandedShotId, setExpandedShotId] = useState(null);
   const [activeSceneKey, setActiveSceneKey] = useState('setup');
   const [openViewPickerId, setOpenViewPickerId] = useState(null);
@@ -757,54 +757,43 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     </label>
   );
   return (
-    <div className="max-w-4xl space-y-5">
-      <div>
-        <div className="text-lg text-white">Season Scenario</div>
-        <p className="mt-1 text-xs text-white/45">One central theme develops through nine episodes or chapters and affects the lives of the characters. The creator chooses the production format.</p>
+    <div className="w-full min-w-0 space-y-2">
+      <div className="sticky top-0 z-30 flex flex-wrap items-center gap-2 border-b border-white/20 bg-[#0c1011] px-2 py-2 shadow-lg">
+        <span className="shrink-0 text-xs font-semibold text-white">Scénario</span>
+        <select aria-label="Episode" className={CONTROL_CLASS + ' h-9 min-w-0 max-w-52 rounded px-2 text-xs'} value={expandedIndex ?? 0} onChange={event => { setExpandedIndex(Number(event.target.value)); setExpandedShotId(null); }}>
+          {episodes.map((episode, index) => <option key={episode.id || index} value={index}>EP {index + 1} · {episode.title || 'Untitled'}</option>)}
+        </select>
+        <select aria-label="Scene" className={CONTROL_CLASS + ' h-9 min-w-0 max-w-44 rounded px-2 text-xs'} value={activeSceneKey} onChange={event => { setActiveSceneKey(event.target.value); setExpandedShotId(null); }}>
+          {VIDEO_PARTS.map(([key, label], index) => <option key={key} value={key}>Scene {index + 1} · {label.split(' · ')[1] || label}</option>)}
+        </select>
+        <select aria-label="Shot" className={CONTROL_CLASS + ' h-9 min-w-0 max-w-32 rounded px-2 text-xs'} value={expandedShotId || ''} onChange={event => setExpandedShotId(event.target.value || null)}>
+          <option value="">Shots</option>
+          {(episodes[expandedIndex ?? 0]?.shot_plans?.[activeSceneKey] || []).map((shot, index) => <option key={shot.id} value={shot.id}>Shot {index + 1}</option>)}
+        </select>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="border border-white/10 bg-white/[0.03] p-3"><div className="text-2xl text-white">9</div><div className="text-xs text-white/50">Episodes / chapters per season</div></div>
-        <div className="border border-white/10 bg-white/[0.03] p-3"><div className="text-2xl text-white">4</div><div className="text-xs text-white/50">Scene composition slots per episode</div></div>
-        <div className="border border-white/10 bg-white/[0.03] p-3"><div className="text-2xl text-white">Set + Cast</div><div className="text-xs text-white/50">Real production references</div></div>
-      </div>
-      {input('Central Theme / Creative Brief', content.creative_brief, (value) => updateContent({ creative_brief: value }), 5, 'The central season theme and how it affects the characters.')}
-      <div className="border border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">
-        <div className="font-medium text-white">Production format guidance</div>
-        <p className="mt-2">Compose each scene from an existing Set camera view, cast references, background actors and placement directions. FotoPlay retains nine image/dialogue segments per chapter; Shoot manages video clips separately.</p>
-        <p className="mt-2 text-xs text-white/45">Existing shot descriptions, camera directions, references and dialogues remain editable. Only storyboard illustration controls are hidden; scene generators are added separately.</p>
-      </div>
-      <div>
-        <div className="text-sm text-white">Season Episodes (9)</div>
-        <p className="mt-1 text-xs text-white/40">Define the episode and compose each scene with selected production references, independent of video clip durations.</p>
-      </div>
+      <details className="border border-white/10 px-3 py-2">
+        <summary className="cursor-pointer text-xs font-medium text-white/65">Season · Central Theme / Creative Brief</summary>
+        <div className="pt-3">{input('Central Theme / Creative Brief', content.creative_brief, value => updateContent({ creative_brief: value }), 5)}</div>
+      </details>
       <div className="space-y-2">
         {episodes.map((episode, index) => {
           const expanded = expandedIndex === index;
-          return (
-            <div key={episode.id || index} className="border border-white/10 bg-black/20">
-              <button type="button" onClick={() => { setExpandedIndex(expanded ? null : index); if (!expanded) { setActiveSceneKey('setup'); setExpandedShotId(null); } }} className="flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left">
-                {expanded ? <ChevronDown size={16} className="shrink-0 text-white/50" /> : <ChevronRight size={16} className="shrink-0 text-white/50" />}
-                <span className="shrink-0 text-xs font-semibold text-[var(--studio-accent)]">EP {index + 1}</span>
-                <span className="min-w-0 truncate text-sm text-white">{episode.title || 'Untitled episode'}</span>
-              </button>
-              {expanded && <div className="space-y-4 border-t border-white/10 p-3">
-                <label className="block space-y-2">
-                  <span className="text-xs text-white/55">Episode / Chapter Title</span>
-                  <Input className={CONTROL_CLASS} disabled={readOnly} value={episode.title || ''} onChange={(e) => updateEpisode(index, { title: e.target.value })} />
-                </label>
-                {input('Premise / Conflict', episode.premise, (value) => updateEpisode(index, { premise: value }), 3)}
-                {input('Story Development', episode.outline, (value) => updateEpisode(index, { outline: value }), 5, 'How the season theme changes the situation and affects the characters in this episode.')}
+          return expanded ? (
+            <div key={episode.id || index} className="space-y-2">
+              <details className="border border-white/10 px-3 py-2">
+                <summary className="cursor-pointer text-xs font-medium text-white/65">EP {index + 1} · {episode.title || 'Untitled'} · Episode details</summary>
+                <div className="space-y-3 pt-3">
+                  <label className="block space-y-1">
+                    <span className="text-xs text-white/55">Episode / Chapter Title</span>
+                    <Input className={CONTROL_CLASS} disabled={readOnly} value={episode.title || ''} onChange={event => updateEpisode(index, { title: event.target.value })} />
+                  </label>
+                  {input('Premise / Conflict', episode.premise, value => updateEpisode(index, { premise: value }), 3)}
+                  {input('Story Development', episode.outline, value => updateEpisode(index, { outline: value }), 5)}
+                  {input('Scene Inspirations', episode.scene_ideas, value => updateEpisode(index, { scene_ideas: value }), 4)}
+                  {input('Creative Variations', episode.creative_options, value => updateEpisode(index, { creative_options: value }), 3)}
+                </div>
+              </details>
                 <div className="space-y-3 border border-white/10 p-3">
-                  <div className="sticky top-0 z-20 space-y-2 border-b border-white/15 bg-[#101416] py-2 shadow-lg">
-                    <div className="text-sm text-white">Scene Composition</div>
-                    <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Episode scenes">
-                      {VIDEO_PARTS.map(([key, label], sceneIndex) => <button type="button" key={key} role="tab" aria-selected={activeSceneKey === key}
-                        onClick={() => { setActiveSceneKey(key); setExpandedShotId(null); }}
-                        className={`shrink-0 rounded border px-3 py-2 text-xs ${activeSceneKey === key ? 'border-[var(--studio-accent)] bg-white/10 text-white' : 'border-white/20 text-white/60 hover:text-white'}`}>
-                        Scene {sceneIndex + 1} · {label.split(' · ')[1] || label}
-                      </button>)}
-                    </div>
-                  </div>
                   {VIDEO_PARTS.filter(([key]) => key === activeSceneKey).map(([key, label, helper]) => (
                     <div key={key} role="tabpanel" className="space-y-3">
                       <label className="block space-y-1.5">
@@ -819,11 +808,9 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                     </div>
                   ))}
                 </div>
-                {input('Scene Inspirations', episode.scene_ideas, (value) => updateEpisode(index, { scene_ideas: value }), 4)}
-                {input('Creative Variations', episode.creative_options, (value) => updateEpisode(index, { creative_options: value }), 3)}
-              </div>}
+              </div>
             </div>
-          );
+          ) : null;
         })}
       </div>
       {generationError && <div role="alert" className="text-sm text-red-300 border border-red-400/30 p-3">{generationError}</div>}
