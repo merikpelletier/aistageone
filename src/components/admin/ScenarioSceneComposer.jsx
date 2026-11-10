@@ -73,7 +73,6 @@ export default function ScenarioSceneComposer({ episode, partKey, availableSets 
     if (!plan.set_view_url) return setError('Select a saved camera view from the Set first.');
     if (people.some(p => !plan.character_refs?.[p.id])) return setError('Choose a specific reference for each selected hero.');
     const references = [plan.set_view_url, ...(group ? [group.url] : []), ...selectedCharacterRefs.map(p => p.url)];
-    if (references.length > 3) return setError('The current image generator accepts a maximum of three references (Set + Background Group + heroes). Reduce the selection; no references will be silently omitted.');
     setError('');
     setBusy(true);
     try {
