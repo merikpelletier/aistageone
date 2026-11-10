@@ -199,10 +199,10 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   ].filter(Boolean).join('\n');
   const suggestedPreviewPrompt = [
     'Generate ONE cinematic image showing the SAME scene with its selected principal actors.',
-    'IMAGE 1 is the actual generated base scene. Preserve its setting, architecture, lighting, props and spatial relationships. It establishes the viewpoint, not the final framing distance of the actors.',
+    'IMAGE 1 is the actual generated base scene. Use it as the existing scene foundation, preserving the already placed background actors, furniture, props, architecture, lighting and their positions. Add the selected heroes into that scene.',
     ...heroes.map((hero, index) => 'IMAGE ' + (index + 2) + ': ' + hero.name + ' — exact identity and wardrobe/look ' + (hero.look || 'from reference') + '.'),
     context,
-    'Add only the selected heroes. Apply the selected shot type to the visible subjects, adjusting their on-screen scale and crop while keeping the existing set, angle and continuity. Do not replace existing extras.',
+    'Add only the selected heroes to IMAGE 1. Apply the selected shot type by composing or cropping the heroes within the existing scene. Do not replace, erase or move background actors and props; elements outside the chosen crop may naturally be offscreen.',
     'Make a single seamless image, without text, labels or storyboard panels.',
   ].filter(Boolean).join('\n');
   const basePrompt = typeof shot.base_image_prompt === 'string' && shot.base_image_prompt.trim() ? shot.base_image_prompt : suggestedBasePrompt;
@@ -216,8 +216,8 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   const framingDirective = [
     'MANDATORY CURRENT SHOT FRAMING: ' + (shot.shot_type || 'Medium Shot') + '.',
     'SHOT TYPE sets subject scale, visible body portion, crop and composition, including Close-Up, Medium Close-Up, Wide, Two Shot, Over-the-Shoulder, POV, reaction and detail shots.',
-    'SET CAMERA VIEW is the source of truth for location identity, architecture, spatial orientation, lighting and background continuity — not a requirement to preserve a wide or full-body crop.',
-    'Reframe within that established view as needed for the selected shot type; do not invent a new camera angle, location, character, wardrobe or props.',
+    'IMAGE 1 (BASE SCENE) is the authority for the actual already-composed environment and its extras. Preserve the background actors, their positions, furnishings, architecture, orientation and lighting from IMAGE 1.',
+    'Honor the shot type by framing the selected heroes within or cropping IMAGE 1 rather than constructing a new version of the background. Do not move or replace existing extras; preserve camera direction, location, wardrobe and props.',
     'If saved prompt instructions conflict with this current shot type, obey the CURRENT SHOT FRAMING directive.',
   ].join('\n');
   const effectivePreviewPrompt = previewPrompt + '\n\n' + framingDirective;
