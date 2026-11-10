@@ -179,18 +179,24 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
   };
   const resourcePicker = (episode, episodeIndex, partKey, field, label, options) => {
     const selected = episode.scene_resources?.[partKey]?.[field] || [];
+    const selectedNames = options.filter((option) => selected.includes(option.id)).map((option) => option.name);
     return (
-      <div className="space-y-2">
-        <div className="text-xs text-white/65">{label}</div>
-        <div className="flex flex-wrap gap-2">
+      <details className="group min-w-0 border border-white/15 bg-black/20">
+        <summary className="flex min-h-9 cursor-pointer list-none items-center gap-3 px-3 py-1.5 [&::-webkit-details-marker]:hidden">
+          <span className="w-20 shrink-0 text-xs text-white/65">{label}</span>
+          <span className="min-w-0 flex-1 truncate text-xs text-white">{selectedNames.join(', ') || `Select ${label.toLowerCase()}`}</span>
+          <span className="shrink-0 text-[11px] text-white/45">{selected.length || ''}</span>
+          <ChevronDown size={14} className="shrink-0 text-white/50 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="flex flex-wrap gap-1.5 border-t border-white/10 p-2">
           {options.length ? options.map((option) => (
-            <label key={option.id} className={`inline-flex items-center gap-2 border px-3 py-2 text-xs cursor-pointer ${selected.includes(option.id) ? 'border-[var(--studio-accent)] bg-white/[0.08] text-white' : 'border-white/15 text-white/60'}`}>
+            <label key={option.id} className={`inline-flex cursor-pointer items-center gap-1.5 border px-2 py-1 text-xs ${selected.includes(option.id) ? 'border-[var(--studio-accent)] bg-white/[0.08] text-white' : 'border-white/15 text-white/60'}`}>
               <input type="checkbox" disabled={readOnly} checked={selected.includes(option.id)} onChange={() => toggleSceneResource(episodeIndex, partKey, field, option.id)} className="accent-teal-400" />
               {option.name}
             </label>
           )) : <span className="text-xs text-white/35">No {label.toLowerCase()} in this AI Pilot.</span>}
         </div>
-      </div>
+      </details>
     );
   };
   const applyPartPatch = (episodeIndex, key, field, value) => {
