@@ -71,7 +71,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     'Generate ONE cinematic production scene image with no principal heroes visible.',
     'Use the following exact image references in order:',
     ...baseEntries.map((entry, index) => 'IMAGE ' + (index + 1) + ': ' + entry.label),
-    context.replace(/ORDERED ACTION AND DIALOGUE SEQUENCE \(PRODUCTION TIMING\):[^]*/m, ''),
+    context.split('\n').filter(line => !line.startsWith('ORDERED ACTION AND DIALOGUE SEQUENCE (PRODUCTION TIMING):')).join('\n'),
     'Lock the selected Set view. Include each selected Vault asset in its described position and role, whether a limousine, photographer, extra or prop.',
     'Leave space for the principal actors but DO NOT draw or add them, even if mentioned in the script or blocking.',
     'Do not render dialogue, captions, text, storyboard panels or labels.',
