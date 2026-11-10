@@ -470,19 +470,26 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                 const selectedSetId = shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '');
                 const selectedSet = eligibleSets.find((item) => item.id === selectedSetId);
                 const linked = selectedSet?.linked_set;
-                if (!selectedSet?.my_set_id) return null;
-                if (!linked) return <p className="text-xs text-amber-300">Linked My Set is not accessible. Existing AI Pilot set references remain available.</p>;
+                if (!selectedSet) return null;
                 const viewLabels = ['Hero', 'Wide', 'Reverse', 'Left', 'Right', 'Detail', 'Day', 'Night'];
-                const views = (Array.isArray(linked.images) ? linked.images : [])
-                  .map((url, index) => ({ url, label: viewLabels[index] || `View ${index + 1}` }))
-                  .filter((view) => typeof view.url === 'string' && view.url.trim());
-                const items = (linked.reference_sheet?.extracted_elements || []).filter((element) => element?.image_url);
+                const mainViews = (Array.isArray(linked?.images) ? linked.images : [])
+                  .map((image, index) => ({ url: typeof image === 'string' ? image : image?.url, label: viewLabels[index] || `View ${index + 1}` }));
+                const sheetViews = (linked?.reference_sheet?.views || []).map((image, index) => ({
+                  url: typeof image === 'string' ? image : image?.url,
+                  label: image?.name || image?.label || `Reference Sheet View ${index + 1}`,
+                }));
+                const pilotViews = (selectedSet.reference_images || []).map((image, index) => ({
+                  url: typeof image === 'string' ? image : image?.url,
+                  label: image?.name || image?.label || `AI Pilot Set Reference ${index + 1}`,
+                }));
+                const views = [...new Map([...mainViews, ...sheetViews, ...pilotViews].filter(view => typeof view.url === 'string' && view.url.trim()).map(view => [view.url, view])).values()];
+                const items = (linked?.reference_sheet?.extracted_elements || []).filter((element) => element?.image_url);
                 const chosenUrls = Array.isArray(shot.set_element_reference_urls) ? shot.set_element_reference_urls : [];
                 return <div className="space-y-2 border border-white/15 bg-white/[0.02] p-3">
-                  <div className="text-xs font-semibold text-white/70">My Sets · {linked.name}</div>
+                  <div className="text-xs font-semibold text-white/70">Set references · {linked?.name || selectedSet.name}</div>
                   <div className="space-y-2 border-b border-white/10 pb-3">
                     <p className="text-xs font-semibold text-white/70">Camera view for this shot</p>
-                    <p className="text-[11px] text-white/45">Required: select exactly one Set camera view. It is the authoritative viewpoint for storyboard generation; other views and old Set photos will not be mixed in.</p>
+                    <p className="text-[11px] text-white/45">Select the exact camera view for this shot. This view controls the generated composition.</p>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                       {views.map((view) => {
                         const selected = shot.set_view_reference_url === view.url;
@@ -496,9 +503,9 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                       })}
                     </div>
                     {!views.length && <p className="text-xs text-white/45">No saved views on this Set yet.</p>}
-                    {!!views.length && !shot.set_view_reference_url && <p className="text-[11px] text-amber-300">Choose a Camera View to enable storyboard generation for this Set.</p>}
+                    {!!views.length && !shot.set_view_reference_url && <p className="text-[11px] text-amber-300">Choose a Camera View to generate the scene.</p>}
                   </div>
-                  <p className="text-[11px] text-white/45">Select Reference Sheet elements to lock for this shot. The stored image URLs preserve the chosen reference even if the Set is edited later.</p>
+                  <p className="text-[11px] text-white/45">Select reference objects for this shot. Existing selected images are preserved.</p>
                   {!items.length ? <p className="text-xs text-white/45">This linked Set has no saved reference elements yet. Its principal views remain available.</p> :
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                       {items.map((element, index) => {
@@ -597,7 +604,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                     <button type="button" disabled={!entries.length} onClick={() => navigator.clipboard.writeText(mapText)}
                       className="border border-white/20 px-3 py-1.5 text-xs text-white hover:border-white/60 disabled:opacity-40">Copy reference IDs</button>
                   </div>
-                  <p className="text-[11px] text-white/55">These are the exact image numbers in the storyboard prompt and image request. Use IMAGE 1, IMAGE 2, etc. in your shot directions; numbering updates when selections change.</p>
+                  <p className="text-[11px] text-white/55">These references guide the scene generation. Set objects and hero looks retain their identities; numbering updates when selections change.</p>
                   {!!missing.length && <p className="text-xs text-amber-300">Select the missing references: {missing.join(', ')}</p>}
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {entries.map((entry, index) => (
@@ -629,6 +636,15 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
               </div>
               <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} value={shot.dialogue || ''} onChange={(event) => updateShot(shot.id, { dialogue: event.target.value })} placeholder="Dialogue for this shot (optional)" />
             </div>
+            <ScenarioSceneComposer
+              shot={shot}
+              episode={episode}
+              partKey={key}
+              selectedSet={eligibleSets.find((item) => item.id === (shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')))}
+              visibleCharacters={eligibleCharacters.filter((person) => !Array.isArray(shot.character_ids) || shot.character_ids.includes(person.id))}
+              readOnly={readOnly}
+              onShotChange={(patch) => updateShot(shot.id, patch)}
+            />
           </div>
         ))}
         {!readOnly && <div className="flex justify-end pt-2">
@@ -693,14 +709,6 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                       {resourcePicker(episode, index, key, 'character_ids', 'Characters', availableCharacters)}
                       {resourcePicker(episode, index, key, 'set_ids', 'Sets', availableSets)}
                       {shotPlanner(episode, index, key)}
-                      <ScenarioSceneComposer
-                        episode={episode}
-                        partKey={key}
-                        availableSets={availableSets.filter(item => (episode.scene_resources?.[key]?.set_ids || []).includes(item.id))}
-                        availableCharacters={availableCharacters.filter(item => (episode.scene_resources?.[key]?.character_ids || []).includes(item.id))}
-                        readOnly={readOnly}
-                        onChange={composition => applyPartPatch(index, key, 'scene_compositions', composition)}
-                      />
 }
                     </div>
                   ))}
