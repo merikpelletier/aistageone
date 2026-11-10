@@ -188,13 +188,13 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
         + (ref.direction ? '; ACTION: ' + ref.direction : '') }]),
   ].filter(entry => entry.url);
   const suggestedBasePrompt = [
-    'Generate ONE cinematic production scene image with no principal heroes visible.',
+    'Generate ONE image of the selected Set camera view with only the explicitly selected background actors and scene objects, and no principal heroes.',
     'Use the following exact image references in order:',
     ...baseEntries.map((entry, index) => 'IMAGE ' + (index + 1) + ': ' + entry.label),
     context.split('\n').filter(line => !line.startsWith('ORDERED ACTION AND DIALOGUE SEQUENCE (PRODUCTION TIMING):') && !line.startsWith('SHOT FRAMING:')).join('\n'),
     'BASE IMAGE FRAMING: Keep the selected Set camera view and its original spatial composition. This base image is not a Close-Up, Medium Shot, or other hero shot type.',
-    'Lock the selected Set view. Include each selected Vault asset in its described position and role, whether a limousine, photographer, extra or prop.',
-    'Leave space for the principal actors but DO NOT draw or add them, even if mentioned in the script or blocking.',
+    'Lock the selected Set view. Include ONLY the selected Vault assets and selected background actors, at their specified positions, with their specified actions. The Set itself may contain its existing furnishings and architecture.',
+    'Do not add principal characters, even if mentioned in the script or blocking. Do not invent people or add unselected extras, bystanders, photographers, camera operators, film crew, production crew, lighting technicians, boom microphones, cameras, tripods, or filming equipment.',
     'Do not render dialogue, captions, text, storyboard panels or labels.',
   ].filter(Boolean).join('\n');
   const suggestedPreviewPrompt = [
@@ -205,11 +205,11 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     'Add only the selected heroes. Apply the selected shot type to the visible subjects, adjusting their on-screen scale and crop while keeping the existing set, angle and continuity. Do not replace existing extras.',
     'Make a single seamless image, without text, labels or storyboard panels.',
   ].filter(Boolean).join('\n');
-  const basePrompt = shot.base_image_prompt ?? suggestedBasePrompt;
+  const basePrompt = typeof shot.base_image_prompt === 'string' && shot.base_image_prompt.trim() ? shot.base_image_prompt : suggestedBasePrompt;
   // The selected shot type controls the HERO preview only. Protect base-scene generation
   // even if an older saved base prompt contains instructions for the hero's framing.
   const effectiveBasePrompt = basePrompt + '\n\n' +
-    'BASE SCENE ONLY: Preserve the selected Set camera view and framing. Do not apply the current shot type to this empty-of-heroes base. Include only selected background actors and assets in their directed positions; do not add principal heroes.';
+    'BASE SCENE ONLY: Preserve the selected Set camera view and framing. Do not apply the current shot type to this base image. Include only explicitly selected background actors and Vault assets in their directed positions. Do not add principal heroes, unselected people, production crew, film equipment or any other invented participants. Any scene context about a film production is narrative context, not permission to show a crew.';
   const previewPrompt = shot.hero_composition_prompt ?? suggestedPreviewPrompt;
   // The shot's live framing always takes priority over previously saved prompt text.
   // Never erase user-authored prompts or previously generated images when framing changes.
