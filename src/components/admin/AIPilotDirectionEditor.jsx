@@ -154,6 +154,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
   const stored = Array.isArray(content.scenarios) ? content.scenarios : [];
   const episodes = Array.from({ length: EPISODE_COUNT }, (_, index) => stored[index] || { id: `episode-${index + 1}`, title: '', premise: '', outline: '', scene_ideas: '', creative_options: '', parts: {} });
   const [expandedIndex, setExpandedIndex] = useState(null);
+  const [expandedShotId, setExpandedShotId] = useState(null);
   const [generating, setGenerating] = useState('');
   const [generationError, setGenerationError] = useState('');
   const updateContent = (patch) => setBlock({ ...block, content: { ...content, ...patch } });
@@ -487,7 +488,19 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
         </div>
         {shots.map((shot, shotIndex) => (
           <div key={shot.id} className="border border-white/10 p-3 space-y-2">
-            <div className="flex justify-between items-center text-xs text-white/65"><span>Shot {shotIndex + 1}</span>{!readOnly && <button type="button" onClick={() => updateShots(episodeIndex, key, shots.filter((item) => item.id !== shot.id))} aria-label="Remove shot"><Trash2 size={14} /></button>}</div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button type="button" aria-expanded={expandedShotId === shot.id} onClick={() => setExpandedShotId(current => current === shot.id ? null : shot.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left text-xs text-white">
+                <span className="text-sm font-semibold">{expandedShotId === shot.id ? '▾' : '▸'} Shot {shotIndex + 1}</span>
+                <span className="min-w-0 truncate text-white/55">{shot.shot_type || 'Medium Shot'} · {shot.duration || 5}s{shot.action?.trim() ? ' · ' + shot.action.trim().slice(0, 95) : ''}</span>
+                {shot.base_scene_url && <span className="shrink-0 text-teal-300">Base ✓</span>}
+              </button>
+              {!readOnly && <button type="button" onClick={() => {
+                if (!window.confirm('Remove this shot?')) return;
+                updateShots(episodeIndex, key, shots.filter((item) => item.id !== shot.id));
+                if (expandedShotId === shot.id) setExpandedShotId(null);
+              }} aria-label="Remove shot" className="p-1 text-white/60 hover:text-white"><Trash2 size={14} /></button>}
+            </div>
+            {expandedShotId === shot.id && <>
             <div className="grid grid-cols-2 gap-2">
               <label className="text-xs text-white/60">Framing
                 <select value={shot.shot_type || 'Medium Shot'} disabled={readOnly} onChange={(event) => updateShot(shot.id, { shot_type: event.target.value })} className="block mt-1 w-full min-h-9 bg-black border border-white/20 text-white px-2">
@@ -691,10 +704,11 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
               readOnly={readOnly}
               onShotChange={(patch) => updateShotById(episodeIndex, key, shot.id, patch)}
             />
+            </>}
           </div>
         ))}
         {!readOnly && <div className="flex justify-end pt-2">
-          <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => updateShots(episodeIndex, key, [...shots, { id: makeId('shot'), shot_type: 'Medium Shot', duration: 5, action: '', camera: '', dialogue: '', storyboard_url: '' }])}><Plus size={13} className="mr-1" /> Add Shot</Button>
+          <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => { const id = makeId('shot'); updateShots(episodeIndex, key, [...shots, { id, shot_type: 'Medium Shot', duration: 5, action: '', camera: '', dialogue: '', storyboard_url: '' }]); setExpandedShotId(id); }}><Plus size={13} className="mr-1" /> Add Shot</Button>
         </div>}
       </div>
     );
