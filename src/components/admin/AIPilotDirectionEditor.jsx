@@ -528,6 +528,13 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                 const viewLabels = ['Hero', 'Wide', 'Reverse', 'Left', 'Right', 'Detail', 'Day', 'Night'];
                 const mainViews = (Array.isArray(linked?.images) ? linked.images : [])
                   .map((image, index) => ({ url: typeof image === 'string' ? image : image?.url, label: viewLabels[index] || `View ${index + 1}` }));
+                const nightVariants = Object.entries(linked?.reference_sheet?.view_variants || {}).flatMap(([viewName, variants]) => {
+                  if (!variants || typeof variants !== 'object') return [];
+                  return Object.entries(variants).map(([variantName, url]) => ({
+                    url: typeof url === 'string' ? url : url?.url,
+                    label: viewName + ' · ' + (variantName === 'night' ? 'Night' : variantName === 'day' ? 'Day' : variantName),
+                  }));
+                });
                 const sheetViews = (linked?.reference_sheet?.views || []).map((image, index) => ({
                   url: typeof image === 'string' ? image : image?.url,
                   label: image?.name || image?.label || `Reference Sheet View ${index + 1}`,
@@ -536,7 +543,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                   url: typeof image === 'string' ? image : image?.url,
                   label: image?.name || image?.label || `AI Pilot Set Reference ${index + 1}`,
                 }));
-                const views = [...new Map([...mainViews, ...sheetViews, ...pilotViews].filter(view => typeof view.url === 'string' && view.url.trim()).map(view => [view.url, view])).values()];
+                const views = [...new Map([...mainViews, ...sheetViews, ...pilotViews, ...nightVariants].filter(view => typeof view.url === 'string' && view.url.trim()).map(view => [view.url, view])).values()];
                 const items = (linked?.reference_sheet?.extracted_elements || []).filter((element) => element?.image_url);
                 const chosenUrls = Array.isArray(shot.set_element_reference_urls) ? shot.set_element_reference_urls : [];
                 return <div className="space-y-2 border border-white/15 bg-white/[0.02] p-3">
