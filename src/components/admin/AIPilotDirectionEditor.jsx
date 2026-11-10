@@ -592,7 +592,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                         const selected = shot.set_view_reference_url === view.url;
                         return <button type="button" key={view.url} disabled={readOnly}
                           aria-pressed={selected}
-                          onClick={() => { updateShot(shot.id, { set_view_reference_url: view.url, base_scene_selected_url: view.url }); setOpenViewPickerId(null); }}
+                          onClick={() => { updateShot(shot.id, { set_view_reference_url: view.url, base_scene_selected_url: view.url, base_scene_source_url: '' }); setOpenViewPickerId(null); }}
                           className={`min-w-0 border p-2 text-left ${selected ? 'border-[var(--studio-accent)] bg-white/[0.07]' : 'border-white/15 hover:border-white/40'}`}>
                           <img src={view.url} alt={view.label + ' Set view'} className="h-24 w-full bg-black object-contain" />
                           <span className="mt-1 block text-xs text-white">{view.label}{selected ? ' ✓' : ''}</span>
