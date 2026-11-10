@@ -214,8 +214,8 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     'SET CAMERA VIEW is the source of truth for location identity, architecture, spatial orientation, lighting and background continuity — not a requirement to preserve a wide or full-body crop.',
     'Reframe within that established view as needed for the selected shot type; do not invent a new camera angle, location, character, wardrobe or props.',
     'If saved prompt instructions conflict with this current shot type, obey the CURRENT SHOT FRAMING directive.',
-  ].join('\\n');
-  const effectivePreviewPrompt = previewPrompt + '\\n\\n' + framingDirective;
+  ].join('\n');
+  const effectivePreviewPrompt = previewPrompt + '\n\n' + framingDirective;
   const productionTarget = shot.production_target || 'fotoplay';
   const productionPrompt = shot.production_prompt || '';
   const { options: models = [], loading: modelLoading } = useAiModelOptions({
