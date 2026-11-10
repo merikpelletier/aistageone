@@ -643,7 +643,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
               selectedSet={eligibleSets.find((item) => item.id === (shot.set_id || (eligibleSets.length === 1 ? eligibleSets[0].id : '')))}
               visibleCharacters={eligibleCharacters.filter((person) => !Array.isArray(shot.character_ids) || shot.character_ids.includes(person.id))}
               readOnly={readOnly}
-              onShotChange={(patch) => updateShot(shot.id, patch)}
+              onShotChange={(patch) => updateShotById(episodeIndex, key, shot.id, patch)}
             />
           </div>
         ))}
