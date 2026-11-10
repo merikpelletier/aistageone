@@ -349,9 +349,11 @@ serveWithCors(async (req) => {
         return Response.json({ error: 'prompt or reference_image_urls required' }, { status: 400 });
       }
       const ratio = aspect_ratio || DEFAULT_IMAGE_RATIO;
-      const input = buildSeedreamInput(prompt, imgs.slice(0, 3), ratio);
-      composeResolvedRatio = input.aspect_ratio;
-      composeSentDims = { width: input.width, height: input.height };
+      // Pass the complete image-reference list to the centrally configured image model.
+      // The model-control runtime validates and adapts the input for the selected model.
+      const input = { prompt, image_input: imgs.filter(Boolean), aspect_ratio: ratio, output_format: 'jpg' };
+      composeResolvedRatio = ratio;
+      composeSentDims = resolveDims(ratio).dims;
       const prediction = await startModelPrediction('bytedance/seedream-4.5', input);
       rawOutput = prediction.status === 'succeeded' ? prediction.output : await pollPrediction(prediction.id);
 
