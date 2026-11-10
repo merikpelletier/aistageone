@@ -88,12 +88,12 @@ export default function Layout({ children, currentPageName }) {
   const agentPosition = agentBar?.configuration?.position === 'bottom' ? 'bottom' : 'top';
   const isMagazinePage = currentPageName === 'Magazine';
   const contentWidth = isMagazinePage ? undefined : pageSetting?.look?.content_width;
-  const pageAccent = isMagazinePage ? '#facc15' : (pageSetting?.look?.accent_color || '#facc15');
-  const pageText = (isMagazinePage || currentPageName === 'Index') ? '' : (pageSetting?.look?.text_color || '');
-  const pageIcon = isMagazinePage ? '' : (pageSetting?.look?.icon_color || '');
+  const pageAccent = isAdminPage ? '#23c7be' : (isMagazinePage ? '#facc15' : (pageSetting?.look?.accent_color || '#facc15'));
+  const pageText = (isAdminPage || isMagazinePage || currentPageName === 'Index') ? '' : (pageSetting?.look?.text_color || '');
+  const pageIcon = (isAdminPage || isMagazinePage) ? '' : (pageSetting?.look?.icon_color || '');
   const pageSpacing = isMagazinePage ? 'default' : (pageSetting?.look?.spacing || 'default');
   const pageStyle = {
-    backgroundColor: (isStudioPage || isSponsorRequestPage) ? '#202328' : ((isIndexPage || isAccountPage || isGiftShopPage) ? '#000000' : (isMagazinePage ? undefined : (pageSetting?.look?.background_color || undefined))),
+    backgroundColor: (isAdminPage || isStudioPage || isSponsorRequestPage) ? '#202328' : ((isIndexPage || isAccountPage || isGiftShopPage) ? '#000000' : (isMagazinePage ? undefined : (pageSetting?.look?.background_color || undefined))),
     '--aistage-surface-accent': pageAccent,
     '--aistage-surface-text': pageText || undefined,
     '--aistage-surface-icon': pageIcon || undefined,
@@ -121,7 +121,7 @@ export default function Layout({ children, currentPageName }) {
       )}
       <style>{`
         :root {
-          ${isMagazinePageWrapper ? `
+          ${(isMagazinePageWrapper || isAdminPage) ? `
           --background: 0 0% 4%;
           --foreground: 0 0% 100%;
           --card: 0 0% 10%;
@@ -290,7 +290,7 @@ export default function Layout({ children, currentPageName }) {
         }
       `}</style>
       {showAIBar && <PersistentAIBar agentName={agentBar?.configuration?.agent_name || 'production_assistant'} label={agentBar?.configuration?.label} placeholder={agentBar?.configuration?.placeholder} position={agentPosition} behavior={agentBar?.configuration?.prompt} permissions={agentBar?.configuration?.permissions} actions={agentBar?.configuration?.actions} model={agentBar?.configuration?.model} backgroundColor={agentBar?.look?.background_color} accentColor={agentBar?.look?.accent_color} textColor={agentBar?.look?.text_color || agentBar?.look?.foreground_color} iconColor={agentBar?.look?.icon_color || agentBar?.look?.foreground_color} />}
-      <div className={`aistage-page-content${isStudioPage ? ' studio-page-content' : ''}${pageText ? ' aistage-page-text' : ''}${pageIcon ? ' aistage-page-icons' : ''}`} style={contentStyle}>
+      <div className={`aistage-page-content${isStudioPage ? ' studio-page-content' : ''}${isAdminPage ? ' admin-page-content' : ''}${pageText ? ' aistage-page-text' : ''}${pageIcon ? ' aistage-page-icons' : ''}`} style={contentStyle}>
         {children}
       </div>
       {showNav && (
