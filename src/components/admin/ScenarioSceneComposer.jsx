@@ -298,7 +298,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
             onKeyDown={event => { if ((event.key === 'Enter' || event.key === ' ') && placingId) { event.preventDefault(); positionAsset(placingId, { x: 50, y: 50 }); } }}
             className={`absolute inset-0 ${placingId ? 'cursor-crosshair' : 'pointer-events-none'}`}>
             {placementItems.filter(item => item.position && Number.isFinite(item.position.x) && Number.isFinite(item.position.y)).map((item, index) => <div key={item.key}
-              className={\`absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded border px-1.5 py-1 text-[10px] font-bold shadow-lg \${placingId === item.key ? 'border-teal-300 bg-black/90 text-teal-200' : 'border-white/60 bg-black/80 text-white'}\`}
+              className={`absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded border px-1.5 py-1 text-[10px] font-bold shadow-lg ${placingId === item.key ? 'border-teal-300 bg-black/90 text-teal-200' : 'border-white/60 bg-black/80 text-white'}`}
               style={{ left: item.position.x + '%', top: item.position.y + '%' }} title={item.name + ' · ' + describePosition(item.position)}>
               <span className="rounded bg-teal-500 px-1 text-black">{index + 1}</span><span className="max-w-28 truncate">{item.name}</span>
             </div>)}
@@ -318,7 +318,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
               </label>
               {assetType(ref) !== 'background_actors' && <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  {!readOnly && <button type="button" onClick={() => setPlacingId(placingId === ref.id ? '' : ref.id)} className={\`border px-2 py-1 text-xs \${placingId === ref.id ? 'border-teal-400 text-teal-200' : 'border-white/30 text-white'}\`}>{placingId === ref.id ? 'Placing…' : ref.position ? 'Move on Set' : 'Place on Set'}</button>}
+                  {!readOnly && <button type="button" onClick={() => setPlacingId(placingId === ref.id ? '' : ref.id)} className={`border px-2 py-1 text-xs ${placingId === ref.id ? 'border-teal-400 text-teal-200' : 'border-white/30 text-white'}`}>{placingId === ref.id ? 'Placing…' : ref.position ? 'Move on Set' : 'Place on Set'}</button>}
                   <span className="text-[11px] text-white/50">{ref.position ? describePosition(ref.position) : 'Not positioned yet'}</span>
                 </div>
                 <textarea className={FIELD + ' w-full'} disabled={readOnly} rows={2} value={ref.direction || ''} onChange={event => updateAsset(ref.id, event.target.value)} placeholder="Placement and action of this asset" />
@@ -334,7 +334,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {BG_IDS.map(id => {
                 const actor = getActors(ref).find(item => item.id === id) || { id, selected: false, direction: '', position: null };
-                return <div key={id} className={\`space-y-2 border p-2 \${actor.selected ? 'border-teal-400/70 bg-teal-400/[0.06]' : 'border-white/15'}\`}>
+                return <div key={id} className={`space-y-2 border p-2 ${actor.selected ? 'border-teal-400/70 bg-teal-400/[0.06]' : 'border-white/15'}`}>
                   <label className="flex items-center gap-2 text-xs text-white">
                     <input type="checkbox" disabled={readOnly} checked={!!actor.selected} onChange={event => updateActor(ref.id, id, { selected: event.target.checked })} />
                     {id}
@@ -342,7 +342,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
                   <ActorCell url={ref.url} actorId={id} />
                   {actor.selected && <div className="space-y-2">
                     <button type="button" disabled={readOnly} onClick={() => setPlacingId(placingId === positionKey(ref, actor) ? '' : positionKey(ref, actor))}
-                      className={\`w-full border px-2 py-1 text-xs \${placingId === positionKey(ref, actor) ? 'border-teal-400 text-teal-200' : 'border-white/30 text-white'}\`}>
+                      className={`w-full border px-2 py-1 text-xs ${placingId === positionKey(ref, actor) ? 'border-teal-400 text-teal-200' : 'border-white/30 text-white'}`}>
                       {placingId === positionKey(ref, actor) ? 'Placing…' : actor.position ? 'Move on Set' : 'Place on Set'}
                     </button>
                     <p className="text-[11px] text-white/50">{actor.position ? describePosition(actor.position) : 'Not positioned yet'}</p>
