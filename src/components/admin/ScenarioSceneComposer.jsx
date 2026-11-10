@@ -58,7 +58,8 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     shot.camera && 'CAMERA AND BLOCKING: ' + shot.camera + '.',
     selectedSet && 'SET: ' + selectedSet.name + '.',
     shot.additional_scene_elements && 'ADDITIONAL SCENE ELEMENTS: ' + shot.additional_scene_elements + '.',
-    shot.dialogue && 'DIALOGUE CONTEXT ONLY (do not draw text): ' + shot.dialogue + '.',
+    shot.dialogue && 'AUTHORED DIALOGUE CONTEXT ONLY (do not draw text): ' + shot.dialogue + '.',
+    shot.direction_sequence && 'ORDERED ACTION AND DIALOGUE SEQUENCE (PRODUCTION TIMING): ' + shot.direction_sequence,
   ].filter(Boolean).join('\n');
   const setElements = selectedSet?.linked_set?.reference_sheet?.extracted_elements || [];
   const baseEntries = [
@@ -70,7 +71,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     'Generate ONE cinematic production scene image with no principal heroes visible.',
     'Use the following exact image references in order:',
     ...baseEntries.map((entry, index) => 'IMAGE ' + (index + 1) + ': ' + entry.label),
-    context,
+    context.replace(/ORDERED ACTION AND DIALOGUE SEQUENCE \(PRODUCTION TIMING\):[^]*/m, ''),
     'Lock the selected Set view. Include each selected Vault asset in its described position and role, whether a limousine, photographer, extra or prop.',
     'Leave space for the principal actors but DO NOT draw or add them, even if mentioned in the script or blocking.',
     'Do not render dialogue, captions, text, storyboard panels or labels.',
@@ -143,7 +144,8 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
           'Selected set view: ' + setView,
           'Set objects: ' + setObjects.join(', '),
           'Other Vault references: ' + selectedAssets.map(ref => ref.name + ': ' + (ref.direction || '') + ' (' + ref.url + ')').join(' | '),
-          shot.dialogue && 'Dialogue: ' + shot.dialogue,
+          shot.dialogue && 'Dialogue supplied by author: ' + shot.dialogue,
+          shot.direction_sequence && 'AUTHOR-REVIEWED ORDER AND TIMING OF ACTION AND VOICES: ' + shot.direction_sequence,
         ].filter(Boolean).join('\n'),
       } });
       if (llmError) throw llmError;
