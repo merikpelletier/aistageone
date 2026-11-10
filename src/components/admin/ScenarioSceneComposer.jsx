@@ -188,14 +188,14 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
         + (ref.direction ? '; ACTION: ' + ref.direction : '') }]),
   ].filter(entry => entry.url);
   const suggestedBasePrompt = [
-    'Generate ONE image of the selected Set camera view with only the explicitly selected background actors and scene objects, and no principal heroes.',
-    'Use the following exact image references in order:',
-    ...baseEntries.map((entry, index) => 'IMAGE ' + (index + 1) + ': ' + entry.label),
-    context.split('\n').filter(line => !line.startsWith('ORDERED ACTION AND DIALOGUE SEQUENCE (PRODUCTION TIMING):') && !line.startsWith('SHOT FRAMING:')).join('\n'),
-    'BASE IMAGE FRAMING: Keep the selected Set camera view and its original spatial composition. This base image is not a Close-Up, Medium Shot, or other hero shot type.',
-    'Lock the selected Set view. Include ONLY the selected Vault assets and selected background actors, at their specified positions, with their specified actions. The Set itself may contain its existing furnishings and architecture.',
-    'Do not add principal characters, even if mentioned in the script or blocking. Do not invent people or add unselected extras, bystanders, photographers, camera operators, film crew, production crew, lighting technicians, boom microphones, cameras, tripods, or filming equipment.',
-    'Do not render dialogue, captions, text, storyboard panels or labels.',
+    'Create one natural photorealistic image of the exact furnished location shown in IMAGE 1.',
+    'IMAGE 1: The selected Set reference defines the location, architecture, perspective, lighting, furniture and existing composition.',
+    ...baseEntries.slice(1).map((entry, index) => 'IMAGE ' + (index + 2) + ': ' + entry.label),
+    shot.set_position && 'PLACEMENT AREA IN THIS SET: ' + shot.set_position,
+    shot.additional_scene_elements && 'SPECIFIC ADDITIONAL PHYSICAL ELEMENTS: ' + shot.additional_scene_elements,
+    'Integrate only the individually selected background actors and physical assets identified above, using their precise appearances, placements and actions.',
+    'Keep the rest of the existing location visually unchanged. Treat this as an inhabited hotel interior, not a behind-the-scenes filming location.',
+    'Single seamless realistic image, with no lettering or labels.',
   ].filter(Boolean).join('\n');
   const suggestedPreviewPrompt = [
     'Generate ONE cinematic image showing the SAME scene with its selected principal actors.',
@@ -209,7 +209,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   // The selected shot type controls the HERO preview only. Protect base-scene generation
   // even if an older saved base prompt contains instructions for the hero's framing.
   const effectiveBasePrompt = basePrompt + '\n\n' +
-    'BASE SCENE ONLY: Preserve the selected Set camera view and framing. Do not apply the current shot type to this base image. Include only explicitly selected background actors and Vault assets in their directed positions. Do not add principal heroes, unselected people, production crew, film equipment or any other invented participants. Any scene context about a film production is narrative context, not permission to show a crew.';
+    'BASE SCENE AUTHORITY: IMAGE 1 is the complete existing location. Preserve its perspective and existing architecture. Add only the specific selected reference actors and props identified in the reference list, at their assigned positions. No characters, people, equipment or behind-the-scenes activity beyond these selections. The current hero shot framing does not apply to this base image.';
   const previewPrompt = shot.hero_composition_prompt ?? suggestedPreviewPrompt;
   // The shot's live framing always takes priority over previously saved prompt text.
   // Never erase user-authored prompts or previously generated images when framing changes.
