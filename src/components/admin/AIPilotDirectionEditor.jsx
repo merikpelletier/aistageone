@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import AIPilotDirectionEditorBase from './AIPilotDirectionEditorBase';
+import ScenarioSceneComposer from './ScenarioSceneComposer';
 
 const CONTROL_CLASS = 'bg-black/20 border-white/15 text-white placeholder:text-white/25 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[var(--studio-accent)]';
 const PRIMARY_BUTTON_CLASS = 'bg-[var(--studio-accent)] text-[#071211] border border-[var(--studio-accent)] hover:bg-[var(--studio-accent-hover)] hover:border-[var(--studio-accent-hover)]';
@@ -142,10 +143,10 @@ const SHOT_TYPES = ['Establishing', 'Wide Shot', 'Full Shot', 'Medium Shot', 'Me
 const CLIP_DURATIONS = [5, 10, 15, 20, 25, 30];
 const EPISODE_COUNT = 9;
 const VIDEO_PARTS = [
-  ['setup', 'Part 1 · Setup', '0–30 seconds · Establish the situation'],
-  ['development', 'Part 2 · Development', '30–60 seconds · Develop the conflict'],
-  ['turn', 'Part 3 · Turning Point', '60–90 seconds · Introduce a change or escalation'],
-  ['hook', 'Part 4 · Hook', '90–120 seconds · End with a payoff or forward hook'],
+  ['setup', 'Scene 1 · Setup', 'Introduce the situation'],
+  ['development', 'Scene 2 · Development', 'Develop the action'],
+  ['turn', 'Scene 3 · Turning Point', 'Introduce a change or escalation'],
+  ['hook', 'Scene 4 · Hook', 'End with a payoff or forward hook'],
 ];
 
 function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCharacters = [], availableSets = [], availableLooks = [] }) {
@@ -652,18 +653,18 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="border border-white/10 bg-white/[0.03] p-3"><div className="text-2xl text-white">9</div><div className="text-xs text-white/50">Episodes / chapters per season</div></div>
-        <div className="border border-white/10 bg-white/[0.03] p-3"><div className="text-2xl text-white">120s</div><div className="text-xs text-white/50">Recommended video episode</div></div>
-        <div className="border border-white/10 bg-white/[0.03] p-3"><div className="text-2xl text-white">4 × 30s</div><div className="text-xs text-white/50">Individually publishable video parts</div></div>
+        <div className="border border-white/10 bg-white/[0.03] p-3"><div className="text-2xl text-white">4</div><div className="text-xs text-white/50">Scene composition slots per episode</div></div>
+        <div className="border border-white/10 bg-white/[0.03] p-3"><div className="text-2xl text-white">Set + Cast</div><div className="text-xs text-white/50">Real production references</div></div>
       </div>
       {input('Central Theme / Creative Brief', content.creative_brief, (value) => updateContent({ creative_brief: value }), 5, 'The central season theme and how it affects the characters.')}
       <div className="border border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">
         <div className="font-medium text-white">Production format guidance</div>
-        <p className="mt-2">FotoPlay: nine image/dialogue segments per chapter. Audio drama and e-book: adapt the nine-chapter story to narration or text without fixed running time. Video: 120 seconds per episode, planned as four 30-second parts; Shoot and Timeline may extend the result.</p>
-        <p className="mt-2 text-xs text-white/45">Video generation costs more. Plan reusable assets, images, narration and editing separately from newly generated video footage. This is guidance, not a credit estimate.</p>
+        <p className="mt-2">Compose each scene from an existing Set camera view, cast references, background actors and placement directions. FotoPlay retains nine image/dialogue segments per chapter; Shoot manages video clips separately.</p>
+        <p className="mt-2 text-xs text-white/45">Scene compositions are saved with the episode. Existing shot-plan and storyboard data are preserved but no longer shown in this editor.</p>
       </div>
       <div>
         <div className="text-sm text-white">Season Episodes (9)</div>
-        <p className="mt-1 text-xs text-white/40">Define each episode's narrative development. The four short-video parts guide the pacing without locking audio, e-book or FotoPlay into video timing.</p>
+        <p className="mt-1 text-xs text-white/40">Define the episode and compose each scene with selected production references, independent of video clip durations.</p>
       </div>
       <div className="space-y-2">
         {episodes.map((episode, index) => {
@@ -683,17 +684,24 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                 {input('Premise / Conflict', episode.premise, (value) => updateEpisode(index, { premise: value }), 3)}
                 {input('Story Development', episode.outline, (value) => updateEpisode(index, { outline: value }), 5, 'How the season theme changes the situation and affects the characters in this episode.')}
                 <div className="space-y-3 border border-white/10 p-3">
-                  <div className="text-sm text-white">Video Breakdown · 4 × 30 seconds</div>
+                  <div className="text-sm text-white">Scene Composition</div>
                   {VIDEO_PARTS.map(([key, label, helper]) => (
                     <div key={key} className="space-y-3 border-b border-white/10 pb-4 last:border-b-0 last:pb-0">
                       <label className="block space-y-1.5">
                         <span className="text-xs text-white/65">{label}</span>
                         <span className="block text-[11px] text-white/35">{helper}</span>
-                        <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} value={episode.parts?.[key] || ''} onChange={(e) => updateEpisode(index, { parts: { ...(episode.parts || {}), [key]: e.target.value } })} placeholder="Optional dramatic beats or shots for this part" />
+                        <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} value={episode.parts?.[key] || ''} onChange={(e) => updateEpisode(index, { parts: { ...(episode.parts || {}), [key]: e.target.value } })} placeholder="What happens in this scene?" />
                       </label>
                       {resourcePicker(episode, index, key, 'character_ids', 'Characters', availableCharacters)}
                       {resourcePicker(episode, index, key, 'set_ids', 'Sets', availableSets)}
-                      {shotPlanner(episode, index, key)}
+                      <ScenarioSceneComposer
+                        episode={episode}
+                        partKey={key}
+                        availableSets={availableSets.filter(item => (episode.scene_resources?.[key]?.set_ids || []).includes(item.id))}
+                        availableCharacters={availableCharacters.filter(item => (episode.scene_resources?.[key]?.character_ids || []).includes(item.id))}
+                        readOnly={readOnly}
+                        onChange={composition => applyPartPatch(index, key, 'scene_compositions', composition)}
+                      />
                     </div>
                   ))}
                 </div>
