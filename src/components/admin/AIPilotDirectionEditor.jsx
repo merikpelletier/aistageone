@@ -439,7 +439,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     return (
       <div className="space-y-3 border border-white/10 bg-white/[0.02] p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div><div className="text-sm text-white">Shoot · Shot Plan / Storyboard</div><div className="text-[11px] text-white/40">Multiple independent shots per segment, each with its own framing and 5–30 second duration. Storyboard images are previews only, never production references.</div></div>
+          <div><div className="text-sm text-white">Shot Plan · Scene Descriptions</div><div className="text-[11px] text-white/40">Existing shot details, camera direction, positioning, references and dialogues remain editable.</div></div>
           {!readOnly && <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={busy} onClick={() => proposeShots(episodeIndex, key)}>Propose Shots</Button>
           </div>}
@@ -629,8 +629,6 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
               </div>
               <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} value={shot.dialogue || ''} onChange={(event) => updateShot(shot.id, { dialogue: event.target.value })} placeholder="Dialogue for this shot (optional)" />
             </div>
-            {shot.storyboard_url ? <img src={shot.storyboard_url} alt={`Illustrated storyboard shot ${shotIndex + 1}`} className="w-full max-w-md aspect-video object-contain bg-black border border-white/10" /> : <div className="w-full max-w-md aspect-video bg-black/40 border border-dashed border-white/15 flex items-center justify-center text-xs text-white/35">Illustrated preview not generated</div>}
-            {!readOnly && <Button size="sm" type="button" className={SECONDARY_BUTTON_CLASS} disabled={busy} onClick={() => generateStoryboardFrame(episodeIndex, key, shot)}>{generating === `frame-${shot.id}` ? 'Generating…' : shot.storyboard_url ? 'Regenerate Illustration' : 'Generate Illustration'}</Button>}
           </div>
         ))}
         {!readOnly && <div className="flex justify-end pt-2">
@@ -660,7 +658,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       <div className="border border-white/10 bg-white/[0.02] p-3 text-sm text-white/60">
         <div className="font-medium text-white">Production format guidance</div>
         <p className="mt-2">Compose each scene from an existing Set camera view, cast references, background actors and placement directions. FotoPlay retains nine image/dialogue segments per chapter; Shoot manages video clips separately.</p>
-        <p className="mt-2 text-xs text-white/45">Scene compositions are saved with the episode. Existing shot-plan and storyboard data are preserved but no longer shown in this editor.</p>
+        <p className="mt-2 text-xs text-white/45">Existing shot descriptions, camera directions, references and dialogues remain editable. Only storyboard illustration controls are hidden; scene generators are added separately.</p>
       </div>
       <div>
         <div className="text-sm text-white">Season Episodes (9)</div>
@@ -694,6 +692,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                       </label>
                       {resourcePicker(episode, index, key, 'character_ids', 'Characters', availableCharacters)}
                       {resourcePicker(episode, index, key, 'set_ids', 'Sets', availableSets)}
+                      {shotPlanner(episode, index, key)}
                       <ScenarioSceneComposer
                         episode={episode}
                         partKey={key}
@@ -702,20 +701,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                         readOnly={readOnly}
                         onChange={composition => applyPartPatch(index, key, 'scene_compositions', composition)}
                       />
-                      {!!episode.shot_plans?.[key]?.length && <div className="space-y-3 border border-white/15 p-3">
-                        <div className="text-xs font-semibold text-white/80">Existing dialogue · Saved scene shots</div>
-                        <p className="text-[11px] text-white/45">Original shot dialogues remain editable and are preserved separately from the scene composition.</p>
-                        {episode.shot_plans[key].map((shot, shotIndex) => (
-                          <label key={shot.id || shotIndex} className="block space-y-1 text-xs text-white/65">
-                            Shot {shotIndex + 1}{shot.action ? ' · ' + shot.action : ''}
-                            <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly}
-                              value={shot.dialogue || ''}
-                              onChange={event => updateShotById(index, key, shot.id, { dialogue: event.target.value })}
-                              placeholder="Dialogue for this shot"
-                            />
-                          </label>
-                        ))}
-                      </div>}
+}
                     </div>
                   ))}
                 </div>
