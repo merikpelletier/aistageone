@@ -155,6 +155,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
   const episodes = Array.from({ length: EPISODE_COUNT }, (_, index) => stored[index] || { id: `episode-${index + 1}`, title: '', premise: '', outline: '', scene_ideas: '', creative_options: '', parts: {} });
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [expandedShotId, setExpandedShotId] = useState(null);
+  const [activeSceneKey, setActiveSceneKey] = useState('setup');
   const [generating, setGenerating] = useState('');
   const [generationError, setGenerationError] = useState('');
   const updateContent = (patch) => setBlock({ ...block, content: { ...content, ...patch } });
@@ -486,6 +487,14 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
             <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={busy} onClick={() => proposeShots(episodeIndex, key)}>Propose Shots</Button>
           </div>}
         </div>
+        {!!shots.length && <div className="flex items-center gap-2 overflow-x-auto pb-1" aria-label="Go directly to a shot">
+          {shots.map((shot, shotIndex) => <button type="button" key={shot.id}
+            aria-pressed={expandedShotId === shot.id}
+            onClick={() => setExpandedShotId(current => current === shot.id ? null : shot.id)}
+            className={`shrink-0 rounded border px-3 py-1.5 text-xs ${expandedShotId === shot.id ? 'border-[var(--studio-accent)] bg-white/10 text-white' : 'border-white/20 text-white/60 hover:text-white'}`}>
+            Shot {shotIndex + 1}{shot.base_scene_url ? ' ✓' : ''}
+          </button>)}
+        </div>}
         {shots.map((shot, shotIndex) => (
           <div key={shot.id} className="border border-white/10 p-3 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -752,7 +761,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
           const expanded = expandedIndex === index;
           return (
             <div key={episode.id || index} className="border border-white/10 bg-black/20">
-              <button type="button" onClick={() => setExpandedIndex(expanded ? null : index)} className="flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left">
+              <button type="button" onClick={() => { setExpandedIndex(expanded ? null : index); if (!expanded) { setActiveSceneKey('setup'); setExpandedShotId(null); } }} className="flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left">
                 {expanded ? <ChevronDown size={16} className="shrink-0 text-white/50" /> : <ChevronRight size={16} className="shrink-0 text-white/50" />}
                 <span className="shrink-0 text-xs font-semibold text-[var(--studio-accent)]">EP {index + 1}</span>
                 <span className="min-w-0 truncate text-sm text-white">{episode.title || 'Untitled episode'}</span>
@@ -765,9 +774,18 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                 {input('Premise / Conflict', episode.premise, (value) => updateEpisode(index, { premise: value }), 3)}
                 {input('Story Development', episode.outline, (value) => updateEpisode(index, { outline: value }), 5, 'How the season theme changes the situation and affects the characters in this episode.')}
                 <div className="space-y-3 border border-white/10 p-3">
-                  <div className="text-sm text-white">Scene Composition</div>
-                  {VIDEO_PARTS.map(([key, label, helper]) => (
-                    <div key={key} className="space-y-3 border-b border-white/10 pb-4 last:border-b-0 last:pb-0">
+                  <div className="sticky top-0 z-20 space-y-2 border-b border-white/15 bg-[#101416] py-2 shadow-lg">
+                    <div className="text-sm text-white">Scene Composition</div>
+                    <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Episode scenes">
+                      {VIDEO_PARTS.map(([key, label], sceneIndex) => <button type="button" key={key} role="tab" aria-selected={activeSceneKey === key}
+                        onClick={() => { setActiveSceneKey(key); setExpandedShotId(null); }}
+                        className={`shrink-0 rounded border px-3 py-2 text-xs ${activeSceneKey === key ? 'border-[var(--studio-accent)] bg-white/10 text-white' : 'border-white/20 text-white/60 hover:text-white'}`}>
+                        Scene {sceneIndex + 1} · {label.split(' · ')[1] || label}
+                      </button>)}
+                    </div>
+                  </div>
+                  {VIDEO_PARTS.filter(([key]) => key === activeSceneKey).map(([key, label, helper]) => (
+                    <div key={key} role="tabpanel" className="space-y-3">
                       <label className="block space-y-1.5">
                         <span className="text-xs text-white/65">{label}</span>
                         <span className="block text-[11px] text-white/35">{helper}</span>
