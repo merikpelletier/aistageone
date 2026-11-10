@@ -350,7 +350,7 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
       const result = await base44.functions.invoke('replicateGenerate', {
         method: 'compose_scene',
         prompt: masterPrompt,
-        reference_image_urls: refs.slice(0, 3),
+        reference_image_urls: refs,
         aspect_ratio: aspectRatio,
         model_key: modelKey || undefined,
       });
@@ -425,7 +425,7 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
       const result = await base44.functions.invoke('replicateGenerate', {
         method: 'compose_scene',
         prompt,
-        reference_image_urls: refs.slice(0, 3),
+        reference_image_urls: refs,
         aspect_ratio: aspectRatio,
         model_key: modelKey || undefined,
       });
