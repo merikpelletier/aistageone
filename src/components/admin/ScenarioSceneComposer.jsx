@@ -14,6 +14,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   const [vaultOpen, setVaultOpen] = useState(false);
   const [folderId, setFolderId] = useState('all');
   const [search, setSearch] = useState('');
+  const [promptError, setPromptError] = useState('');
   const legacyScene = episode.scene_compositions?.[partKey] || {};
   const selectedAssets = Array.isArray(shot.vault_scene_refs) ? shot.vault_scene_refs : [];
   const { data: vault = { assets: [], folders: [] }, isLoading: loadingVault, error: vaultError } = useQuery({
@@ -65,7 +66,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     ...setObjects.map(url => ({ url, label: 'SET OBJECT — ' + (setElements.find(item => item.image_url === url)?.name || 'selected object') })),
     ...selectedAssets.filter(ref => ref.url).map(ref => ({ url: ref.url, label: 'VAULT ASSET — ' + (ref.name || 'Reference') + (ref.direction ? '; PLACEMENT / ACTION: ' + ref.direction : '') })),
   ].filter(entry => entry.url);
-  const basePrompt = [
+  const suggestedBasePrompt = [
     'Generate ONE cinematic production scene image with no principal heroes visible.',
     'Use the following exact image references in order:',
     ...baseEntries.map((entry, index) => 'IMAGE ' + (index + 1) + ': ' + entry.label),
@@ -74,7 +75,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     'Leave space for the principal actors but DO NOT draw or add them, even if mentioned in the script or blocking.',
     'Do not render dialogue, captions, text, storyboard panels or labels.',
   ].filter(Boolean).join('\n');
-  const previewPrompt = [
+  const suggestedPreviewPrompt = [
     'Generate ONE cinematic image showing the SAME scene with its selected principal actors.',
     'IMAGE 1 is the actual generated base scene. Preserve its exact camera view, setting, extras, props and lighting.',
     ...heroes.map((hero, index) => 'IMAGE ' + (index + 2) + ': ' + hero.name + ' — exact identity and wardrobe/look ' + (hero.look || 'from reference') + '.'),
@@ -82,6 +83,10 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     'Add only the selected heroes. Follow the recorded positions and camera directions; do not replace existing extras.',
     'Make a single seamless image, without text, labels or storyboard panels.',
   ].filter(Boolean).join('\n');
+  const basePrompt = shot.base_image_prompt ?? suggestedBasePrompt;
+  const previewPrompt = shot.hero_composition_prompt ?? suggestedPreviewPrompt;
+  const productionTarget = shot.production_target || 'fotoplay';
+  const productionPrompt = shot.production_prompt || '';
   const { options: models = [], loading: modelLoading } = useAiModelOptions({
     service: 'replicateGenerate:compose_scene', kind: 'image', input: { aspect_ratio: '16:9', prompt: basePrompt },
   });
@@ -115,7 +120,37 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     try {
       const url = await generateImage([baseImage, ...heroes.map(hero => hero.url)], previewPrompt);
       onShotChange({ hero_preview_url: url });
+      await generateProductionPrompt(url);
     } catch (e) { setError(e.message || 'Hero preview generation failed'); }
+    finally { setBusy(''); }
+  };
+  const generateProductionPrompt = async (visualUrl = previewImage) => {
+    if (!baseImage) return setPromptError('Generate the base scene first.');
+    if (!heroes.length || heroes.some(hero => !hero.url)) return setPromptError('Select exact looks for the heroes first.');
+    setPromptError('');
+    setBusy('prompt');
+    try {
+      const instructions = productionTarget === 'shoot'
+        ? 'Write ONE concise but detailed production-ready VIDEO GENERATION PROMPT for a Shoot clip. Preserve exact existing scene composition, selected hero looks and blocking. Specify the camera, staging, motion, action and dialogue context without embedding music. Do not invent sets, characters or wardrobe. Output ONLY the video prompt, without explanations.'
+        : 'Write ONE concise but detailed production-ready IMAGE GENERATION PROMPT for FotoPlay. Preserve exact existing scene composition, character identity and wardrobe, framing, positions, action and props. No video motion, music or invented characters or sets. Output ONLY the image prompt, without explanations.';
+      const { data, error: llmError } = await supabase.functions.invoke('invoke-llm', { body: {
+        instructions,
+        prompt: ['Destination: ' + productionTarget.toUpperCase(), 'Existing scene: ' + context, 'Base generation prompt: ' + basePrompt,
+          'Hero composition: ' + previewPrompt,
+          'Selected hero references: ' + heroes.map(hero => hero.name + ' = ' + (hero.look || 'selected look') + ' (' + hero.url + ')').join(' | '),
+          'Base image reference: ' + baseImage,
+          visualUrl && 'Hero validation image reference: ' + visualUrl,
+          'Selected set view: ' + setView,
+          'Set objects: ' + setObjects.join(', '),
+          'Other Vault references: ' + selectedAssets.map(ref => ref.name + ': ' + (ref.direction || '') + ' (' + ref.url + ')').join(' | '),
+          shot.dialogue && 'Dialogue: ' + shot.dialogue,
+        ].filter(Boolean).join('\n'),
+      } });
+      if (llmError) throw llmError;
+      const response = typeof data === 'string' ? data : data?.text || data?.output;
+      if (typeof response !== 'string' || !response.trim()) throw new Error('The text model returned no production prompt.');
+      onShotChange({ production_prompt: response.trim(), production_target: productionTarget });
+    } catch (e) { setPromptError(e.message || 'Production prompt generation failed'); }
     finally { setBusy(''); }
   };
   return <div className="space-y-3 border border-teal-400/30 bg-teal-400/[0.03] p-3">
@@ -159,6 +194,9 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
         {!loadingVault && !vaultError && !visibleAssets.length && <p className="text-xs text-white/45">No matching images in this Vault folder.</p>}
       </div>}
     </section>
+    <label className="block space-y-1 text-xs text-white/70">Base scene · Image generation prompt
+      <textarea className={FIELD + ' w-full'} rows={6} disabled={readOnly} value={basePrompt} onChange={e => onShotChange({ base_image_prompt: e.target.value })} />
+    </label>
     <div className="grid gap-3 md:grid-cols-2">
       <figure className="space-y-1"><figcaption className="text-xs font-semibold text-white">Base scene · no heroes</figcaption>
         {baseImage ? <img src={baseImage} className="w-full aspect-video bg-black object-contain" alt="Base scene without heroes" /> : <div className="flex aspect-video items-center justify-center border border-white/15 text-xs text-white/40">No base image</div>}
@@ -167,6 +205,23 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
         {previewImage ? <img src={previewImage} className="w-full aspect-video bg-black object-contain" alt="AI-generated validation scene with heroes" /> : <div className="flex aspect-video items-center justify-center border border-white/15 text-xs text-white/40">No validation image</div>}
       </figure>
     </div>
+    <label className="block space-y-1 text-xs text-white/70">Heroes · Composition / validation image prompt
+      <textarea className={FIELD + ' w-full'} rows={5} disabled={readOnly} value={previewPrompt} onChange={e => onShotChange({ hero_composition_prompt: e.target.value })} />
+    </label>
+    <section className="space-y-2 border border-white/15 p-3">
+      <div className="text-xs font-semibold text-white">Production prompt · for Shoot or FotoPlay</div>
+      <label className="block space-y-1 text-xs text-white/70">Production tool
+        <select className={FIELD} disabled={readOnly} value={productionTarget} onChange={e => onShotChange({ production_target: e.target.value, production_prompt: '' })}>
+          <option value="fotoplay">FotoPlay · Image</option>
+          <option value="shoot">Shoot · Video</option>
+        </select>
+      </label>
+      <textarea className={FIELD + ' w-full'} rows={7} disabled={readOnly} value={productionPrompt} onChange={e => onShotChange({ production_prompt: e.target.value })} placeholder="Generate the production prompt from this scene and the selected heroes, then edit it here." />
+      {!readOnly && <button type="button" disabled={!!busy || !baseImage || !heroes.length} onClick={() => generateProductionPrompt()} className="border border-white/30 px-3 py-2 text-xs text-white disabled:opacity-40">
+        {busy === 'prompt' ? 'Generating production prompt…' : 'Generate / Update Production Prompt'}
+      </button>}
+      {promptError && <p role="alert" className="text-xs text-red-300">{promptError}</p>}
+    </section>
     {!readOnly && <div className="flex flex-wrap items-center gap-2">
       <select className={FIELD + ' max-w-xs'} value={modelKey || ''} disabled={modelLoading} onChange={e => setSelectedModel(e.target.value)}>
         <option value="">Select image model</option>
@@ -176,7 +231,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
         {busy === 'base' ? 'Generating base…' : 'Generate Base Scene'}{quote?.credits ? ' · ' + quote.credits + ' credits' : ''}
       </button>
       <button type="button" className="border border-white/30 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40" disabled={!!busy || !modelKey || !baseImage || !heroes.length} onClick={generatePreview}>
-        {busy === 'preview' ? 'Generating validation…' : 'Generate Preview With Heroes'}
+        {busy === 'preview' ? 'Generating hero scene and production prompt…' : 'Generate Hero Scene + Production Prompt'}
       </button>
     </div>}
     {error && <p role="alert" className="text-xs text-red-300">{error}</p>}
