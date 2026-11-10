@@ -198,14 +198,24 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   ].filter(Boolean).join('\n');
   const suggestedPreviewPrompt = [
     'Generate ONE cinematic image showing the SAME scene with its selected principal actors.',
-    'IMAGE 1 is the actual generated base scene. Preserve its exact camera view, setting, extras, props and lighting.',
+    'IMAGE 1 is the actual generated base scene. Preserve its setting, architecture, lighting, props and spatial relationships. It establishes the viewpoint, not the final framing distance of the actors.',
     ...heroes.map((hero, index) => 'IMAGE ' + (index + 2) + ': ' + hero.name + ' — exact identity and wardrobe/look ' + (hero.look || 'from reference') + '.'),
     context,
-    'Add only the selected heroes. Follow the recorded positions and camera directions; do not replace existing extras.',
+    'Add only the selected heroes. Apply the selected shot type to the visible subjects, adjusting their on-screen scale and crop while keeping the existing set, angle and continuity. Do not replace existing extras.',
     'Make a single seamless image, without text, labels or storyboard panels.',
   ].filter(Boolean).join('\n');
   const basePrompt = shot.base_image_prompt ?? suggestedBasePrompt;
   const previewPrompt = shot.hero_composition_prompt ?? suggestedPreviewPrompt;
+  // The shot's live framing always takes priority over previously saved prompt text.
+  // Never erase user-authored prompts or previously generated images when framing changes.
+  const framingDirective = [
+    'MANDATORY CURRENT SHOT FRAMING: ' + (shot.shot_type || 'Medium Shot') + '.',
+    'SHOT TYPE sets subject scale, visible body portion, crop and composition, including Close-Up, Medium Close-Up, Wide, Two Shot, Over-the-Shoulder, POV, reaction and detail shots.',
+    'SET CAMERA VIEW is the source of truth for location identity, architecture, spatial orientation, lighting and background continuity — not a requirement to preserve a wide or full-body crop.',
+    'Reframe within that established view as needed for the selected shot type; do not invent a new camera angle, location, character, wardrobe or props.',
+    'If saved prompt instructions conflict with this current shot type, obey the CURRENT SHOT FRAMING directive.',
+  ].join('\\n');
+  const effectivePreviewPrompt = previewPrompt + '\\n\\n' + framingDirective;
   const productionTarget = shot.production_target || 'fotoplay';
   const productionPrompt = shot.production_prompt || '';
   const { options: models = [], loading: modelLoading } = useAiModelOptions({
@@ -242,7 +252,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     setError('');
     setBusy('preview');
     try {
-      const url = await generateImage([baseImage, ...heroes.map(hero => hero.url)], previewPrompt);
+      const url = await generateImage([baseImage, ...heroes.map(hero => hero.url)], effectivePreviewPrompt);
       onShotChange({ hero_preview_url: url });
       await generateProductionPrompt(url);
     } catch (e) { setError(e.message || 'Hero preview generation failed'); }
@@ -260,11 +270,12 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
       const { data, error: llmError } = await supabase.functions.invoke('invoke-llm', { body: {
         instructions,
         prompt: ['Destination: ' + productionTarget.toUpperCase(), 'Existing scene: ' + context, 'Base generation prompt: ' + basePrompt,
-          'Hero composition: ' + previewPrompt,
+          'Hero composition: ' + effectivePreviewPrompt,
           'Selected hero references: ' + heroes.map(hero => hero.name + ' = ' + (hero.look || 'selected look') + ' (' + hero.url + ')').join(' | '),
           'Base image reference: ' + baseImage,
           visualUrl && 'Hero validation image reference: ' + visualUrl,
           'Selected set view: ' + setView,
+          'Current shot framing directive: ' + framingDirective,
           'Set objects: ' + setObjects.join(', '),
           'Other Vault references: ' + baseEntries.slice(1).map(entry => entry.label + ' (' + entry.url + ')').join(' | '),
           shot.dialogue && 'Dialogue supplied by author: ' + shot.dialogue,
