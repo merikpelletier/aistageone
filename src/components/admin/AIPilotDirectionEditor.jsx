@@ -702,6 +702,20 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                         readOnly={readOnly}
                         onChange={composition => applyPartPatch(index, key, 'scene_compositions', composition)}
                       />
+                      {!!episode.shot_plans?.[key]?.length && <div className="space-y-3 border border-white/15 p-3">
+                        <div className="text-xs font-semibold text-white/80">Existing dialogue · Saved scene shots</div>
+                        <p className="text-[11px] text-white/45">Original shot dialogues remain editable and are preserved separately from the scene composition.</p>
+                        {episode.shot_plans[key].map((shot, shotIndex) => (
+                          <label key={shot.id || shotIndex} className="block space-y-1 text-xs text-white/65">
+                            Shot {shotIndex + 1}{shot.action ? ' · ' + shot.action : ''}
+                            <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly}
+                              value={shot.dialogue || ''}
+                              onChange={event => updateShotById(index, key, shot.id, { dialogue: event.target.value })}
+                              placeholder="Dialogue for this shot"
+                            />
+                          </label>
+                        ))}
+                      </div>}
                     </div>
                   ))}
                 </div>
