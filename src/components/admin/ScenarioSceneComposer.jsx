@@ -158,7 +158,12 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     return { name: character.name || character.role_name, url, look: typeof image === 'string' ? '' : image?.name || '' };
   });
   const firstShot = episode.shot_plans?.[partKey]?.[0]?.id === shot.id;
-  const baseImage = shot.base_scene_url || (firstShot ? legacyScene.generated_image : '') || '';
+  // Keep previous composites stored, but a newly selected decor takes priority until
+  // a composite is explicitly generated from that exact decor.
+  const baseImage = shot.base_scene_selected_url
+    ? (shot.base_scene_source_url === shot.base_scene_selected_url && shot.base_scene_url
+      ? shot.base_scene_url : shot.base_scene_selected_url)
+    : shot.base_scene_url || (firstShot ? legacyScene.generated_image : '') || setView;
   const previewImage = shot.hero_preview_url || (firstShot ? legacyScene.hero_preview_image : '') || '';
   const sceneDescription = episode.parts?.[partKey] || '';
   const context = [
@@ -236,17 +241,23 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     if (!result.data?.file_url) throw new Error(result.data?.error || 'Image generation failed');
     return result.data.file_url;
   };
+  const hasBaseAdditions = Boolean(setObjects.length || selectedAssets.some(ref => ref.url) || shot.additional_scene_elements?.trim());
   const generateBase = async () => {
-    if (!setView) return setError('Select the Set camera view above.');
-    if (!modelKey) return setError('Select an image model.');
+    if (!setView) return setError('Select a Set image first.');
     setError('');
+    // No additions: selecting the decor is sufficient. No AI call or credit charge.
+    if (!hasBaseAdditions) {
+      onShotChange({ base_scene_selected_url: setView });
+      return;
+    }
+    if (!modelKey) return setError('Select an image model.');
     setBusy('base');
     try {
       const isolated = await Promise.all(baseEntries.map(async entry =>
         entry.actorId ? isolateBackgroundActor(entry.url, entry.actorId) : entry.url
       ));
       const url = await generateImage(isolated, effectiveBasePrompt);
-      onShotChange({ base_scene_url: url, hero_preview_url: '' });
+      onShotChange({ base_scene_url: url, base_scene_selected_url: setView, base_scene_source_url: setView, hero_preview_url: '' });
     } catch (e) { setError(e.message || 'Base scene generation failed'); }
     finally { setBusy(''); }
   };
@@ -415,7 +426,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
       </label>
     </details>
     <div className="grid gap-3 md:grid-cols-2">
-      <figure className="space-y-1"><figcaption className="text-xs font-semibold text-white">Base scene · no heroes</figcaption>
+      <figure className="space-y-1"><figcaption className="text-xs font-semibold text-white">{shot.base_scene_selected_url && baseImage === shot.base_scene_selected_url ? 'Base scene · selected Set image' : 'Base scene · no heroes'}</figcaption>
         {baseImage ? <img src={baseImage} className="w-full aspect-video bg-black object-contain" alt="Base scene without heroes" /> : <div className="flex aspect-video items-center justify-center border border-white/15 text-xs text-white/40">No base image</div>}
       </figure>
       <figure className="space-y-1"><figcaption className="text-xs font-semibold text-white">Validation · with heroes</figcaption>
@@ -447,8 +458,8 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
         <option value="">Select image model</option>
         {models.map(model => <option key={model.model_key} value={model.model_key}>{model.name || model.model_key}</option>)}
       </select>
-      <button type="button" className="border border-teal-400 px-3 py-2 text-xs font-semibold text-teal-200 disabled:opacity-40" disabled={!!busy || !modelKey} onClick={generateBase}>
-        {busy === 'base' ? 'Generating base…' : 'Generate Base Scene'}{quote?.credits ? ' · ' + quote.credits + ' credits' : ''}
+      <button type="button" className="border border-teal-400 px-3 py-2 text-xs font-semibold text-teal-200 disabled:opacity-40" disabled={!!busy || !setView || (hasBaseAdditions && !modelKey)} onClick={generateBase}>
+        {busy === 'base' ? 'Generating base…' : hasBaseAdditions ? 'Generate Base Scene' : 'Use selected Set image'}{hasBaseAdditions && quote?.credits ? ' · ' + quote.credits + ' credits' : ''}
       </button>
       <button type="button" className="border border-white/30 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40" disabled={!!busy || !modelKey || !baseImage || !heroes.length} onClick={generatePreview}>
         {busy === 'preview' ? 'Generating hero scene and production prompt…' : 'Generate Hero Scene + Production Prompt'}
