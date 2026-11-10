@@ -191,7 +191,8 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     'Generate ONE cinematic production scene image with no principal heroes visible.',
     'Use the following exact image references in order:',
     ...baseEntries.map((entry, index) => 'IMAGE ' + (index + 1) + ': ' + entry.label),
-    context.split('\n').filter(line => !line.startsWith('ORDERED ACTION AND DIALOGUE SEQUENCE (PRODUCTION TIMING):')).join('\n'),
+    context.split('\n').filter(line => !line.startsWith('ORDERED ACTION AND DIALOGUE SEQUENCE (PRODUCTION TIMING):') && !line.startsWith('SHOT FRAMING:')).join('\n'),
+    'BASE IMAGE FRAMING: Keep the selected Set camera view and its original spatial composition. This base image is not a Close-Up, Medium Shot, or other hero shot type.',
     'Lock the selected Set view. Include each selected Vault asset in its described position and role, whether a limousine, photographer, extra or prop.',
     'Leave space for the principal actors but DO NOT draw or add them, even if mentioned in the script or blocking.',
     'Do not render dialogue, captions, text, storyboard panels or labels.',
@@ -205,6 +206,10 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     'Make a single seamless image, without text, labels or storyboard panels.',
   ].filter(Boolean).join('\n');
   const basePrompt = shot.base_image_prompt ?? suggestedBasePrompt;
+  // The selected shot type controls the HERO preview only. Protect base-scene generation
+  // even if an older saved base prompt contains instructions for the hero's framing.
+  const effectiveBasePrompt = basePrompt + '\\n\\n' +
+    'BASE SCENE ONLY: Preserve the selected Set camera view and framing. Do not apply the current shot type to this empty-of-heroes base. Include only selected background actors and assets in their directed positions; do not add principal heroes.';
   const previewPrompt = shot.hero_composition_prompt ?? suggestedPreviewPrompt;
   // The shot's live framing always takes priority over previously saved prompt text.
   // Never erase user-authored prompts or previously generated images when framing changes.
@@ -239,7 +244,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
       const isolated = await Promise.all(baseEntries.map(async entry =>
         entry.actorId ? isolateBackgroundActor(entry.url, entry.actorId) : entry.url
       ));
-      const url = await generateImage(isolated, basePrompt);
+      const url = await generateImage(isolated, effectiveBasePrompt);
       onShotChange({ base_scene_url: url, hero_preview_url: '' });
     } catch (e) { setError(e.message || 'Base scene generation failed'); }
     finally { setBusy(''); }
