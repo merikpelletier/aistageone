@@ -163,7 +163,7 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], ac
     };
     positionAsset(placingId, position);
   };
-  const setView = shot.set_view_reference_url || (!selectedSet?.linked_set ? imageUrl(selectedSet?.reference_images?.[0]) : '');
+  const setView = shot.set_base_image_url || shot.set_view_reference_url || (!selectedSet?.linked_set ? imageUrl(selectedSet?.reference_images?.[0]) : '');
   const setObjects = (Array.isArray(shot.set_element_reference_urls) ? shot.set_element_reference_urls : []).filter(Boolean);
   const heroes = visibleCharacters.map(character => {
     const url = shot.character_reference_urls?.[character.id] || '';
@@ -171,7 +171,9 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], ac
     return { name: character.name || character.role_name, url, look: typeof image === 'string' ? '' : image?.name || '' };
   });
   const firstShot = episode.shot_plans?.[partKey]?.[0]?.id === shot.id;
-  const baseImage = shot.base_scene_url || (firstShot ? legacyScene.generated_image : '') || '';
+  // The selected decor is the exact base until the author explicitly generates a composite.
+  // The previously generated base remains saved independently in base_scene_url.
+  const baseImage = shot.set_base_image_url || shot.base_scene_url || (firstShot ? legacyScene.generated_image : '') || '';
   const previewImage = shot.hero_preview_url || (firstShot ? legacyScene.hero_preview_image : '') || '';
   const sceneDescription = episode.parts?.[partKey] || '';
   const context = [
@@ -272,7 +274,7 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], ac
         entry.actorId ? isolateBackgroundActor(entry.url, entry.actorId) : entry.url
       ));
       const url = await generateImage(isolated, effectiveBasePrompt);
-      onShotChange({ base_scene_url: url, hero_preview_url: '', ...(reuseAsBase ? { continuity_reference: { url: continuityUrl, label: continuity.label, target: 'base' } } : {}) });
+      onShotChange({ base_scene_url: url, set_base_image_url: '', hero_preview_url: '', ...(reuseAsBase ? { continuity_reference: { url: continuityUrl, label: continuity.label, target: 'base' } } : {}) });
     } catch (e) { setError(e.message || 'Base scene generation failed'); }
     finally { setBusy(''); }
   };
@@ -446,7 +448,7 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], ac
       </label>
     </details>
     <div className="grid gap-3 md:grid-cols-2">
-      <figure className="space-y-1"><figcaption className="text-xs font-semibold text-white">Base scene · no heroes</figcaption>
+      <figure className="space-y-1"><figcaption className="text-xs font-semibold text-white">{shot.set_base_image_url ? 'Base scene · selected Set image (exact)' : 'Base scene · no heroes'}</figcaption>
         {baseImage ? <img src={baseImage} className="w-full aspect-video bg-black object-contain" alt="Base scene without heroes" /> : <div className="flex aspect-video items-center justify-center border border-white/15 text-xs text-white/40">No base image</div>}
         {baseImage && !readOnly && <button type="button" className="border border-white/30 px-3 py-1.5 text-xs text-white" onClick={() => activeImageReference?.url === baseImage && activeImageReference?.shotId === shot.id ? clearReference() : selectReference(baseImage, 'base')}>{activeImageReference?.url === baseImage && activeImageReference?.shotId === shot.id ? 'Clear' : 'Use as Reference'}</button>}
       </figure>
