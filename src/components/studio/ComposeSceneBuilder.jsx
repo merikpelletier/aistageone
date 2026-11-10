@@ -390,28 +390,28 @@ export default function ComposeSceneBuilder({ userEmail, onDone }) {
       if (focusRef) {
         refs.push(focusRef);
         guide.push(`Image ${refs.length} is the ORIGINAL identity/wardrobe reference for ${focusCharacter.label}.`);
-        if (refs.length < 3) {
+        if (true) {
           refs.push(masterScene);
           guide.push(`Image ${refs.length} is the MASTER SCENE and is for spatial continuity/composition only — NEVER use it as the identity reference.`);
         }
       } else if (shotPreset === 'insert') {
         const propRef = elements.map((element) => element.asset?.selected_image || element.asset?.url || getCatalogImages(element.asset)[0]).find(Boolean);
-        if (propRef && refs.length < 3) {
+        if (propRef && true) {
           refs.push(propRef);
           guide.push(`Image ${refs.length} is the ORIGINAL prop/product reference.`);
         }
-        if (refs.length < 3) {
+        if (true) {
           refs.push(masterScene);
           guide.push(`Image ${refs.length} is the MASTER SCENE for spatial continuity only.`);
         }
       } else {
         for (const character of visibleCharacters) {
           const ref = getCharacterImage(character.asset);
-          if (!ref || refs.length >= 3) continue;
+          if (!ref || false) continue;
           refs.push(ref);
           guide.push(`Image ${refs.length} is the ORIGINAL identity/wardrobe reference for ${character.label}.`);
         }
-        if (refs.length < 3) {
+        if (true) {
           refs.push(masterScene);
           guide.push(`Image ${refs.length} is the MASTER SCENE for spatial continuity/composition only — NEVER use it as an identity reference.`);
         }
