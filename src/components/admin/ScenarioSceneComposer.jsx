@@ -7,7 +7,11 @@ import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 
 const FIELD = 'w-full min-h-10 border border-white/20 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-teal-400';
 const VIEWS = ['Hero', 'Wide', 'Reverse', 'Left', 'Right', 'Detail', 'Day', 'Night'];
-const getImages = images => (Array.isArray(images) ? images : []).map(image => typeof image === 'string' ? image : image?.url).filter(Boolean);
+const getImages = images => (Array.isArray(images) ? images : []).map(image => typeof image === 'string' ? image : image?.url || image?.image_url).filter(Boolean);
+const getNamedImages = (images, prefix = 'Reference') => (Array.isArray(images) ? images : []).map((image, index) => ({
+  url: typeof image === 'string' ? image : image?.url || image?.image_url,
+  label: typeof image === 'string' ? prefix + ' ' + (index + 1) : image?.name || image?.label || prefix + ' ' + (index + 1),
+})).filter(image => typeof image.url === 'string' && image.url.trim());
 const GROUP_TAG = 'background-group-data:';
 function readGroup(asset) {
   try {
@@ -15,24 +19,29 @@ function readGroup(asset) {
     return tag ? JSON.parse(decodeURIComponent(tag.slice(GROUP_TAG.length))) : {};
   } catch { return {}; }
 }
-const defaultPlan = { set_id: '', set_view_url: '', background_group_id: '', background_placement: '', character_ids: [], character_refs: {}, blocking: '', props: '', atmosphere: '', action: '', generated_image: '', hero_preview_image: '' };
+const defaultPlan = { set_id: '', set_view_url: '', set_element_reference_urls: [], background_group_id: '', background_placement: '', character_ids: [], character_refs: {}, blocking: '', dialogue: '', props: '', atmosphere: '', action: '', generated_image: '', hero_preview_image: '' };
 
 export default function ScenarioSceneComposer({ episode, partKey, availableSets = [], availableCharacters = [], readOnly, onChange }) {
   const plan = { ...defaultPlan, ...(episode.scene_compositions?.[partKey] || {}) };
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const set = availableSets.find(item => item.id === plan.set_id);
+  const activeSetId = plan.set_id || (availableSets.length === 1 ? availableSets[0].id : '');
+  const set = availableSets.find(item => item.id === activeSetId);
   const setData = set?.linked_set;
   const selectableViews = useMemo(() => {
     if (!set) return [];
-    const main = (setData?.images || []).map((url, index) => ({ label: VIEWS[index] || 'View ' + (index + 1), url })).filter(v => v.url);
-    const variants = Object.entries(setData?.reference_sheet?.view_variants || {}).flatMap(([name, value]) => value?.night ? [{ label: name + ' · Night', url: value.night }] : []);
-    const zone = (setData?.reference_sheet?.zone_shots || []).flatMap(v => [
-      ...(v.day ? [{ label: (v.label || 'Zone Shot') + ' · Day', url: v.day }] : []),
-      ...(v.night ? [{ label: (v.label || 'Zone Shot') + ' · Night', url: v.night }] : []),
-    ]);
-    return [...main, ...variants, ...zone, ...(!setData ? getImages(set.reference_images).map((url, i) => ({ label: 'Pilot reference ' + (i + 1), url })) : [])];
-  }, [set]);
+    const main = getNamedImages(setData?.images, 'Camera View').map((view, index) => ({ ...view, label: VIEWS[index] || view.label }));
+    const savedViews = getNamedImages(setData?.reference_sheet?.views, 'Reference Sheet View');
+    const variants = Object.entries(setData?.reference_sheet?.view_variants || {}).flatMap(([name, value]) =>
+      ['day', 'night'].map(period => value?.[period] ? { label: name + ' · ' + period, url: value[period] } : null).filter(Boolean));
+    const zone = (setData?.reference_sheet?.zone_shots || []).flatMap(view =>
+      ['day', 'night'].map(period => view?.[period] ? { label: (view.label || 'Zone Shot') + ' · ' + period, url: view[period] } : null).filter(Boolean));
+    const pilot = getNamedImages(set.reference_images, 'AI Pilot Set Reference');
+    return [...new Map([...main, ...savedViews, ...variants, ...zone, ...pilot].map(view => [view.url, view])).values()];
+  }, [set, setData]);
+  const setElements = (setData?.reference_sheet?.extracted_elements || []).filter(element => element?.image_url);
+  const selectedSetElementUrls = Array.isArray(plan.set_element_reference_urls) ? plan.set_element_reference_urls : [];
+  const selectedSetElements = selectedSetElementUrls.map(url => setElements.find(element => element.image_url === url)).filter(Boolean);
   const { data: backgroundGroups = [] } = useQuery({
     queryKey: ['ai-pilot-scenario-background-groups'],
     queryFn: async () => {
@@ -46,7 +55,7 @@ export default function ScenarioSceneComposer({ episode, partKey, availableSets 
   const group = backgroundGroups.find(a => a.id === plan.background_group_id);
   const people = availableCharacters.filter(c => plan.character_ids.includes(c.id));
   const selectedCharacterRefs = people.map(person => ({
-    name: person.name, id: person.id,
+    name: person.name || person.role_name, id: person.id,
     url: plan.character_refs?.[person.id] || '',
   }));
   const commonPrompt = [
@@ -54,8 +63,9 @@ export default function ScenarioSceneComposer({ episode, partKey, availableSets 
     'IMAGE 1: The exact existing Set view. Preserve its architecture, furniture, geography, camera angle and lighting.',
     set ? 'LOCATION: ' + set.name + '.' : '',
     plan.atmosphere ? 'ATMOSPHERE: ' + plan.atmosphere + '.' : '',
-    group ? 'IMAGE 2: Background Group BG-01 through BG-06, to be placed naturally into the scene, not as a grid; retain their identities and wardrobe, without visible labels.' : '',
+    group ? 'The next supplied image is the Background Group BG-01 through BG-06, to be placed naturally into the scene, not as a grid; retain their identities and wardrobe, without visible labels.' : '',
     group && plan.background_placement ? 'BACKGROUND EXTRAS POSITION AND ACTION: ' + plan.background_placement + '.' : '',
+    selectedSetElements.length ? 'SELECTED SET REFERENCE OBJECTS (in supplied image order): ' + selectedSetElements.map(element => element.name || 'Set Object').join(', ') + '. Preserve these exact objects.' : '',
     plan.props ? 'PROPS: ' + plan.props + '.' : '',
     plan.action ? 'SCENE SITUATION: ' + plan.action + '.' : '',
     'No captions, labels or borders.',
@@ -68,6 +78,7 @@ export default function ScenarioSceneComposer({ episode, partKey, availableSets 
     ...selectedCharacterRefs.map((person, index) => 'IMAGE ' + (index + 2) + ': ' + person.name + ' (exact face, wardrobe and look).'),
     'Add these heroes into the scene without replacing the existing extras or changing the location.',
     plan.blocking ? 'HERO POSITIONS, EYELINES AND ACTION: ' + plan.blocking + '.' : '',
+    plan.dialogue ? 'DIALOGUE CONTEXT (do not render the dialogue as text): ' + plan.dialogue + '.' : '',
     'Produce one seamless realistic scene, not a storyboard or overlay. Do not add names or text.',
   ].filter(Boolean).join('\n');
   const { options: models = [], loading: modelLoading } = useAiModelOptions({
@@ -91,7 +102,7 @@ export default function ScenarioSceneComposer({ episode, partKey, availableSets 
     setError('');
     setBusy('base');
     try {
-      const url = await requestImage([plan.set_view_url, ...(group ? [group.url] : [])], basePrompt);
+      const url = await requestImage([plan.set_view_url, ...selectedSetElementUrls, ...(group ? [group.url] : [])], basePrompt);
       patch({ generated_image: url, hero_preview_image: '' });
     } catch (error) { setError(error.message || 'Base scene generation failed.'); }
     finally { setBusy(''); }
@@ -112,7 +123,7 @@ export default function ScenarioSceneComposer({ episode, partKey, availableSets 
   return <div className="space-y-4 border border-teal-400/25 bg-[#15191b] p-4">
     <div><h4 className="text-sm font-bold text-teal-200">Compose Scene</h4><p className="mt-1 text-xs text-white/45">Build the scene from your actual Set, supporting cast and production references. Saved compositions remain linked to this episode.</p></div>
     <label className="block space-y-1 text-xs text-white/60">Set location
-      <select className={FIELD} disabled={readOnly} value={plan.set_id} onChange={e => patch({ set_id: e.target.value, set_view_url: '', generated_image: '', hero_preview_image: '' })}>
+      <select className={FIELD} disabled={readOnly} value={plan.set_id} onChange={e => patch({ set_id: e.target.value, set_view_url: '', set_element_reference_urls: [], generated_image: '', hero_preview_image: '' })}>
         <option value="">Select existing Set</option>
         {availableSets.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
       </select>
@@ -126,6 +137,18 @@ export default function ScenarioSceneComposer({ episode, partKey, availableSets 
         </button>)}
       </div>
       {!selectableViews.length && <p className="text-xs text-amber-300">This Set has no accessible reference views.</p>}
+    </div>}
+    {set && <div className="space-y-2 border border-white/15 p-3">
+      <p className="text-xs font-bold text-white/70">Set Reference Sheet · Objects and details</p>
+      {setElements.length ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        {setElements.map((element, index) => {
+          const checked = selectedSetElementUrls.includes(element.image_url);
+          return <label key={element.id || element.image_url || index} className={`cursor-pointer border p-2 ${checked ? 'border-teal-400 bg-teal-400/10' : 'border-white/15'}`}>
+            <span className="flex items-start gap-2 text-xs text-white/80"><input type="checkbox" disabled={readOnly} checked={checked} onChange={event => patch({ set_element_reference_urls: event.target.checked ? [...selectedSetElementUrls, element.image_url] : selectedSetElementUrls.filter(url => url !== element.image_url) })}/>{element.name || 'Set reference'}</span>
+            <img src={element.image_url} alt={element.name || 'Set reference'} className="mt-2 h-24 w-full bg-black object-contain"/>
+          </label>;
+        })}
+      </div> : <p className="text-xs text-white/45">No extracted reference objects in this Set.</p>}
     </div>}
     <label className="block space-y-1 text-xs text-white/60">Background Group · from My Vault
       <select disabled={readOnly} className={FIELD} value={plan.background_group_id} onChange={e => patch({ background_group_id: e.target.value, generated_image: '', hero_preview_image: '' })}>
@@ -147,16 +170,16 @@ export default function ScenarioSceneComposer({ episode, partKey, availableSets 
         {availableCharacters.map(person => <label key={person.id} className="flex items-center gap-2 border border-white/15 px-2 py-1.5 text-xs text-white/70">
           <input type="checkbox" disabled={readOnly} checked={plan.character_ids.includes(person.id)} onChange={e => patch({
             character_ids: e.target.checked ? [...plan.character_ids, person.id] : plan.character_ids.filter(id => id !== person.id),
-          })}/>{person.name}
+          })}/>{person.name || person.role_name}
         </label>)}
       </div>
       {people.map(person => {
-        const refs = getImages(person.reference_images);
+        const refs = getNamedImages(person.reference_images, 'Look');
         return <div key={person.id} className="space-y-1">
-          <p className="text-xs text-white/60">{person.name} — reference look</p>
-          <div className="flex flex-wrap gap-2">{refs.map((url, i) => <button key={url} type="button" disabled={readOnly} onClick={() => patch({ character_refs: { ...plan.character_refs, [person.id]: url } })}
+          <p className="text-xs text-white/60">{person.name || person.role_name} — reference look</p>
+          <div className="flex flex-wrap gap-2">{refs.map(({ url, label }, i) => <button key={url} type="button" disabled={readOnly} onClick={() => patch({ character_refs: { ...plan.character_refs, [person.id]: url } })}
             className={`border p-1 ${plan.character_refs[person.id] === url ? 'border-teal-400' : 'border-white/20'}`}>
-            <img src={url} alt={person.name + ' reference ' + (i+1)} className="h-24 w-20 object-contain bg-black"/>
+            <img src={url} alt={(person.name || person.role_name) + ' · ' + label} className="h-24 w-20 object-contain bg-black"/><span className="block max-w-24 break-words text-[11px] text-white/80">{label}</span>
           </button>)}
           {!refs.length && <p className="text-xs text-amber-300">No saved look references in AI Pilot Characters.</p>}</div>
         </div>;
@@ -166,6 +189,7 @@ export default function ScenarioSceneComposer({ episode, partKey, availableSets 
       {[
         ['atmosphere', 'Lighting / Atmosphere', 'Describe lighting and mood only; keep Set geometry unchanged'],
         ['blocking', 'Principal actors · Positions', 'Position and eyelines for each selected hero'],
+        ['dialogue', 'Scene Dialogue', 'Editable dialogue for the characters in this scene'],
         ['props', 'Props / Objects', 'Props from the established set and placement'],
         ['action', 'Scene Action', 'What happens in this composed scene'],
       ].map(([key,label,hint]) => <label key={key} className="block text-xs text-white/60">{label}
