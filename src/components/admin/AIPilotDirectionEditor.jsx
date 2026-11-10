@@ -808,7 +808,6 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                     </div>
                   ))}
                 </div>
-              </div>
             </div>
           ) : null;
         })}
