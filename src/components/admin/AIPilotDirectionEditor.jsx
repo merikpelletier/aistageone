@@ -236,6 +236,47 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     } catch (error) { setGenerationError(error.message || 'Unable to propose shot dialogue.'); }
     finally { setGenerating(''); }
   };
+  const organizeShotDirection = async (episodeIndex, key, shot) => {
+    const ep = episodes[episodeIndex];
+    if (shot.direction_sequence && !window.confirm('Replace the existing organized action and dialogue sequence?')) return;
+    const resources = ep.scene_resources?.[key] || {};
+    const speakers = availableCharacters.filter(person =>
+      (resources.character_ids || []).includes(person.id) && (!Array.isArray(shot.character_ids) || shot.character_ids.includes(person.id))
+    ).map(person => person.name || person.role_name);
+    const length = Number(shot.duration) || 5;
+    setGenerationError('');
+    setGenerating('sequence-' + shot.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('invoke-llm', { body: {
+        instructions: [
+          'You are a film assistant director. Organize ONE shot as a production-ready chronological sequence of actions and spoken lines.',
+          'Output only compact, editable text lines, each starting with a time interval in seconds such as [00:00–00:02] ACTION: ... or [00:01–00:03] BACKGROUND VOICE (PHOTOGRAPHER): "...".',
+          'Intervals must stay inside the requested shot duration, be chronologically ordered, and overlap only when simultaneous action and voices are intended.',
+          'Keep original actions, speakers, actual supplied dialogue and their intended order. Never replace, contradict or expand the narrative.',
+          'Include ambient/background voices only when justified by the described scene, e.g. photographers calling out to a star. If their exact words are not provided, write a short clearly labeled PROPOSED background line rather than implying it was authored.',
+          'Do not invent principal character dialogue. If no one speaks, use only action lines.',
+          'Specify what happens on-screen and off-screen when necessary. Avoid music and cinematography not present in the input.',
+          'Time allocations are proposed timing guidance, not claims that an image/video generator will guarantee exact timing.',
+        ].join(' '),
+        prompt: [
+          'Scene: ' + (ep.parts?.[key] || ''),
+          'Shot duration: ' + length + ' seconds.',
+          'Action: ' + (shot.action || ''),
+          'Camera/positioning: ' + (shot.camera || ''),
+          'Dialogue/voices supplied by author: ' + (shot.dialogue || '(none)'),
+          'Visible principal characters: ' + (speakers.join(', ') || 'none specified'),
+          'Other scene elements: ' + (shot.additional_scene_elements || ''),
+          'Vault references/placement: ' + (shot.vault_scene_refs || []).map(ref => ref.name + ': ' + (ref.direction || '')).join(' | '),
+          'Do not place any proposed background dialogue into the authored dialogue field; produce only the editable sequence.',
+        ].join('\n'),
+      } });
+      if (error) throw error;
+      const text = typeof data === 'string' ? data : data?.text || data?.output;
+      if (typeof text !== 'string' || !text.trim()) throw new Error('No organized sequence was returned.');
+      updateShotById(episodeIndex, key, shot.id, { direction_sequence: text.trim() });
+    } catch (error) { setGenerationError(error.message || 'Could not organize action and dialogue.'); }
+    finally { setGenerating(''); }
+  };
   const proposeShots = async (episodeIndex, key) => {
     const ep = episodes[episodeIndex];
     const existing = ep.shot_plans?.[key] || [];
@@ -635,6 +676,11 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                 {!readOnly && <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={busy} onClick={() => proposeDialogue(episodeIndex, key, shot)}>{generating === `dialogue-${shot.id}` ? 'Generating…' : 'Propose Dialogue'}</Button>}
               </div>
               <Textarea className={CONTROL_CLASS} rows={3} disabled={readOnly} value={shot.dialogue || ''} onChange={(event) => updateShot(shot.id, { dialogue: event.target.value })} placeholder="Dialogue for this shot (optional)" />
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
+                <div><p className="text-xs font-semibold text-white">Action &amp; Dialogue Sequence</p><p className="text-[11px] text-white/45">Timed action, background voices and dialogue, in order. Edit the proposed sequence before producing.</p></div>
+                {!readOnly && <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={busy || (!shot.action?.trim() && !shot.dialogue?.trim())} onClick={() => organizeShotDirection(episodeIndex, key, shot)}>{generating === 'sequence-' + shot.id ? 'Organizing…' : 'Organize Action & Dialogue'}</Button>}
+              </div>
+              <Textarea className={CONTROL_CLASS} rows={5} disabled={readOnly} value={shot.direction_sequence || ''} onChange={(event) => updateShot(shot.id, { direction_sequence: event.target.value })} placeholder="AI-organized timeline of the actions and voices. Editable." />
             </div>
             <ScenarioSceneComposer
               shot={shot}
