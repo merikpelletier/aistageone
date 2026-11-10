@@ -446,11 +446,11 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], ac
     <div className="grid gap-3 md:grid-cols-2">
       <figure className="space-y-1"><figcaption className="text-xs font-semibold text-white">Base scene · no heroes</figcaption>
         {baseImage ? <img src={baseImage} className="w-full aspect-video bg-black object-contain" alt="Base scene without heroes" /> : <div className="flex aspect-video items-center justify-center border border-white/15 text-xs text-white/40">No base image</div>}
-        {baseImage && !readOnly && <button type="button" className="border border-white/30 px-3 py-1.5 text-xs text-white" onClick={() => selectReference(baseImage, 'base')}>{activeImageReference?.url === baseImage && activeImageReference?.shotId === shot.id ? 'Reference selected ✓' : 'Use as Reference'}</button>}
+        {baseImage && !readOnly && <button type="button" className="border border-white/30 px-3 py-1.5 text-xs text-white" onClick={() => activeImageReference?.url === baseImage && activeImageReference?.shotId === shot.id ? clearReference() : selectReference(baseImage, 'base')}>{activeImageReference?.url === baseImage && activeImageReference?.shotId === shot.id ? 'Clear' : 'Use as Reference'}</button>}
       </figure>
       <figure className="space-y-1"><figcaption className="text-xs font-semibold text-white">Validation · with heroes</figcaption>
         {previewImage ? <img src={previewImage} className="w-full aspect-video bg-black object-contain" alt="AI-generated validation scene with heroes" /> : <div className="flex aspect-video items-center justify-center border border-white/15 text-xs text-white/40">No validation image</div>}
-        {previewImage && !readOnly && <button type="button" className="border border-white/30 px-3 py-1.5 text-xs text-white" onClick={() => selectReference(previewImage, 'preview')}>{activeImageReference?.url === previewImage && activeImageReference?.shotId === shot.id ? 'Reference selected ✓' : 'Use as Reference'}</button>}
+        {previewImage && !readOnly && <button type="button" className="border border-white/30 px-3 py-1.5 text-xs text-white" onClick={() => activeImageReference?.url === previewImage && activeImageReference?.shotId === shot.id ? clearReference() : selectReference(previewImage, 'preview')}>{activeImageReference?.url === previewImage && activeImageReference?.shotId === shot.id ? 'Clear' : 'Use as Reference'}</button>}
       </figure>
     </div>
     <details className="border border-white/15 px-2 py-1">
