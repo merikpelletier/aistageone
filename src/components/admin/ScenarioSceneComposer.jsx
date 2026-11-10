@@ -56,7 +56,7 @@ function ActorCell({ url, actorId }) {
     }} />
   </div>;
 }
-export default function ScenarioSceneComposer({ shot, episode, partKey, selectedSet, visibleCharacters = [], readOnly, onShotChange }) {
+export default function ScenarioSceneComposer({ shot, episode, episodes = [], partKey, selectedSet, visibleCharacters = [], readOnly, onShotChange }) {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
@@ -69,6 +69,29 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   const [promptError, setPromptError] = useState('');
   const legacyScene = episode.scene_compositions?.[partKey] || {};
   const selectedAssets = Array.isArray(shot.vault_scene_refs) ? shot.vault_scene_refs : [];
+  // Reuse a saved image from another shot without copying or changing any source image.
+  const sceneLabels = { setup: 'Setup', development: 'Development', turning_point: 'Turning Point', hook: 'Hook' };
+  const continuityOptions = episodes.flatMap((sourceEpisode, episodeIndex) =>
+    Object.entries(sourceEpisode.shot_plans || {}).flatMap(([sceneKey, sourceShots]) =>
+      (Array.isArray(sourceShots) ? sourceShots : []).flatMap((sourceShot, shotIndex) =>
+        sourceShot.id === shot.id ? [] : [
+          sourceShot.base_scene_url && {
+            id: episodeIndex + ':' + sceneKey + ':' + sourceShot.id + ':base',
+            url: sourceShot.base_scene_url,
+            label: 'EP ' + (episodeIndex + 1) + ' · ' + (sceneLabels[sceneKey] || sceneKey) + ' · Shot ' + (shotIndex + 1) + ' · Base Scene',
+          },
+          sourceShot.hero_preview_url && {
+            id: episodeIndex + ':' + sceneKey + ':' + sourceShot.id + ':hero',
+            url: sourceShot.hero_preview_url,
+            label: 'EP ' + (episodeIndex + 1) + ' · ' + (sceneLabels[sceneKey] || sceneKey) + ' · Hero Preview',
+          },
+        ].filter(Boolean)
+      )
+    )
+  );
+  const continuity = shot.continuity_reference || null;
+  const continuityUrl = continuity?.url || '';
+  const continuityTarget = continuity?.target === 'base' ? 'base' : 'preview';
   const { data: vault = { assets: [], folders: [] }, isLoading: loadingVault, error: vaultError } = useQuery({
     queryKey: ['ai-pilot-scene-vault-images'],
     queryFn: async () => {
@@ -210,7 +233,8 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   // The selected shot type controls the HERO preview only. Protect base-scene generation
   // even if an older saved base prompt contains instructions for the hero's framing.
   const effectiveBasePrompt = basePrompt + '\n\n' +
-    'BASE SCENE AUTHORITY: IMAGE 1 is the complete existing location. Preserve its perspective and existing architecture. Add only the specific selected reference actors and props identified in the reference list, at their assigned positions. No characters, people, equipment or behind-the-scenes activity beyond these selections. The current hero shot framing does not apply to this base image.';
+    'BASE SCENE AUTHORITY: IMAGE 1 is the complete existing location. Preserve its perspective and existing architecture. Add only the specific selected reference actors and props identified in the reference list, at their assigned positions. No characters, people, equipment or behind-the-scenes activity beyond these selections. The current hero shot framing does not apply to this base image.'
+    + (continuityUrl && continuityTarget === 'base' ? '\nCONTINUITY REFERENCE: IMAGE ' + (baseEntries.length + 1) + ' is a previously generated shot (' + continuity.label + '). Use it only for visual continuity; IMAGE 1 remains the authoritative Set view, and selected actors/props remain authoritative. Do not copy unselected people or objects from the continuity image.' : '');
   const previewPrompt = shot.hero_composition_prompt ?? suggestedPreviewPrompt;
   // The shot's live framing always takes priority over previously saved prompt text.
   // Never erase user-authored prompts or previously generated images when framing changes.
@@ -221,7 +245,8 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     'Honor the shot type by framing the selected heroes within or cropping IMAGE 1 rather than constructing a new version of the background. Do not move or replace existing extras; preserve camera direction, location, wardrobe and props.',
     'If saved prompt instructions conflict with this current shot type, obey the CURRENT SHOT FRAMING directive.',
   ].join('\n');
-  const effectivePreviewPrompt = previewPrompt + '\n\n' + framingDirective;
+  const effectivePreviewPrompt = previewPrompt + '\n\n' + framingDirective
+    + (continuityUrl && continuityTarget === 'preview' ? '\nCONTINUITY REFERENCE: IMAGE ' + (heroes.length + 2) + ' is a previously generated shot (' + continuity.label + '). Refer to it for continuity of appearance and staging only. IMAGE 1 is still the actual current base scene; the selected hero references and current shot framing still take priority. Do not transplant extra people, objects, or a different set from the continuity image.' : '');
   const productionTarget = shot.production_target || 'fotoplay';
   const productionPrompt = shot.production_prompt || '';
   const { options: models = [], loading: modelLoading } = useAiModelOptions({
@@ -245,7 +270,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
       const isolated = await Promise.all(baseEntries.map(async entry =>
         entry.actorId ? isolateBackgroundActor(entry.url, entry.actorId) : entry.url
       ));
-      const url = await generateImage(isolated, effectiveBasePrompt);
+      const url = await generateImage(continuityUrl && continuityTarget === 'base' ? [...isolated, continuityUrl] : isolated, effectiveBasePrompt);
       onShotChange({ base_scene_url: url, hero_preview_url: '' });
     } catch (e) { setError(e.message || 'Base scene generation failed'); }
     finally { setBusy(''); }
@@ -258,7 +283,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     setError('');
     setBusy('preview');
     try {
-      const url = await generateImage([baseImage, ...heroes.map(hero => hero.url)], effectivePreviewPrompt);
+      const url = await generateImage(continuityUrl && continuityTarget === 'preview' ? [baseImage, ...heroes.map(hero => hero.url), continuityUrl] : [baseImage, ...heroes.map(hero => hero.url)], effectivePreviewPrompt);
       onShotChange({ hero_preview_url: url });
       await generateProductionPrompt(url);
     } catch (e) { setError(e.message || 'Hero preview generation failed'); }
@@ -297,6 +322,30 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   };
   return <div className="space-y-3 border border-teal-400/30 bg-teal-400/[0.03] p-3">
     <div className="text-sm font-semibold text-teal-200">Scene image generators</div>
+    <div className="space-y-2 border border-white/15 p-2">
+      <div className="text-xs font-semibold text-white/80">Reuse an image from another shot</div>
+      <div className="flex flex-wrap items-center gap-2">
+        <select aria-label="Continuity reference image" className={FIELD + ' min-w-0 flex-1'} value={continuity?.source_id || ''}
+          disabled={readOnly} onChange={event => {
+            const picked = continuityOptions.find(option => option.id === event.target.value);
+            onShotChange({ continuity_reference: picked ? { source_id: picked.id, url: picked.url, label: picked.label, target: continuityTarget } : null });
+          }}>
+          <option value="">No continuity image</option>
+          {continuityOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+        </select>
+        <select aria-label="Continuity reference usage" className={FIELD + ' w-auto'} value={continuityTarget} disabled={readOnly || !continuityUrl}
+          onChange={event => onShotChange({ continuity_reference: { ...continuity, target: event.target.value } })}>
+          <option value="base">Base Scene</option>
+          <option value="preview">Hero Preview</option>
+        </select>
+      </div>
+      {continuityUrl && <div className="flex items-center gap-2">
+        <img src={continuityUrl} alt="Selected continuity reference" className="h-14 w-24 shrink-0 bg-black object-contain" />
+        <span className="min-w-0 flex-1 text-xs text-white/65">{continuity.label}</span>
+        {!readOnly && <button type="button" className="border border-white/20 px-2 py-1 text-xs text-white" onClick={() => onShotChange({ continuity_reference: null })}>Clear</button>}
+      </div>}
+      {!continuityOptions.length && <p className="text-xs text-white/45">Generate a Base Scene or Hero Preview in another shot to reuse it here.</p>}
+    </div>
     <section className="space-y-3 border border-white/15 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold text-white/80">Base scene assembly · My Vault ({selectedAssets.length} sources selected)</p>
