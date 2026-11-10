@@ -181,20 +181,35 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
   };
   const resourcePicker = (episode, episodeIndex, partKey, field, label, options) => {
     const selected = episode.scene_resources?.[partKey]?.[field] || [];
-    const selectedNames = options.filter((option) => selected.includes(option.id)).map((option) => option.name);
+    const selectedOptions = options.filter(option => selected.includes(option.id));
+    const thumbnail = option => {
+      const candidates = [
+        ...(Array.isArray(option.reference_images) ? option.reference_images : []),
+        ...(Array.isArray(option.linked_set?.images) ? option.linked_set.images : []),
+        ...(Array.isArray(option.linked_set?.reference_sheet?.views) ? option.linked_set.reference_sheet.views : []),
+      ];
+      const first = candidates.map(item => typeof item === 'string' ? item : item?.url || item?.image_url).find(Boolean);
+      return first || option.image_url || option.image || '';
+    };
     return (
       <details className="group min-w-0 border border-white/15 bg-black/20">
-        <summary className="flex min-h-9 cursor-pointer list-none items-center gap-3 px-3 py-1.5 [&::-webkit-details-marker]:hidden">
+        <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 px-2 py-1 [&::-webkit-details-marker]:hidden">
           <span className="w-20 shrink-0 text-xs text-white/65">{label}</span>
-          <span className="min-w-0 flex-1 truncate text-xs text-white">{selectedNames.join(', ') || `Select ${label.toLowerCase()}`}</span>
+          <span className="flex min-w-0 items-center gap-1">
+            {selectedOptions.slice(0, 4).map(option => thumbnail(option) ? (
+              <img key={option.id} src={thumbnail(option)} alt={option.name} className="h-8 w-8 shrink-0 border border-white/20 bg-black object-contain" />
+            ) : null)}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-xs text-white">{selectedOptions.map(option => option.name).join(', ') || `Select ${label.toLowerCase()}`}</span>
           <span className="shrink-0 text-[11px] text-white/45">{selected.length || ''}</span>
           <ChevronDown size={14} className="shrink-0 text-white/50 transition-transform group-open:rotate-180" />
         </summary>
-        <div className="flex flex-wrap gap-1.5 border-t border-white/10 p-2">
-          {options.length ? options.map((option) => (
-            <label key={option.id} className={`inline-flex cursor-pointer items-center gap-1.5 border px-2 py-1 text-xs ${selected.includes(option.id) ? 'border-[var(--studio-accent)] bg-white/[0.08] text-white' : 'border-white/15 text-white/60'}`}>
+        <div className="flex max-h-64 flex-wrap gap-1.5 overflow-y-auto border-t border-white/10 p-2">
+          {options.length ? options.map(option => (
+            <label key={option.id} className={`inline-flex min-h-10 cursor-pointer items-center gap-2 border px-2 py-1 text-xs ${selected.includes(option.id) ? 'border-[var(--studio-accent)] bg-white/[0.08] text-white' : 'border-white/15 text-white/60'}`}>
               <input type="checkbox" disabled={readOnly} checked={selected.includes(option.id)} onChange={() => toggleSceneResource(episodeIndex, partKey, field, option.id)} className="accent-teal-400" />
-              {option.name}
+              {thumbnail(option) && <img src={thumbnail(option)} alt="" className="h-9 w-9 shrink-0 bg-black object-contain" />}
+              <span>{option.name}</span>
             </label>
           )) : <span className="text-xs text-white/35">No {label.toLowerCase()} in this AI Pilot.</span>}
         </div>
