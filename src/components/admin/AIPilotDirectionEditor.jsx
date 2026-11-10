@@ -761,14 +761,14 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       <div className="sticky top-0 z-30 flex flex-wrap items-center gap-2 border-b border-white/20 bg-[#0c1011] px-2 py-2 shadow-lg">
         <span className="shrink-0 text-xs font-semibold text-white">Scénario</span>
         <select aria-label="Episode" className={CONTROL_CLASS + ' h-9 min-w-0 max-w-52 rounded px-2 text-xs'} value={expandedIndex ?? 0} onChange={event => { setExpandedIndex(Number(event.target.value)); setExpandedShotId(null); }}>
-          {episodes.map((episode, index) => <option key={episode.id || index} value={index}>EP {index + 1} · {episode.title || 'Untitled'}</option>)}
+          {episodes.map((episode, index) => <option key={episode.id || index} value={index} style={{ backgroundColor: '#111719', color: '#ffffff' }}>EP {index + 1} · {episode.title || 'Untitled'}</option>)}
         </select>
         <select aria-label="Scene" className={CONTROL_CLASS + ' h-9 min-w-0 max-w-44 rounded px-2 text-xs'} value={activeSceneKey} onChange={event => { setActiveSceneKey(event.target.value); setExpandedShotId(null); }}>
-          {VIDEO_PARTS.map(([key, label], index) => <option key={key} value={key}>Scene {index + 1} · {label.split(' · ')[1] || label}</option>)}
+          {VIDEO_PARTS.map(([key, label], index) => <option key={key} value={key} style={{ backgroundColor: '#111719', color: '#ffffff' }}>Scene {index + 1} · {label.split(' · ')[1] || label}</option>)}
         </select>
         <select aria-label="Shot" className={CONTROL_CLASS + ' h-9 min-w-0 max-w-32 rounded px-2 text-xs'} value={expandedShotId || ''} onChange={event => setExpandedShotId(event.target.value || null)}>
-          <option value="">Shots</option>
-          {(episodes[expandedIndex ?? 0]?.shot_plans?.[activeSceneKey] || []).map((shot, index) => <option key={shot.id} value={shot.id}>Shot {index + 1}</option>)}
+          <option value="" style={{ backgroundColor: '#111719', color: '#ffffff' }}>Shots</option>
+          {(episodes[expandedIndex ?? 0]?.shot_plans?.[activeSceneKey] || []).map((shot, index) => <option key={shot.id} value={shot.id} style={{ backgroundColor: '#111719', color: '#ffffff' }}>Shot {index + 1}</option>)}
         </select>
       </div>
       <details className="border border-white/10 px-3 py-2">
