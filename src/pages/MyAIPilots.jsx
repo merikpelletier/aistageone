@@ -93,7 +93,7 @@ const FORMAT_GUIDANCE = {
   ebook: 'E-book · Adapt the episode into written scenes or chapters, with optional illustrations. No fixed duration is imposed.',
   video: 'Video · Aim for 120 seconds per episode, divided into four publishable 30-second parts. Shoot and Timeline can extend the final runtime. Budget for newly generated AI footage independently of total timeline length.',
 };
-const VIDEO_PART_LABELS = [['setup','0–30s · Setup'], ['development','30–60s · Development'], ['turn','60–90s · Turning point'], ['hook','90–120s · Hook']];
+const VIDEO_PART_LABELS = [['setup','Scene 1 · Setup'], ['development','Scene 2 · Development'], ['turn','Scene 3 · Turning point'], ['hook','Scene 4 · Hook']];
 
 function ScenarioGuide({ content, sets = [], extensions = [], userSets = [], onSaveShotReferences, savingShot = '' }) {
   const [format, setFormat] = useState('fotoplay');
@@ -102,8 +102,8 @@ function ScenarioGuide({ content, sets = [], extensions = [], userSets = [], onS
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">9</div><div className="text-[11px] text-white/45">Episodes / chapters</div></div>
-        <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">120s</div><div className="text-[11px] text-white/45">Video episode target</div></div>
-        <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">4 × 30s</div><div className="text-[11px] text-white/45">Video shorts</div></div>
+        <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">4</div><div className="text-[11px] text-white/45">Scenes / episode</div></div>
+        <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">Set + Cast</div><div className="text-[11px] text-white/45">Production references</div></div>
       </div>
       {content?.creative_brief && <div><div className="text-xs font-bold text-cyan-300">Season theme / Creative brief</div><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-white/75">{content.creative_brief}</p></div>}
       <label className="block space-y-2">
@@ -127,39 +127,26 @@ function ScenarioGuide({ content, sets = [], extensions = [], userSets = [], onS
                 <p className="text-xs font-bold text-cyan-300">Episode structure</p>
                 {VIDEO_PART_LABELS.map(([key, label]) => (
                   <div key={key} className="border-l-2 border-cyan-400/30 pl-3">
-                    <div className="text-xs font-semibold text-white/70">{format === 'video' ? label : label.split(' · ')[1]}</div>
+                    <div className="text-xs font-semibold text-white/70">{label}</div>
                     <p className="mt-1 whitespace-pre-wrap text-xs text-white/60">{episode.parts?.[key] || 'Develop this part from the episode premise and story direction.'}</p>
                   </div>
                 ))}
               </div>
-              {format === 'video' && VIDEO_PART_LABELS.map(([partKey]) => (episode.shot_plans?.[partKey] || []).map((shot, index) => {
-                const resources = episode.scene_resources?.[partKey] || {};
-                const eligible = sets.filter(set => (resources.set_ids || []).includes(set.id));
-                const selected = eligible.find(set => set.id === shot.set_id) || (eligible.length === 1 ? eligible[0] : null);
-                const memberLink = extensions.find(entry => entry.extension_type === 'set' && entry.operation === 'replace' && entry.target_item_id === selected?.id);
-                const resolved = userSets.find(project => project.id === memberLink?.content?.my_set_id) || userSets.find(project => project.id === selected?.my_set_id);
-                const shotItems = (resolved?.reference_sheet?.extracted_elements || []).filter(item => item.image_url);
-                const override = extensions.find(entry => entry.extension_type === 'set_reference' && entry.target_item_id === shot.id);
-                const urls = Array.isArray(override?.content?.reference_urls) ? override.content.reference_urls : (shot.set_element_reference_urls || []);
-                return <div key={shot.id || index} className="mt-2 space-y-2 border border-white/10 bg-white/[0.02] p-3">
-                  <div className="text-xs font-semibold text-white">Shot {index+1} · {shot.shot_type || 'Shot'}{selected?.name ? ` · ${selected.name}` : ''}</div>
-                  {shot.action && <p className="text-xs text-white/60">{shot.action}</p>}
-                  {shotItems.length ? <>
-                    <p className="text-[11px] text-white/45">Select visual references from your linked My Set. Saved only for your AI Pilot.</p>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{shotItems.map(item => {
-                      const checked = urls.includes(item.image_url);
-                      return <label key={item.id || item.image_url} className={`cursor-pointer border p-2 ${checked ? 'border-[#23c7be]' : 'border-white/15'}`}>
-                        <input type="checkbox" checked={checked} disabled={savingShot === shot.id} onChange={event => {
-                          const next = event.target.checked ? [...urls,item.image_url] : urls.filter(url => url !== item.image_url);
-                          onSaveShotReferences(shot.id, selected.id, [...new Set(next)]);
-                        }} />
-                        <img src={item.image_url} alt={item.name || 'Reference'} className="mt-2 h-20 w-full bg-black object-contain" />
-                        <span className="block truncate text-[11px] text-white/70">{item.name || 'Reference'}</span>
-                      </label>;
-                    })}</div>
-                  </> : <p className="text-[11px] text-white/40">To select shot references, connect a My Set with a saved Reference Sheet in Sets & Locations.</p>}
+              {VIDEO_PART_LABELS.map(([partKey, label]) => {
+                const scene = episode.scene_compositions?.[partKey];
+                if (!scene) return null;
+                const location = sets.find(item => item.id === scene.set_id);
+                return <div key={partKey} className="space-y-2 border border-white/10 bg-white/[0.02] p-3">
+                  <p className="text-sm font-semibold text-cyan-200">{label} · Composed scene</p>
+                  {scene.generated_image && <img src={scene.generated_image} alt={label + ' composed production scene'} className="aspect-video w-full max-w-lg bg-black object-contain" />}
+                  {location && <p className="text-xs text-white/65">Set: {location.name}</p>}
+                  {scene.set_view_url && <img src={scene.set_view_url} alt="Selected set camera view" className="h-28 max-w-xs object-contain bg-black" />}
+                  {scene.background_placement && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>Background:</strong> {scene.background_placement}</p>}
+                  {scene.blocking && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>Blocking:</strong> {scene.blocking}</p>}
+                  {scene.props && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>Props:</strong> {scene.props}</p>}
+                  {scene.action && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>Action:</strong> {scene.action}</p>}
                 </div>;
-              }))}
+              })}
               {format === 'fotoplay' && <p className="text-xs text-white/50">Develop this chapter across nine FotoPlay segments, following the episode direction above.</p>}
               {episode.scene_ideas && <div><p className="text-xs font-bold text-white/50">Scene inspirations</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/70">{episode.scene_ideas}</p></div>}
               {episode.creative_options && <div><p className="text-xs font-bold text-white/50">Creative variations</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/70">{episode.creative_options}</p></div>}
