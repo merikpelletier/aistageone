@@ -152,6 +152,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   };
   const setView = shot.set_view_reference_url || (!selectedSet?.linked_set ? imageUrl(selectedSet?.reference_images?.[0]) : '');
   const setObjects = (Array.isArray(shot.set_element_reference_urls) ? shot.set_element_reference_urls : []).filter(Boolean);
+  const hasBaseAdditions = Boolean(setObjects.length || selectedAssets.some(ref => ref.url) || shot.additional_scene_elements?.trim());
   const heroes = visibleCharacters.map(character => {
     const url = shot.character_reference_urls?.[character.id] || '';
     const image = (character.reference_images || []).find(ref => imageUrl(ref) === url);
@@ -161,7 +162,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   // Keep previous composites stored, but a newly selected decor takes priority until
   // a composite is explicitly generated from that exact decor.
   const baseImage = shot.base_scene_selected_url
-    ? (shot.base_scene_source_url === shot.base_scene_selected_url && shot.base_scene_url
+    ? (hasBaseAdditions && shot.base_scene_source_url === shot.base_scene_selected_url && shot.base_scene_url
       ? shot.base_scene_url : shot.base_scene_selected_url)
     : shot.base_scene_url || (firstShot ? legacyScene.generated_image : '') || setView;
   const previewImage = shot.hero_preview_url || (firstShot ? legacyScene.hero_preview_image : '') || '';
@@ -241,7 +242,6 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     if (!result.data?.file_url) throw new Error(result.data?.error || 'Image generation failed');
     return result.data.file_url;
   };
-  const hasBaseAdditions = Boolean(setObjects.length || selectedAssets.some(ref => ref.url) || shot.additional_scene_elements?.trim());
   const generateBase = async () => {
     if (!setView) return setError('Select a Set image first.');
     setError('');
