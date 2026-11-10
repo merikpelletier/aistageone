@@ -208,7 +208,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   const basePrompt = shot.base_image_prompt ?? suggestedBasePrompt;
   // The selected shot type controls the HERO preview only. Protect base-scene generation
   // even if an older saved base prompt contains instructions for the hero's framing.
-  const effectiveBasePrompt = basePrompt + '\\n\\n' +
+  const effectiveBasePrompt = basePrompt + '\n\n' +
     'BASE SCENE ONLY: Preserve the selected Set camera view and framing. Do not apply the current shot type to this empty-of-heroes base. Include only selected background actors and assets in their directed positions; do not add principal heroes.';
   const previewPrompt = shot.hero_composition_prompt ?? suggestedPreviewPrompt;
   // The shot's live framing always takes priority over previously saved prompt text.
