@@ -201,14 +201,12 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], ac
         + (ref.position ? '; POSITION: ' + describePosition(ref.position) : '')
         + (ref.direction ? '; ACTION: ' + ref.direction : '') }]),
   ].filter(entry => entry.url);
-  // The selected Set image always defines the Base Scene composition.
-  // A reused image may guide continuity, but must not displace that Set image.
+  // A selected Set image is the sole environmental source for its Base Scene.
+  // Continuity references are eligible only when no Set image has been chosen.
   const reuseAsBase = Boolean(continuityUrl && continuityTarget === 'base' && !setView);
   const baseReferenceEntries = reuseAsBase
     ? [{ url: continuityUrl, label: 'EXISTING IMAGE — PRIMARY BASE SCENE' }, ...baseEntries]
-    : [...baseEntries, ...(continuityUrl && continuityTarget === 'base'
-      ? [{ url: continuityUrl, label: 'CONTINUITY IMAGE — secondary reference only; preserve the selected Set image composition' }]
-      : [])];
+    : baseEntries;
   const suggestedBasePrompt = [
     reuseAsBase
       ? 'Continue from the exact existing scene in IMAGE 1. Retain its composition, people, location, lighting and visible objects unless the current shot instructions require a specific change.'
@@ -237,7 +235,7 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], ac
   const effectiveBasePrompt = basePrompt + '\n\n' +
     (reuseAsBase
       ? 'CURRENT REFERENCE OVERRIDE: IMAGE 1 IS THE PRIMARY EXISTING BASE IMAGE. Preserve its actual layout, perspective, actors, furnishings, light and composition. Do not treat a later Set image as the primary base. Add or adjust only the individually selected new elements and requested shot actions; do not duplicate existing actors or props. This direction overrides any older prompt text describing IMAGE 1 as the raw Set view.'
-      : 'BASE SCENE AUTHORITY: IMAGE 1 is the selected Set image and remains the primary composition, even if a continuity image is also provided. Preserve its exact perspective, framing, architecture and existing objects. Any continuity image is secondary and must never replace IMAGE 1. Add only the specific selected reference actors and props identified in the reference list, at their assigned positions. No characters, people, equipment or behind-the-scenes activity beyond these selections. The current hero shot framing does not apply to this base image.');
+      : 'BASE SCENE AUTHORITY: IMAGE 1 is the selected Set image and is the only environmental reference. Preserve its exact perspective, framing, architecture and existing objects; do not reconstruct the scene from a prior generated image. Add only the specific selected reference actors and props identified in the reference list, at their assigned positions. No characters, people, equipment or behind-the-scenes activity beyond these selections. The current hero shot framing does not apply to this base image.');
   const previewPrompt = shot.hero_composition_prompt ?? suggestedPreviewPrompt;
   // The shot's live framing always takes priority over previously saved prompt text.
   // Never erase user-authored prompts or previously generated images when framing changes.
