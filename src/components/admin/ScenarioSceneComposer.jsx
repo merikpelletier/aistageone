@@ -7,6 +7,55 @@ import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 
 const FIELD = 'w-full min-h-9 border border-white/20 bg-black/40 px-3 py-2 text-xs text-white';
 const imageUrl = entry => typeof entry === 'string' ? entry : entry?.url || entry?.image_url || '';
+const BG_IDS = ['BG-01', 'BG-02', 'BG-03', 'BG-04', 'BG-05', 'BG-06'];
+const ASSET_TYPES = [
+  ['background_actors', 'Background actors · 6-person sheet'],
+  ['prop', 'Prop / Object'],
+  ['vehicle', 'Vehicle'],
+  ['set_object', 'Set object'],
+  ['crowd', 'Crowd'],
+  ['other', 'Other image'],
+];
+const getActors = ref => Array.isArray(ref.actors) ? ref.actors : [];
+const getActiveActors = ref => getActors(ref).filter(actor => actor.selected);
+const cellIndex = id => BG_IDS.indexOf(id);
+// Isolate an actual character reference rather than sending the entire 6-person sheet.
+// The original sheet is never modified. If browser image access is restricted, fail
+// before starting the paid model request rather than silently sending the wrong actor.
+async function isolateBackgroundActor(sourceUrl, actorId) {
+  const index = cellIndex(actorId);
+  if (index < 0) throw new Error('Unknown background actor: ' + actorId);
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  await new Promise((resolve, reject) => {
+    image.onload = resolve;
+    image.onerror = () => reject(new Error('Cannot open background sheet to isolate ' + actorId));
+    image.src = sourceUrl;
+  });
+  const width = image.naturalWidth / 3;
+  const height = image.naturalHeight / 2;
+  if (!width || !height) throw new Error('Invalid background actor sheet.');
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(width);
+  canvas.height = Math.round(height);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Cannot isolate background actor without an image canvas.');
+  ctx.drawImage(image, (index % 3) * width, Math.floor(index / 3) * height, width, height, 0, 0, canvas.width, canvas.height);
+  try {
+    return canvas.toDataURL('image/jpeg', 0.9);
+  } catch {
+    throw new Error('The Vault image does not permit cropping. No image generation was started; save individual character references or enable image access before retrying.');
+  }
+}
+function ActorCell({ url, actorId }) {
+  const index = cellIndex(actorId);
+  return <div className="relative aspect-[2/3] w-full overflow-hidden bg-white">
+    <img src={url} alt={actorId} className="absolute max-w-none" style={{
+      width: '300%', height: '200%', left: -(index % 3) * 100 + '%',
+      top: -Math.floor(index / 3) * 100 + '%',
+    }} />
+  </div>;
+}
 export default function ScenarioSceneComposer({ shot, episode, partKey, selectedSet, visibleCharacters = [], readOnly, onShotChange }) {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -15,6 +64,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   const [folderId, setFolderId] = useState('all');
   const [search, setSearch] = useState('');
   const [placingId, setPlacingId] = useState('');
+  const [composing, setComposing] = useState(false);
   const [promptError, setPromptError] = useState('');
   const legacyScene = episode.scene_compositions?.[partKey] || {};
   const selectedAssets = Array.isArray(shot.vault_scene_refs) ? shot.vault_scene_refs : [];
@@ -36,17 +86,54 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     (folderId === 'all' || (folderId === 'unfiled' ? !asset.folder_id : asset.folder_id === folderId))
     && (!search.trim() || (asset.name || '').toLowerCase().includes(search.trim().toLowerCase()))
   );
+  const updateSelectedAsset = (id, transform) => onShotChange({
+    vault_scene_refs: selectedAssets.map(ref => ref.id === id ? transform(ref) : ref),
+  });
   const toggleAsset = asset => {
     if (selectedAssets.some(ref => ref.id === asset.id)) {
       onShotChange({ vault_scene_refs: selectedAssets.filter(ref => ref.id !== asset.id) });
-      if (placingId === asset.id) setPlacingId('');
+      if (placingId === asset.id || placingId.startsWith(asset.id + ':')) setPlacingId('');
     } else {
-      onShotChange({ vault_scene_refs: [...selectedAssets, { id: asset.id, url: asset.url, name: asset.name || 'Vault reference', direction: '' }] });
-      setPlacingId(asset.id);
+      const isBackground = asset.asset_category === 'background_group';
+      onShotChange({ vault_scene_refs: [...selectedAssets, {
+        id: asset.id, url: asset.url, name: asset.name || 'Vault reference',
+        type: isBackground ? 'background_actors' : 'other',
+        actors: isBackground ? BG_IDS.map(id => ({ id, selected: false, direction: '', position: null })) : [],
+        direction: '',
+      }] });
     }
   };
-  const updateAsset = (id, direction) => onShotChange({ vault_scene_refs: selectedAssets.map(ref => ref.id === id ? { ...ref, direction } : ref) });
-  const positionAsset = (id, position) => onShotChange({ vault_scene_refs: selectedAssets.map(ref => ref.id === id ? { ...ref, position } : ref) });
+  const assetType = ref => ref.type || (ref.asset_category === 'background_group' ? 'background_actors' : 'other');
+  const setType = (ref, type) => updateSelectedAsset(ref.id, previous => ({
+    ...previous, type,
+    actors: type === 'background_actors' && !getActors(previous).length
+      ? BG_IDS.map(id => ({ id, selected: false, direction: '', position: null }))
+      : getActors(previous),
+  }));
+  const updateAsset = (id, direction) => updateSelectedAsset(id, ref => ({ ...ref, direction }));
+  const updateActor = (id, actorId, changes) => updateSelectedAsset(id, ref => ({
+    ...ref, actors: BG_IDS.map(bg => {
+      const previous = getActors(ref).find(actor => actor.id === bg) || { id: bg, selected: false, direction: '', position: null };
+      return bg === actorId ? { ...previous, ...changes } : previous;
+    }),
+  }));
+  const positionAsset = (key, position) => {
+    const separator = key.lastIndexOf(':BG-');
+    if (separator >= 0) {
+      const refId = key.slice(0, separator);
+      const actorId = key.slice(separator + 1);
+      updateActor(refId, actorId, { position });
+    } else {
+      updateSelectedAsset(key, ref => ({ ...ref, position }));
+    }
+  };
+  const positionKey = (ref, actor) => actor ? ref.id + ':' + actor.id : ref.id;
+  const placementItems = selectedAssets.flatMap(ref => assetType(ref) === 'background_actors'
+    ? getActiveActors(ref).map(actor => ({
+      key: positionKey(ref, actor), name: actor.id + ' · ' + ref.name,
+      position: actor.position, direction: actor.direction,
+    }))
+    : [{ key: ref.id, name: ref.name, position: ref.position, direction: ref.direction }]);
   const describePosition = position => {
     if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)) return '';
     const horizontal = position.x < 35 ? 'left' : position.x > 65 ? 'right' : 'center';
@@ -88,7 +175,17 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   const baseEntries = [
     { url: setView, label: 'SET CAMERA VIEW — authoritative framing, geography and architecture' },
     ...setObjects.map(url => ({ url, label: 'SET OBJECT — ' + (setElements.find(item => item.image_url === url)?.name || 'selected object') })),
-    ...selectedAssets.filter(ref => ref.url).map(ref => ({ url: ref.url, label: 'VAULT ASSET — ' + (ref.name || 'Reference') + (ref.position ? '; VISUAL PLACEMENT: ' + describePosition(ref.position) : '') + (ref.direction ? '; PLACEMENT / ACTION: ' + ref.direction : '') })),
+    ...selectedAssets.filter(ref => ref.url).flatMap(ref => assetType(ref) === 'background_actors'
+      ? getActiveActors(ref).map(actor => ({
+        url: ref.url, actorId: actor.id,
+        label: 'INDIVIDUAL BACKGROUND ACTOR ' + actor.id + ' from ' + ref.name + ' (isolated source panel, not a group sheet)'
+          + (actor.position ? '; POSITION: ' + describePosition(actor.position) : '')
+          + (actor.direction ? '; ACTION: ' + actor.direction : ''),
+      }))
+      : [{ url: ref.url, label: ASSET_TYPES.find(([key]) => key === assetType(ref))?.[1] || 'Asset'
+        + ' — ' + (ref.name || 'Reference')
+        + (ref.position ? '; POSITION: ' + describePosition(ref.position) : '')
+        + (ref.direction ? '; ACTION: ' + ref.direction : '') }]),
   ].filter(entry => entry.url);
   const suggestedBasePrompt = [
     'Generate ONE cinematic production scene image with no principal heroes visible.',
@@ -129,7 +226,10 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     setError('');
     setBusy('base');
     try {
-      const url = await generateImage(baseEntries.map(entry => entry.url), basePrompt);
+      const isolated = await Promise.all(baseEntries.map(async entry =>
+        entry.actorId ? isolateBackgroundActor(entry.url, entry.actorId) : entry.url
+      ));
+      const url = await generateImage(isolated, basePrompt);
       onShotChange({ base_scene_url: url, hero_preview_url: '' });
     } catch (e) { setError(e.message || 'Base scene generation failed'); }
     finally { setBusy(''); }
@@ -166,7 +266,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
           visualUrl && 'Hero validation image reference: ' + visualUrl,
           'Selected set view: ' + setView,
           'Set objects: ' + setObjects.join(', '),
-          'Other Vault references: ' + selectedAssets.map(ref => ref.name + ': ' + [describePosition(ref.position), ref.direction].filter(Boolean).join('; ') + ' (' + ref.url + ')').join(' | '),
+          'Other Vault references: ' + baseEntries.slice(1).map(entry => entry.label + ' (' + entry.url + ')').join(' | '),
           shot.dialogue && 'Dialogue supplied by author: ' + shot.dialogue,
           shot.direction_sequence && 'AUTHOR-REVIEWED ORDER AND TIMING OF ACTION AND VOICES: ' + shot.direction_sequence,
         ].filter(Boolean).join('\n'),
@@ -182,7 +282,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
     <div className="text-sm font-semibold text-teal-200">Scene image generators</div>
     <section className="space-y-3 border border-white/15 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-white/80">Base scene assembly · My Vault ({selectedAssets.length} images selected)</p>
+        <p className="text-xs font-semibold text-white/80">Base scene assembly · My Vault ({selectedAssets.length} sources selected)</p>
         {!readOnly && <button type="button" onClick={() => setVaultOpen(!vaultOpen)} className="border border-teal-400/60 px-3 py-2 text-xs font-semibold text-teal-200">{vaultOpen ? 'Close Vault' : 'Add images from My Vault'}</button>}
       </div>
       <label className="block space-y-1 text-xs text-white/70">Additional scene elements / instructions
@@ -190,33 +290,69 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
       </label>
       {!!selectedAssets.length && <div className="space-y-2 border border-white/15 p-3">
         <p className="text-xs font-semibold text-white">Visual placement on the selected Set view</p>
-        <p className="text-xs text-white/55">Select “Place” beside an image, then click its intended position on the Set. Repeat to move it. This marks placement for the AI prompt; it does not paste the reference sheet into the image.</p>
+        <p className="text-xs text-white/55">Choose individual actors or props below. Use Place on Set and click the desired spot on the existing camera view. Positions guide the generated merge.</p>
         {setView ? <div className="relative mx-auto w-full max-w-3xl overflow-hidden border border-white/20 bg-black">
           <img src={setView} alt="Selected Set camera view for placing scene references" draggable={false} className="block w-full" />
           <div role={placingId ? 'button' : 'presentation'} tabIndex={placingId && !readOnly ? 0 : undefined} aria-label={placingId ? 'Click to place selected Vault image on the Set' : undefined}
             onClick={clickSetPosition}
             onKeyDown={event => { if ((event.key === 'Enter' || event.key === ' ') && placingId) { event.preventDefault(); positionAsset(placingId, { x: 50, y: 50 }); } }}
             className={`absolute inset-0 ${placingId ? 'cursor-crosshair' : 'pointer-events-none'}`}>
-            {selectedAssets.filter(ref => ref.position && Number.isFinite(ref.position.x) && Number.isFinite(ref.position.y)).map((ref, index) => <div key={ref.id}
-              className={`absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded border px-1.5 py-1 text-[10px] font-bold shadow-lg ${placingId === ref.id ? 'border-teal-300 bg-black/90 text-teal-200' : 'border-white/60 bg-black/80 text-white'}`}
-              style={{ left: ref.position.x + '%', top: ref.position.y + '%' }} title={ref.name + ' · ' + describePosition(ref.position)}>
-              <span className="rounded bg-teal-500 px-1 text-black">{selectedAssets.indexOf(ref) + 1}</span><span className="max-w-28 truncate">{ref.name}</span>
+            {placementItems.filter(item => item.position && Number.isFinite(item.position.x) && Number.isFinite(item.position.y)).map((item, index) => <div key={item.key}
+              className={\`absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded border px-1.5 py-1 text-[10px] font-bold shadow-lg \${placingId === item.key ? 'border-teal-300 bg-black/90 text-teal-200' : 'border-white/60 bg-black/80 text-white'}\`}
+              style={{ left: item.position.x + '%', top: item.position.y + '%' }} title={item.name + ' · ' + describePosition(item.position)}>
+              <span className="rounded bg-teal-500 px-1 text-black">{index + 1}</span><span className="max-w-28 truncate">{item.name}</span>
             </div>)}
           </div>
         </div> : <p className="text-xs text-amber-300">Select a Set camera view above to position the images visually.</p>}
       </div>}
       {selectedAssets.length > 0 && <div className="space-y-2">
-        {selectedAssets.map((ref, index) => <div key={ref.id} className="flex items-start gap-3 border border-white/15 p-2">
-          <img src={ref.url} alt={ref.name} className="h-24 w-24 shrink-0 bg-black object-contain" />
-          <div className="min-w-0 flex-1 space-y-1">
-            <p className="text-xs font-semibold text-white">{index + 1}. {ref.name}</p>
-            <div className="flex flex-wrap items-center gap-2">
-              {!readOnly && <button type="button" onClick={() => setPlacingId(placingId === ref.id ? '' : ref.id)} className={`border px-2 py-1 text-xs ${placingId === ref.id ? 'border-teal-400 text-teal-200' : 'border-white/30 text-white'}`}>{placingId === ref.id ? 'Placing…' : ref.position ? 'Move on Set' : 'Place on Set'}</button>}
-              <span className="text-[11px] text-white/50">{ref.position ? describePosition(ref.position) : 'Not positioned yet'}</span>
+        {selectedAssets.map((ref, index) => <div key={ref.id} className="space-y-3 border border-white/15 p-3">
+          <div className="flex flex-wrap items-start gap-3">
+            <img src={ref.url} alt={ref.name} className="h-28 w-28 shrink-0 bg-black object-contain" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <p className="text-xs font-semibold text-white">{index + 1}. {ref.name}</p>
+              <label className="block space-y-1 text-xs text-white/70">Image type
+                <select className={FIELD + ' w-full'} value={assetType(ref)} disabled={readOnly} onChange={event => setType(ref, event.target.value)}>
+                  {ASSET_TYPES.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
+                </select>
+              </label>
+              {assetType(ref) !== 'background_actors' && <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {!readOnly && <button type="button" onClick={() => setPlacingId(placingId === ref.id ? '' : ref.id)} className={\`border px-2 py-1 text-xs \${placingId === ref.id ? 'border-teal-400 text-teal-200' : 'border-white/30 text-white'}\`}>{placingId === ref.id ? 'Placing…' : ref.position ? 'Move on Set' : 'Place on Set'}</button>}
+                  <span className="text-[11px] text-white/50">{ref.position ? describePosition(ref.position) : 'Not positioned yet'}</span>
+                </div>
+                <textarea className={FIELD + ' w-full'} disabled={readOnly} rows={2} value={ref.direction || ''} onChange={event => updateAsset(ref.id, event.target.value)} placeholder="Placement and action of this asset" />
+              </div>}
             </div>
-            <textarea className={FIELD + ' w-full'} disabled={readOnly} rows={2} value={ref.direction || ''} onChange={e => updateAsset(ref.id, e.target.value)} placeholder="Where this asset appears and what it does in the scene" />
+            {!readOnly && <button type="button" onClick={() => {
+              onShotChange({ vault_scene_refs: selectedAssets.filter(item => item.id !== ref.id) });
+              if (placingId === ref.id || placingId.startsWith(ref.id + ':')) setPlacingId('');
+            }} className="border border-white/25 px-2 py-1 text-xs text-white">Remove</button>}
           </div>
-          {!readOnly && <button type="button" onClick={() => { onShotChange({ vault_scene_refs: selectedAssets.filter(item => item.id !== ref.id) }); if (placingId === ref.id) setPlacingId(''); }} className="border border-white/25 px-2 py-1 text-xs text-white">Remove</button>}
+          {assetType(ref) === 'background_actors' && <div className="space-y-2">
+            <p className="text-xs text-white/65">Choose the individual actors from this six-person sheet. Only selected figures will be isolated and sent to the scene generator.</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {BG_IDS.map(id => {
+                const actor = getActors(ref).find(item => item.id === id) || { id, selected: false, direction: '', position: null };
+                return <div key={id} className={\`space-y-2 border p-2 \${actor.selected ? 'border-teal-400/70 bg-teal-400/[0.06]' : 'border-white/15'}\`}>
+                  <label className="flex items-center gap-2 text-xs text-white">
+                    <input type="checkbox" disabled={readOnly} checked={!!actor.selected} onChange={event => updateActor(ref.id, id, { selected: event.target.checked })} />
+                    {id}
+                  </label>
+                  <ActorCell url={ref.url} actorId={id} />
+                  {actor.selected && <div className="space-y-2">
+                    <button type="button" disabled={readOnly} onClick={() => setPlacingId(placingId === positionKey(ref, actor) ? '' : positionKey(ref, actor))}
+                      className={\`w-full border px-2 py-1 text-xs \${placingId === positionKey(ref, actor) ? 'border-teal-400 text-teal-200' : 'border-white/30 text-white'}\`}>
+                      {placingId === positionKey(ref, actor) ? 'Placing…' : actor.position ? 'Move on Set' : 'Place on Set'}
+                    </button>
+                    <p className="text-[11px] text-white/50">{actor.position ? describePosition(actor.position) : 'Not positioned yet'}</p>
+                    <textarea className={FIELD + ' w-full'} disabled={readOnly} rows={2} value={actor.direction || ''}
+                      onChange={event => updateActor(ref.id, id, { direction: event.target.value })} placeholder="Action / orientation" />
+                  </div>}
+                </div>;
+              })}
+            </div>
+          </div>}
         </div>)}
       </div>}
       {vaultOpen && <div className="space-y-2">
