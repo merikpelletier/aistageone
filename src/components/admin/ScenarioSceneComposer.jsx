@@ -64,6 +64,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
   const [folderId, setFolderId] = useState('all');
   const [search, setSearch] = useState('');
   const [placingId, setPlacingId] = useState('');
+  const [placementOpen, setPlacementOpen] = useState(false);
   const [composing, setComposing] = useState(false);
   const [promptError, setPromptError] = useState('');
   const legacyScene = episode.scene_compositions?.[partKey] || {};
@@ -304,7 +305,12 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
       <label className="block space-y-1 text-xs text-white/70">Additional scene elements / instructions
         <textarea className={FIELD + ' w-full'} rows={2} disabled={readOnly} value={shot.additional_scene_elements || ''} onChange={e => onShotChange({ additional_scene_elements: e.target.value })} placeholder="Photographers by the entrance, limousine at the curb…" />
       </label>
-      {!!selectedAssets.length && <div className="space-y-2 border border-white/15 p-3">
+      {!!selectedAssets.length && <div className="space-y-2 border border-white/15 p-2">
+        <button type="button" onClick={() => setPlacementOpen(value => !value)} className="flex w-full items-center justify-between text-left text-xs font-semibold text-white">
+          <span>Visual placement · {placementItems.filter(item => item.position).length} positioned</span>
+          <span className="text-white/60">{placementOpen ? 'Hide' : 'Show / edit'}</span>
+        </button>
+        {placementOpen && <>
         <p className="text-xs font-semibold text-white">Visual placement on the selected Set view</p>
         <p className="text-xs text-white/55">Choose individual actors or props below. Use Place on Set and click the desired spot on the existing camera view. Positions guide the generated merge.</p>
         {setView ? <div className="relative mx-auto w-full max-w-3xl overflow-hidden border border-white/20 bg-black">
@@ -320,9 +326,17 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
             </div>)}
           </div>
         </div> : <p className="text-xs text-amber-300">Select a Set camera view above to position the images visually.</p>}
+        </>}
       </div>}
       {selectedAssets.length > 0 && <div className="space-y-2">
-        {selectedAssets.map((ref, index) => <div key={ref.id} className="space-y-3 border border-white/15 p-3">
+        {selectedAssets.map((ref, index) => <details key={ref.id} className="group border border-white/15 px-2 py-1">
+          <summary className="flex cursor-pointer list-none items-center gap-2 text-xs text-white [&::-webkit-details-marker]:hidden">
+            <img src={ref.url} alt={ref.name} className="h-9 w-9 shrink-0 bg-black object-contain" />
+            <span className="min-w-0 flex-1 truncate">{ref.name}</span>
+            <span className="shrink-0 text-white/55">{assetType(ref) === 'background_actors' ? getActiveActors(ref).length + ' actors' : ref.position ? 'Positioned' : 'Not positioned'}</span>
+            <span className="shrink-0 text-white/50">Edit ▾</span>
+          </summary>
+          <div className="space-y-3 pt-2">
           <div className="flex flex-wrap items-start gap-3">
             <img src={ref.url} alt={ref.name} className="h-28 w-28 shrink-0 bg-black object-contain" />
             <div className="min-w-0 flex-1 space-y-2">
@@ -334,7 +348,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
               </label>
               {assetType(ref) !== 'background_actors' && <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  {!readOnly && <button type="button" onClick={() => setPlacingId(placingId === ref.id ? '' : ref.id)} className={`border px-2 py-1 text-xs ${placingId === ref.id ? 'border-teal-400 text-teal-200' : 'border-white/30 text-white'}`}>{placingId === ref.id ? 'Placing…' : ref.position ? 'Move on Set' : 'Place on Set'}</button>}
+                  {!readOnly && <button type="button" onClick={() => { setPlacingId(placingId === ref.id ? '' : ref.id); setPlacementOpen(true); }} className={`border px-2 py-1 text-xs ${placingId === ref.id ? 'border-teal-400 text-teal-200' : 'border-white/30 text-white'}`}>{placingId === ref.id ? 'Placing…' : ref.position ? 'Move on Set' : 'Place on Set'}</button>}
                   <span className="text-[11px] text-white/50">{ref.position ? describePosition(ref.position) : 'Not positioned yet'}</span>
                 </div>
                 <textarea className={FIELD + ' w-full'} disabled={readOnly} rows={2} value={ref.direction || ''} onChange={event => updateAsset(ref.id, event.target.value)} placeholder="Placement and action of this asset" />
@@ -357,7 +371,7 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
                   </label>
                   <ActorCell url={ref.url} actorId={id} />
                   {actor.selected && <div className="space-y-2">
-                    <button type="button" disabled={readOnly} onClick={() => setPlacingId(placingId === positionKey(ref, actor) ? '' : positionKey(ref, actor))}
+                    <button type="button" disabled={readOnly} onClick={() => { setPlacingId(placingId === positionKey(ref, actor) ? '' : positionKey(ref, actor)); setPlacementOpen(true); }}
                       className={`w-full border px-2 py-1 text-xs ${placingId === positionKey(ref, actor) ? 'border-teal-400 text-teal-200' : 'border-white/30 text-white'}`}>
                       {placingId === positionKey(ref, actor) ? 'Placing…' : actor.position ? 'Move on Set' : 'Place on Set'}
                     </button>
@@ -369,7 +383,8 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
               })}
             </div>
           </div>}
-        </div>)}
+          </div>
+        </details>)}
       </div>}
       {vaultOpen && <div className="space-y-2">
         <div className="flex flex-wrap gap-2">
@@ -393,9 +408,12 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
         {!loadingVault && !vaultError && !visibleAssets.length && <p className="text-xs text-white/45">No matching images in this Vault folder.</p>}
       </div>}
     </section>
-    <label className="block space-y-1 text-xs text-white/70">Base scene · Image generation prompt
-      <textarea className={FIELD + ' w-full'} rows={6} disabled={readOnly} value={basePrompt} onChange={e => onShotChange({ base_image_prompt: e.target.value })} />
-    </label>
+    <details className="border border-white/15 px-2 py-1">
+      <summary className="cursor-pointer text-xs text-white/70">Advanced · Base image generation prompt</summary>
+      <label className="block space-y-1 pt-2 text-xs text-white/70">Base scene · Image generation prompt
+        <textarea className={FIELD + ' w-full'} rows={6} disabled={readOnly} value={basePrompt} onChange={e => onShotChange({ base_image_prompt: e.target.value })} />
+      </label>
+    </details>
     <div className="grid gap-3 md:grid-cols-2">
       <figure className="space-y-1"><figcaption className="text-xs font-semibold text-white">Base scene · no heroes</figcaption>
         {baseImage ? <img src={baseImage} className="w-full aspect-video bg-black object-contain" alt="Base scene without heroes" /> : <div className="flex aspect-video items-center justify-center border border-white/15 text-xs text-white/40">No base image</div>}
@@ -404,9 +422,12 @@ export default function ScenarioSceneComposer({ shot, episode, partKey, selected
         {previewImage ? <img src={previewImage} className="w-full aspect-video bg-black object-contain" alt="AI-generated validation scene with heroes" /> : <div className="flex aspect-video items-center justify-center border border-white/15 text-xs text-white/40">No validation image</div>}
       </figure>
     </div>
-    <label className="block space-y-1 text-xs text-white/70">Heroes · Composition / validation image prompt
-      <textarea className={FIELD + ' w-full'} rows={5} disabled={readOnly} value={previewPrompt} onChange={e => onShotChange({ hero_composition_prompt: e.target.value })} />
-    </label>
+    <details className="border border-white/15 px-2 py-1">
+      <summary className="cursor-pointer text-xs text-white/70">Advanced · Hero composition prompt</summary>
+      <label className="block space-y-1 pt-2 text-xs text-white/70">Heroes · Composition / validation image prompt
+        <textarea className={FIELD + ' w-full'} rows={5} disabled={readOnly} value={previewPrompt} onChange={e => onShotChange({ hero_composition_prompt: e.target.value })} />
+      </label>
+    </details>
     <section className="space-y-2 border border-white/15 p-3">
       <div className="text-xs font-semibold text-white">Production prompt · for Shoot or FotoPlay</div>
       <label className="block space-y-1 text-xs text-white/70">Production tool
