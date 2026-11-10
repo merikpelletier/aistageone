@@ -156,6 +156,8 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [expandedShotId, setExpandedShotId] = useState(null);
   const [activeSceneKey, setActiveSceneKey] = useState('setup');
+  const [openViewPickerId, setOpenViewPickerId] = useState(null);
+  const [openLookPickerKey, setOpenLookPickerKey] = useState(null);
   const [generating, setGenerating] = useState('');
   const [generationError, setGenerationError] = useState('');
   const updateContent = (patch) => setBlock({ ...block, content: { ...content, ...patch } });
@@ -564,25 +566,29 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                 return <div className="space-y-2 border border-white/15 bg-white/[0.02] p-3">
                   <div className="text-xs font-semibold text-white/70">Set references · {linked?.name || selectedSet.name}</div>
                   <div className="space-y-2 border-b border-white/10 pb-3">
-                    <p className="text-xs font-semibold text-white/70">Camera view for this shot</p>
-                    <p className="text-[11px] text-white/45">Select the exact camera view for this shot. This view controls the generated composition.</p>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                    <div className="flex items-center gap-2">
+                      <span className="shrink-0 text-xs font-semibold text-white/70">Camera view</span>
+                      {shot.set_view_reference_url && <img src={shot.set_view_reference_url} alt="Selected camera view" className="h-9 w-14 shrink-0 bg-black object-contain" />}
+                      <span className="min-w-0 flex-1 truncate text-xs text-white/75">{views.find(view => view.url === shot.set_view_reference_url)?.label || 'Choose a view'}</span>
+                      <button type="button" onClick={() => setOpenViewPickerId(current => current === shot.id ? null : shot.id)} className="shrink-0 border border-white/25 px-2 py-1 text-xs text-white">{openViewPickerId === shot.id ? 'Close' : shot.set_view_reference_url ? 'Change' : 'Choose'}</button>
+                    </div>
+                    {(!shot.set_view_reference_url || openViewPickerId === shot.id) && <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                       {views.map((view) => {
                         const selected = shot.set_view_reference_url === view.url;
                         return <button type="button" key={view.url} disabled={readOnly}
                           aria-pressed={selected}
-                          onClick={() => updateShot(shot.id, { set_view_reference_url: view.url })}
+                          onClick={() => { updateShot(shot.id, { set_view_reference_url: view.url }); setOpenViewPickerId(null); }}
                           className={`min-w-0 border p-2 text-left ${selected ? 'border-[var(--studio-accent)] bg-white/[0.07]' : 'border-white/15 hover:border-white/40'}`}>
                           <img src={view.url} alt={view.label + ' Set view'} className="h-24 w-full bg-black object-contain" />
                           <span className="mt-1 block text-xs text-white">{view.label}{selected ? ' ✓' : ''}</span>
                         </button>;
                       })}
-                    </div>
+                    </div>}
                     {!views.length && <p className="text-xs text-white/45">No saved views on this Set yet.</p>}
                     {!!views.length && !shot.set_view_reference_url && <p className="text-[11px] text-amber-300">Choose a Camera View to generate the scene.</p>}
                   </div>
-                  <p className="text-[11px] text-white/45">Select reference objects for this shot. Existing selected images are preserved.</p>
-                  {!items.length ? <p className="text-xs text-white/45">This linked Set has no saved reference elements yet. Its principal views remain available.</p> :
+                  {!!items.length && <details className="border border-white/15 px-2 py-1">
+                    <summary className="cursor-pointer text-xs text-white/75">Set objects · {chosenUrls.length} selected · Change</summary>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                       {items.map((element, index) => {
                         const checked = chosenUrls.includes(element.image_url);
@@ -600,6 +606,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                         </label>;
                       })}
                     </div>}
+                  </details>}
                 </div>;
               })()}
               <label className="block text-xs text-white/60">Position within selected set
@@ -626,13 +633,18 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                       })} />
                       {character.name}
                     </label>
-                    {included && (images.length ? (
-                      <div className="flex flex-wrap gap-2">
+                    {included && (images.length ? (<>
+                      <div className="flex min-h-10 items-center gap-2">
+                        {chosenUrl && <img src={chosenUrl} alt="Selected look" className="h-10 w-10 shrink-0 bg-black object-contain" />}
+                        <span className="min-w-0 flex-1 truncate text-xs text-white/70">{images.find(image => image.url === chosenUrl)?.name || (chosenUrl ? 'Selected reference' : 'No look selected')}</span>
+                        <button type="button" onClick={() => setOpenLookPickerKey(current => current === shot.id + ':' + character.id ? null : shot.id + ':' + character.id)} className="shrink-0 border border-white/25 px-2 py-1 text-xs text-white">{openLookPickerKey === shot.id + ':' + character.id ? 'Close' : chosenUrl ? 'Change look' : 'Choose look'}</button>
+                      </div>
+                      {(!chosenUrl || openLookPickerKey === shot.id + ':' + character.id) && <div className="flex flex-wrap gap-2">
                         {images.map(({ url, name, index }) => (
                           <button key={`${character.id}-${index}-${url}`} type="button" disabled={readOnly}
                             aria-label={`Select ${character.name} — ${name || `Reference ${index + 1}`}`}
                             aria-pressed={chosenUrl === url}
-                            onClick={() => updateShot(shot.id, { character_reference_urls: { ...(shot.character_reference_urls || {}), [character.id]: url } })}
+                            onClick={() => { updateShot(shot.id, { character_reference_urls: { ...(shot.character_reference_urls || {}), [character.id]: url } }); setOpenLookPickerKey(null); }}
                             title={`${character.name} — ${name || `Reference ${index + 1}`}`}
                             className={`relative w-32 min-h-36 flex flex-col overflow-hidden border-2 bg-black text-left ${chosenUrl === url ? 'border-[var(--studio-accent)]' : 'border-white/20 hover:border-white/60'}`}>
                             <img src={url} alt={`${character.name} — ${name || `Reference ${index + 1}`}`} className="h-28 w-full object-contain" />
@@ -640,8 +652,8 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                             {chosenUrl === url && <span className="absolute top-1 right-1 rounded-full bg-[var(--studio-accent)] text-black text-xs font-bold px-1.5">✓</span>}
                           </button>
                         ))}
-                      </div>
-                    ) : <div className="text-xs text-white/40">No reference photos. Add them under AI Pilot → Characters.</div>)}
+                      </div>}
+                    </>) : <div className="text-xs text-white/40">No reference photos. Add them under AI Pilot → Characters.</div>)}
                   </div>
                 );
               })}
@@ -674,7 +686,9 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                   ...selectedPeople.filter((person) => !person.url).map((person) => person.name),
                 ];
                 const mapText = entries.map((entry, index) => `IMAGE ${index + 1} — ${entry.kind}: ${entry.name}${entry.look ? ` — ${entry.look}` : ''}`).join('\n');
-                return <div className="space-y-2 border border-[var(--studio-accent)]/50 bg-white/[0.03] p-3">
+                return <details className="border border-[var(--studio-accent)]/50 bg-white/[0.03] px-3 py-2">
+                  <summary className="cursor-pointer text-xs text-white/75">Reference IDs · {entries.length} selected · View details</summary>
+                  <div className="space-y-2 pt-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-white">Reference IDs for this shot</p>
                     <button type="button" disabled={!entries.length} onClick={() => navigator.clipboard.writeText(mapText)}
@@ -696,7 +710,8 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                     ))}
                   </div>
                   {!entries.length && <p className="text-xs text-white/50">No selected references yet.</p>}
-                </div>;
+                  </div>
+                </details>;
               })()}
             </div>
             <label className="text-xs text-white/60 block">Action
