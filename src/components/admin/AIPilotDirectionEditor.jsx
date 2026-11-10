@@ -515,7 +515,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
             aria-pressed={expandedShotId === shot.id}
             onClick={() => setExpandedShotId(current => current === shot.id ? null : shot.id)}
             className={`shrink-0 rounded border px-3 py-1.5 text-xs ${expandedShotId === shot.id ? 'border-[var(--studio-accent)] bg-white/10 text-white' : 'border-white/20 text-white/60 hover:text-white'}`}>
-            Shot {shotIndex + 1}{shot.base_scene_url ? ' ✓' : ''}
+            Shot {shotIndex + 1}{shot.hero_preview_url ? ' ✓' : ''}
           </button>)}
         </div>}
         {shots.map((shot, shotIndex) => (
@@ -524,7 +524,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
               <button type="button" aria-expanded={expandedShotId === shot.id} onClick={() => setExpandedShotId(current => current === shot.id ? null : shot.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left text-xs text-white">
                 <span className="text-sm font-semibold">{expandedShotId === shot.id ? '▾' : '▸'} Shot {shotIndex + 1}</span>
                 <span className="min-w-0 truncate text-white/55">{shot.shot_type || 'Medium Shot'} · {shot.duration || 5}s{shot.action?.trim() ? ' · ' + shot.action.trim().slice(0, 95) : ''}</span>
-                {shot.base_scene_url && <span className="shrink-0 text-teal-300">Base ✓</span>}
+                {shot.hero_preview_url && <span className="shrink-0 text-teal-300">Hero ✓</span>}
               </button>
               {!readOnly && <button type="button" onClick={() => {
                 if (!window.confirm('Remove this shot?')) return;
