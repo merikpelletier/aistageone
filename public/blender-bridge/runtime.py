@@ -129,6 +129,7 @@ def _create_group_from_selection(action):
     import bmesh
     bm = bmesh.from_edit_mesh(obj.data)
     bm.verts.ensure_lookup_table()
+    bm.verts.index_update()
     selected = [v.index for v in bm.verts if v.select and not v.hide]
     if len(selected) < 10:
         raise ValueError('Select at least 10 vertices of the waist, excluding arms')
@@ -185,6 +186,12 @@ def _create_native_lattice(action):
     modifier.object = lattice_obj
     modifier.vertex_group = group_name
     modifier['aistage_native_lattice'] = True
+    # Disable only the obsolete AISTAGE-generated morph on this working copy;
+    # it could otherwise continue distorting arms while the native lattice works.
+    old_keys = obj.data.shape_keys
+    old_waist = old_keys.key_blocks.get('AISTAGE_Waist') if old_keys else None
+    if old_waist:
+        old_waist.value = 0.0
     obj['aistage_lattice_object'] = lattice_obj.name
     obj['aistage_lattice_group'] = group_name
     return {'object': obj.name, 'lattice': lattice_obj.name,
