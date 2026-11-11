@@ -80,7 +80,6 @@ export default function BlenderBridgeWorkspace() {
   const [token, setToken] = useState('');
   const [direction, setDirection] = useState('');
   const [characters, setCharacters] = useState([]);
-  const [characterSource, setCharacterSource] = useState('');
   const [workingCharacter, setWorkingCharacter] = useState('');
   const [waistWidth, setWaistWidth] = useState('1');
   const [nativeTools, setNativeTools] = useState(null);
@@ -144,7 +143,7 @@ export default function BlenderBridgeWorkspace() {
         if (!context?.object) throw new Error('Blender did not return the selected character.');
       }
       const nativeSummary = context
-        ? JSON.stringify({ working_copy: context.working_copy, object: context.object,
+        ? JSON.stringify({ object: context.object,
             vertex_groups: context.vertex_groups, shape_keys: context.shape_keys,
             modifiers: context.modifiers }).slice(0, 6500)
         : 'No character selected: only basic scene commands may be used.';
@@ -197,8 +196,7 @@ export default function BlenderBridgeWorkspace() {
       const response = await bridgeRequest('/v1/command', token, { action: 'inspect_character_meshes' });
       const items = response?.result?.objects || [];
       setCharacters(items);
-      const selected = items.find((item) => item.name === workingCharacter) || items.find((item) => item.name === characterSource) || items.find((item) => item.name.includes('body_female_realistic')) || items[0];
-      setCharacterSource(selected?.name || '');
+      const selected = items.find((item) => item.name === workingCharacter) || items.find((item) => item.name.includes('body_female_realistic')) || items[0];
       setWorkingCharacter(selected?.name || '');
       setNativeTools(null);
       setNativeLattice(false);
@@ -209,24 +207,6 @@ export default function BlenderBridgeWorkspace() {
       setBusy(false);
     }
   };
-
-  const createCharacterCopy = async () => {
-    if (!connected || busy || !characterSource) return;
-    setBusy(true);
-    try {
-      const response = await bridgeRequest('/v1/command', token, { action: 'create_character_copy', name: characterSource });
-      setWorkingCharacter(response.result.object);
-      setNativeTools(null);
-      setNativeGroup('');
-      setNativeLattice(false);
-      setMessage(`Working copy created: ${response.result.object}. Original preserved.`);
-    } catch (error) {
-      setMessage(error?.message || 'Could not create character copy.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
 
   const nativeCommand = async (command, after) => {
     if (!connected || busy) return;
