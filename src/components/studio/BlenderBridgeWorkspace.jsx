@@ -229,189 +229,214 @@ export default function BlenderBridgeWorkspace() {
   const validCoords = location.every((value) => value.trim() !== '') && coords.every((n) => Number.isFinite(n) && Math.abs(n) <= 10000);
 
   return (
-    <div className="min-h-full p-5 md:p-8 bg-[#202328] text-white">
-      <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex items-center gap-3">
-          <Box className="h-7 w-7" />
-          <div>
-            <h2 className="text-2xl font-semibold">Blender Bridge</h2>
-            <p className="text-sm text-white/60">Control Blender on this computer from AISTAGE.ONE Studio.</p>
+    <div className="min-h-full bg-[#171a1e] text-white">
+      <div className="mx-auto w-full max-w-5xl px-5 py-8 md:px-10 md:py-10 space-y-7">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs font-medium tracking-[0.18em] text-white/50 uppercase">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-300" /> AISTAGE Studio / 3D
+            </div>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Blender</h1>
+            <p className="text-sm text-white/55">Your characters and scenes, directed from one workspace.</p>
+          </div>
+          <div className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium ${connected ? 'border-teal-400/30 bg-teal-400/10 text-teal-200' : 'border-white/15 bg-white/5 text-white/60'}`}>
+            <span className={`h-2 w-2 rounded-full ${connected ? 'bg-teal-300' : 'bg-white/30'}`}/>
+            {connected ? 'Blender connected' : 'Blender disconnected'}
           </div>
         </div>
-        <div className="rounded-xl border border-white/15 bg-white/5 p-5 space-y-4">
-          <h3 className="flex items-center gap-2 font-semibold"><Plug size={18} /> Connect Blender</h3>
-          <p className="text-sm text-white/70">In Blender 5.3, install Bridge 0.6, select Start Local Bridge, then Copy Test Token. Paste it here. Your token is held only in this browser tab.</p>
-          <label htmlFor="aistage-blender-token" className="block text-sm">Bridge token</label>
-          <input id="aistage-blender-token" type="password" value={token}
-            onChange={(event) => { setToken(event.target.value); setConnected(false); }}
-            autoComplete="off" spellCheck={false} placeholder="Paste token from Blender"
-            className="w-full rounded-lg border border-white/20 bg-black/30 p-3 text-white" />
-          <button type="button" disabled={busy || !token.trim()} onClick={connect}
-            className="rounded-lg bg-white px-4 py-2 font-semibold text-black disabled:opacity-40">
-            {busy ? 'Connecting…' : 'Connect to Blender'}
-          </button>
-          <p role="status" aria-live="polite" className={connected ? 'text-sm text-emerald-300' : 'text-sm text-white/75'}>
-            {message}
-          </p>
-        </div>
 
-        <div className="rounded-xl border border-teal-400/30 bg-white/5 p-5 space-y-4">
-          <h3 className="flex items-center gap-2 font-semibold"><Sparkles size={18} /> AI Director 3D</h3>
-          <p className="text-sm text-white/70">Describe the scene change. AI planning uses AISTAGE credits. Nothing is sent to Blender until you review and approve.</p>
-          <textarea rows={3} maxLength={1500} value={direction}
-            onChange={(event) => { setDirection(event.target.value); setPlan([]); }}
-            placeholder="Create a sphere named Moon and move Moon to X 2, Y 0, Z 3."
-            className="w-full rounded-lg border border-white/20 bg-black/30 p-3 text-white" />
-          <button type="button" disabled={!connected || busy || planning || !direction.trim()} onClick={prepareAI}
-            className="rounded-lg bg-teal-400 px-4 py-2 font-semibold text-black disabled:opacity-40">
-            {planning ? 'Preparing…' : 'Prepare with AI (credits)'}
-          </button>
-          {plan.length > 0 && (
-            <div className="rounded-lg border border-white/15 bg-black/25 p-4 space-y-3">
-              <p className="text-sm font-semibold">Review before execution</p>
-              <ol className="list-decimal space-y-1 pl-5 text-sm text-white/85">
-                {plan.map((command, index) => <li key={index}>
-                  {command.action.replaceAll('_', ' ')} — {command.name}
-                  {VECTOR[command.action] ? ` [${command[VECTOR[command.action]].join(', ')}]` : ''}
-                </li>)}
-              </ol>
-              <div className="flex gap-3">
-                <button type="button" disabled={busy || planning || !connected} onClick={runAIPlan}
-                  className="rounded-lg bg-white px-4 py-2 font-semibold text-black disabled:opacity-40">Execute in Blender</button>
-                <button type="button" disabled={busy} onClick={() => setPlan([])}
-                  className="rounded-lg border border-white/20 px-4 py-2">Cancel</button>
+        {!connected && (
+          <section className="rounded-2xl border border-white/10 bg-[#22262b] p-5 md:p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <Plug size={19} className="text-teal-300" />
+              <div>
+                <h2 className="font-medium">Connect to Blender</h2>
+                <p className="text-xs text-white/50 mt-1">In Blender, start the local Bridge and copy its token.</p>
               </div>
             </div>
-          )}
-        </div>
-
-        <div className="rounded-xl border border-white/15 bg-white/5 p-5 space-y-4">
-          <h3 className="flex items-center gap-2 font-semibold"><Box size={18} /> Character Mesh Studio</h3>
-          <p className="text-sm text-white/70">Read the human mesh already loaded in Blender, make an independent working copy and apply a reversible shape key. The original remains unchanged.</p>
-          <button type="button" disabled={!connected || busy} onClick={inspectCharacters}
-            className="rounded-lg bg-white px-4 py-2 font-semibold text-black disabled:opacity-40">Inspect character meshes</button>
-          {characters.length > 0 && (
-            <>
-              <label htmlFor="aistage-character-source" className="block text-sm">Source mesh</label>
-              <select id="aistage-character-source" value={characterSource}
-                onChange={(event) => setCharacterSource(event.target.value)}
-                className="w-full rounded-lg border border-white/20 bg-[#202328] p-3 text-white">
-                {characters.map((item) => <option key={item.name} value={item.name}>
-                  {item.name} — {item.vertices.toLocaleString()} vertices, {item.quads.toLocaleString()} quads
-                </option>)}
-              </select>
-              <button type="button" disabled={!connected || busy || !characterSource} onClick={createCharacterCopy}
-                className="rounded-lg border border-white/25 px-4 py-2 font-semibold disabled:opacity-40">
-                Create independent working copy
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input aria-label="Blender Bridge token" type="password" autoComplete="off" spellCheck={false}
+                placeholder="Paste Blender Bridge token" value={token}
+                onChange={(event) => { setToken(event.target.value); setConnected(false); }}
+                className="min-w-0 flex-1 rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-sm outline-none focus:border-teal-300/60" />
+              <button type="button" disabled={busy || !token.trim()} onClick={connect}
+                className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#15191d] transition hover:bg-white/90 disabled:opacity-40">
+                {busy ? 'Connecting…' : 'Connect'}
               </button>
-            </>
-          )}
+            </div>
+            <p role="status" aria-live="polite" className="text-xs text-white/55">{message}</p>
+          </section>
+        )}
 
-          {characters.some((item) => item.working_copy) && (
-            <div className="space-y-2">
-              <label htmlFor="aistage-existing-copy" className="block text-sm">Existing working copy</label>
-              <select id="aistage-existing-copy" value={workingCharacter} onChange={(event) => {
-                  setWorkingCharacter(event.target.value); setNativeTools(null); setNativeLattice(false);
-                }} className="w-full rounded-lg border border-white/20 bg-[#202328] p-3 text-white">
-                <option value="">Choose a working copy</option>
-                {characters.filter((item) => item.working_copy).map((item) =>
-                  <option key={item.name} value={item.name}>{item.name}</option>)}
-              </select>
-            </div>
-          )}
-          {workingCharacter && (
-            <div className="space-y-3 rounded-lg border border-teal-400/30 bg-black/20 p-4">
-              <p className="break-all text-sm">Working copy: <strong>{workingCharacter}</strong></p>
-              <p className="text-sm text-white/75">Blender-native modeling: Vertex Groups, Lattice Modifier, Shape Keys. The previous automatic waist deformation is disabled.</p>
-              <button type="button" disabled={!connected || busy} onClick={() => inspectNative()}
-                className="rounded-lg border border-white/25 px-4 py-2 font-semibold disabled:opacity-40">
-                Inspect native Blender tools
-              </button>
-              {nativeTools && (
-                <>
-                  <p className="text-sm">Existing vertex groups: {nativeTools.vertex_groups.length}</p>
-                  <label htmlFor="aistage-native-group" className="block text-sm">Vertex group controlling the deformation</label>
-                  <select id="aistage-native-group" value={nativeGroup} onChange={(event) => {
-                      setNativeGroup(event.target.value); setNativeLattice(false);
-                    }} className="w-full rounded-lg border border-white/20 bg-[#202328] p-3 text-white">
-                    <option value="">Select an existing group</option>
-                    {nativeTools.vertex_groups.map((group) =>
-                      <option key={group.name} value={group.name}>{group.name} ({group.assigned_vertices} vertices)</option>)}
-                  </select>
-                  <p className="text-xs text-white/60">Alternatively, select ONLY waist vertices on the working copy in Blender Edit Mode, then use the button below. This creates a Blender Vertex Group without moving any geometry.</p>
-                  <button type="button" disabled={!connected || busy} onClick={makeWaistSelection}
-                    className="rounded-lg border border-white/25 px-4 py-2 disabled:opacity-40">
-                    Use Blender's selected vertices as Waist group
-                  </button>
-                  <button type="button" disabled={!connected || busy || !nativeGroup || nativeLattice}
-                    onClick={makeLattice} className="rounded-lg border border-white/25 px-4 py-2 disabled:opacity-40">
-                    Create native Lattice Modifier
-                  </button>
-                  {nativeLattice && (
-                    <>
-                      <label htmlFor="aistage-waist-width" className="block text-sm">Lattice width factor (0.75–1.25)</label>
-                      <input id="aistage-waist-width" type="number" min="0.75" max="1.25" step="0.05"
-                        value={waistWidth} onChange={(event) => setWaistWidth(event.target.value)}
-                        className="w-full rounded-lg border border-white/20 bg-black/30 p-3 text-white" />
-                      <button type="button" disabled={!connected || busy || !Number.isFinite(Number(waistWidth)) || Number(waistWidth) < 0.75 || Number(waistWidth) > 1.25}
-                        onClick={applyWaist} className="rounded-lg bg-teal-400 px-4 py-2 font-semibold text-black disabled:opacity-40">
-                        Adjust native Blender lattice
-                      </button>
-                    </>
-                  )}
-                  {nativeTools.shape_keys.length > 1 && (
-                    <>
-                      <label htmlFor="aistage-native-shape" className="block text-sm">Existing Blender Shape Key</label>
-                      <select id="aistage-native-shape" value={nativeShape}
-                        onChange={(event) => setNativeShape(event.target.value)}
-                        className="w-full rounded-lg border border-white/20 bg-[#202328] p-3 text-white">
-                        {nativeTools.shape_keys.filter((key) => key.name !== 'Basis').map((key) =>
-                          <option key={key.name} value={key.name}>{key.name}</option>)}
-                      </select>
-                      <input type="number" min="0" max="1" step="0.1" value={nativeShapeValue}
-                        onChange={(event) => setNativeShapeValue(event.target.value)}
-                        className="w-full rounded-lg border border-white/20 bg-black/30 p-3 text-white" />
-                      <button type="button" disabled={!connected || busy || !nativeShape || nativeShapeValue.trim() === '' || !Number.isFinite(Number(nativeShapeValue)) || Number(nativeShapeValue) < 0 || Number(nativeShapeValue) > 1}
-                        onClick={() => nativeCommand({ action: 'set_native_shape_key', name: workingCharacter,
-                          shape_key: nativeShape, value: Number(nativeShapeValue) })}
-                        className="rounded-lg border border-white/25 px-4 py-2 disabled:opacity-40">
-                        Set native Shape Key
-                      </button>
-                    </>
-                  )}
-                </>
-              )}
-              <p className="text-xs text-white/60">Only the working copy is modified; original meshes remain untouched. Native modifiers are non-destructive. A vertex group is required; Blender must know the anatomy before the shape is altered.</p>
-            </div>
-          )}
-        </div>
-        <div className="rounded-xl border border-white/15 bg-white/5 p-5 space-y-4">
-          <h3 className="flex items-center gap-2 font-semibold"><ShieldCheck size={18} /> Scene commands</h3>
-          <p className="text-sm text-white/70">Only the listed operations are enabled. No arbitrary Python execution.</p>
-          <label htmlFor="aistage-blender-object" className="block text-sm">Object name</label>
-          <input id="aistage-blender-object" value={objectName} maxLength={80}
-            onChange={(event) => setObjectName(event.target.value)}
-            className="w-full rounded-lg border border-white/20 bg-black/30 p-3 text-white" />
-          <button type="button" disabled={!connected || busy || !validName}
-            onClick={() => execute({ action: 'create_cube', name })}
-            className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 font-semibold text-black disabled:opacity-40">
-            <Box size={16} /> Create cube in Blender
-          </button>
-          <div className="grid grid-cols-3 gap-3">
-            {['X', 'Y', 'Z'].map((axis, index) => (
-              <label key={axis} className="text-sm">{axis}
-                <input type="number" step="0.1" value={location[index]}
-                  onChange={(event) => setLocation((previous) => previous.map((item, i) => i === index ? event.target.value : item))}
-                  className="mt-1 w-full rounded-lg border border-white/20 bg-black/30 p-3 text-white" />
-              </label>
-            ))}
+        <section className="rounded-2xl border border-white/10 bg-[#22262b] overflow-hidden">
+          <div className="border-b border-white/10 px-5 py-5 md:px-7">
+            <div className="flex items-center gap-2"><Box size={18} className="text-teal-300"/><h2 className="text-base font-semibold">Character</h2></div>
+            <p className="mt-1 text-xs text-white/50">Choose a Blender mesh and work on a protected copy.</p>
           </div>
-          <button type="button" disabled={!connected || busy || !validName || !validCoords}
-            onClick={() => execute({ action: 'move_object', name, location: coords })}
-            className="flex items-center gap-2 rounded-lg border border-white/20 px-4 py-2 font-semibold text-white disabled:opacity-40">
-            <Send size={16} /> Move existing object
-          </button>
-        </div>
+          <div className="p-5 md:p-7 space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="button" onClick={inspectCharacters} disabled={!connected || busy}
+                className="rounded-xl border border-white/20 px-4 py-2.5 text-sm transition hover:bg-white/10 disabled:opacity-35">
+                Find characters in Blender
+              </button>
+              {characters.length > 0 && <span className="text-xs text-white/50">{characters.length} mesh object(s) found</span>}
+            </div>
+            {characters.length > 0 && (
+              <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                <label className="space-y-2 text-xs text-white/60">Source character
+                  <select value={characterSource} onChange={(event) => setCharacterSource(event.target.value)}
+                    className="block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white">
+                    {characters.filter(item => !item.working_copy).map(item =>
+                      <option key={item.name} value={item.name}>{item.name} · {item.vertices.toLocaleString()} vertices</option>)}
+                  </select>
+                </label>
+                <button type="button" disabled={!connected || busy || !characterSource} onClick={createCharacterCopy}
+                  className="rounded-xl bg-teal-300 px-4 py-3 text-sm font-semibold text-[#101819] hover:bg-teal-200 disabled:opacity-35">
+                  Create working copy
+                </button>
+              </div>
+            )}
+            {characters.some(item => item.working_copy) && (
+              <label className="block space-y-2 text-xs text-white/60">Working character
+                <select value={workingCharacter} onChange={(event) => {
+                  setWorkingCharacter(event.target.value); setNativeTools(null); setNativeGroup(''); setNativeLattice(false);
+                }} className="block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white">
+                  <option value="">Select a working copy</option>
+                  {characters.filter(item => item.working_copy).map(item =>
+                    <option key={item.name} value={item.name}>{item.name}</option>)}
+                </select>
+              </label>
+            )}
+            {workingCharacter && <p className="text-xs text-teal-200/90">Editing copy: {workingCharacter}. The original is preserved.</p>}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-[#22262b] overflow-hidden">
+          <div className="border-b border-white/10 p-5 md:p-7">
+            <div className="flex items-center gap-2"><Sparkles size={19} className="text-teal-300"/><h2 className="text-lg font-semibold">AI Director</h2></div>
+            <p className="mt-2 text-sm text-white/60">Describe what you want to create. Review the supported Blender operations before running them.</p>
+          </div>
+          <div className="space-y-4 p-5 md:p-7">
+            <textarea rows={4} maxLength={1500} value={direction}
+              onChange={(event) => { setDirection(event.target.value); setPlan([]); }}
+              placeholder="Describe your scene or the change you want to make…"
+              className="block w-full resize-y rounded-xl border border-white/15 bg-[#171a1e] px-4 py-4 text-sm leading-relaxed outline-none focus:border-teal-300/60"/>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="max-w-sm text-xs text-white/45">AI currently handles basic scene objects and transforms. Character anatomy is not yet automated.</p>
+              <button type="button" disabled={!connected || busy || planning || !direction.trim()}
+                onClick={prepareAI} className="flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#15191d] hover:bg-white/90 disabled:opacity-35">
+                <Sparkles size={16}/>{planning ? 'Preparing…' : 'Prepare with AI'}
+              </button>
+            </div>
+            {plan.length > 0 && (
+              <div className="rounded-xl border border-teal-300/20 bg-teal-300/5 p-4 space-y-4">
+                <p className="text-sm font-medium">Review operations</p>
+                <ol className="list-decimal space-y-2 pl-5 text-sm text-white/80">
+                  {plan.map((command, index) =>
+                    <li key={index}>{command.action.replaceAll('_', ' ')} · {command.name}
+                      {VECTOR[command.action] ? ` [${command[VECTOR[command.action]].join(', ')}]` : ''}
+                    </li>)}
+                </ol>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={runAIPlan} disabled={!connected || busy || planning}
+                    className="rounded-xl bg-teal-300 px-5 py-2.5 text-sm font-semibold text-[#101819] disabled:opacity-35">Execute in Blender</button>
+                  <button type="button" disabled={busy} onClick={() => setPlan([])}
+                    className="rounded-xl border border-white/20 px-5 py-2.5 text-sm">Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <details className="rounded-2xl border border-white/10 bg-[#22262b] open:bg-[#22262b]">
+          <summary className="cursor-pointer select-none px-5 py-5 text-sm font-medium text-white/75 md:px-7">
+            Native Blender controls <span className="ml-2 text-xs font-normal text-white/40">Advanced · optional</span>
+          </summary>
+          <div className="border-t border-white/10 p-5 md:p-7 space-y-4">
+            <p className="text-xs text-white/55">These controls use Blender's existing tools. For anatomical edits, the correct region must already be defined as a Vertex Group. No automatic body-part selection is available yet.</p>
+            {!workingCharacter ? (
+              <p className="text-sm text-white/60">Choose a working character above to access native modeling controls.</p>
+            ) : (
+              <>
+                <button type="button" disabled={!connected || busy} onClick={() => inspectNative()}
+                  className="rounded-xl border border-white/20 px-4 py-2.5 text-sm disabled:opacity-35">Read Blender tools</button>
+                {nativeTools && (
+                  <div className="space-y-4">
+                    <label className="block space-y-2 text-xs text-white/60">Vertex Group
+                      <select value={nativeGroup} onChange={(event) => { setNativeGroup(event.target.value); setNativeLattice(false); }}
+                        className="block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white">
+                        <option value="">Select a vertex group</option>
+                        {nativeTools.vertex_groups.map(group => <option key={group.name} value={group.name}>{group.name} ({group.assigned_vertices} vertices)</option>)}
+                      </select>
+                    </label>
+                    <button type="button" onClick={makeWaistSelection} disabled={!connected || busy}
+                      className="rounded-xl border border-white/20 px-4 py-2.5 text-sm disabled:opacity-35">Use selected Blender vertices as Waist group</button>
+                    <button type="button" onClick={makeLattice} disabled={!connected || busy || !nativeGroup || nativeLattice}
+                      className="rounded-xl border border-white/20 px-4 py-2.5 text-sm disabled:opacity-35">Add native Lattice Modifier</button>
+                    {nativeLattice && (
+                      <div className="flex flex-wrap items-end gap-3">
+                        <label className="space-y-2 text-xs text-white/60">Lattice width factor
+                          <input type="number" min="0.75" max="1.25" step="0.05" value={waistWidth}
+                            onChange={(event) => setWaistWidth(event.target.value)}
+                            className="block w-32 rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white"/>
+                        </label>
+                        <button type="button" onClick={applyWaist}
+                          disabled={!connected || busy || waistWidth.trim() === '' || !Number.isFinite(Number(waistWidth)) || Number(waistWidth) < 0.75 || Number(waistWidth) > 1.25}
+                          className="rounded-xl border border-white/20 px-4 py-3 text-sm disabled:opacity-35">Adjust lattice</button>
+                      </div>
+                    )}
+                    {nativeTools.shape_keys.length > 1 && (
+                      <div className="space-y-3 border-t border-white/10 pt-4">
+                        <label className="block space-y-2 text-xs text-white/60">Existing Shape Key
+                          <select value={nativeShape} onChange={(event) => setNativeShape(event.target.value)}
+                            className="block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white">
+                            {nativeTools.shape_keys.filter(key => key.name !== 'Basis').map(key => <option key={key.name} value={key.name}>{key.name}</option>)}
+                          </select>
+                        </label>
+                        <div className="flex flex-wrap items-end gap-3">
+                          <label className="space-y-2 text-xs text-white/60">Value
+                            <input type="number" min="0" max="1" step="0.1" value={nativeShapeValue}
+                              onChange={(event) => setNativeShapeValue(event.target.value)}
+                              className="block w-32 rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white"/>
+                          </label>
+                          <button type="button"
+                            disabled={!connected || busy || !nativeShape || nativeShapeValue.trim() === '' || !Number.isFinite(Number(nativeShapeValue)) || Number(nativeShapeValue) < 0 || Number(nativeShapeValue) > 1}
+                            onClick={() => nativeCommand({action:'set_native_shape_key',name:workingCharacter,shape_key:nativeShape,value:Number(nativeShapeValue)})}
+                            className="rounded-xl border border-white/20 px-4 py-3 text-sm disabled:opacity-35">Set Shape Key</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </details>
+
+        <details className="rounded-2xl border border-white/10 bg-[#22262b]">
+          <summary className="cursor-pointer select-none px-5 py-5 text-sm text-white/60 md:px-7">Basic scene utilities</summary>
+          <div className="border-t border-white/10 p-5 md:p-7 space-y-3">
+            <label className="block text-xs text-white/60">Object name
+              <input value={objectName} maxLength={80} onChange={(event) => setObjectName(event.target.value)}
+                className="mt-2 block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white"/>
+            </label>
+            <button type="button" disabled={!connected || busy || !validName} onClick={() => execute({action:'create_cube',name})}
+              className="rounded-xl border border-white/20 px-4 py-2.5 text-sm disabled:opacity-35">Create cube</button>
+            <div className="grid grid-cols-3 gap-3">
+              {['X','Y','Z'].map((axis,index) =>
+                <label key={axis} className="text-xs text-white/60">{axis}
+                  <input type="number" value={location[index]} step="0.1"
+                    onChange={(event) => setLocation(previous => previous.map((item,i) => i === index ? event.target.value : item))}
+                    className="mt-2 block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white"/>
+                </label>)}
+            </div>
+            <button type="button" disabled={!connected || busy || !validName || !validCoords}
+              onClick={() => execute({action:'move_object',name,location:coords})}
+              className="rounded-xl border border-white/20 px-4 py-2.5 text-sm disabled:opacity-35">Move object</button>
+          </div>
+        </details>
+
+        {connected && <p role="status" aria-live="polite" className="rounded-xl border border-white/10 px-4 py-3 text-xs text-white/65">{message}</p>}
       </div>
     </div>
   );
