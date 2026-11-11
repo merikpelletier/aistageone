@@ -230,14 +230,14 @@ export default function BlenderBridgeWorkspace() {
       const response = await bridgeRequest('/v1/command', token, { action: 'inspect_character_meshes' });
       const items = response?.result?.objects || [];
       setCharacters(items);
-      const selected = items.find((item) => item.name === workingCharacter) || items.find((item) => item.name.includes('body_female_realistic')) || items[0];
+      const selected = items.find((item) => item.name === response.result.active_mesh) || items.find((item) => item.name === workingCharacter) || null;
       setWorkingCharacter(selected?.name || '');
       setMorphValues({});
       setQueuedMorph(null);
       setMorphNotice('');
       setNativeTools(null);
       setNativeLattice(false);
-      setMessage(`Found ${response.result.total_meshes} mesh object(s); showing ${items.length}.`);
+      setMessage(selected ? `Active Blender mesh: ${selected.name} (${selected.vertices.toLocaleString()} vertices).` : `Found ${items.length} meshes. Select the actual character body mesh in the list.`);
     } catch (error) {
       setMessage(error?.message || 'Mesh inspection failed.');
     } finally {
@@ -417,20 +417,21 @@ export default function BlenderBridgeWorkspace() {
               {characters.length > 0 && <span className="text-xs text-white/50">{characters.length} mesh object(s) found</span>}
             </div>
             {characters.length > 0 && (
-              <label className="block space-y-2 text-xs text-white/60">Blender character
+              <label className="block space-y-2 text-xs text-white/60">Blender character (select the actual body mesh)
                 <select value={workingCharacter} onChange={(event) => {
                     setWorkingCharacter(event.target.value); setMorphValues({}); setQueuedMorph(null); setMorphNotice(''); setNativeTools(null);
                     setNativeGroup(''); setNativeLattice(false); setPlan([]);
                   }}
                   className="block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white">
+                  <option value="">Select the body mesh</option>
                   {characters.map(item => <option key={item.name} value={item.name}>
-                    {item.name} · {item.vertices.toLocaleString()} vertices
+                    {item.name} · {item.vertices.toLocaleString()} vertices · {item.collections?.join(' / ') || 'Scene'}
                   </option>)}
                 </select>
               </label>
             )}
             {workingCharacter && <p className="text-xs text-teal-200/90">
-              Selected character: {workingCharacter}. Changes apply directly to this Blender object.
+              Selected mesh: {workingCharacter}. Changes apply to this object only, not the entire character collection.
             </p>}
           </div>
         </section>
