@@ -117,6 +117,8 @@ export default function BlenderBridgeWorkspace() {
   const [connected, setConnected] = useState(false);
   const [bridgeVersion, setBridgeVersion] = useState('');
   const [morphNotice, setMorphNotice] = useState('');
+  const [faceSetData, setFaceSetData] = useState(null);
+  const [faceSetBusy, setFaceSetBusy] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('Not connected');
   const [objectName, setObjectName] = useState('AISTAGE_Studio_Cube');
@@ -237,6 +239,7 @@ export default function BlenderBridgeWorkspace() {
       setMorphNotice('');
       setNativeTools(null);
       setNativeLattice(false);
+      setFaceSetData(null);
       setMessage(selected ? `Active Blender mesh: ${selected.name} (${selected.vertices.toLocaleString()} vertices).` : `Found ${items.length} meshes. Select the actual character body mesh in the list.`);
     } catch (error) {
       setMessage(error?.message || 'Mesh inspection failed.');
@@ -259,8 +262,46 @@ export default function BlenderBridgeWorkspace() {
     }
   };
 
+  const readFaceSets = async (objectName = workingCharacter) => {
+    if (!connected || !objectName || busy || faceSetBusy) return;
+    setFaceSetBusy('load');
+    try {
+      const response = await bridgeRequest('/v1/command', token, {
+        action: 'list_face_sets', name: objectName
+      });
+      setFaceSetData(response.result);
+      setMorphNotice(`${response.result.face_sets.length} actual Face Sets available on this mesh.`);
+    } catch (error) {
+      setFaceSetData(null);
+      setMorphNotice(error?.message || 'Unable to read Face Sets.');
+    } finally {
+      setFaceSetBusy('');
+    }
+  };
+
+  const assignFaceSet = async (part, id) => {
+    if (!connected || !workingCharacter || busy || faceSetBusy) return;
+    setFaceSetBusy(part);
+    try {
+      const response = await bridgeRequest('/v1/command', token, {
+        action: 'assign_face_set', name: workingCharacter,
+        part, face_set_id: Number(id)
+      });
+      setFaceSetData(previous => previous ? {...previous, mapping: response.result.mapping} : previous);
+      setMorphNotice(`Face Set ${id} assigned to ${part.replaceAll('_', ' ')}.`);
+    } catch (error) {
+      setMorphNotice(error?.message || 'Could not assign Face Set.');
+    } finally {
+      setFaceSetBusy('');
+    }
+  };
+
   const changeMorph = async (part, value) => {
-    if (!connected || !workingCharacter || busy || morphBusy || !MORPH_PARTS.has(part)) return;
+    if (!connected || !workingCharacter || busy || morphBusy || !!faceSetBusy || !MORPH_PARTS.has(part)) return;
+    if (!faceSetData || faceSetData.object !== workingCharacter || faceSetData.mapping?.[part] == null) {
+      setMorphNotice('Read the mesh Face Sets and assign one to this control before applying.');
+      return;
+    }
     if (!/^0\.(?:1[0-9]|[2-9][0-9])(?:\.|$)/.test(bridgeVersion)) {
       setMorphNotice(`Bridge ${bridgeVersion || 'unknown'} cannot execute morphology. Version 0.10+ is required; update the Bridge and restart Blender.`);
       return;
@@ -420,7 +461,7 @@ export default function BlenderBridgeWorkspace() {
               <label className="block space-y-2 text-xs text-white/60">Blender character (select the actual body mesh)
                 <select value={workingCharacter} onChange={(event) => {
                     setWorkingCharacter(event.target.value); setMorphValues({}); setQueuedMorph(null); setMorphNotice(''); setNativeTools(null);
-                    setNativeGroup(''); setNativeLattice(false); setPlan([]);
+                    setNativeGroup(''); setNativeLattice(false); setFaceSetData(null); setPlan([]);
                   }}
                   className="block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white">
                   <option value="">Select the body mesh</option>
@@ -453,7 +494,14 @@ export default function BlenderBridgeWorkspace() {
             <div role="status" aria-live="polite" className={`rounded-lg border px-4 py-3 text-sm ${morphNotice.includes('did not') || morphNotice.includes('cannot') || morphNotice.includes('require') ? 'border-amber-400/40 bg-amber-400/10 text-amber-100' : 'border-white/15 text-white/75'}`}>
               {morphNotice || `Bridge ${bridgeVersion || 'not connected'} · Move a slider to send the change to Blender, or use Apply.`}
             </div>
-            {!workingCharacter && <p className="text-sm text-white/50">Select a character in Blender above to enable morphing.</p>}
+            {!workingCharacter && <p className="text-sm text-white/50">Select a character mesh above to enable morphing.</p>}
+            {workingCharacter && <div className="flex flex-wrap items-center gap-3">
+              <button type="button" onClick={() => readFaceSets()} disabled={!connected || busy || !!faceSetBusy}
+                className="rounded-lg border border-white/20 px-3 py-2 text-xs disabled:opacity-40">Read mesh Face Sets</button>
+              {faceSetData?.object === workingCharacter && <span className="text-xs text-white/55">
+                {faceSetData.face_sets.length} Face Sets found · assign the correct region IDs
+              </span>}
+            </div>}
             {MORPH_SECTIONS.map(section => (
               <div key={section.title} className="space-y-4">
                 <h3 className="text-sm font-semibold text-white/80">{section.title}</h3>
@@ -466,10 +514,22 @@ export default function BlenderBridgeWorkspace() {
                           {Math.round((morphValues[part] ?? 0) * 100)}%
                         </span>
                       </div>
+                      {faceSetData?.object === workingCharacter && (
+                        <select aria-label={`Face Set for ${label}`}
+                          value={faceSetData.mapping?.[part] ?? ''}
+                          onChange={(event) => { if (event.target.value !== '') assignFaceSet(part, event.target.value); }}
+                          disabled={!!faceSetBusy || busy || !!morphBusy}
+                          className="w-full rounded-lg border border-white/15 bg-[#171a1e] px-2 py-1.5 text-xs text-white">
+                          <option value="">No Face Set assigned</option>
+                          {faceSetData.face_sets.map(faceSet => <option key={faceSet.id} value={faceSet.id}>
+                            Face Set {faceSet.id} · {faceSet.faces} faces
+                          </option>)}
+                        </select>
+                      )}
                       <div className="flex items-center gap-3">
                         <input id={`morph-${part}`} type="range" min="-1" max="1" step="0.05"
                           value={morphValues[part] ?? 0}
-                          disabled={!connected || !workingCharacter || busy || !!morphBusy}
+                          disabled={!connected || !workingCharacter || busy || !!morphBusy || !!faceSetBusy || faceSetData?.mapping?.[part] == null}
                           onChange={(event) => {
                             const value = Number(event.target.value);
                             setMorphValues(previous => ({...previous, [part]: value}));
@@ -477,7 +537,7 @@ export default function BlenderBridgeWorkspace() {
                           }}
                           className="h-1.5 min-w-0 flex-1 accent-teal-300"/>
                         <button type="button" aria-label={`Apply ${label}`}
-                          disabled={!connected || !workingCharacter || busy || !!morphBusy}
+                          disabled={!connected || !workingCharacter || busy || !!morphBusy || !!faceSetBusy || faceSetData?.mapping?.[part] == null}
                           onClick={() => changeMorph(part, morphValues[part] ?? 0)}
                           className="rounded-lg border border-white/15 px-2 py-1 text-xs text-white/60 hover:text-white disabled:opacity-35">Apply</button>
                       </div>
@@ -486,7 +546,7 @@ export default function BlenderBridgeWorkspace() {
                 </div>
               </div>
             ))}
-            <p className="text-xs text-white/45">Morphology is generated for upright human meshes. Face and limb results depend on the character topology; inspect the Blender viewport before saving.</p>
+            <p className="text-xs text-white/45">Face Set IDs come from the actual selected mesh. Assign anatomical regions explicitly; unmapped controls remain disabled. No coordinate-based region guessing.</p>
           </div>
         </section>
 
