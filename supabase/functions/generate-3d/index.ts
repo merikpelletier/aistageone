@@ -86,7 +86,7 @@ Deno.serve(async(req)=>{
   }
   try {
    let endpoint=`${API}/predictions`;
-   let payload:Record<string,unknown>={input};
+   let requestPayload:Record<string,unknown>={input};
    if(modelKey==='hyper3d/rodin') {
     // Official Replicate models use their model-specific predictions endpoint.
     endpoint=`${API}/models/hyper3d/rodin/predictions`;
@@ -96,9 +96,9 @@ Deno.serve(async(req)=>{
     if(!modelInfoResponse.ok)throw new Error(modelInfo.detail||'Unable to inspect selected 3D model');
     const version=modelInfo.latest_version?.id;
     if(!version)throw new Error('The selected model has no runnable version');
-    payload={version,input};
+    requestPayload={version,input};
    }
-   const response=await fetch(endpoint,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+   const response=await fetch(endpoint,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(requestPayload)});
    const prediction=await response.json();
    if(!response.ok||!prediction.id)throw new Error(prediction.detail||prediction.error||`Replicate HTTP ${response.status}`);
    const payload=btoa(JSON.stringify({id:prediction.id,u:user.id,t:Date.now(),charge}));
