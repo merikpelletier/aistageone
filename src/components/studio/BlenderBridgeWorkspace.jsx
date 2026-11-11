@@ -43,8 +43,8 @@ function safePlan(raw, context) {
     if (!item || typeof item.action !== 'string' || ![...SCENE_ACTIONS, ...CHARACTER_ACTIONS].includes(item.action))
       throw new Error('AI requested an unsupported operation. No changes made.');
     if (CHARACTER_ACTIONS.has(item.action)) {
-      if (!context?.working_copy || !context?.object || item.name !== context.object)
-        throw new Error('Character operation requires the selected protected working copy.');
+      if (!context?.object || item.name !== context.object)
+        throw new Error('Character operation requires the selected Blender mesh.');
       if (item.action === 'set_native_shape_key') {
         if (!shapes.has(item.shape_key) || typeof item.value !== 'number' || !Number.isFinite(item.value) || item.value < 0 || item.value > 1)
           throw new Error('AI selected a Shape Key not present in Blender.');
@@ -141,16 +141,16 @@ export default function BlenderBridgeWorkspace() {
           action: 'inspect_native_tools', name: workingCharacter,
         });
         context = inspection.result;
-        if (!context?.working_copy) throw new Error('The selected character is not a protected working copy.');
+        if (!context?.object) throw new Error('Blender did not return the selected character.');
       }
       const nativeSummary = context
         ? JSON.stringify({ working_copy: context.working_copy, object: context.object,
             vertex_groups: context.vertex_groups, shape_keys: context.shape_keys,
             modifiers: context.modifiers }).slice(0, 6500)
-        : 'No working character selected: only basic scene commands may be used.';
+        : 'No character selected: only basic scene commands may be used.';
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: `USER DIRECTION: ${direction.trim().slice(0, 1500)}\\nACTUAL BLENDER CHARACTER CAPABILITIES: ${nativeSummary}`,
-        instructions: `You direct the live Blender scene through its existing native bpy functions. Output JSON { "commands": [...] } only, maximum 5 commands. For a working character use ONLY supported operations: set_native_shape_key (name, shape_key, value 0..1) on an existing non-Basis key; create_native_lattice (name, vertex_group) only using an EXISTING anatomically relevant vertex group and if no AISTAGE lattice exists; set_native_lattice_width (name, waist_width 0.75..1.25) only with an existing lattice or after creating it in the same plan. Match group and shape key names EXACTLY from the actual scene inspection; never invent anatomy, groups, shape keys, or claim arbitrary deformation is possible. Never target unprotected meshes. For non-character scene edits support create_cube, create_sphere, create_cylinder, create_plane (action, name); move_object (action, name, location [x,y,z]); rotate_object (action, name, rotation [x,y,z] degrees); scale_object (action, name, scale [x,y,z] positive absolute values). For requests not achievable through these available native tools, return {"commands":[]}. No Python scripts. Do not reinterpret unsupported character edits as scene transforms.`,
+        instructions: `You direct the live Blender scene through its existing native bpy functions. Output JSON { "commands": [...] } only, maximum 5 commands. For a selected character use ONLY supported operations: set_native_shape_key (name, shape_key, value 0..1) on an existing non-Basis key; create_native_lattice (name, vertex_group) only using an EXISTING anatomically relevant vertex group and if no AISTAGE lattice exists; set_native_lattice_width (name, waist_width 0.75..1.25) only with an existing lattice or after creating it in the same plan. Match group and shape key names EXACTLY from the actual scene inspection; never invent anatomy, groups, shape keys, or claim arbitrary deformation is possible. Target only the character selected by the user. For non-character scene edits support create_cube, create_sphere, create_cylinder, create_plane (action, name); move_object (action, name, location [x,y,z]); rotate_object (action, name, rotation [x,y,z] degrees); scale_object (action, name, scale [x,y,z] positive absolute values). For requests not achievable through these available native tools, return {"commands":[]}. No Python scripts. Do not reinterpret unsupported character edits as scene transforms.`,
         response_json_schema: { type: 'object', properties: { commands: { type: 'array', items: { type: 'object', properties: {
           action: { type: 'string' }, name: { type: 'string' },
           shape_key: { type: 'string' }, vertex_group: { type: 'string' },
@@ -197,8 +197,11 @@ export default function BlenderBridgeWorkspace() {
       const response = await bridgeRequest('/v1/command', token, { action: 'inspect_character_meshes' });
       const items = response?.result?.objects || [];
       setCharacters(items);
-      const selected = items.find((item) => item.name === characterSource) || items.find((item) => item.name.includes('body_female_realistic')) || items.find((item) => !item.working_copy) || items[0];
+      const selected = items.find((item) => item.name === workingCharacter) || items.find((item) => item.name === characterSource) || items.find((item) => item.name.includes('body_female_realistic')) || items[0];
       setCharacterSource(selected?.name || '');
+      setWorkingCharacter(selected?.name || '');
+      setNativeTools(null);
+      setNativeLattice(false);
       setMessage(`Found ${response.result.total_meshes} mesh object(s); showing ${items.length}.`);
     } catch (error) {
       setMessage(error?.message || 'Mesh inspection failed.');
@@ -317,7 +320,7 @@ export default function BlenderBridgeWorkspace() {
         <section className="rounded-2xl border border-white/10 bg-[#22262b] overflow-hidden">
           <div className="border-b border-white/10 px-5 py-5 md:px-7">
             <div className="flex items-center gap-2"><Box size={18} className="text-teal-300"/><h2 className="text-base font-semibold">Character</h2></div>
-            <p className="mt-1 text-xs text-white/50">Choose a Blender mesh and work on a protected copy.</p>
+            <p className="mt-1 text-xs text-white/50">Select a mesh from your Blender scene and edit it directly.</p>
           </div>
           <div className="p-5 md:p-7 space-y-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -328,32 +331,21 @@ export default function BlenderBridgeWorkspace() {
               {characters.length > 0 && <span className="text-xs text-white/50">{characters.length} mesh object(s) found</span>}
             </div>
             {characters.length > 0 && (
-              <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-                <label className="space-y-2 text-xs text-white/60">Source character
-                  <select value={characterSource} onChange={(event) => setCharacterSource(event.target.value)}
-                    className="block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white">
-                    {characters.filter(item => !item.working_copy).map(item =>
-                      <option key={item.name} value={item.name}>{item.name} · {item.vertices.toLocaleString()} vertices</option>)}
-                  </select>
-                </label>
-                <button type="button" disabled={!connected || busy || !characterSource} onClick={createCharacterCopy}
-                  className="rounded-xl bg-teal-300 px-4 py-3 text-sm font-semibold text-[#101819] hover:bg-teal-200 disabled:opacity-35">
-                  Create working copy
-                </button>
-              </div>
-            )}
-            {characters.some(item => item.working_copy) && (
-              <label className="block space-y-2 text-xs text-white/60">Working character
+              <label className="block space-y-2 text-xs text-white/60">Blender character
                 <select value={workingCharacter} onChange={(event) => {
-                  setWorkingCharacter(event.target.value); setNativeTools(null); setNativeGroup(''); setNativeLattice(false);
-                }} className="block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white">
-                  <option value="">Select a working copy</option>
-                  {characters.filter(item => item.working_copy).map(item =>
-                    <option key={item.name} value={item.name}>{item.name}</option>)}
+                    setWorkingCharacter(event.target.value); setNativeTools(null);
+                    setNativeGroup(''); setNativeLattice(false); setPlan([]);
+                  }}
+                  className="block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white">
+                  {characters.map(item => <option key={item.name} value={item.name}>
+                    {item.name} · {item.vertices.toLocaleString()} vertices
+                  </option>)}
                 </select>
               </label>
             )}
-            {workingCharacter && <p className="text-xs text-teal-200/90">Editing copy: {workingCharacter}. The original is preserved.</p>}
+            {workingCharacter && <p className="text-xs text-teal-200/90">
+              Selected character: {workingCharacter}. Changes apply directly to this Blender object.
+            </p>}
           </div>
         </section>
 
@@ -401,7 +393,7 @@ export default function BlenderBridgeWorkspace() {
           <div className="border-t border-white/10 p-5 md:p-7 space-y-4">
             <p className="text-xs text-white/55">These controls use Blender's existing tools. For anatomical edits, the correct region must already be defined as a Vertex Group. No automatic body-part selection is available yet.</p>
             {!workingCharacter ? (
-              <p className="text-sm text-white/60">Choose a working character above to access native modeling controls.</p>
+              <p className="text-sm text-white/60">Choose a character above to access native modeling controls.</p>
             ) : (
               <>
                 <button type="button" disabled={!connected || busy} onClick={() => inspectNative()}
