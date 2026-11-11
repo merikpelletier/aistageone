@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Box, Plug, Send, ShieldCheck } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { Box, Plug, Send, ShieldCheck, Sparkles } from 'lucide-react';
 
 const BRIDGE_URL = 'http://127.0.0.1:18765';
 
@@ -27,8 +28,34 @@ async function bridgeRequest(path, token, payload) {
   }
 }
 
+
+const ALLOWED = new Set(['create_cube','create_sphere','create_cylinder','create_plane','move_object','rotate_object','scale_object']);
+const VECTOR = { move_object: 'location', rotate_object: 'rotation', scale_object: 'scale' };
+function safePlan(raw) {
+  const parsed = typeof raw === 'string' ? JSON.parse(raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')) : raw;
+  if (!Array.isArray(parsed?.commands) || parsed.commands.length < 1 || parsed.commands.length > 5)
+    throw new Error('AI returned no supported operations (limit: 5).');
+  return parsed.commands.map((item) => {
+    if (!item || !ALLOWED.has(item.action) || typeof item.name !== 'string' || !item.name.trim() || item.name.length > 80)
+      throw new Error('AI returned an unsupported action or object name.');
+    const command = { action: item.action, name: item.name.trim() };
+    const key = VECTOR[item.action];
+    if (key) {
+      if (!Array.isArray(item[key]) || item[key].length !== 3 || !item[key].every((n) =>
+        typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 10000 &&
+        (key !== 'scale' || (n >= 0.001 && n <= 1000))))
+        throw new Error('AI returned invalid transform values.');
+      command[key] = item[key];
+    }
+    return command;
+  });
+}
+
 export default function BlenderBridgeWorkspace() {
   const [token, setToken] = useState('');
+  const [direction, setDirection] = useState('');
+  const [plan, setPlan] = useState([]);
+  const [planning, setPlanning] = useState(false);
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('Not connected');
@@ -45,7 +72,7 @@ export default function BlenderBridgeWorkspace() {
       setMessage(`Connected to Blender ${result.blender}`);
     } catch (error) {
       setMessage(error.name === 'AbortError' ? 'Blender did not respond.' : error.message === 'Failed to fetch'
-        ? 'Cannot reach Blender. Start Bridge 0.3 in Blender; your browser may also require local-network permission.'
+        ? 'Cannot reach Blender. Start Bridge 0.4 in Blender; your browser may also require local-network permission.'
         : error.message);
     } finally {
       setBusy(false);
@@ -61,6 +88,46 @@ export default function BlenderBridgeWorkspace() {
     } catch (error) {
       if (error.message === 'Invalid token' || error.message === 'Failed to fetch') setConnected(false);
       setMessage(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+
+  const prepareAI = async () => {
+    if (!connected || busy || planning || !direction.trim()) return;
+    setPlanning(true);
+    setPlan([]);
+    setMessage('Preparing AI plan…');
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: direction.trim().slice(0, 1500),
+        instructions: 'Translate the user request (French or English) into a safe Blender command plan. Respond only with JSON of shape {"commands":[{"action":"create_cube","name":"Cube"}]}. Allowed actions: create_cube, create_sphere, create_cylinder, create_plane, move_object, rotate_object, scale_object. Each needs action and name. move_object needs location [x,y,z]; rotate_object needs rotation [x,y,z] in DEGREES; scale_object needs scale [x,y,z] with ABSOLUTE positive values. Maximum 5 ordered commands. Never invent a complex geometry operation, materials, lights, animation or Python scripts. If unsupported, return {"commands":[]}.',
+        response_json_schema: { type: 'object', properties: { commands: { type: 'array', items: { type: 'object', properties: { action: { type: 'string' }, name: { type: 'string' }, location: { type: 'array', items: { type: 'number' } }, rotation: { type: 'array', items: { type: 'number' } }, scale: { type: 'array', items: { type: 'number' } } }, required: ['action', 'name'] } } }, required: ['commands'] },
+      });
+      setPlan(safePlan(result));
+      setMessage('Review the AI plan before execution.');
+    } catch (error) {
+      setMessage(error?.message || 'AI planning failed.');
+    } finally {
+      setPlanning(false);
+    }
+  };
+
+  const runAIPlan = async () => {
+    if (!connected || busy || planning || !plan.length) return;
+    setBusy(true);
+    const commands = [...plan];
+    setPlan([]);
+    try {
+      for (let i = 0; i < commands.length; i++) {
+        setMessage(`Executing ${i + 1} / ${commands.length}…`);
+        await bridgeRequest('/v1/command', token, commands[i]);
+      }
+      setMessage(`Completed ${commands.length} operation(s) in Blender.`);
+    } catch (error) {
+      if (error.message === 'Invalid token' || error.message === 'Failed to fetch') setConnected(false);
+      setMessage(`Stopped: ${error.message}. Prior operations may have completed.`);
     } finally {
       setBusy(false);
     }
@@ -83,7 +150,7 @@ export default function BlenderBridgeWorkspace() {
         </div>
         <div className="rounded-xl border border-white/15 bg-white/5 p-5 space-y-4">
           <h3 className="flex items-center gap-2 font-semibold"><Plug size={18} /> Connect Blender</h3>
-          <p className="text-sm text-white/70">In Blender 5.3, install Bridge 0.3, select Start Local Bridge, then Copy Test Token. Paste it here. Your token is held only in this browser tab.</p>
+          <p className="text-sm text-white/70">In Blender 5.3, install Bridge 0.4, select Start Local Bridge, then Copy Test Token. Paste it here. Your token is held only in this browser tab.</p>
           <label htmlFor="aistage-blender-token" className="block text-sm">Bridge token</label>
           <input id="aistage-blender-token" type="password" value={token}
             onChange={(event) => { setToken(event.target.value); setConnected(false); }}
@@ -96,6 +163,36 @@ export default function BlenderBridgeWorkspace() {
           <p role="status" aria-live="polite" className={connected ? 'text-sm text-emerald-300' : 'text-sm text-white/75'}>
             {message}
           </p>
+        </div>
+
+        <div className="rounded-xl border border-teal-400/30 bg-white/5 p-5 space-y-4">
+          <h3 className="flex items-center gap-2 font-semibold"><Sparkles size={18} /> AI Director 3D</h3>
+          <p className="text-sm text-white/70">Describe the scene change. AI planning uses AISTAGE credits. Nothing is sent to Blender until you review and approve.</p>
+          <textarea rows={3} maxLength={1500} value={direction}
+            onChange={(event) => { setDirection(event.target.value); setPlan([]); }}
+            placeholder="Create a sphere named Moon and move Moon to X 2, Y 0, Z 3."
+            className="w-full rounded-lg border border-white/20 bg-black/30 p-3 text-white" />
+          <button type="button" disabled={!connected || busy || planning || !direction.trim()} onClick={prepareAI}
+            className="rounded-lg bg-teal-400 px-4 py-2 font-semibold text-black disabled:opacity-40">
+            {planning ? 'Preparing…' : 'Prepare with AI (credits)'}
+          </button>
+          {plan.length > 0 && (
+            <div className="rounded-lg border border-white/15 bg-black/25 p-4 space-y-3">
+              <p className="text-sm font-semibold">Review before execution</p>
+              <ol className="list-decimal space-y-1 pl-5 text-sm text-white/85">
+                {plan.map((command, index) => <li key={index}>
+                  {command.action.replaceAll('_', ' ')} — {command.name}
+                  {VECTOR[command.action] ? ` [${command[VECTOR[command.action]].join(', ')}]` : ''}
+                </li>)}
+              </ol>
+              <div className="flex gap-3">
+                <button type="button" disabled={busy || planning || !connected} onClick={runAIPlan}
+                  className="rounded-lg bg-white px-4 py-2 font-semibold text-black disabled:opacity-40">Execute in Blender</button>
+                <button type="button" disabled={busy} onClick={() => setPlan([])}
+                  className="rounded-lg border border-white/20 px-4 py-2">Cancel</button>
+              </div>
+            </div>
+          )}
         </div>
         <div className="rounded-xl border border-white/15 bg-white/5 p-5 space-y-4">
           <h3 className="flex items-center gap-2 font-semibold"><ShieldCheck size={18} /> Scene commands</h3>
