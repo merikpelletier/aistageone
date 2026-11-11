@@ -1,7 +1,7 @@
 bl_info = {
     "name": "AISTAGE Blender Bridge",
     "author": "AISTAGE.ONE",
-    "version": (0, 10, 0),
+    "version": (0, 11, 0),
     "blender": (5, 3, 0),
     "location": "3D Viewport > Sidebar > AISTAGE",
     "description": "Connect AISTAGE.ONE Studio to Blender on this computer",
@@ -573,7 +573,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._respond(404, {'ok': False, 'error': 'Not found'})
         if not self._authorized():
             return self._respond(401, {'ok': False, 'error': 'Invalid token'})
-        return self._respond(200, {'ok': True, 'bridge': '0.10', 'blender': bpy.app.version_string})
+        return self._respond(200, {'ok': True, 'bridge': '0.11', 'blender': bpy.app.version_string})
 
     def _authorized(self):
         return bool(_token and secrets.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + _token))
@@ -668,7 +668,7 @@ class AISTAGE_PT_bridge(bpy.types.Panel):
     bl_category = 'AISTAGE'
     def draw(self, context):
         layout = self.layout
-        layout.label(text='Bridge 0.10 - AISTAGE.ONE Studio')
+        layout.label(text='Bridge 0.11 - AISTAGE.ONE Studio')
         layout.label(text='Open Blender Bridge in Studio')
         layout.operator('aistage.test_bridge', icon='MESH_CUBE')
         if _server:
