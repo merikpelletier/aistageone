@@ -273,7 +273,13 @@ export default function BlenderBridgeWorkspace() {
       });
       setMorphValues(previous => ({...previous, [part]: response.result.value}));
       setMessage(`${part.replaceAll('_', ' ')}: ${Math.round(value * 100)}%`);
-      setMorphNotice(`Blender confirmed: ${part.replaceAll('_', ' ')} = ${Math.round(response.result.value * 100)}%. Region: ${response.result.region_method || 'unknown'}.`);
+      if (response.result.applied === false) {
+        setMorphNotice(`No visible change: ${response.result.reason || 'neutral value (0%)'} . Move the slider away from 0% and press Apply.`);
+      } else {
+        const count = response.result.vertices_changed;
+        const offset = response.result.max_offset_mesh_units;
+        setMorphNotice(`Blender confirmed ${part.replaceAll('_', ' ')} at ${Math.round(response.result.value * 100)}% on ${response.result.object}. ${count == null ? '' : `${count} vertices modified. `} ${offset == null ? '' : `Maximum displacement: ${offset.toFixed(4)} Blender units.`}`);
+      }
     } catch (error) {
       setMorphNotice(`Blender did not apply this morph: ${error?.message || 'unknown error'}`);
       setMessage(error?.message || 'Morph failed.');
