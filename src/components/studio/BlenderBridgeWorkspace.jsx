@@ -29,15 +29,40 @@ async function bridgeRequest(path, token, payload) {
 }
 
 
-const ALLOWED = new Set(['create_cube','create_sphere','create_cylinder','create_plane','move_object','rotate_object','scale_object']);
+const SCENE_ACTIONS = new Set(['create_cube','create_sphere','create_cylinder','create_plane','move_object','rotate_object','scale_object']);
+const CHARACTER_ACTIONS = new Set(['set_native_shape_key','create_native_lattice','set_native_lattice_width']);
 const VECTOR = { move_object: 'location', rotate_object: 'rotation', scale_object: 'scale' };
-function safePlan(raw) {
-  const parsed = typeof raw === 'string' ? JSON.parse(raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')) : raw;
+function safePlan(raw, context) {
+  const parsed = typeof raw === 'string' ? JSON.parse(raw.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '')) : raw;
   if (!Array.isArray(parsed?.commands) || parsed.commands.length < 1 || parsed.commands.length > 5)
-    throw new Error('AI returned no supported operations (limit: 5).');
+    throw new Error('AI could not find a supported Blender operation. No changes made.');
+  const groups = new Set(context?.vertex_groups?.map((group) => group.name) || []);
+  const shapes = new Set(context?.shape_keys?.filter((key) => key.name !== 'Basis').map((key) => key.name) || []);
+  let hasLattice = !!context?.modifiers?.some((modifier) => modifier.type === 'LATTICE' && modifier.name.startsWith('AISTAGE_'));
   return parsed.commands.map((item) => {
-    if (!item || !ALLOWED.has(item.action) || typeof item.name !== 'string' || !item.name.trim() || item.name.length > 80)
-      throw new Error('AI returned an unsupported action or object name.');
+    if (!item || typeof item.action !== 'string' || ![...SCENE_ACTIONS, ...CHARACTER_ACTIONS].includes(item.action))
+      throw new Error('AI requested an unsupported operation. No changes made.');
+    if (CHARACTER_ACTIONS.has(item.action)) {
+      if (!context?.working_copy || !context?.object || item.name !== context.object)
+        throw new Error('Character operation requires the selected protected working copy.');
+      if (item.action === 'set_native_shape_key') {
+        if (!shapes.has(item.shape_key) || typeof item.value !== 'number' || !Number.isFinite(item.value) || item.value < 0 || item.value > 1)
+          throw new Error('AI selected a Shape Key not present in Blender.');
+        return { action: item.action, name: context.object, shape_key: item.shape_key, value: item.value };
+      }
+      if (item.action === 'create_native_lattice') {
+        if (!groups.has(item.vertex_group) || hasLattice)
+          throw new Error('No validated anatomical Vertex Group available for this new modifier.');
+        hasLattice = true;
+        return { action: item.action, name: context.object, vertex_group: item.vertex_group };
+      }
+      if (!hasLattice || typeof item.waist_width !== 'number' || !Number.isFinite(item.waist_width) ||
+          item.waist_width < 0.75 || item.waist_width > 1.25)
+        throw new Error('A native Lattice Modifier and valid width are required. No changes made.');
+      return { action: item.action, name: context.object, waist_width: item.waist_width };
+    }
+    if (typeof item.name !== 'string' || !item.name.trim() || item.name.length > 80)
+      throw new Error('AI returned an invalid Blender object name.');
     const command = { action: item.action, name: item.name.trim() };
     const key = VECTOR[item.action];
     if (key) {
@@ -108,17 +133,38 @@ export default function BlenderBridgeWorkspace() {
     if (!connected || busy || planning || !direction.trim()) return;
     setPlanning(true);
     setPlan([]);
-    setMessage('Preparing AI plan…');
+    setMessage('Inspecting native Blender operations…');
     try {
+      let context = null;
+      if (workingCharacter) {
+        const inspection = await bridgeRequest('/v1/command', token, {
+          action: 'inspect_native_tools', name: workingCharacter,
+        });
+        context = inspection.result;
+        if (!context?.working_copy) throw new Error('The selected character is not a protected working copy.');
+      }
+      const nativeSummary = context
+        ? JSON.stringify({ working_copy: context.working_copy, object: context.object,
+            vertex_groups: context.vertex_groups, shape_keys: context.shape_keys,
+            modifiers: context.modifiers }).slice(0, 6500)
+        : 'No working character selected: only basic scene commands may be used.';
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt: direction.trim().slice(0, 1500),
-        instructions: 'Translate the user request (French or English) into a safe Blender command plan. Respond only with JSON of shape {"commands":[{"action":"create_cube","name":"Cube"}]}. Allowed actions: create_cube, create_sphere, create_cylinder, create_plane, move_object, rotate_object, scale_object. Each needs action and name. move_object needs location [x,y,z]; rotate_object needs rotation [x,y,z] in DEGREES; scale_object needs scale [x,y,z] with ABSOLUTE positive values. Maximum 5 ordered commands. Never invent a complex geometry operation, materials, lights, animation or Python scripts. If unsupported, return {"commands":[]}.',
-        response_json_schema: { type: 'object', properties: { commands: { type: 'array', items: { type: 'object', properties: { action: { type: 'string' }, name: { type: 'string' }, location: { type: 'array', items: { type: 'number' } }, rotation: { type: 'array', items: { type: 'number' } }, scale: { type: 'array', items: { type: 'number' } } }, required: ['action', 'name'] } } }, required: ['commands'] },
+        prompt: `USER DIRECTION: ${direction.trim().slice(0, 1500)}\\nACTUAL BLENDER CHARACTER CAPABILITIES: ${nativeSummary}`,
+        instructions: `You direct the live Blender scene through its existing native bpy functions. Output JSON { "commands": [...] } only, maximum 5 commands. For a working character use ONLY supported operations: set_native_shape_key (name, shape_key, value 0..1) on an existing non-Basis key; create_native_lattice (name, vertex_group) only using an EXISTING anatomically relevant vertex group and if no AISTAGE lattice exists; set_native_lattice_width (name, waist_width 0.75..1.25) only with an existing lattice or after creating it in the same plan. Match group and shape key names EXACTLY from the actual scene inspection; never invent anatomy, groups, shape keys, or claim arbitrary deformation is possible. Never target unprotected meshes. For non-character scene edits support create_cube, create_sphere, create_cylinder, create_plane (action, name); move_object (action, name, location [x,y,z]); rotate_object (action, name, rotation [x,y,z] degrees); scale_object (action, name, scale [x,y,z] positive absolute values). For requests not achievable through these available native tools, return {"commands":[]}. No Python scripts. Do not reinterpret unsupported character edits as scene transforms.`,
+        response_json_schema: { type: 'object', properties: { commands: { type: 'array', items: { type: 'object', properties: {
+          action: { type: 'string' }, name: { type: 'string' },
+          shape_key: { type: 'string' }, vertex_group: { type: 'string' },
+          value: { type: 'number' }, waist_width: { type: 'number' },
+          location: { type: 'array', items: { type: 'number' } },
+          rotation: { type: 'array', items: { type: 'number' } },
+          scale: { type: 'array', items: { type: 'number' } },
+        }, required: ['action', 'name'] } } }, required: ['commands'] },
       });
-      setPlan(safePlan(result));
-      setMessage('Review the AI plan before execution.');
+      const approved = safePlan(result, context);
+      setPlan(approved);
+      setMessage('Blender operations ready to review.');
     } catch (error) {
-      setMessage(error?.message || 'AI planning failed.');
+      setMessage(error?.message || 'AI planning failed. No changes made.');
     } finally {
       setPlanning(false);
     }
@@ -314,7 +360,7 @@ export default function BlenderBridgeWorkspace() {
         <section className="rounded-2xl border border-white/10 bg-[#22262b] overflow-hidden">
           <div className="border-b border-white/10 p-5 md:p-7">
             <div className="flex items-center gap-2"><Sparkles size={19} className="text-teal-300"/><h2 className="text-lg font-semibold">AI Director</h2></div>
-            <p className="mt-2 text-sm text-white/60">Describe what you want to create. Review the supported Blender operations before running them.</p>
+            <p className="mt-2 text-sm text-white/60">Describe what you want to create. AI reads the actual native Blender tools available for your character before preparing changes.</p>
           </div>
           <div className="space-y-4 p-5 md:p-7">
             <textarea rows={4} maxLength={1500} value={direction}
@@ -322,7 +368,7 @@ export default function BlenderBridgeWorkspace() {
               placeholder="Describe your scene or the change you want to make…"
               className="block w-full resize-y rounded-xl border border-white/15 bg-[#171a1e] px-4 py-4 text-sm leading-relaxed outline-none focus:border-teal-300/60"/>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="max-w-sm text-xs text-white/45">AI currently handles basic scene objects and transforms. Character anatomy is not yet automated.</p>
+              <p className="max-w-sm text-xs text-white/45">AI uses the actual Shape Keys and Vertex Groups in your Blender character. If anatomy is not defined, it will not invent it.</p>
               <button type="button" disabled={!connected || busy || planning || !direction.trim()}
                 onClick={prepareAI} className="flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#15191d] hover:bg-white/90 disabled:opacity-35">
                 <Sparkles size={16}/>{planning ? 'Preparing…' : 'Prepare with AI'}
