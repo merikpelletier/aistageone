@@ -48,7 +48,7 @@ Deno.serve(async(req)=>{
   if(body.action!=='start')return reply({error:'Invalid action'},400);
   const mode=String(body.mode||''),modelKey=String(body.model_key||''),prompt=String(body.prompt||'').trim().slice(0,1024);
   if(!['text','image','multi'].includes(mode))return reply({error:'Invalid mode'},400);
-  const {data:models,error:modelsError}=await svc.rpc('studio_enabled_3d_models');
+  const {data:models,error:modelsError}=await scoped.rpc('studio_enabled_3d_models');
   if(modelsError)return reply({error:'Cannot load configured models'},503);
   const model=(models||[]).find((m:any)=>m.model_key===modelKey&&m.capabilities?.inputs?.includes(mode==='multi'?'multi_image':mode));
   if(!model)return reply({error:'Model not enabled for this input mode in Admin'},400);
