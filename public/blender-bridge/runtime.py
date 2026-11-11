@@ -344,6 +344,11 @@ def _set_body_morph(action):
         raise ValueError('Morphology controls require a human mesh (at least 500 vertices)')
     if mesh.shape_keys and mesh.shape_keys.use_relative is False:
         raise ValueError('Absolute Shape Keys are not supported by morphology controls')
+    key_name = 'AISTAGE_Morph_' + part
+    existing_key = mesh.shape_keys.key_blocks.get(key_name) if mesh.shape_keys else None
+    if value == 0 and existing_key is None:
+        return {'object': obj.name, 'part': part, 'value': 0.0,
+                'applied': False, 'reason': 'Neutral value: no shape key exists to reset'}
     basis = mesh.shape_keys.key_blocks.get('Basis') if mesh.shape_keys else None
     coords = [tuple(v.co) for v in (basis.data if basis else mesh.vertices)]
     min_x, max_x = min(v[0] for v in coords), max(v[0] for v in coords)
@@ -370,7 +375,6 @@ def _set_body_morph(action):
     # Prefer artist-defined regions if present; no manual setup required for common
     # unrigged upright base meshes, but heuristic masks are topology dependent.
     group_weights = _morph_group_weights(obj, region)
-    key_name = 'AISTAGE_Morph_' + part
     if not mesh.shape_keys:
         obj.shape_key_add(name='Basis', from_mix=False)
     key = mesh.shape_keys.key_blocks.get(key_name)
@@ -380,6 +384,7 @@ def _set_body_morph(action):
         key.slider_max = 1.0
         key.value = 0.0
         count = 0
+        max_shift = 0.0
         base = mesh.shape_keys.key_blocks[0]
         for i, point in enumerate(key.data):
             px, py, pz = base.data[i].co
@@ -414,13 +419,19 @@ def _set_body_morph(action):
                 dx = math.copysign(.025 * height * w, x)
                 dy = dz = 0
             point.co = (px + dx, py + dy, pz + dz)
+            max_shift = max(max_shift, math.sqrt(dx * dx + dy * dy + dz * dz))
         if count < 12:
             obj.shape_key_remove(key)
             raise ValueError('No suitable vertices found for ' + part + '; nothing changed')
+    key.mute = False
     key.value = float(value)
-    return {'object': obj.name, 'part': part, 'value': key.value,
+    mesh.update()
+    bpy.context.view_layer.update()
+    return {'object': obj.name, 'part': part, 'value': key.value, 'applied': True,
             'shape_key': key_name, 'method': 'Blender Shape Key',
-            'region_method': 'vertex_group' if group_weights else 'base_mesh_estimate'}
+            'region_method': 'vertex_group' if group_weights else 'base_mesh_estimate',
+            'vertices_changed': count if 'count' in locals() else None,
+            'max_offset_mesh_units': max_shift * abs(value) if 'max_shift' in locals() else None}
 
 def _reset_body_morphs(action):
     obj = _editable_character(action)
