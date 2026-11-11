@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Users, ShoppingBag, FolderOpen, Layers, Sparkles, Upload, Image as ImageIcon, Type, Grid3X3, SlidersHorizontal, ChevronDown, ChevronLeft, ChevronRight, Search, Tag, Download, ShoppingCart, X, Images } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
 
@@ -167,6 +167,94 @@ function LibraryCatalog({ title, description, icon: Icon, assetTypes }) {
   );
 }
 
+function ThreeDModelPreview({ url }) {
+  const canvasRef = useRef(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    const element = canvasRef.current;
+    if (!element || !url) return undefined;
+    let disposed = false;
+    let renderer;
+    let frame;
+    let controls;
+    let resize;
+    let scene;
+    (async () => {
+      try {
+        const THREE = await import('three');
+        const [{ GLTFLoader }, { OrbitControls }] = await Promise.all([
+          import('three/examples/jsm/loaders/GLTFLoader.js'),
+          import('three/examples/jsm/controls/OrbitControls.js'),
+        ]);
+        if (disposed) return;
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color('#1d2126');
+        const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 1000);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        element.appendChild(renderer.domElement);
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        scene.add(new THREE.HemisphereLight('#ffffff', '#666666', 2.5));
+        const key = new THREE.DirectionalLight('#ffffff', 3);
+        key.position.set(3, 5, 4);
+        scene.add(key);
+        new GLTFLoader().load(url, (gltf) => {
+          if (disposed) return;
+          scene.add(gltf.scene);
+          const bounds = new THREE.Box3().setFromObject(gltf.scene);
+          if (bounds.isEmpty()) { setError('The model has no renderable geometry.'); return; }
+          const size = bounds.getSize(new THREE.Vector3());
+          const center = bounds.getCenter(new THREE.Vector3());
+          const max = Math.max(size.x, size.y, size.z, 0.1);
+          controls.target.copy(center);
+          camera.position.copy(center.clone().add(new THREE.Vector3(max * 1.5, max * 1.1, max * 2.2)));
+          camera.near = max / 1000;
+          camera.far = max * 1000;
+          camera.updateProjectionMatrix();
+          controls.update();
+        }, undefined, (loadError) => {
+          if (!disposed) setError(loadError?.message || 'Unable to load the GLB preview. Download the file instead.');
+        });
+        resize = () => {
+          if (!renderer || !element) return;
+          const width = element.clientWidth || 640, height = element.clientHeight || 480;
+          renderer.setSize(width, height);
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+        };
+        resize();
+        window.addEventListener('resize', resize);
+        const draw = () => {
+          if (disposed) return;
+          controls.update();
+          renderer.render(scene, camera);
+          frame = requestAnimationFrame(draw);
+        };
+        draw();
+      } catch (failure) {
+        if (!disposed) setError(failure?.message || '3D viewer could not start.');
+      }
+    })();
+    return () => {
+      disposed = true;
+      if (frame) cancelAnimationFrame(frame);
+      if (resize) window.removeEventListener('resize', resize);
+      controls?.dispose();
+      if (scene) scene.traverse((item) => {
+        item.geometry?.dispose?.();
+        if (item.material) (Array.isArray(item.material) ? item.material : [item.material]).forEach((material) => material.dispose?.());
+      });
+      renderer?.dispose();
+      renderer?.domElement?.remove();
+    };
+  }, [url]);
+  return <div className="relative h-full min-h-[420px] w-full">
+    <div ref={canvasRef} className="absolute inset-0" />
+    {error && <p role="alert" className="absolute bottom-3 left-3 right-3 rounded bg-black/80 p-3 text-xs text-red-200">{error}</p>}
+  </div>;
+}
+
 function Generate3D() {
   const [generationType, setGenerationType] = useState('text');
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -174,6 +262,12 @@ function Generate3D() {
   const [selectedModel, setSelectedModel] = useState('');
   const [loadingModels, setLoadingModels] = useState(true);
   const [modelError, setModelError] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [images, setImages] = useState([null, null, null, null]);
+  const [progress, setProgress] = useState('');
+  const [generationError, setGenerationError] = useState('');
+  const [glbUrl, setGlbUrl] = useState('');
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -214,6 +308,76 @@ function Generate3D() {
     }
   }, [generationType, enabledForMode, selectedModel]);
 
+  const addImage = (index, file) => {
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 3_750_000) {
+      setGenerationError('Use PNG, JPG or WebP images smaller than 3.75 MB.');
+      return;
+    }
+    setGenerationError('');
+    const reader = new FileReader();
+    reader.onload = () => setImages((old) => old.map((item, position) => position === index ? reader.result : item));
+    reader.onerror = () => setGenerationError('Unable to read reference image.');
+    reader.readAsDataURL(file);
+  };
+
+  const generate = async () => {
+    if (!selected || generating) return;
+    setGenerating(true);
+    setGenerationError('');
+    setGlbUrl('');
+    setProgress('Submitting generation…');
+    try {
+      const { data: started, error: startError } = await supabase.functions.invoke('generate-3d', {
+        body: {
+          action: 'start',
+          mode: generationType,
+          model_key: selectedModel,
+          prompt,
+          images: generationType === 'multi' ? images : generationType === 'image' ? [images[0]] : [],
+        },
+      });
+      if (startError || started?.error || !started?.job) {
+        throw new Error(started?.error || startError?.message || '3D generation failed to start.');
+      }
+      for (let attempt = 0; attempt < 180; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 4000));
+        const { data: result, error } = await supabase.functions.invoke('generate-3d', {
+          body: { action: 'status', job: started.job },
+        });
+        if (error || result?.error) throw new Error(result?.error || error?.message);
+        setProgress(result?.status === 'starting' ? 'Waiting for the 3D model…' : 'Generating 3D model…');
+        if (result?.status === 'succeeded') {
+          if (!result.glb_url) throw new Error('The provider completed without a GLB file. No preview is available.');
+          setGlbUrl(result.glb_url);
+          setProgress('3D model generated');
+          return;
+        }
+        if (['failed', 'canceled'].includes(result?.status)) throw new Error('Generation ' + result.status);
+      }
+      throw new Error('Generation is still running. Please retry later.');
+    } catch (error) {
+      setGenerationError(error?.message || 'Generation failed.');
+      setProgress('');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const ready = !!selected && !generating && (
+    generationType === 'text' ? !!prompt.trim() : !!images[0]
+  );
+
+  const imageBox = (label, index) => <div key={label} className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[3px] border border-dashed border-white/15 bg-black/20 text-center">
+    {images[index] && <img src={images[index]} alt={label + ' reference'} className="absolute inset-0 h-full w-full object-contain" />}
+    <label className={`relative z-10 flex h-full w-full cursor-pointer flex-col items-center justify-center ${images[index] ? 'bg-black/35 text-white' : ''}`}>
+      <Upload size={18} className="mb-1 text-[#23c7be]" />
+      <span className="text-xs font-bold">{images[index] ? label + ' · Change' : label}</span>
+      <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => { addImage(index, event.target.files?.[0]); event.target.value = ''; }} />
+    </label>
+    {images[index] && <button type="button" aria-label={'Remove ' + label} onClick={() => setImages((old) => old.map((item, position) => position === index ? null : item))} className="absolute right-1 top-1 z-20 rounded bg-black/85 p-1 text-white"><X size={14} /></button>}
+  </div>;
+
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-[#202328] pb-24 text-white">
       <div className="mx-auto flex max-w-[1600px] flex-col p-3 md:p-4 lg:p-5">
@@ -248,23 +412,28 @@ function Generate3D() {
 
           <section className="flex min-w-0 flex-col bg-[#202328] p-3 md:p-4">
             <div className="relative flex min-h-[420px] items-center justify-center overflow-hidden rounded-[4px] border border-white/10 bg-[#1d2126] md:min-h-[520px]">
-              <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
-              <div className="relative px-8 text-center"><div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Box size={40} strokeWidth={1.4} /></div><p className="text-lg font-black text-white">3D Preview Workspace</p><p className="mx-auto mt-2 max-w-md text-sm text-white/40">Generated GLB models will appear here with orbit, zoom and inspection controls.</p></div>
+              {glbUrl ? <ThreeDModelPreview url={glbUrl} /> : <>
+                <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+                <div className="relative px-8 text-center"><div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Box size={40} strokeWidth={1.4} /></div><p className="text-lg font-black text-white">3D Preview Workspace</p><p className="mx-auto mt-2 max-w-md text-sm text-white/40">{progress || 'Generated GLB models will appear here with orbit, zoom and inspection controls.'}</p></div>
+              </>}
             </div>
+            {glbUrl && <a href={glbUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-2 self-start rounded border border-[#23c7be]/40 px-3 py-2 text-xs font-bold text-[#23c7be]"><Download size={16} /> Download generated GLB</a>}
 
             <div className="mt-3 rounded-[4px] border border-white/10 bg-[#17191d] p-3">
-              {generationType === 'text' && <><label className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40">Prompt</label><textarea className="mt-2 min-h-[86px] w-full rounded-[3px] border border-white/15 bg-black/25 p-3 text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" placeholder="Describe the 3D character, accessory, prop or environment…" /></>}
-              {generationType === 'image' && <div className="flex min-h-[110px] items-center justify-center rounded-[3px] border border-dashed border-white/15 bg-black/20 p-4 text-center"><div><Upload size={24} className="mx-auto mb-2 text-[#23c7be]" /><div className="font-bold">Add reference image</div><div className="mt-1 text-xs text-white/40">The active engine determines supported image formats.</div></div></div>}
-              {generationType === 'multi' && <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{['Front', 'Back', 'Left', 'Right'].map((side) => <div key={side} className="flex aspect-[4/3] items-center justify-center rounded-[3px] border border-dashed border-white/15 bg-black/20 text-center"><div><Upload size={18} className="mx-auto mb-1 text-[#23c7be]" /><div className="text-xs font-bold">{side}</div></div></div>)}</div>}
+              {generationType === 'text' && <><label className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40">Prompt</label><textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} className="mt-2 min-h-[86px] w-full rounded-[3px] border border-white/15 bg-black/25 p-3 text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" placeholder="Describe the 3D character, accessory, prop or environment…" /></>}
+              {generationType === 'image' && imageBox('Add reference image', 0)}
+              {generationType === 'multi' && <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{['Front', 'Back', 'Left', 'Right'].map((side, index) => imageBox(side, index))}</div>}
             </div>
           </section>
 
           <aside className="border-t border-white/10 bg-[#17191d] p-3 xl:border-l xl:border-t-0">
             <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Output</p>
             <div className="space-y-2">
-              {[['AI model', selected?.name || 'None enabled'], ['Input mode', mode?.label], ['Primary working format', 'GLB'], ['Storage destination', 'My 3D Assets'], ['Price', selected?.credit_cost != null ? `${selected.credit_cost} credits` : 'Calculated from Admin model settings']].map(([label, value]) => <div key={label} className="rounded-[3px] border border-white/10 bg-black/20 p-3"><div className="text-[11px] text-white/35">{label}</div><div className="mt-1 text-sm font-bold text-white">{value}</div></div>)}
+              {[['AI model', selected?.name || 'None enabled'], ['Input mode', mode?.label], ['Primary working format', 'GLB'], ['Storage destination', 'Download GLB'], ['Price', selected?.credit_cost != null ? `${selected.credit_cost} credits` : 'Calculated from Admin model settings']].map(([label, value]) => <div key={label} className="rounded-[3px] border border-white/10 bg-black/20 p-3"><div className="text-[11px] text-white/35">{label}</div><div className="mt-1 text-sm font-bold text-white">{value}</div></div>)}
             </div>
-            <button disabled={!selected} className="mt-4 min-h-[48px] w-full rounded-[3px] bg-[#23c7be] text-xs font-black uppercase tracking-[0.12em] text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.05] disabled:text-white/30 disabled:cursor-not-allowed">Generate 3D</button>
+            <button type="button" disabled={!ready} onClick={generate} className="mt-4 min-h-[48px] w-full rounded-[3px] bg-[#23c7be] text-xs font-black uppercase tracking-[0.12em] text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.05] disabled:text-white/30 disabled:cursor-not-allowed">{generating ? 'Generating 3D…' : 'Generate 3D'}</button>
+            {progress && <p role="status" className="mt-2 text-xs text-[#23c7be]">{progress}</p>}
+            {generationError && <p role="alert" className="mt-2 text-xs text-red-300">{generationError}</p>}
             {!selected && <p className="mt-2 text-[11px] text-white/35">Generation activates when you enable at least one compatible 3D model in Admin.</p>}
           </aside>
         </div>
