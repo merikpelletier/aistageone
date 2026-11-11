@@ -114,6 +114,8 @@ export default function BlenderBridgeWorkspace() {
   const [plan, setPlan] = useState([]);
   const [planning, setPlanning] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [bridgeVersion, setBridgeVersion] = useState('');
+  const [morphNotice, setMorphNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('Not connected');
   const [objectName, setObjectName] = useState('AISTAGE_Studio_Cube');
@@ -125,8 +127,16 @@ export default function BlenderBridgeWorkspace() {
     setConnected(false);
     try {
       const result = await bridgeRequest('/v1/health', token);
+      const version = String(result.bridge || '');
+      setBridgeVersion(version);
       setConnected(true);
-      setMessage(`Connected to Blender ${result.blender}`);
+      if (!/^0\.(?:1[0-9]|[2-9][0-9])(?:\.|$)/.test(version)) {
+        setMorphNotice(`Bridge ${version || 'unknown'} is running. Body/Face morphs require Bridge 0.10 or later. Restart Blender after updating the Bridge.`);
+        setMessage(`Blender connected, but Bridge ${version || 'unknown'} cannot execute Body/Face morphs.`);
+      } else {
+        setMorphNotice('');
+        setMessage(`Connected to Blender ${result.blender} — Bridge ${version}.`);
+      }
     } catch (error) {
       setMessage(error.name === 'AbortError' ? 'Blender did not respond.' : error.message === 'Failed to fetch'
         ? 'Cannot reach Blender. Start Bridge 0.5 in Blender; your browser may also require local-network permission.'
@@ -222,6 +232,7 @@ export default function BlenderBridgeWorkspace() {
       const selected = items.find((item) => item.name === workingCharacter) || items.find((item) => item.name.includes('body_female_realistic')) || items[0];
       setWorkingCharacter(selected?.name || '');
       setMorphValues({});
+      setMorphNotice('');
       setNativeTools(null);
       setNativeLattice(false);
       setMessage(`Found ${response.result.total_meshes} mesh object(s); showing ${items.length}.`);
@@ -248,15 +259,22 @@ export default function BlenderBridgeWorkspace() {
 
   const changeMorph = async (part, value) => {
     if (!connected || !workingCharacter || busy || morphBusy || !MORPH_PARTS.has(part)) return;
+    if (!/^0\.(?:1[0-9]|[2-9][0-9])(?:\.|$)/.test(bridgeVersion)) {
+      setMorphNotice(`Bridge ${bridgeVersion || 'unknown'} cannot execute morphology. Version 0.10+ is required; update the Bridge and restart Blender.`);
+      return;
+    }
     setMorphBusy(part);
+    setMorphNotice(`Applying ${part.replaceAll('_', ' ')} in Blender…`);
     try {
       const response = await bridgeRequest('/v1/command', token, {
         action: 'set_body_morph', name: workingCharacter, part, value
       });
       setMorphValues(previous => ({...previous, [part]: response.result.value}));
       setMessage(`${part.replaceAll('_', ' ')}: ${Math.round(value * 100)}%`);
+      setMorphNotice(`Blender confirmed: ${part.replaceAll('_', ' ')} = ${Math.round(response.result.value * 100)}%. Region: ${response.result.region_method || 'unknown'}.`);
     } catch (error) {
-      setMessage(error?.message || 'Morph failed. The original geometry was not replaced.');
+      setMorphNotice(`Blender did not apply this morph: ${error?.message || 'unknown error'}`);
+      setMessage(error?.message || 'Morph failed.');
     } finally {
       setMorphBusy('');
     }
@@ -381,7 +399,7 @@ export default function BlenderBridgeWorkspace() {
             {characters.length > 0 && (
               <label className="block space-y-2 text-xs text-white/60">Blender character
                 <select value={workingCharacter} onChange={(event) => {
-                    setWorkingCharacter(event.target.value); setMorphValues({}); setNativeTools(null);
+                    setWorkingCharacter(event.target.value); setMorphValues({}); setMorphNotice(''); setNativeTools(null);
                     setNativeGroup(''); setNativeLattice(false); setPlan([]);
                   }}
                   className="block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white">
@@ -411,6 +429,9 @@ export default function BlenderBridgeWorkspace() {
             </div>
           </div>
           <div className="p-5 md:p-7 space-y-7">
+            <div role="status" aria-live="polite" className={`rounded-lg border px-4 py-3 text-sm ${morphNotice.includes('did not') || morphNotice.includes('cannot') || morphNotice.includes('require') ? 'border-amber-400/40 bg-amber-400/10 text-amber-100' : 'border-white/15 text-white/75'}`}>
+              {morphNotice || `Bridge ${bridgeVersion || 'not connected'} · Move a slider and release it, or use Apply to send it to Blender.`}
+            </div>
             {!workingCharacter && <p className="text-sm text-white/50">Select a character in Blender above to enable morphing.</p>}
             {MORPH_SECTIONS.map(section => (
               <div key={section.title} className="space-y-4">
