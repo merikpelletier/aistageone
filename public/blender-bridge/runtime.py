@@ -1,7 +1,7 @@
 bl_info = {
     "name": "AISTAGE Blender Bridge",
     "author": "AISTAGE.ONE",
-    "version": (0, 7, 0),
+    "version": (0, 8, 0),
     "blender": (5, 3, 0),
     "location": "3D Viewport > Sidebar > AISTAGE",
     "description": "Connect AISTAGE.ONE Studio to Blender on this computer",
@@ -90,131 +90,167 @@ def _make_working_copy(action):
     return {'object': duplicate.name, 'mesh': _mesh_info(duplicate)}
 
 
-def _waist_components(mesh, z_low, z_high):
-    """Connected components in an anatomical Z band; arm islands remain separate.
+def _native_inspect(action):
+    obj = _character_source(action)
+    groups = []
+    for group in obj.vertex_groups:
+        index = group.index
+        assigned = sum(1 for vertex in obj.data.vertices if any(
+            element.group == index and element.weight > 0 for element in vertex.groups))
+        groups.append({'name': group.name, 'assigned_vertices': assigned})
+    shapes = []
+    if obj.data.shape_keys:
+        shapes = [{'name': key.name, 'value': key.value}
+                  for key in obj.data.shape_keys.key_blocks]
+    modifiers = [{'name': item.name, 'type': item.type}
+                 for item in obj.modifiers]
+    return {'object': obj.name, 'vertex_groups': groups,
+            'shape_keys': shapes, 'modifiers': modifiers,
+            'working_copy': bool(obj.get('aistage_character_copy', False))}
 
-    Crucially, connectivity is restricted to edges whose BOTH endpoints lie in
-    the band. The arms join the torso above the band, so the connectivity test
-    cannot silently walk from the waist into a shoulder or down a hand.
-    """
-    vertices = mesh.vertices
-    eligible = {v.index for v in vertices if z_low < v.co.z < z_high}
-    parent = {i: i for i in eligible}
-    rank = {}
 
-    def root(i):
-        while parent[i] != i:
-            parent[i] = parent[parent[i]]
-            i = parent[i]
-        return i
+def _editable_character(action):
+    obj = _character_source(action)
+    if not obj.get('aistage_character_copy', False):
+        raise ValueError('Native modeling tools require an AISTAGE working copy')
+    if obj.mode != 'OBJECT':
+        raise ValueError('Switch the working copy to Object Mode')
+    return obj
 
-    for edge in mesh.edges:
-        a, b = edge.vertices
-        if a not in eligible or b not in eligible:
-            continue
-        ra, rb = root(a), root(b)
-        if ra != rb:
-            if rank.get(ra, 0) < rank.get(rb, 0):
-                ra, rb = rb, ra
-            parent[rb] = ra
-            if rank.get(ra, 0) == rank.get(rb, 0):
-                rank[ra] = rank.get(ra, 0) + 1
 
-    groups = {}
-    for i in eligible:
-        groups.setdefault(root(i), []).append(i)
-    return list(groups.values())
+def _create_group_from_selection(action):
+    # Preserve Blender's actual artist-edited selection; never infer body parts
+    # from bounding boxes or apply modifications to the base mesh.
+    obj = _character_source(action)
+    if not obj.get('aistage_character_copy', False):
+        raise ValueError('Create a working copy first')
+    if obj.mode != 'EDIT':
+        raise ValueError('Select waist vertices in Blender Edit Mode first')
+    import bmesh
+    bm = bmesh.from_edit_mesh(obj.data)
+    bm.verts.ensure_lookup_table()
+    selected = [v.index for v in bm.verts if v.select and not v.hide]
+    if len(selected) < 10:
+        raise ValueError('Select at least 10 vertices of the waist, excluding arms')
+    import bpy as _bpy
+    _bpy.ops.object.mode_set(mode='OBJECT')
+    try:
+        group = obj.vertex_groups.get('AISTAGE_Waist')
+        if group is None:
+            group = obj.vertex_groups.new(name='AISTAGE_Waist')
+        # Replace only the dedicated group, not unrelated authored weights.
+        existing = [v.index for v in obj.data.vertices if any(
+            e.group == group.index for e in v.groups)]
+        if existing:
+            group.remove(existing)
+        group.add(selected, 1.0, 'REPLACE')
+    finally:
+        _bpy.ops.object.mode_set(mode='EDIT')
+    return {'object': obj.name, 'vertex_group': group.name,
+            'assigned_vertices': len(selected)}
+
+
+def _create_native_lattice(action):
+    obj = _editable_character(action)
+    group_name = action.get('vertex_group')
+    if not isinstance(group_name, str) or group_name not in obj.vertex_groups:
+        raise ValueError('Choose an existing, verified vertex group')
+    group = obj.vertex_groups[group_name]
+    indices = [v.index for v in obj.data.vertices if any(
+        e.group == group.index and e.weight > 0 for e in v.groups)]
+    if len(indices) < 10:
+        raise ValueError('Vertex group is empty or too small')
+    if any(m.type == 'LATTICE' and m.get('aistage_native_lattice')
+           and m.vertex_group == group_name for m in obj.modifiers):
+        raise ValueError('A lattice is already attached to this vertex group')
+    # Native lattice bounds the actual selected region, not a guessed torso band.
+    coords = [obj.data.vertices[i].co for i in indices]
+    lower = [min(p[k] for p in coords) for k in range(3)]
+    upper = [max(p[k] for p in coords) for k in range(3)]
+    spans = [upper[k] - lower[k] for k in range(3)]
+    if min(spans) < 0.0001:
+        raise ValueError('Vertex group has degenerate dimensions')
+    cage = bpy.data.lattices.new('AISTAGE_NativeLattice')
+    cage.points_u = 4
+    cage.points_v = 2
+    cage.points_w = 6
+    lattice_obj = bpy.data.objects.new('AISTAGE_Lattice_' + obj.name[:45], cage)
+    bpy.context.scene.collection.objects.link(lattice_obj)
+    lattice_obj.matrix_world = obj.matrix_world @ __import__('mathutils').Matrix.Translation(
+        tuple((lower[k] + upper[k]) / 2 for k in range(3))) @ __import__('mathutils').Matrix.Diagonal(
+        (spans[0] * 1.10, spans[1] * 1.10, spans[2] * 1.10, 1.0))
+    lattice_obj.hide_render = True
+    # This tagged modifier is the only one controlled by AISTAGE.
+    modifier = obj.modifiers.new('AISTAGE_NativeLattice', 'LATTICE')
+    modifier.object = lattice_obj
+    modifier.vertex_group = group_name
+    modifier['aistage_native_lattice'] = True
+    obj['aistage_lattice_object'] = lattice_obj.name
+    obj['aistage_lattice_group'] = group_name
+    return {'object': obj.name, 'lattice': lattice_obj.name,
+            'modifier': modifier.name, 'vertex_group': group_name,
+            'assigned_vertices': len(indices)}
+
+
+def _set_native_lattice_width(action):
+    obj = _editable_character(action)
+    width = action.get('waist_width')
+    if not _number(width) or not 0.75 <= width <= 1.25:
+        raise ValueError('waist_width must be between 0.75 and 1.25')
+    cage_name = obj.get('aistage_lattice_object')
+    cage_obj = bpy.data.objects.get(cage_name) if cage_name else None
+    if not cage_obj or cage_obj.type != 'LATTICE':
+        raise ValueError('First create a native Lattice Modifier for a vertex group')
+    if not any(m.type == 'LATTICE' and m.get('aistage_native_lattice') and
+               m.object == cage_obj for m in obj.modifiers):
+        raise ValueError('Native lattice modifier is not linked to this character')
+    for point in cage_obj.data.points:
+        # Blender's own lattice deformation; only points in lattice are adjusted.
+        original = point.co
+        z = max(0.0, min(1.0, (original.z + 1.0) * 0.5))
+        influence = (1.0 - abs(z * 2.0 - 1.0))
+        influence = max(0.0, influence)
+        influence = influence * influence * (3.0 - 2.0 * influence)
+        point.co_deform = (original.x * (1.0 + (width - 1.0) * influence),
+                           original.y, original.z)
+    cage_obj.data.update_tag()
+    return {'object': obj.name, 'lattice': cage_obj.name,
+            'vertex_group': obj.get('aistage_lattice_group'),
+            'waist_width': width, 'method': 'Blender Lattice Modifier'}
+
+
+def _set_native_shape_key(action):
+    obj = _editable_character(action)
+    name = action.get('shape_key')
+    value = action.get('value')
+    if not isinstance(name, str) or not _number(value) or not 0 <= value <= 1:
+        raise ValueError('Invalid shape key or value')
+    if not obj.data.shape_keys or name not in obj.data.shape_keys.key_blocks:
+        raise ValueError('Shape key not found')
+    key = obj.data.shape_keys.key_blocks[name]
+    if key.name == 'Basis':
+        raise ValueError('Basis cannot be controlled')
+    key.value = value
+    return {'object': obj.name, 'shape_key': name, 'value': value}
 
 
 def _waist_morph(action):
-    obj = _character_source(action)
-    if not obj.get('aistage_character_copy', False):
-        raise ValueError('Morphing is allowed only on an AISTAGE working copy')
-    if obj.mode != 'OBJECT':
-        raise ValueError('Switch to Object Mode before applying a morph')
-    value = action.get('waist_width')
-    if not _number(value) or not 0.75 <= value <= 1.25:
-        raise ValueError('waist_width must be between 0.75 and 1.25')
-    mesh = obj.data
-    if not mesh.vertices:
-        raise ValueError('Empty mesh')
-    # Existing base model is oriented in Blender local Z. No edits to source.
-    zmin = min(v.co.z for v in mesh.vertices)
-    zmax = max(v.co.z for v in mesh.vertices)
-    height = zmax - zmin
-    if height < 0.01:
-        raise ValueError('Mesh has insufficient vertical extent')
-
-    # This conservative band is intentionally BELOW the shoulder/arm junction
-    # in the supported human reference model. Do not expand it up to the armpits.
-    lo, hi, mid = (zmin + height * p for p in (0.53, 0.68, 0.605))
-    groups = _waist_components(mesh, lo, hi)
-    if not groups:
-        raise ValueError('No waist-region vertices found')
-    xcenter = (min(v.co.x for v in mesh.vertices) + max(v.co.x for v in mesh.vertices)) / 2
-    full_width = max(v.co.x for v in mesh.vertices) - min(v.co.x for v in mesh.vertices)
-    # Identify central torso island by connectivity and proximity to the model's
-    # horizontal center, NOT by height alone (arms overlap waist height).
-    central = []
-    for group in groups:
-        if len(group) < 80:
-            continue
-        near_mid = [i for i in group if abs(mesh.vertices[i].co.z - mid) < height * 0.018]
-        if len(near_mid) < 8:
-            continue
-        avg_x = sum(mesh.vertices[i].co.x for i in near_mid) / len(near_mid)
-        xspan = max(mesh.vertices[i].co.x for i in group) - min(mesh.vertices[i].co.x for i in group)
-        if abs(avg_x - xcenter) > full_width * 0.10 or xspan > full_width * 0.72:
-            continue
-        central.append((len(group), group))
-    if not central:
-        raise ValueError('Unable to isolate torso safely; no morph was applied')
-    central.sort(key=lambda pair: pair[0], reverse=True)
-    torso = set(central[0][1])
-    if len(torso) < 150:
-        raise ValueError('Torso mask too small; no morph was applied')
-
-    # Geometric fail-safe: abort if selected component reaches outer arm region.
-    waist_x = [mesh.vertices[i].co.x for i in torso if abs(mesh.vertices[i].co.z - mid) < height * 0.02]
-    if not waist_x or max(waist_x) - min(waist_x) > full_width * 0.64:
-        raise ValueError('Torso mask overlaps arm region; no morph was applied')
-    torso_center = (min(waist_x) + max(waist_x)) / 2
-
-    # Plan every target coordinate before touching any Shape Key.
-    # Smooth compact falloff: 0% near ribs/hips, 100% at waist center.
-    updates = {}
-    for i in torso:
-        co = mesh.vertices[i].co
-        normalized = (co.z - lo) / (hi - lo)
-        if not 0 < normalized < 1:
-            continue
-        t = 1.0 - abs(normalized * 2.0 - 1.0)
-        smooth = t * t * (3.0 - 2.0 * t)
-        if smooth < 1e-8:
-            continue
-        # Waist width operates on the left-right axis only.
-        updates[i] = (torso_center + (co.x - torso_center) * (1 + (value - 1) * smooth), co.y, co.z)
-    if not updates:
-        raise ValueError('Waist mask produced no changes')
-
-    if not mesh.shape_keys:
-        obj.shape_key_add(name='Basis', from_mix=False)
-    basis = mesh.shape_keys.key_blocks[0]
-    key = mesh.shape_keys.key_blocks.get('AISTAGE_Waist')
-    if key is None:
-        key = obj.shape_key_add(name='AISTAGE_Waist', from_mix=False)
-    # Reset obsolete keys from earlier algorithm so no arm distortion persists.
-    # The basis remains the same; only our named working-copy key is rewritten.
-    for i, base in enumerate(basis.data):
-        key.data[i].co = updates.get(i, tuple(base.co))
-    key.value = 1.0
-    return {'object': obj.name, 'shape_key': key.name, 'waist_width': value,
-            'affected_vertices': len(updates), 'protected_vertices': len(mesh.vertices) - len(updates),
-            'mask': 'topology_connected_torso_band'}
+    # Retire the old invented geometry deformation. Never silently fall back.
+    raise ValueError('Legacy waist morph disabled. Use native vertex groups and a Lattice Modifier.')
 
 
 def _execute_command(action):
     kind = action.get('action')
+    if kind == 'inspect_native_tools':
+        return _native_inspect(action)
+    if kind == 'create_vertex_group_from_selection':
+        return _create_group_from_selection(action)
+    if kind == 'create_native_lattice':
+        return _create_native_lattice(action)
+    if kind == 'set_native_lattice_width':
+        return _set_native_lattice_width(action)
+    if kind == 'set_native_shape_key':
+        return _set_native_shape_key(action)
     if kind == 'inspect_character_meshes':
         meshes = sorted((obj for obj in bpy.context.scene.objects if obj.type == 'MESH'), key=lambda o: o.name)
         return {'objects': [_mesh_info(obj) for obj in meshes[:100]], 'total_meshes': len(meshes)}
@@ -318,7 +354,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._respond(404, {'ok': False, 'error': 'Not found'})
         if not self._authorized():
             return self._respond(401, {'ok': False, 'error': 'Invalid token'})
-        return self._respond(200, {'ok': True, 'bridge': '0.7', 'blender': bpy.app.version_string})
+        return self._respond(200, {'ok': True, 'bridge': '0.8', 'blender': bpy.app.version_string})
 
     def _authorized(self):
         return bool(_token and secrets.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + _token))
@@ -413,7 +449,7 @@ class AISTAGE_PT_bridge(bpy.types.Panel):
     bl_category = 'AISTAGE'
     def draw(self, context):
         layout = self.layout
-        layout.label(text='Bridge 0.7 - AISTAGE.ONE Studio')
+        layout.label(text='Bridge 0.8 - AISTAGE.ONE Studio')
         layout.label(text='Open Blender Bridge in Studio')
         layout.operator('aistage.test_bridge', icon='MESH_CUBE')
         if _server:
