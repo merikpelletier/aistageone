@@ -334,7 +334,7 @@ function Generate3D() {
           mode: generationType,
           model_key: selectedModel,
           prompt,
-          images: generationType === 'multi' ? images : generationType === 'image' ? [images[0]] : [],
+          images: generationType === 'multi' ? (selectedModel === 'hyper3d/rodin' ? images.filter(Boolean) : images) : generationType === 'image' ? [images[0]] : [],
         },
       });
       if (startError || started?.error || !started?.job) {
