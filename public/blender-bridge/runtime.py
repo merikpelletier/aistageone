@@ -1,7 +1,7 @@
 bl_info = {
     "name": "AISTAGE Blender Bridge",
     "author": "AISTAGE.ONE",
-    "version": (0, 9, 0),
+    "version": (0, 10, 0),
     "blender": (5, 3, 0),
     "location": "3D Viewport > Sidebar > AISTAGE",
     "description": "Connect AISTAGE.ONE Studio to Blender on this computer",
@@ -239,6 +239,199 @@ def _set_native_shape_key(action):
     return {'object': obj.name, 'shape_key': name, 'value': value}
 
 
+# AISTAGE non-destructive morphology controls for upright human base meshes.
+# All values remain in Blender Shape Keys; original mesh vertices are untouched.
+MORPH_REGIONS = {
+    'head_width': ('head', 'x'), 'head_height': ('head', 'z'),
+    'neck_width': ('neck', 'x'), 'shoulders': ('shoulders', 'x'),
+    'chest': ('chest', 'xy'), 'waist': ('waist', 'xy'),
+    'belly': ('belly', 'y'), 'hips': ('hips', 'x'),
+    'buttocks': ('buttocks', 'y'), 'upper_arm': ('upper_arm', 'xy'),
+    'forearm': ('forearm', 'xy'), 'hands': ('hands', 'xy'),
+    'thighs': ('thighs', 'xy'), 'calves': ('calves', 'xy'),
+    'feet': ('feet', 'xy'), 'legs_length': ('legs_length', 'z'),
+    'arms_length': ('arms_length', 'z'),
+    'face_width': ('face_width', 'x'), 'forehead': ('forehead', 'x'),
+    'cheeks': ('cheeks', 'xy'), 'jaw': ('jaw', 'x'),
+    'chin': ('chin', 'z'), 'nose_width': ('nose_width', 'x'),
+    'nose_length': ('nose_length', 'y'), 'lips': ('lips', 'y'),
+    'mouth_width': ('mouth_width', 'x'), 'eyes': ('eyes', 'xy'),
+    'eye_spacing': ('eye_spacing', 'x'), 'ears': ('ears', 'x'),
+}
+
+def _smooth(value, low, high):
+    if high <= low:
+        return float(value >= high)
+    t = max(0.0, min(1.0, (value - low) / (high - low)))
+    return t * t * (3.0 - 2.0 * t)
+
+def _window(value, low, top, fade):
+    return _smooth(value, low - fade, low + fade) * (1.0 - _smooth(value, top - fade, top + fade))
+
+def _morph_group_weights(obj, region):
+    aliases = {
+        'waist': ('waist',), 'hips': ('pelvis', 'hip'), 'chest': ('chest', 'breast', 'torso'),
+        'shoulders': ('shoulder', 'clavicle'), 'neck': ('neck',), 'head': ('head',),
+        'upper_arm': ('upperarm', 'upper_arm', 'bicep'), 'forearm': ('forearm', 'lowerarm'),
+        'hands': ('hand',), 'thighs': ('thigh', 'upperleg'), 'calves': ('calf', 'shin', 'lowerleg'),
+        'feet': ('foot',), 'jaw': ('jaw',), 'cheeks': ('cheek',), 'eyes': ('eye',),
+        'ears': ('ear',), 'lips': ('lip',), 'nose_width': ('nose',), 'nose_length': ('nose',)
+    }
+    names = aliases.get(region, ())
+    match = [g.index for g in obj.vertex_groups if any(
+        a in g.name.casefold().replace(' ', '').replace('.', '').replace('-', '') for a in names)]
+    if not match:
+        return None
+    indices = set(match)
+    weights = [max((v.weight for v in vertex.groups if v.group in indices), default=0.0)
+               for vertex in obj.data.vertices]
+    # Rigging groups sometimes overlap regions. Keep only substantial region weights.
+    if sum(1 for w in weights if w > 0.35) < 12:
+        return None
+    return weights
+
+def _region_weight(region, x, y, z, chest_radius, head_radius, front_sign, front_edge):
+    ax = abs(x)
+    torso = 1.0 - _smooth(ax, chest_radius * 0.95, chest_radius * 1.45)
+    limb = _smooth(ax, chest_radius * 1.05, chest_radius * 1.65)
+    face = _smooth(z, .85, .90) * _smooth(y * front_sign, front_edge * .25, front_edge * .55)
+    head = _window(z, .85, 1.00, .018)
+    if region == 'head': return head
+    if region == 'neck': return _window(z, .805, .86, .012) * torso
+    if region == 'shoulders': return _window(z, .745, .825, .035)
+    if region == 'chest': return _window(z, .665, .78, .038) * torso
+    if region == 'waist': return _window(z, .575, .665, .026) * torso
+    if region == 'belly': return _window(z, .56, .68, .038) * torso * _smooth(y * front_sign, 0, front_edge * .30)
+    if region == 'hips': return _window(z, .49, .58, .035) * torso
+    if region == 'buttocks': return _window(z, .47, .56, .034) * torso * (1.0 - _smooth(y * front_sign, -front_edge * .30, 0))
+    if region == 'upper_arm': return _window(z, .655, .80, .045) * limb
+    if region == 'forearm': return _window(z, .52, .67, .045) * limb
+    if region == 'hands': return _window(z, .41, .55, .035) * limb
+    if region == 'thighs': return _window(z, .30, .52, .055)
+    if region == 'calves': return _window(z, .10, .31, .04)
+    if region == 'feet': return _window(z, 0, .12, .035)
+    if region == 'legs_length': return 1.0 - _smooth(z, .41, .58)
+    if region == 'arms_length': return _window(z, .42, .78, .06) * limb
+    if region == 'face_width': return face * _window(z, .88, .985, .024)
+    if region == 'forehead': return face * _window(z, .948, .985, .015)
+    if region == 'cheeks': return face * _window(z, .903, .954, .017) * _smooth(ax, head_radius * .22, head_radius * .47)
+    if region == 'jaw': return face * _window(z, .877, .920, .018)
+    if region == 'chin': return face * _window(z, .869, .904, .014)
+    if region == 'nose_width': return face * _window(z, .912, .954, .015) * (1.0 - _smooth(ax, head_radius * .13, head_radius * .34))
+    if region == 'nose_length': return face * _window(z, .913, .947, .014) * (1.0 - _smooth(ax, head_radius * .10, head_radius * .28))
+    if region == 'lips': return face * _window(z, .896, .923, .012) * (1.0 - _smooth(ax, head_radius * .25, head_radius * .51))
+    if region == 'mouth_width': return face * _window(z, .896, .923, .012) * (1.0 - _smooth(ax, head_radius * .28, head_radius * .62))
+    if region == 'eyes': return face * _window(z, .943, .972, .011) * _window(ax, head_radius * .23, head_radius * .75, head_radius * .12)
+    if region == 'eye_spacing': return face * _window(z, .943, .972, .011) * _window(ax, head_radius * .23, head_radius * .75, head_radius * .12)
+    if region == 'ears': return head * _window(z, .925, .962, .018) * _smooth(ax, head_radius * .67, head_radius * .92)
+    return 0.0
+
+def _set_body_morph(action):
+    import math
+    obj = _editable_character(action)
+    part = action.get('part')
+    value = action.get('value')
+    if part not in MORPH_REGIONS or not _number(value) or not -1 <= value <= 1:
+        raise ValueError('Invalid morphology control or value (-1 to +1)')
+    if obj.data.library or obj.data.is_library_indirect:
+        raise ValueError('Linked Blender mesh is read-only; make it local in Blender first')
+    # Do not alter shared mesh datablocks belonging to other objects.
+    if obj.data.users > 1:
+        obj.data = obj.data.copy()
+    region, axis = MORPH_REGIONS[part]
+    mesh = obj.data
+    if len(mesh.vertices) < 500:
+        raise ValueError('Morphology controls require a human mesh (at least 500 vertices)')
+    if mesh.shape_keys and mesh.shape_keys.use_relative is False:
+        raise ValueError('Absolute Shape Keys are not supported by morphology controls')
+    basis = mesh.shape_keys.key_blocks.get('Basis') if mesh.shape_keys else None
+    coords = [tuple(v.co) for v in (basis.data if basis else mesh.vertices)]
+    min_x, max_x = min(v[0] for v in coords), max(v[0] for v in coords)
+    min_y, max_y = min(v[1] for v in coords), max(v[1] for v in coords)
+    min_z, max_z = min(v[2] for v in coords), max(v[2] for v in coords)
+    height = max_z - min_z
+    if height < .001:
+        raise ValueError('Invalid mesh height')
+    center_x = (min_x + max_x) * .5
+    center_y = (min_y + max_y) * .5
+    # Coordinates normalized to a canonical upright standing person.
+    # Front is Blender -Y for the Blender Studio human base meshes.
+    front_sign = -1
+    front_edge = max((max_y - min_y) / height, .08)
+    middle = sorted(abs(v[0] - center_x) / height for v in coords
+                    if .67 <= (v[2] - min_z) / height <= .77)
+    chest_radius = middle[int(len(middle) * .45)] if middle else .12
+    chest_radius = max(.055, min(.20, chest_radius))
+    head_points = [abs(v[0] - center_x) / height for v in coords if
+                   .89 <= (v[2] - min_z) / height <= .97]
+    head_radius = (sorted(head_points)[int(len(head_points) * .85)]
+                   if head_points else .08)
+    head_radius = max(.042, min(.14, head_radius))
+    # Prefer artist-defined regions if present; no manual setup required for common
+    # unrigged upright base meshes, but heuristic masks are topology dependent.
+    group_weights = _morph_group_weights(obj, region)
+    key_name = 'AISTAGE_Morph_' + part
+    if not mesh.shape_keys:
+        obj.shape_key_add(name='Basis', from_mix=False)
+    key = mesh.shape_keys.key_blocks.get(key_name)
+    if key is None:
+        key = obj.shape_key_add(name=key_name, from_mix=False)
+        key.slider_min = -1.0
+        key.slider_max = 1.0
+        key.value = 0.0
+        count = 0
+        base = mesh.shape_keys.key_blocks[0]
+        for i, point in enumerate(key.data):
+            px, py, pz = base.data[i].co
+            x = (px - center_x) / height
+            y = (py - center_y) / height
+            z = (pz - min_z) / height
+            w = group_weights[i] if group_weights else _region_weight(
+                region, x, y, z, chest_radius, head_radius, front_sign, front_edge)
+            if w < .005:
+                continue
+            count += 1
+            amt = .15 * height * w
+            # Signed Shape Key values grow or shrink a region relative to its center.
+            dx = x * amt
+            dy = y * amt
+            dz = (z - .5) * amt
+            if axis == 'x':
+                dy = dz = 0
+            elif axis == 'y':
+                dx = dz = 0
+            elif axis == 'z':
+                dx = dy = 0
+            else:
+                dz = 0
+            if region in ('legs_length', 'arms_length'):
+                dx = dy = 0
+                dz = -.22 * height * w
+            if region == 'nose_length' or region == 'lips':
+                dx = dz = 0
+                dy = -.10 * height * w
+            if region == 'eye_spacing':
+                dx = math.copysign(.025 * height * w, x)
+                dy = dz = 0
+            point.co = (px + dx, py + dy, pz + dz)
+        if count < 12:
+            obj.shape_key_remove(key)
+            raise ValueError('No suitable vertices found for ' + part + '; nothing changed')
+    key.value = float(value)
+    return {'object': obj.name, 'part': part, 'value': key.value,
+            'shape_key': key_name, 'method': 'Blender Shape Key',
+            'region_method': 'vertex_group' if group_weights else 'base_mesh_estimate'}
+
+def _reset_body_morphs(action):
+    obj = _editable_character(action)
+    keys = obj.data.shape_keys.key_blocks if obj.data.shape_keys else []
+    count = 0
+    for key in keys:
+        if key.name.startswith('AISTAGE_Morph_'):
+            key.value = 0.0
+            count += 1
+    return {'object': obj.name, 'reset': count}
+
 def _waist_morph(action):
     # Retire the old invented geometry deformation. Never silently fall back.
     raise ValueError('Legacy waist morph disabled. Use native vertex groups and a Lattice Modifier.')
@@ -246,6 +439,16 @@ def _waist_morph(action):
 
 def _execute_command(action):
     kind = action.get('action')
+    if kind == 'set_body_morph':
+        return _set_body_morph(action)
+    if kind == 'reset_body_morphs':
+        return _reset_body_morphs(action)
+    if kind == 'list_body_morphs':
+        obj = _character_source(action)
+        keys = obj.data.shape_keys.key_blocks if obj.data.shape_keys else []
+        return {'object': obj.name, 'controls': list(MORPH_REGIONS.keys()),
+                'values': {key.name[len('AISTAGE_Morph_'):]: key.value
+                           for key in keys if key.name.startswith('AISTAGE_Morph_')}}
     if kind == 'inspect_native_tools':
         return _native_inspect(action)
     if kind == 'create_vertex_group_from_selection':
@@ -359,7 +562,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._respond(404, {'ok': False, 'error': 'Not found'})
         if not self._authorized():
             return self._respond(401, {'ok': False, 'error': 'Invalid token'})
-        return self._respond(200, {'ok': True, 'bridge': '0.9', 'blender': bpy.app.version_string})
+        return self._respond(200, {'ok': True, 'bridge': '0.10', 'blender': bpy.app.version_string})
 
     def _authorized(self):
         return bool(_token and secrets.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + _token))
@@ -454,7 +657,7 @@ class AISTAGE_PT_bridge(bpy.types.Panel):
     bl_category = 'AISTAGE'
     def draw(self, context):
         layout = self.layout
-        layout.label(text='Bridge 0.9 - AISTAGE.ONE Studio')
+        layout.label(text='Bridge 0.10 - AISTAGE.ONE Studio')
         layout.label(text='Open Blender Bridge in Studio')
         layout.operator('aistage.test_bridge', icon='MESH_CUBE')
         if _server:
