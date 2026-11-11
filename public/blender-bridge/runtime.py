@@ -1,7 +1,7 @@
 bl_info = {
     "name": "AISTAGE Blender Bridge",
     "author": "AISTAGE.ONE",
-    "version": (0, 11, 0),
+    "version": (0, 12, 0),
     "blender": (5, 3, 0),
     "location": "3D Viewport > Sidebar > AISTAGE",
     "description": "Connect AISTAGE.ONE Studio to Blender on this computer",
@@ -63,6 +63,8 @@ def _mesh_info(obj):
         'quads': sum(1 for p in mesh.polygons if len(p.vertices) == 4),
         'triangles': sum(1 for p in mesh.polygons if len(p.vertices) == 3),
         'working_copy': bool(obj.get('aistage_character_copy', False)),
+        'collections': [collection.name for collection in obj.users_collection],
+        'visible': bool(obj.visible_get()),
         'shape_keys': [key.name for key in mesh.shape_keys.key_blocks] if mesh.shape_keys else [],
     }
 
@@ -471,8 +473,21 @@ def _execute_command(action):
     if kind == 'set_native_shape_key':
         return _set_native_shape_key(action)
     if kind == 'inspect_character_meshes':
-        meshes = sorted((obj for obj in bpy.context.scene.objects if obj.type == 'MESH'), key=lambda o: o.name)
-        return {'objects': [_mesh_info(obj) for obj in meshes[:100]], 'total_meshes': len(meshes)}
+        # Character assets frequently comprise many objects; return the actual
+        # active mesh first rather than an alphabetically chosen arm or prop.
+        active = bpy.context.view_layer.objects.active
+        scene_meshes = [obj for obj in bpy.context.scene.objects if obj.type == 'MESH']
+        meshes = sorted(scene_meshes, key=lambda obj: (
+            0 if obj == active else 1,
+            0 if obj.select_get() else 1,
+            0 if obj.visible_get() else 1,
+            -len(obj.data.vertices),
+            obj.name.casefold(),
+        ))
+        return {'objects': [_mesh_info(obj) for obj in meshes[:100]],
+                'active_mesh': active.name if active and active.type == 'MESH' else None,
+                'selected_meshes': [obj.name for obj in scene_meshes if obj.select_get()],
+                'total_meshes': len(scene_meshes)}
     if kind == 'create_character_copy':
         return _make_working_copy(action)
     if kind == 'set_waist_morph':
@@ -573,7 +588,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._respond(404, {'ok': False, 'error': 'Not found'})
         if not self._authorized():
             return self._respond(401, {'ok': False, 'error': 'Invalid token'})
-        return self._respond(200, {'ok': True, 'bridge': '0.11', 'blender': bpy.app.version_string})
+        return self._respond(200, {'ok': True, 'bridge': '0.12', 'blender': bpy.app.version_string})
 
     def _authorized(self):
         return bool(_token and secrets.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + _token))
@@ -668,7 +683,7 @@ class AISTAGE_PT_bridge(bpy.types.Panel):
     bl_category = 'AISTAGE'
     def draw(self, context):
         layout = self.layout
-        layout.label(text='Bridge 0.11 - AISTAGE.ONE Studio')
+        layout.label(text='Bridge 0.12 - AISTAGE.ONE Studio')
         layout.label(text='Open Blender Bridge in Studio')
         layout.operator('aistage.test_bridge', icon='MESH_CUBE')
         if _server:
