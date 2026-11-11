@@ -307,9 +307,9 @@ def _region_weight(region, x, y, z, chest_radius, head_radius, front_sign, front
     if region == 'upper_arm': return _window(z, .655, .80, .045) * limb
     if region == 'forearm': return _window(z, .52, .67, .045) * limb
     if region == 'hands': return _window(z, .41, .55, .035) * limb
-    if region == 'thighs': return _window(z, .30, .52, .055)
-    if region == 'calves': return _window(z, .10, .31, .04)
-    if region == 'feet': return _window(z, 0, .12, .035)
+    if region == 'thighs': return _window(z, .30, .52, .055) * (1.0 - _smooth(ax, chest_radius * .80, chest_radius * 1.60))
+    if region == 'calves': return _window(z, .10, .31, .04) * (1.0 - _smooth(ax, chest_radius * .80, chest_radius * 1.65))
+    if region == 'feet': return _window(z, 0, .12, .035) * (1.0 - _smooth(ax, chest_radius * 1.1, chest_radius * 1.8))
     if region == 'legs_length': return 1.0 - _smooth(z, .41, .58)
     if region == 'arms_length': return _window(z, .42, .78, .06) * limb
     if region == 'face_width': return face * _window(z, .88, .985, .024)
