@@ -77,7 +77,12 @@ Deno.serve(async(req)=>{
    charge=billing.charge_id||null;
   }
   try {
-   const response=await fetch(`${API}/models/${modelKey}/predictions`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({input})});
+   const modelInfoResponse = await fetch(`${API}/models/${modelKey}`,{headers:{Authorization:`Bearer ${token}`}});
+   const modelInfo = await modelInfoResponse.json();
+   if(!modelInfoResponse.ok) throw new Error(modelInfo.detail||'Unable to inspect selected 3D model');
+   const version = modelInfo.latest_version?.id;
+   if(!version) throw new Error('The selected model has no runnable version');
+   const response=await fetch(`${API}/predictions`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({version,input})});
    const prediction=await response.json();
    if(!response.ok||!prediction.id)throw new Error(prediction.detail||prediction.error||`Replicate HTTP ${response.status}`);
    const payload=btoa(JSON.stringify({id:prediction.id,u:user.id,t:Date.now(),charge}));
