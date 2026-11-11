@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Box, Plug, Send, ShieldCheck, Sparkles } from 'lucide-react';
 
@@ -105,6 +105,7 @@ export default function BlenderBridgeWorkspace() {
   const [waistWidth, setWaistWidth] = useState('1');
   const [morphValues, setMorphValues] = useState({});
   const [morphBusy, setMorphBusy] = useState('');
+  const [queuedMorph, setQueuedMorph] = useState(null);
   const [nativeTools, setNativeTools] = useState(null);
   const [nativeGroup, setNativeGroup] = useState('');
   const [nativeLattice, setNativeLattice] = useState(false);
@@ -232,6 +233,7 @@ export default function BlenderBridgeWorkspace() {
       const selected = items.find((item) => item.name === workingCharacter) || items.find((item) => item.name.includes('body_female_realistic')) || items[0];
       setWorkingCharacter(selected?.name || '');
       setMorphValues({});
+      setQueuedMorph(null);
       setMorphNotice('');
       setNativeTools(null);
       setNativeLattice(false);
@@ -279,6 +281,18 @@ export default function BlenderBridgeWorkspace() {
       setMorphBusy('');
     }
   };
+
+  // Debounce slider changes and commit the last value even when the user
+  // releases the pointer outside the slider track.
+  useEffect(() => {
+    if (!queuedMorph || !connected || !workingCharacter || busy || morphBusy) return;
+    const timer = setTimeout(() => {
+      const { part, value } = queuedMorph;
+      setQueuedMorph(null);
+      changeMorph(part, value);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [queuedMorph, connected, workingCharacter, busy, morphBusy, bridgeVersion]);
 
   const loadMorphs = async (objectName = workingCharacter) => {
     if (!connected || !objectName || busy) return;
@@ -399,7 +413,7 @@ export default function BlenderBridgeWorkspace() {
             {characters.length > 0 && (
               <label className="block space-y-2 text-xs text-white/60">Blender character
                 <select value={workingCharacter} onChange={(event) => {
-                    setWorkingCharacter(event.target.value); setMorphValues({}); setMorphNotice(''); setNativeTools(null);
+                    setWorkingCharacter(event.target.value); setMorphValues({}); setQueuedMorph(null); setMorphNotice(''); setNativeTools(null);
                     setNativeGroup(''); setNativeLattice(false); setPlan([]);
                   }}
                   className="block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white">
@@ -430,7 +444,7 @@ export default function BlenderBridgeWorkspace() {
           </div>
           <div className="p-5 md:p-7 space-y-7">
             <div role="status" aria-live="polite" className={`rounded-lg border px-4 py-3 text-sm ${morphNotice.includes('did not') || morphNotice.includes('cannot') || morphNotice.includes('require') ? 'border-amber-400/40 bg-amber-400/10 text-amber-100' : 'border-white/15 text-white/75'}`}>
-              {morphNotice || `Bridge ${bridgeVersion || 'not connected'} · Move a slider and release it, or use Apply to send it to Blender.`}
+              {morphNotice || `Bridge ${bridgeVersion || 'not connected'} · Move a slider to send the change to Blender, or use Apply.`}
             </div>
             {!workingCharacter && <p className="text-sm text-white/50">Select a character in Blender above to enable morphing.</p>}
             {MORPH_SECTIONS.map(section => (
@@ -452,11 +466,7 @@ export default function BlenderBridgeWorkspace() {
                           onChange={(event) => {
                             const value = Number(event.target.value);
                             setMorphValues(previous => ({...previous, [part]: value}));
-                          }}
-                          onPointerUp={(event) => changeMorph(part, Number(event.currentTarget.value))}
-                          onKeyUp={(event) => {
-                            if (['ArrowLeft','ArrowRight','Home','End','PageUp','PageDown'].includes(event.key))
-                              changeMorph(part, Number(event.currentTarget.value));
+                            setQueuedMorph({part, value});
                           }}
                           className="h-1.5 min-w-0 flex-1 accent-teal-300"/>
                         <button type="button" aria-label={`Apply ${label}`}
