@@ -58,6 +58,11 @@ export default function BlenderBridgeWorkspace() {
   const [characterSource, setCharacterSource] = useState('');
   const [workingCharacter, setWorkingCharacter] = useState('');
   const [waistWidth, setWaistWidth] = useState('1');
+  const [nativeTools, setNativeTools] = useState(null);
+  const [nativeGroup, setNativeGroup] = useState('');
+  const [nativeLattice, setNativeLattice] = useState(false);
+  const [nativeShape, setNativeShape] = useState('');
+  const [nativeShapeValue, setNativeShapeValue] = useState('0');
 
   const [plan, setPlan] = useState([]);
   const [planning, setPlanning] = useState(false);
@@ -162,6 +167,9 @@ export default function BlenderBridgeWorkspace() {
     try {
       const response = await bridgeRequest('/v1/command', token, { action: 'create_character_copy', name: characterSource });
       setWorkingCharacter(response.result.object);
+      setNativeTools(null);
+      setNativeGroup('');
+      setNativeLattice(false);
       setMessage(`Working copy created: ${response.result.object}. Original preserved.`);
     } catch (error) {
       setMessage(error?.message || 'Could not create character copy.');
@@ -170,20 +178,49 @@ export default function BlenderBridgeWorkspace() {
     }
   };
 
-  const applyWaist = async () => {
-    const width = Number(waistWidth);
-    if (!connected || busy || !workingCharacter || waistWidth.trim() === '' || !Number.isFinite(width) || width < 0.75 || width > 1.25) return;
+
+  const nativeCommand = async (command, after) => {
+    if (!connected || busy) return;
     setBusy(true);
     try {
-      const response = await bridgeRequest('/v1/command', token, {
-        action: 'set_waist_morph', name: workingCharacter, waist_width: width,
-      });
-      setMessage(`Non-destructive shape key applied to ${response.result.object} (${response.result.affected_vertices} vertices).`);
+      const response = await bridgeRequest('/v1/command', token, command);
+      after?.(response.result);
+      setMessage(JSON.stringify(response.result));
     } catch (error) {
-      setMessage(error?.message || 'Morph could not be applied.');
+      setMessage(error?.message || 'Native Blender command failed.');
     } finally {
       setBusy(false);
     }
+  };
+
+  const inspectNative = (name = workingCharacter) => {
+    if (!name) return;
+    nativeCommand({ action: 'inspect_native_tools', name }, (result) => {
+      setNativeTools(result);
+      setNativeGroup((previous) => result.vertex_groups.some((group) => group.name === previous)
+        ? previous : (result.vertex_groups[0]?.name || ''));
+      setNativeShape(result.shape_keys.find((key) => key.name !== 'Basis')?.name || '');
+      setNativeLattice(result.modifiers.some((mod) => mod.type === 'LATTICE' && mod.name.startsWith('AISTAGE_')));
+    });
+  };
+
+  const makeWaistSelection = () => {
+    nativeCommand({ action: 'create_vertex_group_from_selection', name: workingCharacter }, (result) => {
+      setNativeGroup(result.vertex_group);
+      setNativeTools(null);
+      setNativeLattice(false);
+    });
+  };
+
+  const makeLattice = () => {
+    nativeCommand({ action: 'create_native_lattice', name: workingCharacter, vertex_group: nativeGroup },
+      () => setNativeLattice(true));
+  };
+
+  const applyWaist = () => {
+    const width = Number(waistWidth);
+    if (waistWidth.trim() === '' || !Number.isFinite(width) || width < 0.75 || width > 1.25) return;
+    nativeCommand({ action: 'set_native_lattice_width', name: workingCharacter, waist_width: width });
   };
 
   const name = objectName.trim();
@@ -203,7 +240,7 @@ export default function BlenderBridgeWorkspace() {
         </div>
         <div className="rounded-xl border border-white/15 bg-white/5 p-5 space-y-4">
           <h3 className="flex items-center gap-2 font-semibold"><Plug size={18} /> Connect Blender</h3>
-          <p className="text-sm text-white/70">In Blender 5.3, install Bridge 0.5, select Start Local Bridge, then Copy Test Token. Paste it here. Your token is held only in this browser tab.</p>
+          <p className="text-sm text-white/70">In Blender 5.3, install Bridge 0.6, select Start Local Bridge, then Copy Test Token. Paste it here. Your token is held only in this browser tab.</p>
           <label htmlFor="aistage-blender-token" className="block text-sm">Bridge token</label>
           <input id="aistage-blender-token" type="password" value={token}
             onChange={(event) => { setToken(event.target.value); setConnected(false); }}
@@ -269,18 +306,82 @@ export default function BlenderBridgeWorkspace() {
               </button>
             </>
           )}
+
+          {characters.some((item) => item.working_copy) && (
+            <div className="space-y-2">
+              <label htmlFor="aistage-existing-copy" className="block text-sm">Existing working copy</label>
+              <select id="aistage-existing-copy" value={workingCharacter} onChange={(event) => {
+                  setWorkingCharacter(event.target.value); setNativeTools(null); setNativeLattice(false);
+                }} className="w-full rounded-lg border border-white/20 bg-[#202328] p-3 text-white">
+                <option value="">Choose a working copy</option>
+                {characters.filter((item) => item.working_copy).map((item) =>
+                  <option key={item.name} value={item.name}>{item.name}</option>)}
+              </select>
+            </div>
+          )}
           {workingCharacter && (
             <div className="space-y-3 rounded-lg border border-teal-400/30 bg-black/20 p-4">
               <p className="break-all text-sm">Working copy: <strong>{workingCharacter}</strong></p>
-              <label htmlFor="aistage-waist-width" className="block text-sm">Waist width factor (0.75–1.25)</label>
-              <input id="aistage-waist-width" type="number" min="0.75" max="1.25" step="0.05"
-                value={waistWidth} onChange={(event) => setWaistWidth(event.target.value)}
-                className="w-full rounded-lg border border-white/20 bg-black/30 p-3 text-white" />
-              <button type="button" disabled={!connected || busy || waistWidth.trim() === '' || !Number.isFinite(Number(waistWidth)) || Number(waistWidth) < 0.75 || Number(waistWidth) > 1.25}
-                onClick={applyWaist} className="rounded-lg bg-teal-400 px-4 py-2 font-semibold text-black disabled:opacity-40">
-                Apply reversible morph
+              <p className="text-sm text-white/75">Blender-native modeling: Vertex Groups, Lattice Modifier, Shape Keys. The previous automatic waist deformation is disabled.</p>
+              <button type="button" disabled={!connected || busy} onClick={() => inspectNative()}
+                className="rounded-lg border border-white/25 px-4 py-2 font-semibold disabled:opacity-40">
+                Inspect native Blender tools
               </button>
-              <p className="text-xs text-white/60">Works only on a Bridge-created copy. Geometry and rigs in the original collection are untouched. Initial waist region is approximate and must be inspected visually.</p>
+              {nativeTools && (
+                <>
+                  <p className="text-sm">Existing vertex groups: {nativeTools.vertex_groups.length}</p>
+                  <label htmlFor="aistage-native-group" className="block text-sm">Vertex group controlling the deformation</label>
+                  <select id="aistage-native-group" value={nativeGroup} onChange={(event) => {
+                      setNativeGroup(event.target.value); setNativeLattice(false);
+                    }} className="w-full rounded-lg border border-white/20 bg-[#202328] p-3 text-white">
+                    <option value="">Select an existing group</option>
+                    {nativeTools.vertex_groups.map((group) =>
+                      <option key={group.name} value={group.name}>{group.name} ({group.assigned_vertices} vertices)</option>)}
+                  </select>
+                  <p className="text-xs text-white/60">Alternatively, select ONLY waist vertices on the working copy in Blender Edit Mode, then use the button below. This creates a Blender Vertex Group without moving any geometry.</p>
+                  <button type="button" disabled={!connected || busy} onClick={makeWaistSelection}
+                    className="rounded-lg border border-white/25 px-4 py-2 disabled:opacity-40">
+                    Use Blender's selected vertices as Waist group
+                  </button>
+                  <button type="button" disabled={!connected || busy || !nativeGroup || nativeLattice}
+                    onClick={makeLattice} className="rounded-lg border border-white/25 px-4 py-2 disabled:opacity-40">
+                    Create native Lattice Modifier
+                  </button>
+                  {nativeLattice && (
+                    <>
+                      <label htmlFor="aistage-waist-width" className="block text-sm">Lattice width factor (0.75–1.25)</label>
+                      <input id="aistage-waist-width" type="number" min="0.75" max="1.25" step="0.05"
+                        value={waistWidth} onChange={(event) => setWaistWidth(event.target.value)}
+                        className="w-full rounded-lg border border-white/20 bg-black/30 p-3 text-white" />
+                      <button type="button" disabled={!connected || busy || !Number.isFinite(Number(waistWidth)) || Number(waistWidth) < 0.75 || Number(waistWidth) > 1.25}
+                        onClick={applyWaist} className="rounded-lg bg-teal-400 px-4 py-2 font-semibold text-black disabled:opacity-40">
+                        Adjust native Blender lattice
+                      </button>
+                    </>
+                  )}
+                  {nativeTools.shape_keys.length > 1 && (
+                    <>
+                      <label htmlFor="aistage-native-shape" className="block text-sm">Existing Blender Shape Key</label>
+                      <select id="aistage-native-shape" value={nativeShape}
+                        onChange={(event) => setNativeShape(event.target.value)}
+                        className="w-full rounded-lg border border-white/20 bg-[#202328] p-3 text-white">
+                        {nativeTools.shape_keys.filter((key) => key.name !== 'Basis').map((key) =>
+                          <option key={key.name} value={key.name}>{key.name}</option>)}
+                      </select>
+                      <input type="number" min="0" max="1" step="0.1" value={nativeShapeValue}
+                        onChange={(event) => setNativeShapeValue(event.target.value)}
+                        className="w-full rounded-lg border border-white/20 bg-black/30 p-3 text-white" />
+                      <button type="button" disabled={!connected || busy || !nativeShape || nativeShapeValue.trim() === '' || !Number.isFinite(Number(nativeShapeValue)) || Number(nativeShapeValue) < 0 || Number(nativeShapeValue) > 1}
+                        onClick={() => nativeCommand({ action: 'set_native_shape_key', name: workingCharacter,
+                          shape_key: nativeShape, value: Number(nativeShapeValue) })}
+                        className="rounded-lg border border-white/25 px-4 py-2 disabled:opacity-40">
+                        Set native Shape Key
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+              <p className="text-xs text-white/60">Only the working copy is modified; original meshes remain untouched. Native modifiers are non-destructive. A vertex group is required; Blender must know the anatomy before the shape is altered.</p>
             </div>
           )}
         </div>
