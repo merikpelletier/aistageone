@@ -33,7 +33,7 @@ const SCENE_ACTIONS = new Set(['create_cube','create_sphere','create_cylinder','
 const CHARACTER_ACTIONS = new Set(['set_native_shape_key','create_native_lattice','set_native_lattice_width']);
 const VECTOR = { move_object: 'location', rotate_object: 'rotation', scale_object: 'scale' };
 function safePlan(raw, context) {
-  const parsed = typeof raw === 'string' ? JSON.parse(raw.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '')) : raw;
+  const parsed = typeof raw === 'string' ? JSON.parse(raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')) : raw;
   if (!Array.isArray(parsed?.commands) || parsed.commands.length < 1 || parsed.commands.length > 5)
     throw new Error('AI could not find a supported Blender operation. No changes made.');
   const groups = new Set(context?.vertex_groups?.map((group) => group.name) || []);
@@ -380,7 +380,7 @@ export default function BlenderBridgeWorkspace() {
                 <ol className="list-decimal space-y-2 pl-5 text-sm text-white/80">
                   {plan.map((command, index) =>
                     <li key={index}>{command.action.replaceAll('_', ' ')} · {command.name}
-                      {VECTOR[command.action] ? ` [${command[VECTOR[command.action]].join(', ')}]` : ''}
+                      {VECTOR[command.action] ? ` [${command[VECTOR[command.action]].join(', ')}]` : command.action === 'set_native_shape_key' ? ` · ${command.shape_key}: ${command.value}` : command.action === 'create_native_lattice' ? ` · ${command.vertex_group}` : command.action === 'set_native_lattice_width' ? ` · width ${command.waist_width}` : ''}
                     </li>)}
                 </ol>
                 <div className="flex flex-wrap gap-2">
