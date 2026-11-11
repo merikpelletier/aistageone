@@ -399,6 +399,8 @@ def _set_body_morph(action):
         raise ValueError('Linked object/mesh is read-only; make a local copy first')
     if obj.data.shape_keys and not obj.data.shape_keys.use_relative:
         raise ValueError('Absolute Shape Keys are unsupported')
+    if part in ('legs_length', 'arms_length'):
+        raise ValueError('Length morph needs a joint-based target; the Face Set alone is insufficient')
     key_name = 'AISTAGE_FaceSet_' + part
     key = obj.data.shape_keys.key_blocks.get(key_name) if obj.data.shape_keys else None
     if value == 0 and key is None:
@@ -436,11 +438,6 @@ def _set_body_morph(action):
             delta = [px - centers[0], py - centers[1], pz - centers[2]]
             scale = 0.20 * w
             shifts = [delta[j] * scale if ('xyz'[j] in axis) else 0.0 for j in range(3)]
-            if part in ('legs_length', 'arms_length'):
-                # Lengthening requires a directional deformation from a joint;
-                # do not pretend radial scaling achieves it.
-                obj.shape_key_remove(key)
-                raise ValueError('Length morph requires an authored target; no geometry changed')
             key.data[i].co = (px + shifts[0], py + shifts[1], pz + shifts[2])
             max_shift = max(max_shift, math.sqrt(sum(d * d for d in shifts)))
     key.mute = False
