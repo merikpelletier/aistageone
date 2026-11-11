@@ -1,7 +1,7 @@
 bl_info = {
     "name": "AISTAGE Blender Bridge",
     "author": "AISTAGE.ONE",
-    "version": (0, 8, 0),
+    "version": (0, 9, 0),
     "blender": (5, 3, 0),
     "location": "3D Viewport > Sidebar > AISTAGE",
     "description": "Connect AISTAGE.ONE Studio to Blender on this computer",
@@ -111,8 +111,6 @@ def _native_inspect(action):
 
 def _editable_character(action):
     obj = _character_source(action)
-    if not obj.get('aistage_character_copy', False):
-        raise ValueError('Native modeling tools require an AISTAGE working copy')
     if obj.mode != 'OBJECT':
         raise ValueError('Switch the working copy to Object Mode')
     return obj
@@ -122,8 +120,6 @@ def _create_group_from_selection(action):
     # Preserve Blender's actual artist-edited selection; never infer body parts
     # from bounding boxes or apply modifications to the base mesh.
     obj = _character_source(action)
-    if not obj.get('aistage_character_copy', False):
-        raise ValueError('Create a working copy first')
     if obj.mode != 'EDIT':
         raise ValueError('Select waist vertices in Blender Edit Mode first')
     import bmesh
@@ -363,7 +359,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._respond(404, {'ok': False, 'error': 'Not found'})
         if not self._authorized():
             return self._respond(401, {'ok': False, 'error': 'Invalid token'})
-        return self._respond(200, {'ok': True, 'bridge': '0.8', 'blender': bpy.app.version_string})
+        return self._respond(200, {'ok': True, 'bridge': '0.9', 'blender': bpy.app.version_string})
 
     def _authorized(self):
         return bool(_token and secrets.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + _token))
@@ -458,7 +454,7 @@ class AISTAGE_PT_bridge(bpy.types.Panel):
     bl_category = 'AISTAGE'
     def draw(self, context):
         layout = self.layout
-        layout.label(text='Bridge 0.8 - AISTAGE.ONE Studio')
+        layout.label(text='Bridge 0.9 - AISTAGE.ONE Studio')
         layout.label(text='Open Blender Bridge in Studio')
         layout.operator('aistage.test_bridge', icon='MESH_CUBE')
         if _server:
