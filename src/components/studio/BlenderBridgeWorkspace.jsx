@@ -54,6 +54,11 @@ function safePlan(raw) {
 export default function BlenderBridgeWorkspace() {
   const [token, setToken] = useState('');
   const [direction, setDirection] = useState('');
+  const [characters, setCharacters] = useState([]);
+  const [characterSource, setCharacterSource] = useState('');
+  const [workingCharacter, setWorkingCharacter] = useState('');
+  const [waistWidth, setWaistWidth] = useState('1');
+
   const [plan, setPlan] = useState([]);
   const [planning, setPlanning] = useState(false);
   const [connected, setConnected] = useState(false);
@@ -72,7 +77,7 @@ export default function BlenderBridgeWorkspace() {
       setMessage(`Connected to Blender ${result.blender}`);
     } catch (error) {
       setMessage(error.name === 'AbortError' ? 'Blender did not respond.' : error.message === 'Failed to fetch'
-        ? 'Cannot reach Blender. Start Bridge 0.4 in Blender; your browser may also require local-network permission.'
+        ? 'Cannot reach Blender. Start Bridge 0.5 in Blender; your browser may also require local-network permission.'
         : error.message);
     } finally {
       setBusy(false);
@@ -133,6 +138,54 @@ export default function BlenderBridgeWorkspace() {
     }
   };
 
+
+  const inspectCharacters = async () => {
+    if (!connected || busy) return;
+    setBusy(true);
+    try {
+      const response = await bridgeRequest('/v1/command', token, { action: 'inspect_character_meshes' });
+      const items = response?.result?.objects || [];
+      setCharacters(items);
+      const selected = items.find((item) => item.name === characterSource) || items.find((item) => item.name.includes('body_female_realistic')) || items.find((item) => !item.working_copy) || items[0];
+      setCharacterSource(selected?.name || '');
+      setMessage(`Found ${response.result.total_meshes} mesh object(s); showing ${items.length}.`);
+    } catch (error) {
+      setMessage(error?.message || 'Mesh inspection failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createCharacterCopy = async () => {
+    if (!connected || busy || !characterSource) return;
+    setBusy(true);
+    try {
+      const response = await bridgeRequest('/v1/command', token, { action: 'create_character_copy', name: characterSource });
+      setWorkingCharacter(response.result.object);
+      setMessage(`Working copy created: ${response.result.object}. Original preserved.`);
+    } catch (error) {
+      setMessage(error?.message || 'Could not create character copy.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const applyWaist = async () => {
+    const width = Number(waistWidth);
+    if (!connected || busy || !workingCharacter || waistWidth.trim() === '' || !Number.isFinite(width) || width < 0.75 || width > 1.25) return;
+    setBusy(true);
+    try {
+      const response = await bridgeRequest('/v1/command', token, {
+        action: 'set_waist_morph', name: workingCharacter, waist_width: width,
+      });
+      setMessage(`Non-destructive shape key applied to ${response.result.object} (${response.result.affected_vertices} vertices).`);
+    } catch (error) {
+      setMessage(error?.message || 'Morph could not be applied.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const name = objectName.trim();
   const validName = name.length > 0 && name.length <= 80;
   const coords = location.map(Number);
@@ -150,7 +203,7 @@ export default function BlenderBridgeWorkspace() {
         </div>
         <div className="rounded-xl border border-white/15 bg-white/5 p-5 space-y-4">
           <h3 className="flex items-center gap-2 font-semibold"><Plug size={18} /> Connect Blender</h3>
-          <p className="text-sm text-white/70">In Blender 5.3, install Bridge 0.4, select Start Local Bridge, then Copy Test Token. Paste it here. Your token is held only in this browser tab.</p>
+          <p className="text-sm text-white/70">In Blender 5.3, install Bridge 0.5, select Start Local Bridge, then Copy Test Token. Paste it here. Your token is held only in this browser tab.</p>
           <label htmlFor="aistage-blender-token" className="block text-sm">Bridge token</label>
           <input id="aistage-blender-token" type="password" value={token}
             onChange={(event) => { setToken(event.target.value); setConnected(false); }}
@@ -191,6 +244,43 @@ export default function BlenderBridgeWorkspace() {
                 <button type="button" disabled={busy} onClick={() => setPlan([])}
                   className="rounded-lg border border-white/20 px-4 py-2">Cancel</button>
               </div>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-white/15 bg-white/5 p-5 space-y-4">
+          <h3 className="flex items-center gap-2 font-semibold"><Box size={18} /> Character Mesh Studio</h3>
+          <p className="text-sm text-white/70">Read the human mesh already loaded in Blender, make an independent working copy and apply a reversible shape key. The original remains unchanged.</p>
+          <button type="button" disabled={!connected || busy} onClick={inspectCharacters}
+            className="rounded-lg bg-white px-4 py-2 font-semibold text-black disabled:opacity-40">Inspect character meshes</button>
+          {characters.length > 0 && (
+            <>
+              <label htmlFor="aistage-character-source" className="block text-sm">Source mesh</label>
+              <select id="aistage-character-source" value={characterSource}
+                onChange={(event) => setCharacterSource(event.target.value)}
+                className="w-full rounded-lg border border-white/20 bg-[#202328] p-3 text-white">
+                {characters.map((item) => <option key={item.name} value={item.name}>
+                  {item.name} — {item.vertices.toLocaleString()} vertices, {item.quads.toLocaleString()} quads
+                </option>)}
+              </select>
+              <button type="button" disabled={!connected || busy || !characterSource} onClick={createCharacterCopy}
+                className="rounded-lg border border-white/25 px-4 py-2 font-semibold disabled:opacity-40">
+                Create independent working copy
+              </button>
+            </>
+          )}
+          {workingCharacter && (
+            <div className="space-y-3 rounded-lg border border-teal-400/30 bg-black/20 p-4">
+              <p className="break-all text-sm">Working copy: <strong>{workingCharacter}</strong></p>
+              <label htmlFor="aistage-waist-width" className="block text-sm">Waist width factor (0.75–1.25)</label>
+              <input id="aistage-waist-width" type="number" min="0.75" max="1.25" step="0.05"
+                value={waistWidth} onChange={(event) => setWaistWidth(event.target.value)}
+                className="w-full rounded-lg border border-white/20 bg-black/30 p-3 text-white" />
+              <button type="button" disabled={!connected || busy || waistWidth.trim() === '' || !Number.isFinite(Number(waistWidth)) || Number(waistWidth) < 0.75 || Number(waistWidth) > 1.25}
+                onClick={applyWaist} className="rounded-lg bg-teal-400 px-4 py-2 font-semibold text-black disabled:opacity-40">
+                Apply reversible morph
+              </button>
+              <p className="text-xs text-white/60">Works only on a Bridge-created copy. Geometry and rigs in the original collection are untouched. Initial waist region is approximate and must be inspected visually.</p>
             </div>
           )}
         </div>
