@@ -372,7 +372,7 @@ function Generate3D() {
     generationType === 'text' ? !!prompt.trim() : !!images[0]
   );
 
-  const imageBox = (label, index) => <div key={label} className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[3px] border border-dashed border-white/15 bg-black/20 text-center">
+  const imageBox = (label, index) => <div key={label} className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[3px] border border-dashed border-white/15 bg-black/20 text-center xl:aspect-auto xl:h-[90px]">
     {images[index] && <img src={images[index]} alt={label + ' reference'} className="absolute inset-0 h-full w-full object-contain" />}
     <label className={`relative z-10 flex h-full w-full cursor-pointer flex-col items-center justify-center ${images[index] ? 'bg-black/35 text-white' : ''}`}>
       <Upload size={18} className="mb-1 text-[#23c7be]" />
@@ -383,59 +383,59 @@ function Generate3D() {
   </div>;
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-[#202328] pb-24 text-white">
-      <div className="mx-auto flex max-w-[1600px] flex-col p-3 md:p-4 lg:p-5">
-        <div className="mb-4 flex flex-shrink-0 items-start gap-3 border-b border-white/10 pb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Box size={20} /></div>
-          <div><p className="text-[9px] font-black uppercase tracking-[0.28em] text-[#23c7be]">AISTAGE.ONE · 3D Studio</p><h1 className="text-2xl font-black tracking-tight md:text-3xl">Generate 3D</h1><p className="mt-1 text-xs text-white/45 md:text-sm">One workspace for every 3D engine you enable in Admin.</p></div>
+    <div className="min-h-[calc(100vh-3.5rem)] bg-[#202328] pb-24 text-white xl:pb-4">
+      <div className="mx-auto flex max-w-[1600px] flex-col p-3 md:p-4 xl:max-w-none xl:p-3">
+        <div className="mb-4 flex flex-shrink-0 items-start gap-3 border-b border-white/10 pb-4 xl:mb-2 xl:items-center xl:gap-2 xl:pb-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be] xl:h-8 xl:w-8"><Box size={20} /></div>
+          <div><p className="text-[9px] font-black uppercase tracking-[0.28em] text-[#23c7be]">AISTAGE.ONE · 3D Studio</p><h1 className="text-2xl font-black tracking-tight md:text-3xl xl:text-lg">Generate 3D</h1><p className="mt-1 text-xs text-white/45 md:text-sm xl:mt-0 xl:text-[11px]">One workspace for every 3D engine you enable in Admin.</p></div>
         </div>
 
-        <div className="grid grid-cols-1 rounded-[4px] border border-white/10 bg-[#17191d] xl:grid-cols-[280px_minmax(0,1fr)_300px]">
-          <aside className="border-b border-white/10 bg-[#17191d] p-3 xl:border-b-0 xl:border-r">
+        <div className="grid grid-cols-1 rounded-[4px] border border-white/10 bg-[#17191d] xl:grid-cols-[225px_minmax(0,1fr)_225px]">
+          <aside className="border-b border-white/10 bg-[#17191d] p-3 xl:border-b-0 xl:border-r xl:p-2">
             <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Input</p>
-            <div className="space-y-2">
+            <div className="space-y-2 xl:space-y-1">
               {GENERATION_TYPES.map((item) => {
                 const Icon = item.icon;
                 const active = item.key === generationType;
-                return <button key={item.key} type="button" onClick={() => setGenerationType(item.key)} className={`flex min-h-[52px] w-full items-center gap-3 rounded-[3px] border px-3 text-left transition-colors ${active ? 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.07]'}`}><Icon size={18} /><div><div className="text-sm font-bold">{item.label}</div><div className={`mt-0.5 text-[10px] ${active ? 'text-[#8ee9e4]/70' : 'text-white/40'}`}>{item.hint}</div></div></button>;
+                return <button key={item.key} type="button" onClick={() => setGenerationType(item.key)} className={`flex min-h-[52px] w-full items-center gap-3 rounded-[3px] border px-3 text-left transition-colors xl:min-h-[38px] xl:gap-2 xl:px-2 ${active ? 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.07]'}`}><Icon size={18} /><div><div className="text-sm font-bold xl:text-xs">{item.label}</div><div className={`mt-0.5 text-[10px] xl:hidden ${active ? 'text-[#8ee9e4]/70' : 'text-white/40'}`}>{item.hint}</div></div></button>;
               })}
             </div>
 
-            <div className="mt-4 border-t border-white/10 pt-4">
+            <div className="mt-4 border-t border-white/10 pt-4 xl:mt-2 xl:pt-2">
               <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-white/40">AI model</label>
               {loadingModels ? <div className="rounded-[3px] border border-white/10 bg-black/25 px-3 py-3 text-sm text-white/50">Loading enabled 3D models…</div>
-              : enabledForMode.length ? <div className="relative"><select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} className="w-full appearance-none rounded-[3px] border border-white/15 bg-black/25 px-3 py-3 pr-9 text-sm font-semibold text-white outline-none focus:border-[#23c7be]">{enabledForMode.map((item) => <option key={item.model_key} value={item.model_key}>{item.recommended ? 'Recommended · ' : ''}{item.name}</option>)}</select><ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/45" /></div>
+              : enabledForMode.length ? <div className="relative"><select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} className="w-full appearance-none rounded-[3px] border border-white/15 bg-black/25 px-3 py-3 pr-9 text-sm font-semibold text-white outline-none focus:border-[#23c7be] xl:px-2 xl:py-2 xl:pr-7 xl:text-xs">{enabledForMode.map((item) => <option key={item.model_key} value={item.model_key}>{item.recommended ? 'Recommended · ' : ''}{item.name}</option>)}</select><ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/45" /></div>
               : <div className="rounded-[3px] border border-white/10 bg-black/25 px-3 py-3"><div className="text-sm font-semibold">No enabled model for this input</div><div className="mt-1 text-[11px] text-white/40">Activate a compatible 3D model in Admin.</div></div>}
-              {selected && <div className="mt-2 text-[11px] text-white/40">{selected.description}</div>}
+              {selected && <div className="mt-2 text-[11px] text-white/40 xl:mt-1 xl:text-[10px] xl:leading-tight">{selected.description}</div>}
               {modelError && <div className="mt-2 text-[11px] text-red-300">{modelError}</div>}
             </div>
 
-            <button type="button" onClick={() => setShowAdvanced((v) => !v)} className="mt-4 flex min-h-[42px] w-full items-center justify-between rounded-[3px] border border-white/10 bg-white/[0.03] px-3 text-sm font-semibold text-white/70 hover:bg-white/[0.06]"><span className="flex items-center gap-2"><SlidersHorizontal size={16} /> Advanced settings</span><span>{showAdvanced ? '−' : '+'}</span></button>
+            <button type="button" onClick={() => setShowAdvanced((v) => !v)} className="mt-4 flex min-h-[42px] w-full items-center justify-between rounded-[3px] border border-white/10 bg-white/[0.03] px-3 text-sm font-semibold text-white/70 hover:bg-white/[0.06] xl:mt-2 xl:min-h-[34px] xl:px-2 xl:text-xs"><span className="flex items-center gap-2"><SlidersHorizontal size={16} /> Advanced settings</span><span>{showAdvanced ? '−' : '+'}</span></button>
             {showAdvanced && <div className="mt-3 space-y-2 text-xs">{(selected?.capabilities?.features || []).length ? (selected.capabilities.features || []).map((feature) => <div key={feature} className="rounded-[3px] border border-white/10 bg-white/[0.02] p-3"><div className="mb-1 text-white/35">Capability</div><div className="font-semibold">{String(feature).replaceAll('_', ' ')}</div></div>) : <div className="rounded-[3px] border border-white/10 p-3 text-white/45">Model-specific controls will appear here.</div>}</div>}
           </aside>
 
-          <section className="flex min-w-0 flex-col bg-[#202328] p-3 md:p-4">
-            <div className="relative flex min-h-[420px] items-center justify-center overflow-hidden rounded-[4px] border border-white/10 bg-[#1d2126] md:min-h-[520px]">
+          <section className="flex min-w-0 flex-col bg-[#202328] p-3 md:p-4 xl:p-2">
+            <div className="relative flex min-h-[420px] items-center justify-center overflow-hidden rounded-[4px] border border-white/10 bg-[#1d2126] md:min-h-[520px] xl:min-h-[360px] xl:h-[min(58vh,520px)]">
               {glbUrl ? <ThreeDModelPreview url={glbUrl} /> : <>
                 <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
-                <div className="relative px-8 text-center"><div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Box size={40} strokeWidth={1.4} /></div><p className="text-lg font-black text-white">3D Preview Workspace</p><p className="mx-auto mt-2 max-w-md text-sm text-white/40">{progress || 'Generated GLB models will appear here with orbit, zoom and inspection controls.'}</p></div>
+                <div className="relative px-8 text-center"><div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be] xl:mb-2 xl:h-12 xl:w-12"><Box size={28} strokeWidth={1.4} /></div><p className="text-lg font-black text-white xl:text-sm">3D Preview Workspace</p><p className="mx-auto mt-2 max-w-md text-sm text-white/40 xl:mt-1 xl:max-w-xs xl:text-xs">{progress || 'Generated GLB models will appear here with orbit, zoom and inspection controls.'}</p></div>
               </>}
             </div>
             {glbUrl && <a href={glbUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-2 self-start rounded border border-[#23c7be]/40 px-3 py-2 text-xs font-bold text-[#23c7be]"><Download size={16} /> Download generated GLB</a>}
 
-            <div className="mt-3 rounded-[4px] border border-white/10 bg-[#17191d] p-3">
-              {generationType === 'text' && <><label className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40">Prompt</label><textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} className="mt-2 min-h-[86px] w-full rounded-[3px] border border-white/15 bg-black/25 p-3 text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" placeholder="Describe the 3D character, accessory, prop or environment…" /></>}
+            <div className="mt-3 rounded-[4px] border border-white/10 bg-[#17191d] p-3 xl:mt-2 xl:p-2">
+              {generationType === 'text' && <><label className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40">Prompt</label><textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} className="mt-2 min-h-[86px] w-full rounded-[3px] border border-white/15 bg-black/25 p-3 text-white outline-none placeholder:text-white/25 focus:border-[#23c7be] xl:mt-1 xl:min-h-[56px] xl:p-2 xl:text-xs" placeholder="Describe the 3D character, accessory, prop or environment…" /></>}
               {generationType === 'image' && imageBox('Add reference image', 0)}
-              {generationType === 'multi' && <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{['Front', 'Back', 'Left', 'Right'].map((side, index) => imageBox(side, index))}</div>}
+              {generationType === 'multi' && <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:gap-2">{['Front', 'Back', 'Left', 'Right'].map((side, index) => imageBox(side, index))}</div>}
             </div>
           </section>
 
-          <aside className="border-t border-white/10 bg-[#17191d] p-3 xl:border-l xl:border-t-0">
-            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Output</p>
+          <aside className="border-t border-white/10 bg-[#17191d] p-3 xl:border-l xl:border-t-0 xl:p-2">
+            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 xl:mb-2">Output</p>
             <div className="space-y-2">
-              {[['AI model', selected?.name || 'None enabled'], ['Input mode', mode?.label], ['Primary working format', 'GLB'], ['Storage destination', 'Download GLB'], ['Price', selected?.credit_cost != null ? `${selected.credit_cost} credits` : 'Calculated from Admin model settings']].map(([label, value]) => <div key={label} className="rounded-[3px] border border-white/10 bg-black/20 p-3"><div className="text-[11px] text-white/35">{label}</div><div className="mt-1 text-sm font-bold text-white">{value}</div></div>)}
+              {[['AI model', selected?.name || 'None enabled'], ['Input mode', mode?.label], ['Primary working format', 'GLB'], ['Storage destination', 'Download GLB'], ['Price', selected?.credit_cost != null ? `${selected.credit_cost} credits` : 'Calculated from Admin model settings']].map(([label, value]) => <div key={label} className="rounded-[3px] border border-white/10 bg-black/20 p-3 xl:px-2 xl:py-1.5"><div className="text-[11px] text-white/35">{label}</div><div className="mt-1 text-sm font-bold text-white xl:mt-0 xl:text-xs">{value}</div></div>)}
             </div>
-            <button type="button" disabled={!ready} onClick={generate} className="mt-4 min-h-[48px] w-full rounded-[3px] bg-[#23c7be] text-xs font-black uppercase tracking-[0.12em] text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.05] disabled:text-white/30 disabled:cursor-not-allowed">{generating ? 'Generating 3D…' : 'Generate 3D'}</button>
+            <button type="button" disabled={!ready} onClick={generate} className="mt-4 min-h-[48px] w-full rounded-[3px] bg-[#23c7be] text-xs font-black uppercase tracking-[0.12em] text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.05] disabled:text-white/30 disabled:cursor-not-allowed xl:mt-2 xl:min-h-[38px] xl:text-[11px]">{generating ? 'Generating 3D…' : 'Generate 3D'}</button>
             {progress && <p role="status" className="mt-2 text-xs text-[#23c7be]">{progress}</p>}
             {generationError && <p role="alert" className="mt-2 text-xs text-red-300">{generationError}</p>}
             {!selected && <p className="mt-2 text-[11px] text-white/35">Generation activates when you enable at least one compatible 3D model in Admin.</p>}
