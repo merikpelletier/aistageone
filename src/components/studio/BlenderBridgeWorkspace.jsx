@@ -133,9 +133,9 @@ export default function BlenderBridgeWorkspace() {
       const version = String(result.bridge || '');
       setBridgeVersion(version);
       setConnected(true);
-      if (!/^0\.(?:1[0-9]|[2-9][0-9])(?:\.|$)/.test(version)) {
-        setMorphNotice(`Bridge ${version || 'unknown'} is running. Body/Face morphs require Bridge 0.10 or later. Restart Blender after updating the Bridge.`);
-        setMessage(`Blender connected, but Bridge ${version || 'unknown'} cannot execute Body/Face morphs.`);
+      if (!/^0\.(?:1[3-9]|[2-9][0-9])(?:\.|$)/.test(version)) {
+        setMorphNotice(`Bridge ${version || 'unknown'} is running. Face Set morphs require Bridge 0.13 or later. Restart Blender after updating the Bridge.`);
+        setMessage(`Blender connected, but Bridge ${version || 'unknown'} cannot execute Face Set morphs.`);
       } else {
         setMorphNotice('');
         setMessage(`Connected to Blender ${result.blender} — Bridge ${version}.`);
@@ -240,6 +240,11 @@ export default function BlenderBridgeWorkspace() {
       setNativeTools(null);
       setNativeLattice(false);
       setFaceSetData(null);
+      if (selected?.name) {
+        bridgeRequest('/v1/command', token, {action: 'list_face_sets', name: selected.name})
+          .then(response => setFaceSetData(response.result))
+          .catch(error => setMorphNotice(error?.message || 'Face Set inspection failed.'));
+      }
       setMessage(selected ? `Active Blender mesh: ${selected.name} (${selected.vertices.toLocaleString()} vertices).` : `Found ${items.length} meshes. Select the actual character body mesh in the list.`);
     } catch (error) {
       setMessage(error?.message || 'Mesh inspection failed.');
@@ -302,8 +307,8 @@ export default function BlenderBridgeWorkspace() {
       setMorphNotice('Read the mesh Face Sets and assign one to this control before applying.');
       return;
     }
-    if (!/^0\.(?:1[0-9]|[2-9][0-9])(?:\.|$)/.test(bridgeVersion)) {
-      setMorphNotice(`Bridge ${bridgeVersion || 'unknown'} cannot execute morphology. Version 0.10+ is required; update the Bridge and restart Blender.`);
+    if (!/^0\.(?:1[3-9]|[2-9][0-9])(?:\.|$)/.test(bridgeVersion)) {
+      setMorphNotice(`Bridge ${bridgeVersion || 'unknown'} cannot execute morphology. Version 0.13+ is required; update the Bridge and restart Blender.`);
       return;
     }
     setMorphBusy(part);
@@ -462,6 +467,11 @@ export default function BlenderBridgeWorkspace() {
                 <select value={workingCharacter} onChange={(event) => {
                     setWorkingCharacter(event.target.value); setMorphValues({}); setQueuedMorph(null); setMorphNotice(''); setNativeTools(null);
                     setNativeGroup(''); setNativeLattice(false); setFaceSetData(null); setPlan([]);
+                    if (event.target.value) {
+                      bridgeRequest('/v1/command', token, {action: 'list_face_sets', name: event.target.value})
+                        .then(response => setFaceSetData(response.result))
+                        .catch(error => setMorphNotice(error?.message || 'Face Set inspection failed.'));
+                    }
                   }}
                   className="block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white">
                   <option value="">Select the body mesh</option>
