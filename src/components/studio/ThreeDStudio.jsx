@@ -338,14 +338,18 @@ function Generate3D() {
         },
       });
       if (startError || started?.error || !started?.job) {
-        throw new Error(started?.error || startError?.message || '3D generation failed to start.');
+        const details = startError?.context?.json ? await startError.context.json().catch(() => null) : null;
+        throw new Error(started?.error || details?.error || startError?.message || '3D generation failed to start.');
       }
       for (let attempt = 0; attempt < 180; attempt += 1) {
         await new Promise((resolve) => setTimeout(resolve, 4000));
         const { data: result, error } = await supabase.functions.invoke('generate-3d', {
           body: { action: 'status', job: started.job },
         });
-        if (error || result?.error) throw new Error(result?.error || error?.message);
+        if (error || result?.error) {
+          const details = error?.context?.json ? await error.context.json().catch(() => null) : null;
+          throw new Error(result?.error || details?.error || error?.message);
+        }
         setProgress(result?.status === 'starting' ? 'Waiting for the 3D model…' : 'Generating 3D model…');
         if (result?.status === 'succeeded') {
           if (!result.glb_url) throw new Error('The provider completed without a GLB file. No preview is available.');
