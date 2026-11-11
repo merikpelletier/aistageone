@@ -1,7 +1,7 @@
 bl_info = {
     "name": "AISTAGE Blender Bridge",
     "author": "AISTAGE.ONE",
-    "version": (0, 12, 0),
+    "version": (0, 13, 0),
     "blender": (5, 3, 0),
     "location": "3D Viewport > Sidebar > AISTAGE",
     "description": "Connect AISTAGE.ONE Studio to Blender on this computer",
@@ -331,119 +331,133 @@ def _region_weight(region, x, y, z, chest_radius, head_radius, front_sign, front
     if region == 'ears': return head * _window(z, .925, .962, .018) * _smooth(ax, head_radius * .67, head_radius * .92)
     return 0.0
 
-def _set_body_morph(action):
-    import math
+# Use Blender Studio's actual Face Sets, never guessed body coordinates.
+_FACE_SET_ATTR = '.sculpt_face_set'
+_FACE_SET_MAP = 'aistage_face_set_mapping'
+
+def _face_set_inventory(obj):
+    attr = obj.data.attributes.get(_FACE_SET_ATTR)
+    if attr is None or attr.domain != 'FACE' or attr.data_type != 'INT':
+        raise ValueError('Selected mesh has no usable Sculpt Face Sets')
+    counts = {}
+    for face in attr.data:
+        value = int(face.value)
+        counts[value] = counts.get(value, 0) + 1
+    return [{'id': ident, 'faces': count} for ident, count in sorted(counts.items())]
+
+def _face_set_mapping(obj):
+    try:
+        mapping = json.loads(obj.get(_FACE_SET_MAP, '{}'))
+        return {part: ident for part, ident in mapping.items()
+                if part in MORPH_REGIONS and type(ident) is int}
+    except (ValueError, TypeError, AttributeError):
+        return {}
+
+def _assign_face_set(action):
     obj = _editable_character(action)
     part = action.get('part')
-    value = action.get('value')
+    ident = action.get('face_set_id')
+    if part not in MORPH_REGIONS or type(ident) is not int:
+        raise ValueError('Select a control and valid Face Set ID')
+    if ident not in {item['id'] for item in _face_set_inventory(obj)}:
+        raise ValueError('Face Set ID does not exist on selected mesh')
+    mapping = _face_set_mapping(obj)
+    key_name = 'AISTAGE_FaceSet_' + part
+    if mapping.get(part) != ident and obj.data.shape_keys and obj.data.shape_keys.key_blocks.get(key_name):
+        raise ValueError('Cannot change Face Set for a generated morph; remove its Shape Key first')
+    if obj.library or obj.is_library_indirect:
+        raise ValueError('Linked Blender object is read-only; make a local copy')
+    mapping[part] = ident
+    obj[_FACE_SET_MAP] = json.dumps(mapping, sort_keys=True)
+    return {'object': obj.name, 'part': part, 'face_set_id': ident, 'mapping': mapping}
+
+def _face_set_weights(obj, ident):
+    mesh = obj.data
+    attr = mesh.attributes[_FACE_SET_ATTR]
+    total = [0] * len(mesh.vertices)
+    selected = [0] * len(mesh.vertices)
+    for poly in mesh.polygons:
+        inside = int(attr.data[poly.index].value) == ident
+        for vertex_id in poly.vertices:
+            total[vertex_id] += 1
+            if inside:
+                selected[vertex_id] += 1
+    return [selected[i] / total[i] if total[i] else 0.0
+            for i in range(len(total))]
+
+def _set_body_morph(action):
+    obj = _editable_character(action)
+    part, value = action.get('part'), action.get('value')
     if part not in MORPH_REGIONS or not _number(value) or not -1 <= value <= 1:
         raise ValueError('Invalid morphology control or value (-1 to +1)')
-    if obj.data.library or obj.data.is_library_indirect:
-        raise ValueError('Linked Blender mesh is read-only; make it local in Blender first')
-    # Do not alter shared mesh datablocks belonging to other objects.
-    if obj.data.users > 1:
-        obj.data = obj.data.copy()
-    region, axis = MORPH_REGIONS[part]
-    mesh = obj.data
-    if len(mesh.vertices) < 500:
-        raise ValueError('Morphology controls require a human mesh (at least 500 vertices)')
-    if mesh.shape_keys and mesh.shape_keys.use_relative is False:
-        raise ValueError('Absolute Shape Keys are not supported by morphology controls')
-    key_name = 'AISTAGE_Morph_' + part
-    existing_key = mesh.shape_keys.key_blocks.get(key_name) if mesh.shape_keys else None
-    if value == 0 and existing_key is None:
-        return {'object': obj.name, 'part': part, 'value': 0.0,
-                'applied': False, 'reason': 'Neutral value: no shape key exists to reset'}
-    basis = mesh.shape_keys.key_blocks.get('Basis') if mesh.shape_keys else None
-    coords = [tuple(v.co) for v in (basis.data if basis else mesh.vertices)]
-    min_x, max_x = min(v[0] for v in coords), max(v[0] for v in coords)
-    min_y, max_y = min(v[1] for v in coords), max(v[1] for v in coords)
-    min_z, max_z = min(v[2] for v in coords), max(v[2] for v in coords)
-    height = max_z - min_z
-    if height < .001:
-        raise ValueError('Invalid mesh height')
-    center_x = (min_x + max_x) * .5
-    center_y = (min_y + max_y) * .5
-    # Coordinates normalized to a canonical upright standing person.
-    # Front is Blender -Y for the Blender Studio human base meshes.
-    front_sign = -1
-    front_edge = max((max_y - min_y) / height, .08)
-    middle = sorted(abs(v[0] - center_x) / height for v in coords
-                    if .67 <= (v[2] - min_z) / height <= .77)
-    chest_radius = middle[int(len(middle) * .45)] if middle else .12
-    chest_radius = max(.055, min(.20, chest_radius))
-    head_points = [abs(v[0] - center_x) / height for v in coords if
-                   .89 <= (v[2] - min_z) / height <= .97]
-    head_radius = (sorted(head_points)[int(len(head_points) * .85)]
-                   if head_points else .08)
-    head_radius = max(.042, min(.14, head_radius))
-    # Prefer artist-defined regions if present; no manual setup required for common
-    # unrigged upright base meshes, but heuristic masks are topology dependent.
-    group_weights = _morph_group_weights(obj, region)
-    if not mesh.shape_keys:
-        obj.shape_key_add(name='Basis', from_mix=False)
-    key = mesh.shape_keys.key_blocks.get(key_name)
+    ident = _face_set_mapping(obj).get(part)
+    if ident is None:
+        raise ValueError('Assign a Face Set to this control in AISTAGE.ONE before applying')
+    if ident not in {item['id'] for item in _face_set_inventory(obj)}:
+        raise ValueError('Mapped Face Set is missing; no deformation applied')
+    if obj.library or obj.is_library_indirect or obj.data.library or obj.data.is_library_indirect:
+        raise ValueError('Linked object/mesh is read-only; make a local copy first')
+    if obj.data.shape_keys and not obj.data.shape_keys.use_relative:
+        raise ValueError('Absolute Shape Keys are unsupported')
+    key_name = 'AISTAGE_FaceSet_' + part
+    key = obj.data.shape_keys.key_blocks.get(key_name) if obj.data.shape_keys else None
+    if value == 0 and key is None:
+        return {'object': obj.name, 'part': part, 'value': 0.0, 'applied': False,
+                'reason': 'Neutral control'}
+    changed = 0
+    max_shift = 0.0
     if key is None:
+        import math
+        mesh = obj.data
+        weights = _face_set_weights(obj, ident)
+        if not weights or max(weights) == 0:
+            raise ValueError('Face Set contains no vertices')
+        if mesh.users > 1:
+            obj.data = mesh.copy()
+            mesh = obj.data
+        if not mesh.shape_keys:
+            obj.shape_key_add(name='Basis', from_mix=False)
+        basis = mesh.shape_keys.key_blocks[0]
+        coords = [tuple(v.co) for v in basis.data]
+        active = [coords[i] for i, w in enumerate(weights) if w > 0.001]
+        if len(active) < 12:
+            raise ValueError('Selected Face Set contains too few vertices')
+        bounds = [(min(p[i] for p in active), max(p[i] for p in active)) for i in range(3)]
+        centers = [(low + high) / 2 for low, high in bounds]
+        region_size = max(max(high - low for low, high in bounds), 0.000001)
+        axis = MORPH_REGIONS[part][1]
         key = obj.shape_key_add(name=key_name, from_mix=False)
-        key.slider_min = -1.0
-        key.slider_max = 1.0
-        key.value = 0.0
-        count = 0
-        max_shift = 0.0
-        base = mesh.shape_keys.key_blocks[0]
-        for i, point in enumerate(key.data):
-            px, py, pz = base.data[i].co
-            x = (px - center_x) / height
-            y = (py - center_y) / height
-            z = (pz - min_z) / height
-            w = group_weights[i] if group_weights else _region_weight(
-                region, x, y, z, chest_radius, head_radius, front_sign, front_edge)
-            if w < .005:
+        key.slider_min, key.slider_max = -1.0, 1.0
+        for i, w in enumerate(weights):
+            if w <= 0.001:
                 continue
-            count += 1
-            amt = .15 * height * w
-            # Signed Shape Key values grow or shrink a region relative to its center.
-            dx = x * amt
-            dy = y * amt
-            dz = (z - .5) * amt
-            if axis == 'x':
-                dy = dz = 0
-            elif axis == 'y':
-                dx = dz = 0
-            elif axis == 'z':
-                dx = dy = 0
-            else:
-                dz = 0
-            if region in ('legs_length', 'arms_length'):
-                dx = dy = 0
-                dz = -.22 * height * w
-            if region == 'nose_length' or region == 'lips':
-                dx = dz = 0
-                dy = -.10 * height * w
-            if region == 'eye_spacing':
-                dx = math.copysign(.025 * height * w, x)
-                dy = dz = 0
-            point.co = (px + dx, py + dy, pz + dz)
-            max_shift = max(max_shift, math.sqrt(dx * dx + dy * dy + dz * dz))
-        if count < 12:
-            obj.shape_key_remove(key)
-            raise ValueError('No suitable vertices found for ' + part + '; nothing changed')
+            changed += 1
+            px, py, pz = coords[i]
+            delta = [px - centers[0], py - centers[1], pz - centers[2]]
+            scale = 0.20 * w
+            shifts = [delta[j] * scale if ('xyz'[j] in axis) else 0.0 for j in range(3)]
+            if part in ('legs_length', 'arms_length'):
+                # Lengthening requires a directional deformation from a joint;
+                # do not pretend radial scaling achieves it.
+                obj.shape_key_remove(key)
+                raise ValueError('Length morph requires an authored target; no geometry changed')
+            key.data[i].co = (px + shifts[0], py + shifts[1], pz + shifts[2])
+            max_shift = max(max_shift, math.sqrt(sum(d * d for d in shifts)))
     key.mute = False
     key.value = float(value)
-    mesh.update()
+    obj.data.update()
     bpy.context.view_layer.update()
     return {'object': obj.name, 'part': part, 'value': key.value, 'applied': True,
-            'shape_key': key_name, 'method': 'Blender Shape Key',
-            'region_method': 'vertex_group' if group_weights else 'base_mesh_estimate',
-            'vertices_changed': count if 'count' in locals() else None,
-            'max_offset_mesh_units': max_shift * abs(value) if 'max_shift' in locals() else None}
+            'face_set_id': ident, 'shape_key': key_name, 'region_method': 'sculpt_face_set',
+            'vertices_changed': changed if changed else None,
+            'max_offset_mesh_units': max_shift * abs(value) if changed else None}
 
 def _reset_body_morphs(action):
     obj = _editable_character(action)
     keys = obj.data.shape_keys.key_blocks if obj.data.shape_keys else []
     count = 0
     for key in keys:
-        if key.name.startswith('AISTAGE_Morph_'):
+        if key.name.startswith('AISTAGE_FaceSet_') or key.name.startswith('AISTAGE_Morph_'):
             key.value = 0.0
             count += 1
     return {'object': obj.name, 'reset': count}
@@ -455,6 +469,12 @@ def _waist_morph(action):
 
 def _execute_command(action):
     kind = action.get('action')
+    if kind == 'list_face_sets':
+        obj = _character_source(action)
+        return {'object': obj.name, 'face_sets': _face_set_inventory(obj),
+                'mapping': _face_set_mapping(obj)}
+    if kind == 'assign_face_set':
+        return _assign_face_set(action)
     if kind == 'set_body_morph':
         return _set_body_morph(action)
     if kind == 'reset_body_morphs':
@@ -463,8 +483,8 @@ def _execute_command(action):
         obj = _character_source(action)
         keys = obj.data.shape_keys.key_blocks if obj.data.shape_keys else []
         return {'object': obj.name, 'controls': list(MORPH_REGIONS.keys()),
-                'values': {key.name[len('AISTAGE_Morph_'):]: key.value
-                           for key in keys if key.name.startswith('AISTAGE_Morph_')}}
+                'values': {key.name.split('AISTAGE_FaceSet_', 1)[-1] if key.name.startswith('AISTAGE_FaceSet_') else key.name[len('AISTAGE_Morph_'):]: key.value
+                           for key in keys if key.name.startswith('AISTAGE_Morph_') or key.name.startswith('AISTAGE_FaceSet_')}}
     if kind == 'inspect_native_tools':
         return _native_inspect(action)
     if kind == 'create_vertex_group_from_selection':
@@ -591,7 +611,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._respond(404, {'ok': False, 'error': 'Not found'})
         if not self._authorized():
             return self._respond(401, {'ok': False, 'error': 'Invalid token'})
-        return self._respond(200, {'ok': True, 'bridge': '0.12', 'blender': bpy.app.version_string})
+        return self._respond(200, {'ok': True, 'bridge': '0.13', 'blender': bpy.app.version_string})
 
     def _authorized(self):
         return bool(_token and secrets.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + _token))
