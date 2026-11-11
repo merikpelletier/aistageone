@@ -67,8 +67,7 @@ def _mesh_info(obj):
         'visible': bool(obj.visible_get()),
         'attributes': [{'name': attribute.name, 'domain': attribute.domain, 'type': attribute.data_type}
                        for attribute in mesh.attributes if not attribute.is_internal][:30],
-        'face_set_count': len(set(item.value for item in mesh.attributes['.sculpt_face_set'].data))
-            if '.sculpt_face_set' in mesh.attributes else 0,
+        'has_sculpt_face_sets': '.sculpt_face_set' in mesh.attributes,
         'shape_keys': [key.name for key in mesh.shape_keys.key_blocks] if mesh.shape_keys else [],
     }
 
