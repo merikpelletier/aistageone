@@ -3,6 +3,14 @@ import {createClient} from 'npm:@supabase/supabase-js@2.112.2';
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json'};
 const reply=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:cors});
 const API='https://api.replicate.com/v1';
+async function replicateJson(response:Response):Promise<any> {
+ const type=response.headers.get('content-type')||'';
+ if(!type.toLowerCase().includes('json')) {
+  throw new Error(`Replicate returned HTTP ${response.status} (${type||'non-JSON response'}). The 3D provider did not return JSON; retry later or check its API status.`);
+ }
+ try { return await response.json(); }
+ catch { throw new Error(`Replicate returned invalid JSON (HTTP ${response.status}).`); }
+}
 const adapters:Record<string,(mode:string,imgs:string[],prompt:string)=>Record<string,unknown>>={
  'hyper3d/rodin':(mode,imgs,prompt)=>({tier:'Gen-2',images:mode==='text'?[]:imgs,prompt:prompt||'3D object',geometry_file_format:'glb'}),
  'tencent/hunyuan3d-2mv':(_,imgs)=>({front_image:imgs[0],...(imgs[1]?{back_image:imgs[1]}:{}),...(imgs[2]?{left_image:imgs[2]}:{}),...(imgs[3]?{right_image:imgs[3]}:{}),file_type:'glb'}),
@@ -39,7 +47,7 @@ Deno.serve(async(req)=>{
    const job=JSON.parse(atob(payload));
    if(job.u!==user.id||Date.now()-job.t>7*86400000||! /^[a-z0-9]+$/i.test(job.id))return reply({error:'Job not available'},403);
    const response=await fetch(`${API}/predictions/${job.id}`,{headers:{Authorization:`Bearer ${token}`}});
-   const prediction=await response.json();
+   const prediction=await replicateJson(response);
    if(!response.ok)return reply({error:prediction.detail||'Unable to inspect prediction'},502);
    if(job.charge&&prediction.status==='succeeded')await svc.rpc('complete_ai_credit_charge',{p_charge_id:job.charge});
    if(job.charge&&['failed','canceled'].includes(prediction.status))await svc.rpc('refund_ai_credit_charge',{p_charge_id:job.charge,p_error_message:String(prediction.error||prediction.status)});
@@ -77,12 +85,20 @@ Deno.serve(async(req)=>{
    charge=billing.charge_id||null;
   }
   try {
-   const modelInfoResponse = await fetch(`${API}/models/${modelKey}`,{headers:{Authorization:`Bearer ${token}`}});
-   const modelInfo = await modelInfoResponse.json();
-   if(!modelInfoResponse.ok) throw new Error(modelInfo.detail||'Unable to inspect selected 3D model');
-   const version = modelInfo.latest_version?.id;
-   if(!version) throw new Error('The selected model has no runnable version');
-   const response=await fetch(`${API}/predictions`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({version,input})});
+   let endpoint=`${API}/predictions`;
+   let payload:Record<string,unknown>={input};
+   if(modelKey==='hyper3d/rodin') {
+    // Official Replicate models use their model-specific predictions endpoint.
+    endpoint=`${API}/models/hyper3d/rodin/predictions`;
+   } else {
+    const modelInfoResponse=await fetch(`${API}/models/${modelKey}`,{headers:{Authorization:`Bearer ${token}`}});
+    const modelInfo=await replicateJson(modelInfoResponse);
+    if(!modelInfoResponse.ok)throw new Error(modelInfo.detail||'Unable to inspect selected 3D model');
+    const version=modelInfo.latest_version?.id;
+    if(!version)throw new Error('The selected model has no runnable version');
+    payload={version,input};
+   }
+   const response=await fetch(endpoint,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
    const prediction=await response.json();
    if(!response.ok||!prediction.id)throw new Error(prediction.detail||prediction.error||`Replicate HTTP ${response.status}`);
    const payload=btoa(JSON.stringify({id:prediction.id,u:user.id,t:Date.now(),charge}));
