@@ -133,6 +133,8 @@ def _create_group_from_selection(action):
     selected = [v.index for v in bm.verts if v.select and not v.hide]
     if len(selected) < 10:
         raise ValueError('Select at least 10 vertices of the waist, excluding arms')
+    if bpy.context.view_layer.objects.active != obj:
+        raise ValueError('Make the working copy the active Blender object before creating its vertex group')
     import bpy as _bpy
     _bpy.ops.object.mode_set(mode='OBJECT')
     try:
