@@ -29,8 +29,24 @@ async function bridgeRequest(path, token, payload) {
 }
 
 
+const MORPH_SECTIONS = [
+  { title: 'Body', controls: [
+    ['head_width','Head width'],['head_height','Head height'],['neck_width','Neck'],
+    ['shoulders','Shoulders'],['chest','Chest'],['waist','Waist'],['belly','Belly'],
+    ['hips','Hips'],['buttocks','Buttocks'],['upper_arm','Upper arms'],
+    ['forearm','Forearms'],['hands','Hands'],['thighs','Thighs'],['calves','Calves'],
+    ['feet','Feet'],['legs_length','Leg length'],['arms_length','Arm length']
+  ]},
+  { title: 'Face', controls: [
+    ['face_width','Face width'],['forehead','Forehead'],['cheeks','Cheeks'],
+    ['jaw','Jaw'],['chin','Chin'],['nose_width','Nose width'],
+    ['nose_length','Nose projection'],['lips','Lips'],['mouth_width','Mouth width'],
+    ['eyes','Eyes'],['eye_spacing','Eye spacing'],['ears','Ears']
+  ]},
+];
+const MORPH_PARTS = new Set(MORPH_SECTIONS.flatMap(section => section.controls.map(([id]) => id)));
 const SCENE_ACTIONS = new Set(['create_cube','create_sphere','create_cylinder','create_plane','move_object','rotate_object','scale_object']);
-const CHARACTER_ACTIONS = new Set(['set_native_shape_key','create_native_lattice','set_native_lattice_width']);
+const CHARACTER_ACTIONS = new Set(['set_native_shape_key','create_native_lattice','set_native_lattice_width','set_body_morph']);
 const VECTOR = { move_object: 'location', rotate_object: 'rotation', scale_object: 'scale' };
 function safePlan(raw, context) {
   const parsed = typeof raw === 'string' ? JSON.parse(raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')) : raw;
@@ -45,6 +61,11 @@ function safePlan(raw, context) {
     if (CHARACTER_ACTIONS.has(item.action)) {
       if (!context?.object || item.name !== context.object)
         throw new Error('Character operation requires the selected Blender mesh.');
+      if (item.action === 'set_body_morph') {
+        if (!MORPH_PARTS.has(item.part) || typeof item.value !== 'number' || !Number.isFinite(item.value) || item.value < -1 || item.value > 1)
+          throw new Error('Invalid body or face morph request.');
+        return { action: item.action, name: context.object, part: item.part, value: item.value };
+      }
       if (item.action === 'set_native_shape_key') {
         if (!shapes.has(item.shape_key) || typeof item.value !== 'number' || !Number.isFinite(item.value) || item.value < 0 || item.value > 1)
           throw new Error('AI selected a Shape Key not present in Blender.');
@@ -82,6 +103,8 @@ export default function BlenderBridgeWorkspace() {
   const [characters, setCharacters] = useState([]);
   const [workingCharacter, setWorkingCharacter] = useState('');
   const [waistWidth, setWaistWidth] = useState('1');
+  const [morphValues, setMorphValues] = useState({});
+  const [morphBusy, setMorphBusy] = useState('');
   const [nativeTools, setNativeTools] = useState(null);
   const [nativeGroup, setNativeGroup] = useState('');
   const [nativeLattice, setNativeLattice] = useState(false);
@@ -149,10 +172,10 @@ export default function BlenderBridgeWorkspace() {
         : 'No character selected: only basic scene commands may be used.';
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: `USER DIRECTION: ${direction.trim().slice(0, 1500)}\\nACTUAL BLENDER CHARACTER CAPABILITIES: ${nativeSummary}`,
-        instructions: `You direct the live Blender scene through its existing native bpy functions. Output JSON { "commands": [...] } only, maximum 5 commands. For a selected character use ONLY supported operations: set_native_shape_key (name, shape_key, value 0..1) on an existing non-Basis key; create_native_lattice (name, vertex_group) only using an EXISTING anatomically relevant vertex group and if no AISTAGE lattice exists; set_native_lattice_width (name, waist_width 0.75..1.25) only with an existing lattice or after creating it in the same plan. Match group and shape key names EXACTLY from the actual scene inspection; never invent anatomy, groups, shape keys, or claim arbitrary deformation is possible. Target only the character selected by the user. For non-character scene edits support create_cube, create_sphere, create_cylinder, create_plane (action, name); move_object (action, name, location [x,y,z]); rotate_object (action, name, rotation [x,y,z] degrees); scale_object (action, name, scale [x,y,z] positive absolute values). For requests not achievable through these available native tools, return {"commands":[]}. No Python scripts. Do not reinterpret unsupported character edits as scene transforms.`,
+        instructions: `You direct the live Blender scene through its existing native bpy functions. Output JSON { "commands": [...] } only, maximum 5 commands. For a selected character use ONLY supported operations: set_body_morph (name, part, value between -1 and +1) for native AISTAGE shape-key morphology. Valid parts: ${Array.from(MORPH_PARTS).join(", ")}. Use value -0.5 for narrower/smaller and +0.5 for wider/larger. These morphs create Blender Shape Keys automatically on suitable upright humanoid meshes. Also support set_native_shape_key (name, shape_key, value 0..1) on an existing non-Basis key; create_native_lattice (name, vertex_group) only using an EXISTING anatomically relevant vertex group and if no AISTAGE lattice exists; set_native_lattice_width (name, waist_width 0.75..1.25) only with an existing lattice or after creating it in the same plan. Match group and shape key names EXACTLY from the actual scene inspection; never invent anatomy, groups, shape keys, or claim arbitrary deformation is possible. Target only the character selected by the user. For non-character scene edits support create_cube, create_sphere, create_cylinder, create_plane (action, name); move_object (action, name, location [x,y,z]); rotate_object (action, name, rotation [x,y,z] degrees); scale_object (action, name, scale [x,y,z] positive absolute values). For requests not achievable through these available native tools, return {"commands":[]}. No Python scripts. Do not reinterpret unsupported character edits as scene transforms.`,
         response_json_schema: { type: 'object', properties: { commands: { type: 'array', items: { type: 'object', properties: {
           action: { type: 'string' }, name: { type: 'string' },
-          shape_key: { type: 'string' }, vertex_group: { type: 'string' },
+          shape_key: { type: 'string' }, vertex_group: { type: 'string' }, part: { type: 'string' },
           value: { type: 'number' }, waist_width: { type: 'number' },
           location: { type: 'array', items: { type: 'number' } },
           rotation: { type: 'array', items: { type: 'number' } },
@@ -198,6 +221,7 @@ export default function BlenderBridgeWorkspace() {
       setCharacters(items);
       const selected = items.find((item) => item.name === workingCharacter) || items.find((item) => item.name.includes('body_female_realistic')) || items[0];
       setWorkingCharacter(selected?.name || '');
+      setMorphValues({});
       setNativeTools(null);
       setNativeLattice(false);
       setMessage(`Found ${response.result.total_meshes} mesh object(s); showing ${items.length}.`);
@@ -217,6 +241,50 @@ export default function BlenderBridgeWorkspace() {
       setMessage(JSON.stringify(response.result));
     } catch (error) {
       setMessage(error?.message || 'Native Blender command failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const changeMorph = async (part, value) => {
+    if (!connected || !workingCharacter || busy || morphBusy || !MORPH_PARTS.has(part)) return;
+    setMorphBusy(part);
+    try {
+      const response = await bridgeRequest('/v1/command', token, {
+        action: 'set_body_morph', name: workingCharacter, part, value
+      });
+      setMorphValues(previous => ({...previous, [part]: response.result.value}));
+      setMessage(`${part.replaceAll('_', ' ')}: ${Math.round(value * 100)}%`);
+    } catch (error) {
+      setMessage(error?.message || 'Morph failed. The original geometry was not replaced.');
+    } finally {
+      setMorphBusy('');
+    }
+  };
+
+  const loadMorphs = async (objectName = workingCharacter) => {
+    if (!connected || !objectName || busy) return;
+    setBusy(true);
+    try {
+      const response = await bridgeRequest('/v1/command', token, {action:'list_body_morphs', name:objectName});
+      setMorphValues(response.result.values || {});
+      setMessage('Morph controls loaded from Blender.');
+    } catch (error) {
+      setMessage(error?.message || 'Unable to inspect morphs.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resetMorphs = async () => {
+    if (!connected || !workingCharacter || busy || morphBusy) return;
+    setBusy(true);
+    try {
+      await bridgeRequest('/v1/command', token, {action:'reset_body_morphs', name:workingCharacter});
+      setMorphValues({});
+      setMessage('All AISTAGE morphology controls reset to neutral.');
+    } catch (error) {
+      setMessage(error?.message || 'Reset failed.');
     } finally {
       setBusy(false);
     }
@@ -313,7 +381,7 @@ export default function BlenderBridgeWorkspace() {
             {characters.length > 0 && (
               <label className="block space-y-2 text-xs text-white/60">Blender character
                 <select value={workingCharacter} onChange={(event) => {
-                    setWorkingCharacter(event.target.value); setNativeTools(null);
+                    setWorkingCharacter(event.target.value); setMorphValues({}); setNativeTools(null);
                     setNativeGroup(''); setNativeLattice(false); setPlan([]);
                   }}
                   className="block w-full rounded-xl border border-white/15 bg-[#171a1e] p-3 text-sm text-white">
@@ -330,6 +398,61 @@ export default function BlenderBridgeWorkspace() {
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-[#22262b] overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-5 md:px-7">
+            <div>
+              <h2 className="text-lg font-semibold">Character Morph</h2>
+              <p className="mt-1 text-xs text-white/55">Body and face controls · non-destructive Blender Shape Keys</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => loadMorphs()} disabled={!connected || !workingCharacter || busy || !!morphBusy}
+                className="rounded-lg border border-white/20 px-3 py-2 text-xs disabled:opacity-40">Refresh</button>
+              <button type="button" onClick={resetMorphs} disabled={!connected || !workingCharacter || busy || !!morphBusy}
+                className="rounded-lg border border-white/20 px-3 py-2 text-xs disabled:opacity-40">Reset all</button>
+            </div>
+          </div>
+          <div className="p-5 md:p-7 space-y-7">
+            {!workingCharacter && <p className="text-sm text-white/50">Select a character in Blender above to enable morphing.</p>}
+            {MORPH_SECTIONS.map(section => (
+              <div key={section.title} className="space-y-4">
+                <h3 className="text-sm font-semibold text-white/80">{section.title}</h3>
+                <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
+                  {section.controls.map(([part,label]) => (
+                    <div key={part} className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <label htmlFor={`morph-${part}`} className="text-white/70">{label}</label>
+                        <span className="font-mono tabular-nums text-white/55">
+                          {Math.round((morphValues[part] ?? 0) * 100)}%
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <input id={`morph-${part}`} type="range" min="-1" max="1" step="0.05"
+                          value={morphValues[part] ?? 0}
+                          disabled={!connected || !workingCharacter || busy || !!morphBusy}
+                          onChange={(event) => {
+                            const value = Number(event.target.value);
+                            setMorphValues(previous => ({...previous, [part]: value}));
+                          }}
+                          onPointerUp={(event) => changeMorph(part, Number(event.currentTarget.value))}
+                          onKeyUp={(event) => {
+                            if (['ArrowLeft','ArrowRight','Home','End','PageUp','PageDown'].includes(event.key))
+                              changeMorph(part, Number(event.currentTarget.value));
+                          }}
+                          className="h-1.5 min-w-0 flex-1 accent-teal-300"/>
+                        <button type="button" aria-label={`Apply ${label}`}
+                          disabled={!connected || !workingCharacter || busy || !!morphBusy}
+                          onClick={() => changeMorph(part, morphValues[part] ?? 0)}
+                          className="rounded-lg border border-white/15 px-2 py-1 text-xs text-white/60 hover:text-white disabled:opacity-35">Apply</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <p className="text-xs text-white/45">Morphology is generated for upright human meshes. Face and limb results depend on the character topology; inspect the Blender viewport before saving.</p>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-[#22262b] overflow-hidden">
           <div className="border-b border-white/10 p-5 md:p-7">
             <div className="flex items-center gap-2"><Sparkles size={19} className="text-teal-300"/><h2 className="text-lg font-semibold">AI Director</h2></div>
             <p className="mt-2 text-sm text-white/60">Describe what you want to create. AI reads the actual native Blender tools available for your character before preparing changes.</p>
@@ -340,7 +463,7 @@ export default function BlenderBridgeWorkspace() {
               placeholder="Describe your scene or the change you want to make…"
               className="block w-full resize-y rounded-xl border border-white/15 bg-[#171a1e] px-4 py-4 text-sm leading-relaxed outline-none focus:border-teal-300/60"/>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="max-w-sm text-xs text-white/45">AI uses the actual Shape Keys and Vertex Groups in your Blender character. If anatomy is not defined, it will not invent it.</p>
+              <p className="max-w-sm text-xs text-white/45">AI Director can now control the Body and Face Shape Keys above using natural language.</p>
               <button type="button" disabled={!connected || busy || planning || !direction.trim()}
                 onClick={prepareAI} className="flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#15191d] hover:bg-white/90 disabled:opacity-35">
                 <Sparkles size={16}/>{planning ? 'Preparing…' : 'Prepare with AI'}
@@ -352,7 +475,7 @@ export default function BlenderBridgeWorkspace() {
                 <ol className="list-decimal space-y-2 pl-5 text-sm text-white/80">
                   {plan.map((command, index) =>
                     <li key={index}>{command.action.replaceAll('_', ' ')} · {command.name}
-                      {VECTOR[command.action] ? ` [${command[VECTOR[command.action]].join(', ')}]` : command.action === 'set_native_shape_key' ? ` · ${command.shape_key}: ${command.value}` : command.action === 'create_native_lattice' ? ` · ${command.vertex_group}` : command.action === 'set_native_lattice_width' ? ` · width ${command.waist_width}` : ''}
+                      {VECTOR[command.action] ? ` [${command[VECTOR[command.action]].join(', ')}]` : command.action === 'set_body_morph' ? ` · ${command.part}: ${command.value}` : command.action === 'set_native_shape_key' ? ` · ${command.shape_key}: ${command.value}` : command.action === 'create_native_lattice' ? ` · ${command.vertex_group}` : command.action === 'set_native_lattice_width' ? ` · width ${command.waist_width}` : ''}
                     </li>)}
                 </ol>
                 <div className="flex flex-wrap gap-2">
