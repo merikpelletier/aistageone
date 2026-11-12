@@ -169,7 +169,7 @@ function PanelTreePreview({ panel }) {
   </div>;
 }
 
-function PageCanvas({ panels, ratio, selectedPanel, onSelectPanel, boxes, textMode, onBoxesChange }) {
+function PageCanvas({ panels, ratio, selectedPanel, onSelectPanel, boxes, textMode, onBoxesChange, webtoonWidth }) {
   const ref = useRef(null); const drag = useRef(null);
   const [selectedBox, setSelectedBox] = useState('');
   const [width, setWidth] = useState(900);
@@ -197,7 +197,7 @@ function PageCanvas({ panels, ratio, selectedPanel, onSelectPanel, boxes, textMo
   const movePointerHandle = (event) => { const dragState = pointerDragRef.current; if (!drawingBoxId || !dragState) return; event.preventDefault(); const point = pointFromEvent(event); if (!point) return; const next = [...pointerPointsRef.current]; next[dragState.index] = point; pointerPointsRef.current = next; setPointerDraft(next); onBoxesChange(items.map((box) => box.id === drawingBoxId ? { ...box, pointer_path: next, pointer_shape: 'triangle', arrow_preset: null, arrow_position: 50 } : box)); };
   const finishPointerHandle = (event) => { if (!pointerDragRef.current) return; movePointerHandle(event); pointerDragRef.current = null; };
   const pageWidth = `min(100%, calc((100vh - 330px) * ${(rw || 16) / (rh || 9)}))`;
-  return <div ref={ref} className="relative mx-auto overflow-hidden border border-white/15 bg-[#090b0d] shadow-[0_30px_80px_rgba(0,0,0,.45)]" style={{ aspectRatio: `${rw || 16} / ${rh || 9}`, width: pageWidth, maxHeight: 'calc(100vh - 330px)' }} onPointerDown={() => textMode && !drawingBoxId && setSelectedBox('')}>
+  return <div ref={ref} className="relative mx-auto overflow-hidden border border-white/15 bg-[#090b0d] shadow-[0_30px_80px_rgba(0,0,0,.45)]" style={{ aspectRatio: `${rw || 16} / ${rh || 9}`, width: webtoonWidth ? `${webtoonWidth}px` : pageWidth, maxHeight: webtoonWidth ? 'none' : 'calc(100vh - 330px)', flexShrink: 0 }} onPointerDown={() => textMode && !drawingBoxId && setSelectedBox('')}>
     <div className="absolute inset-0 grid gap-[6px] p-[6px]" style={landscape ? { gridTemplateColumns: `repeat(${panels.length},minmax(0,1fr))` } : { gridTemplateRows: `repeat(${panels.length},minmax(0,1fr))` }}>
       {panels.map((panel, index) => <button type="button" key={panel.id || index} onClick={(event) => { if (drawingBoxId) return; event.stopPropagation(); onSelectPanel(index); }} className={`relative min-h-0 min-w-0 overflow-hidden bg-black text-left transition ${selectedPanel === index ? 'ring-4 ring-[#23c7be] ring-inset' : 'ring-1 ring-white/10 ring-inset'}`}><PanelTreePreview panel={panel} /><span className={`absolute left-2 top-2 px-2 py-1 text-[10px] font-black ${selectedPanel === index ? 'bg-[#23c7be] text-black' : 'bg-black/70 text-white'}`}>FRAME {index + 1}</span></button>)}
     </div>
@@ -216,7 +216,23 @@ function PageCanvas({ panels, ratio, selectedPanel, onSelectPanel, boxes, textMo
 }
 
 function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playback }) {
+  const viewportRef = useRef(null);
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const node = viewportRef.current;
+    if (!node) return undefined;
+    const observer = new ResizeObserver(([entry]) => {
+      const width = Math.floor(entry.contentRect.width);
+      const height = Math.floor(entry.contentRect.height);
+      setViewport(current => current.width === width && current.height === height ? current : { width, height });
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
   const [rw, rh] = String(ratio || '16:9').split(':').map(Number);
+  const pageWidth = viewport.width > 0 && viewport.height > 0
+    ? Math.max(60, Math.floor(Math.min(viewport.width - 16, (viewport.height - 16) * (rw || 16) / (rh || 9))))
+    : 0;
   const portrait = rw < rh;
   const count = Math.max(1, panels.length);
   const step = playback?.step;
@@ -237,9 +253,9 @@ function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playba
   const dy = cameraOn ? (0.5 - centerY) * scale * 100 : 0;
   const transform = cameraOn ? `translate(${dx}%, ${dy}%) scale(${scale})` : 'translate(0%, 0%) scale(1)';
   const captionPosition = settings.captionPosition === 'top' ? 'top-3' : settings.captionPosition === 'middle' ? 'top-1/2 -translate-y-1/2' : 'bottom-3';
-  return <div data-fotoplay-webtoon-camera="true" className="relative flex h-full min-h-0 w-full min-w-0 items-center justify-center overflow-hidden">
+  return <div ref={viewportRef} data-fotoplay-webtoon-camera="true" className="relative flex min-h-0 w-full min-w-0 flex-1 self-stretch items-center justify-center overflow-hidden">
     <div className="flex h-full w-full min-w-0 items-center justify-center transition-transform duration-700 ease-in-out" style={{ transform, transformOrigin: 'center center' }}>
-      <PageCanvas panels={panels} ratio={ratio} selectedPanel={selectedPanel} onSelectPanel={onSelectPanel} boxes={[]} textMode={false} onBoxesChange={() => {}} />
+      {pageWidth > 0 && <PageCanvas panels={panels} ratio={ratio} selectedPanel={selectedPanel} onSelectPanel={onSelectPanel} boxes={[]} textMode={false} onBoxesChange={() => {}} webtoonWidth={pageWidth} />}
     </div>
     {cameraOn && step?.caption && <div key={playback.index} className={`pointer-events-none absolute inset-x-3 z-20 mx-auto w-fit max-w-[min(85%,420px)] max-h-[35%] overflow-hidden break-words rounded bg-black/70 px-3 py-2 text-center font-medium leading-snug text-white shadow-lg ${captionPosition}`} style={{ fontSize: `${Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))}px` }}>{step.caption}</div>}
     {!cameraOn && <div className="pointer-events-none absolute bottom-3 rounded bg-black/75 px-3 py-1 text-xs font-semibold text-white/80">Complete page</div>}
