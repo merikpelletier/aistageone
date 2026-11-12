@@ -331,8 +331,6 @@ export default function AuthorProductionWorkspaceZoom(props) {
       applyWorkspaceLayout();
       const main = webtoon.closest('main');
       if (main) {
-        main.style.paddingLeft = '12px';
-        main.style.paddingRight = '12px';
         main.style.paddingTop = '12px';
         main.style.paddingBottom = '12px';
         main.style.overflow = 'hidden';
