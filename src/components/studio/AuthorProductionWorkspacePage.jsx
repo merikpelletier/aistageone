@@ -215,6 +215,32 @@ function PageCanvas({ panels, ratio, selectedPanel, onSelectPanel, boxes, textMo
   </div>;
 }
 
+function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playback }) {
+  const [rw, rh] = String(ratio || '16:9').split(':').map(Number);
+  const portrait = rw < rh;
+  const count = Math.max(1, panels.length);
+  const activeStep = playback?.step;
+  const index = Math.max(0, Math.min(count - 1, activeStep?.frameIndex ?? 0));
+  const settings = playback?.settings || {};
+  const movement = settings.movement || 'gentle';
+  const cameraOn = Boolean(activeStep);
+  const scaleBase = Math.min(count * 0.88, 2.4);
+  const scale = !cameraOn ? 1 : scaleBase * (movement === 'zoom-in' ? 1.07 : movement === 'zoom-out' ? 0.94 : movement === 'gentle' && playback.index % 2 ? 1.035 : 1);
+  const cx = portrait ? 0.5 : (index + 0.5) / count;
+  const cy = portrait ? (index + 0.5) / count : 0.5;
+  const dx = cameraOn ? (0.5 - cx) * scale * 100 : 0;
+  const dy = cameraOn ? (0.5 - cy) * scale * 100 : 0;
+  const transform = cameraOn && movement !== 'static' ? `translate(${dx}%, ${dy}%) scale(${scale})` : cameraOn ? `translate(${(0.5-cx)*scaleBase*100}%, ${(0.5-cy)*scaleBase*100}%) scale(${scaleBase})` : 'none';
+  const captionPosition = settings.captionPosition === 'top' ? 'top-3' : settings.captionPosition === 'middle' ? 'top-1/2 -translate-y-1/2' : 'bottom-3';
+  return <div className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden">
+    <div className="flex w-full items-center justify-center transition-transform duration-1000 ease-in-out" style={{ transform, willChange: cameraOn ? 'transform' : 'auto' }}>
+      <PageCanvas panels={panels} ratio={ratio} selectedPanel={selectedPanel} onSelectPanel={onSelectPanel} boxes={[]} textMode={false} onBoxesChange={() => {}} />
+    </div>
+    {cameraOn && activeStep?.caption && <div key={playback.index} className={`pointer-events-none absolute inset-x-3 z-20 mx-auto max-w-[min(90%,680px)] rounded bg-black/80 px-4 py-3 text-center text-sm font-semibold leading-relaxed text-white shadow-lg sm:text-base ${captionPosition}`}>{activeStep.caption}</div>}
+    {!cameraOn && <div className="pointer-events-none absolute bottom-3 rounded bg-black/75 px-3 py-1 text-xs font-semibold text-white/80">Complete page · Press Play page to begin</div>}
+  </div>;
+}
+
 function ToolButton({ tool, active, onClick }) {
   const Icon = tool.icon;
   return <button type="button" onClick={onClick} title={tool.label} aria-label={tool.label} className={`flex h-12 w-12 items-center justify-center border transition ${active ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'border-white/10 bg-[#16191d] text-white/70 hover:border-white/30 hover:text-white'}`}><Icon size={19} /></button>;
@@ -247,13 +273,14 @@ export default function AuthorProductionWorkspacePage(props) {
 
 function ComicPageWorkspace({ user, project, setProject, activeChapterId, setActiveChapterId, saving, onBack, onEditSetup, onSave, onClassic }) {
   const [selectedId, setSelectedId] = useState(''); const [tool, setTool] = useState('panel'); const [selectedPanel, setSelectedPanel] = useState(0);
+  const [webtoonPlayback, setWebtoonPlayback] = useState({ playing: false, index: 0, step: null, settings: null });
   const [busy, setBusy] = useState(''); const [notice, setNotice] = useState(''); const [pricing, setPricing] = useState({}); const [catalogGalleries, setCatalogGalleries] = useState({});
   const [showMasterVault, setShowMasterVault] = useState(false); const [showMasterShop, setShowMasterShop] = useState(false); const masterUploadRef = useRef(null);
   const active = useMemo(() => project.chapters.find((chapter) => chapter.id === activeChapterId), [project.chapters, activeChapterId]);
   const firstOpen = active?.segments.findIndex((segment) => segment.status !== 'approved') ?? 0; const currentIndex = firstOpen < 0 ? 8 : firstOpen;
   useEffect(() => { if (!active) return; const selected = active.segments.find((item) => item.id === selectedId); if (!selected || selected.number > currentIndex + 1) setSelectedId(active.segments[currentIndex].id); }, [active, currentIndex, selectedId]);
   const selectedIndex = Math.max(0, active?.segments.findIndex((segment) => segment.id === selectedId) ?? currentIndex); const segment = active?.segments[selectedIndex];
-  useEffect(() => { setSelectedPanel((value) => Math.min(value, Math.max(0, Number(segment?.comic_panel_count || 3) - 1))); }, [segment?.id, segment?.comic_panel_count]);
+  useEffect(() => { setSelectedPanel((value) => Math.min(value, Math.max(0, Number(segment?.comic_panel_count || 3) - 1))); setWebtoonPlayback({ playing: false, index: 0, step: null, settings: null }); }, [segment?.id, segment?.comic_panel_count]);
   useEffect(() => { base44.entities.ToolPricing.filter({ is_active: true }).then((rows) => setPricing(Object.fromEntries(rows.map((row) => [row.tool_id, row.token_cost])))).catch(() => {}); }, []);
   useEffect(() => { const ids = [...new Set([...project.characters, ...project.locations].map((item) => item.image_source_id).filter(Boolean))]; if (!ids.length) return setCatalogGalleries({}); supabase.from('catalog_asset').select('id,featured_image,preview_images').in('id', ids).then(({ data }) => setCatalogGalleries(Object.fromEntries((data || []).map((item) => [item.id, uniqueImages([item.featured_image, ...(item.preview_images || [])])])))); }, [project.characters, project.locations]);
   if (!active || !segment) return null;
@@ -329,7 +356,7 @@ function ComicPageWorkspace({ user, project, setProject, activeChapterId, setAct
     {tool === 'voice' && <><VoicePicker value={segment.narrator_voice || ''} onChange={(value) => change({ narrator_voice: value, audio_stale: Boolean(segment.narration_url) })} language={segment.narrator_language || project.production_settings?.narrator_language || 'en'} onLanguageChange={(value) => change({ narrator_language: value, audio_stale: Boolean(segment.narration_url) })} disabled={Boolean(busy)} />{segment.narration_url && <audio controls src={segment.narration_url} className="w-full" />}<button onClick={generateAudio} disabled={busy === 'audio'} className={`${action} w-full bg-[#23c7be] text-black`}><Volume2 size={14} /> {segment.narration_url ? 'Regenerate' : 'Generate'} audio · {pricing.tts ?? '—'}</button></>}
     {tool === 'master' && <><div className="flex items-center gap-3 border border-white/10 bg-[#181c21] p-3">{active.master_reference_url ? <img src={active.master_reference_url} alt="" className="h-20 w-20 object-cover" /> : <div className="h-20 w-20 bg-[#242930]" />}<div><p className="font-black text-[#23c7be]">Sequence master</p><p className="text-xs text-white/45">{active.master_reference_label || 'No master selected'}</p></div></div><div className="grid grid-cols-2 gap-2"><button onClick={() => setShowMasterVault(true)} className={`${action} bg-white text-black`}>Vault</button><label className={`${action} cursor-pointer bg-[#1b1f24]`}><Upload size={14} /> Upload<input ref={masterUploadRef} type="file" accept="image/*" className="hidden" onChange={uploadMaster} /></label><button onClick={() => setShowMasterShop(true)} className={`${action} bg-[#1b1f24]`}><Store size={14} /> Assets Shop</button>{active.master_reference_url && <button onClick={() => persist({}, { master_reference_url: '', master_reference_source: '', master_reference_label: '' })} className={`${action} bg-red-500/20 text-red-200`}>Clear</button>}</div></>}
     {tool === 'files' && <><p className="text-xs font-black uppercase text-white/45">Selected frame</p><StoryImageFileActions url={selected?.image_url} userEmail={user?.email || ''} name={`${project.title} - Segment ${segment.number} - Frame ${selectedPanel + 1}`} ratio="1:1" /><p className="pt-2 text-xs font-black uppercase text-white/45">Final page</p><StoryImageFileActions url={segment.image_url} userEmail={user?.email || ''} name={`${project.title} - Segment ${segment.number}`} ratio={active.image_aspect_ratio || '16:9'} /></>}
-    {tool === 'webtoon' && <FotoPlayWebtoonPanel key={segment.id} segment={{ ...segment, image_url: selected?.image_url || segment.image_url, text_overlay_source_url: selected?.image_url || segment.text_overlay_source_url }} onPersist={(values) => persist(values)} />}
+    {tool === 'webtoon' && <FotoPlayWebtoonPanel key={segment.id} segment={segment} frameCount={panelCount} portrait={Number((active.image_aspect_ratio || '16:9').split(':')[0]) < Number((active.image_aspect_ratio || '16:9').split(':')[1])} playback={webtoonPlayback} onPlaybackChange={setWebtoonPlayback} onPersist={(values) => persist(values)} />}
     {tool === 'approve' && <><div className="border border-white/10 bg-[#181c21] p-3"><p className="font-black">Segment {segment.number}</p><p className="mt-1 text-xs text-white/50">{allLeavesReady ? 'All current frames have images.' : 'One or more frames still need images.'}</p><p className="mt-1 text-xs text-white/50">{segment.narrator_voice ? `Voice: ${segment.narrator_voice}` : 'Voice not selected.'}</p></div><button onClick={generateCurrent} disabled={Boolean(busy)} className={`${action} w-full bg-[#23c7be] text-black`}><Play size={14} /> Synchronize current segment</button>{segment.status === 'approved' ? <button onClick={() => change({ status: 'draft' })} className={`${action} w-full bg-[#1b1f24]`}>Unlock segment</button> : <button onClick={approve} disabled={Boolean(busy)} className={`${action} w-full bg-emerald-400 text-black`}><Check size={14} /> Approve segment {segment.number}</button>}</>}
   </div></div> : null;
 
@@ -341,7 +368,7 @@ function ComicPageWorkspace({ user, project, setProject, activeChapterId, setAct
     <div className="relative h-[calc(100vh-230px)] min-h-[520px] overflow-hidden border border-white/10 bg-[#0d1013] text-white">
       <div className="grid h-full grid-cols-[62px_minmax(0,1fr)_62px]">
         <aside className="z-30 flex flex-col items-center gap-2 border-r border-white/10 bg-[#0b0d10] py-3">{leftTools.map((item) => <ToolButton key={item.key} tool={item} active={tool === item.key} onClick={() => setToolOpen(item.key)} />)}</aside>
-        <main className="flex min-w-0 flex-col items-center justify-center overflow-hidden p-4"><div className="mb-3 flex w-full max-w-[1100px] items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#23c7be]">Working page</p><p className="text-xs text-white/45">Click a frame, then choose a tool. The whole page stays visible while you work.</p></div><span className="border border-white/10 bg-[#16191d] px-2 py-1 text-[10px] font-black text-white/50">{active.image_aspect_ratio || '16:9'} · {panelCount} frames</span></div><PageCanvas key={segment.id} panels={panels} ratio={active.image_aspect_ratio || '16:9'} selectedPanel={selectedPanel} onSelectPanel={(index) => { setSelectedPanel(index); if (!tool) setTool('panel'); }} boxes={boxes} textMode={tool === 'text'} onBoxesChange={(next) => change({ text_boxes: next })} /></main>
+        <main className="flex min-w-0 flex-col items-center justify-center overflow-hidden p-4"><div className="mb-3 flex w-full max-w-[1100px] items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#23c7be]">Working page</p><p className="text-xs text-white/45">Click a frame, then choose a tool. The whole page stays visible while you work.</p></div><span className="border border-white/10 bg-[#16191d] px-2 py-1 text-[10px] font-black text-white/50">{active.image_aspect_ratio || '16:9'} · {panelCount} frames</span></div>{tool === 'webtoon' ? <WebtoonPageCamera panels={panels} ratio={active.image_aspect_ratio || '16:9'} selectedPanel={selectedPanel} onSelectPanel={setSelectedPanel} playback={webtoonPlayback} /> : <PageCanvas key={segment.id} panels={panels} ratio={active.image_aspect_ratio || '16:9'} selectedPanel={selectedPanel} onSelectPanel={(index) => { setSelectedPanel(index); if (!tool) setTool('panel'); }} boxes={boxes} textMode={tool === 'text'} onBoxesChange={(next) => change({ text_boxes: next })} />}</main>
         <aside className="z-30 flex flex-col items-center gap-2 border-l border-white/10 bg-[#0b0d10] py-3">{rightTools.map((item) => <ToolButton key={item.key} tool={item} active={tool === item.key} onClick={() => setToolOpen(item.key)} />)}</aside>
       </div>{drawer}
     </div>
