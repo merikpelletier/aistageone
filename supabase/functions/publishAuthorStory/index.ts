@@ -25,6 +25,10 @@ serveWithCors(async (request) => {
   if (!publicAuthor?.trim()) return Response.json({ error: 'Add the public author name' }, { status: 400 });
   if (!['Story', 'Videos', 'Assets', 'Kits', 'Merchandise'].includes(dossierClass)) return Response.json({ error: 'Choose a valid publication class' }, { status: 400 });
 
+  // Copy only display-ready image fields into the public reader, never production prompts or references.
+  const publicFrame = (panel: any): any => panel?.split
+    ? { id: panel.id, split: { direction: panel.split.direction, ratio: panel.split.ratio, a: publicFrame(panel.split.a), b: publicFrame(panel.split.b) } }
+    : { id: panel?.id, image_url: panel?.image_url || '', zoom: panel?.zoom ?? 100, position_x: panel?.position_x ?? 50, position_y: panel?.position_y ?? 50 };
   const blocks = chapters.flatMap((chapter: any) => chapter.segments.map((segment: any) => ({
     id: `${chapter.id}-${segment.id}`,
     order: (chapter.number - 1) * 9 + segment.number,
@@ -34,6 +38,17 @@ serveWithCors(async (request) => {
     media_type: 'image',
     narration_audio: segment.narration_url,
     image_aspect_ratio: chapter.image_aspect_ratio || '16:9',
+    ...(segment.webtoon && Object.keys(segment.webtoon).length ? { webtoon: {
+      ...segment.webtoon,
+      frames: (segment.comic_panels || []).map(publicFrame),
+      source_image_url: segment.text_overlay_source_url || segment.image_url,
+      text_boxes: (segment.text_boxes || []).map((box: any) => ({
+        id: box.id, text: box.text, x: box.x, y: box.y, width: box.width, height: box.height,
+      })),
+      narration_text: segment.narration_text || '',
+      image_aspect_ratio: chapter.image_aspect_ratio || '16:9',
+      portrait: Number((chapter.image_aspect_ratio || '16:9').split(':')[0]) < Number((chapter.image_aspect_ratio || '16:9').split(':')[1]),
+    } } : {}),
   })));
   const service = base44.asServiceRole;
   const now = new Date().toISOString();
