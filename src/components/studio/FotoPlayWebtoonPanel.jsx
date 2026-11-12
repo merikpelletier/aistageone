@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 const moves = [['gentle', 'Gentle zoom'], ['zoom-in', 'Zoom in'], ['zoom-out', 'Zoom out'], ['static', 'Static']];
-const defaults = { movement: 'gentle', duration: 5, captionPosition: 'bottom', cameraZoom: 1.2, captionSize: 13, supportImages: [] };
+const defaults = { movement: 'gentle', duration: 5, captionPosition: 'bottom', cameraZoom: 1.05, captionSize: 13, supportImages: [] };
 const field = 'w-full min-w-0 rounded border border-white/20 bg-[#20242a] px-2 py-2 text-xs text-white';
 const button = 'inline-flex min-h-9 items-center justify-center gap-2 rounded border border-white/20 px-3 py-2 text-xs font-bold disabled:opacity-40';
 const clamp = (v, min, max) => Math.max(min, Math.min(max, Number(v) || min));
@@ -106,7 +106,7 @@ export default function FotoPlayWebtoonPanel({ segment, frameCount = 1, portrait
     <div className="space-y-2 border-t border-white/10 pt-3">
       <p className="text-[11px] font-bold uppercase text-white/50">2 · Camera and captions</p>
       <label className="block text-xs text-white/70">Camera movement<select className={field} value={settings.movement} onChange={e => edit('movement', e.target.value)}>{moves.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
-      <label className="block text-xs text-white/70">Camera zoom · {Number(settings.cameraZoom ?? 1.2).toFixed(2)}×<input aria-label="Camera zoom" className="mt-2 w-full accent-[#23c7be]" type="range" min="1" max="2.5" step="0.05" value={settings.cameraZoom ?? 1.2} onChange={e => edit('cameraZoom', Number(e.target.value))}/></label>
+      <label className="block text-xs text-white/70">Camera zoom · {Math.max(1, Math.min(1.5, Number(settings.cameraZoom ?? 1.05))).toFixed(2)}×<input aria-label="Camera zoom" className="mt-2 w-full accent-[#23c7be]" type="range" min="1" max="1.5" step="0.05" value={Math.max(1, Math.min(1.5, Number(settings.cameraZoom ?? 1.05)))} onChange={e => edit('cameraZoom', Number(e.target.value))}/></label>
       <label className="block text-xs text-white/70">Caption size · {settings.captionSize ?? 13}px<input aria-label="Caption size" className="mt-2 w-full accent-[#23c7be]" type="range" min="10" max="24" step="1" value={settings.captionSize ?? 13} onChange={e => edit('captionSize', Number(e.target.value))}/></label>
       <label className="block text-xs text-white/70">Seconds per caption<input className={field} type="number" min="2" max="30" value={settings.duration} onChange={e => edit('duration', clamp(e.target.value, 2, 30))}/></label>
       <label className="block text-xs text-white/70">Caption position<select className={field} value={settings.captionPosition} onChange={e => edit('captionPosition', e.target.value)}><option value="bottom">Bottom</option><option value="middle">Middle</option><option value="top">Top</option></select></label>
