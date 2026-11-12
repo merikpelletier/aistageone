@@ -292,8 +292,6 @@ export default function AuthorProductionWorkspaceZoom(props) {
 
   const applyWorkspaceLayout = useCallback(() => {
     const root = rootRef.current;
-    // Webtoon owns the page viewport. Never apply Classic tool-drawer padding to it.
-    if (root?.querySelector('[data-fotoplay-webtoon-camera="true"]')) return;
     const canvas = findPageCanvas(root);
     if (!root || !canvas) return;
     const main = canvas.closest('main');
@@ -329,7 +327,8 @@ export default function AuthorProductionWorkspaceZoom(props) {
     const root = rootRef.current;
     const webtoon = root?.querySelector('[data-fotoplay-webtoon-camera="true"]');
     if (webtoon) {
-      // The camera must be the only zoom system in this mode.
+      // Webtoon owns the camera zoom, but must reserve the drawer's screen space.
+      applyWorkspaceLayout();
       const main = webtoon.closest('main');
       if (main) {
         main.style.paddingLeft = '12px';
