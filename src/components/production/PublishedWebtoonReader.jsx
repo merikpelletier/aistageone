@@ -61,7 +61,9 @@ export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic
   const [stepIndex, setStepIndex] = useState(-1);
   const [playing, setPlaying] = useState(false);
   const [audioFinished, setAudioFinished] = useState(false);
+  const [audioDuration, setAudioDuration] = useState(0);
   const audio = useRef(null);
+  const stepIndexRef = useRef(-1);
   const block = sorted[blockIndex];
   const config = block?.webtoon || {};
   const { frames, steps } = useMemo(() => block ? sequence(block) : { frames: [], steps: [] }, [block]);
@@ -78,26 +80,87 @@ export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic
     ? 'translate(' + ((0.5-centerX)*zoom*100) + '%, ' + ((0.5-centerY)*zoom*100) + '%) scale(' + zoom + ')'
     : 'none';
   const position = config.captionPositions?.[stepIndex] || { x: 50, y: 70 };
+  // The saved narration is the master clock. Text-weighted cue positions are estimates
+  // (the current production has no individual spoken-word timestamps).
+  const audioCues = useMemo(() => {
+    const weights = steps.map(item => Math.max(1, item.caption?.trim().length || 1));
+    const total = weights.reduce((sum, weight) => sum + weight, 0) || 1;
+    let elapsed = 0;
+    return weights.map(weight => { const start = elapsed / total; elapsed += weight; return start; });
+  }, [steps]);
+  const seekToStep = (next) => {
+    const selected = clamp(next, 0, Math.max(0, steps.length - 1));
+    stepIndexRef.current = selected;
+    setStepIndex(selected);
+    const element = audio.current;
+    const duration = element?.duration;
+    if (block?.narration_audio && element && Number.isFinite(duration) && duration > 0) {
+      element.currentTime = (audioCues[selected] || 0) * duration;
+    }
+  };
   const nextBlock = () => {
-    if (blockIndex < sorted.length - 1) { setBlockIndex(n => n + 1); setStepIndex(0); setAudioFinished(false); }
-    else { setPlaying(false); setStepIndex(-1); }
+    if (blockIndex < sorted.length - 1) {
+      stepIndexRef.current = 0;
+      setBlockIndex(n => n + 1);
+      setStepIndex(0);
+      setAudioFinished(false);
+      setAudioDuration(0);
+    } else {
+      setPlaying(false);
+      stepIndexRef.current = -1;
+      setStepIndex(-1);
+    }
   };
   const advance = () => {
-    if (stepIndex < steps.length - 1) setStepIndex(n => n + 1);
+    if (stepIndexRef.current < steps.length - 1) seekToStep(stepIndexRef.current + 1);
     else if (!block?.narration_audio || audioFinished) nextBlock();
   };
+  const updateAudioPosition = () => {
+    const element = audio.current;
+    if (!element || !steps.length || stepIndexRef.current < 0) return;
+    const duration = element.duration;
+    if (!Number.isFinite(duration) || duration <= 0) return;
+    const progress = Math.min(0.999999, Math.max(0, element.currentTime / duration));
+    let next = 0;
+    for (let i = 1; i < audioCues.length; i++) {
+      if (progress < audioCues[i]) break;
+      next = i;
+    }
+    if (next !== stepIndexRef.current) {
+      stepIndexRef.current = next;
+      setStepIndex(next);
+    }
+  };
   useEffect(() => {
-    if (!playing || stepIndex < 0) return undefined;
+    // Without narration, preserve the existing seconds-per-caption playback.
+    if (block?.narration_audio || !playing || stepIndex < 0) return undefined;
     const timer = window.setTimeout(advance, clamp(config.duration ?? 5, 2, 30) * 1000);
     return () => window.clearTimeout(timer);
-  }, [playing, blockIndex, stepIndex, config.duration, audioFinished]);
+  }, [playing, blockIndex, stepIndex, config.duration, block?.narration_audio]);
   useEffect(() => {
     if (!audio.current) return;
     if (!playing) audio.current.pause();
     else audio.current.play().catch(() => setPlaying(false));
   }, [playing, blockIndex]);
-  const start = () => { if (stepIndex < 0) setStepIndex(0); setPlaying(true); audio.current?.play().catch(() => setPlaying(false)); };
-  const back = () => { setPlaying(false); if (stepIndex > 0) setStepIndex(n => n - 1); else if (blockIndex > 0) { setBlockIndex(n => n - 1); setStepIndex(0); } };
+  const start = () => {
+    if (stepIndexRef.current < 0) {
+      stepIndexRef.current = 0;
+      setStepIndex(0);
+      if (audio.current) audio.current.currentTime = 0;
+    }
+    setPlaying(true);
+    audio.current?.play().catch(() => setPlaying(false));
+  };
+  const back = () => {
+    setPlaying(false);
+    if (stepIndexRef.current > 0) seekToStep(stepIndexRef.current - 1);
+    else if (blockIndex > 0) {
+      stepIndexRef.current = 0;
+      setBlockIndex(n => n - 1);
+      setStepIndex(0);
+      setAudioDuration(0);
+    }
+  };
   useEffect(() => { setAudioFinished(false); }, [blockIndex]);
   if (!block) return null;
   return <div className="fixed inset-0 z-[320] overflow-hidden bg-black text-white" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
@@ -113,7 +176,7 @@ export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic
       </div>
     </div>
     {step?.caption && <div key={blockIndex + '-' + stepIndex} className="pointer-events-none absolute z-20 w-max max-w-[min(78%,360px)] rounded bg-black/75 px-3 py-2 text-center font-medium leading-snug shadow-lg" style={{ left: clamp(position.x,10,90)+'%', top: clamp(position.y,10,90)+'%', transform:'translate(-50%,-50%)', fontSize:clamp(config.captionSize ?? 13,10,24)+'px' }}><TypeCaption value={step.caption}/></div>}
-    {block.narration_audio && <audio ref={audio} key={block.id} src={block.narration_audio} preload="metadata" onEnded={() => { setAudioFinished(true); if (stepIndex >= steps.length - 1 && playing) nextBlock(); }} />}
+    {block.narration_audio && <audio ref={audio} key={block.id} src={block.narration_audio} preload="metadata" onLoadedMetadata={() => { setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0); updateAudioPosition(); }} onDurationChange={() => setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0)} onTimeUpdate={updateAudioPosition} onSeeking={updateAudioPosition} onEnded={() => { setAudioFinished(true); if (playing) nextBlock(); }} />}
     <div className="absolute left-3 right-3 top-3 z-30 flex items-center justify-between gap-2" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="flex min-w-0 gap-2 rounded-full bg-black/70 p-1 text-xs font-bold"><button onClick={onClassic} className="rounded-full px-3 py-2 text-white/70">Classic</button><span className="rounded-full bg-white px-3 py-2 text-black">Webtoon</span></div>
       <button onClick={onClose} aria-label="Close reader" className="rounded-full bg-black/70 p-3"><X size={20}/></button>
@@ -122,7 +185,7 @@ export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic
       <button onClick={back} aria-label="Previous caption" className="rounded-full p-2"><ChevronLeft size={20}/></button>
       <button onClick={() => playing ? setPlaying(false) : start()} aria-label={playing ? 'Pause' : 'Play'} className="rounded-full bg-white p-2 text-black">{playing ? <Pause size={19}/> : <Play size={19}/>}</button>
       <button onClick={() => { setPlaying(false); advance(); }} aria-label="Next caption" className="rounded-full p-2"><ChevronRight size={20}/></button>
-      <button onClick={() => { setPlaying(false); setStepIndex(-1); }} aria-label="Show complete page" className="rounded-full p-2"><Maximize2 size={17}/></button>
+      <button onClick={() => { setPlaying(false); stepIndexRef.current = -1; setStepIndex(-1); if (audio.current) audio.current.currentTime = 0; }} aria-label="Show complete page" className="rounded-full p-2"><Maximize2 size={17}/></button>
       <span className="whitespace-nowrap pr-2 text-xs text-white/70">{blockIndex + 1}/{sorted.length} · {Math.max(0,stepIndex + 1)}/{steps.length}</span>
     </div>
   </div>;
