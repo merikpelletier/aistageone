@@ -51,7 +51,18 @@ export default function FotoPlayWebtoonPanel({ segment, frameCount = 1, portrait
     }, clamp(settings.duration, 2, 30) * 1000);
     return () => window.clearTimeout(timer);
   }, [active, index, steps, settings, onPlaybackChange]);
-  const edit = (name, value) => setSettings(old => { const next = { ...old, [name]: value }; if (playback?.step) onPlaybackChange({ ...playback, settings: next }); return next; });
+  const edit = (name, value) => {
+    const next = { ...settings, [name]: value };
+    setSettings(next);
+    // Update the parent only from the user's event, never inside React's state updater.
+    // Show the first frame when adjusting camera or caption controls before playback.
+    const preview = playback?.step || steps[0] || null;
+    if (preview && ['movement', 'cameraZoom', 'captionSize', 'captionPosition'].includes(name)) {
+      onPlaybackChange({ playing: false, index: playback?.step ? index : 0, step: preview, settings: next });
+    } else if (playback?.step) {
+      onPlaybackChange({ ...playback, settings: next });
+    }
+  };
   const showStep = (i, playing = false) => {
     const next = Math.max(0, Math.min(steps.length - 1, i));
     onPlaybackChange({ playing, index: next, step: steps[next], settings });
