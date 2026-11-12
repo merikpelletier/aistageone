@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 const moves = [['gentle', 'Gentle zoom'], ['zoom-in', 'Zoom in'], ['zoom-out', 'Zoom out'], ['static', 'Static']];
-const defaults = { movement: 'gentle', duration: 5, captionPosition: 'bottom', cameraZoom: 1.05, captionSize: 13, supportImages: [] };
+const defaults = { movement: 'gentle', duration: 5, captionPosition: 'bottom', cameraZoom: 1.05, captionSize: 13, frameZooms: {}, captionPositions: {}, supportImages: [] };
 const field = 'w-full min-w-0 rounded border border-white/20 bg-[#20242a] px-2 py-2 text-xs text-white';
 const button = 'inline-flex min-h-9 items-center justify-center gap-2 rounded border border-white/20 px-3 py-2 text-xs font-bold disabled:opacity-40';
 const clamp = (v, min, max) => Math.max(min, Math.min(max, Number(v) || min));
@@ -42,6 +42,9 @@ export default function FotoPlayWebtoonPanel({ segment, frameCount = 1, portrait
   const active = playback?.playing || false;
   const index = Math.min(playback?.index || 0, Math.max(0, steps.length - 1));
   const current = steps[index];
+  const activeFrame = current?.frameIndex ?? 0;
+  const frameZoom = Number(settings.frameZooms?.[activeFrame] ?? settings.cameraZoom ?? 1.05);
+  const captionPlacement = settings.captionPositions?.[index] || { x: 50, y: 70 };
   useEffect(() => { setSettings({ ...defaults, ...(segment.webtoon || {}) }); }, [segment.id, segment.webtoon]);
   useEffect(() => {
     if (!active || !steps.length) return undefined;
@@ -57,12 +60,14 @@ export default function FotoPlayWebtoonPanel({ segment, frameCount = 1, portrait
     // Update the parent only from the user's event, never inside React's state updater.
     // Show the first frame when adjusting camera or caption controls before playback.
     const preview = playback?.step || steps[0] || null;
-    if (preview && ['movement', 'cameraZoom', 'captionSize', 'captionPosition'].includes(name)) {
+    if (preview && ['movement', 'cameraZoom', 'frameZooms', 'captionSize', 'captionPosition', 'captionPositions'].includes(name)) {
       onPlaybackChange({ playing: false, index: playback?.step ? index : 0, step: preview, settings: next });
     } else if (playback?.step) {
       onPlaybackChange({ ...playback, settings: next });
     }
   };
+  const editFrameZoom = (value) => edit('frameZooms', { ...(settings.frameZooms || {}), [activeFrame]: Number(value) });
+  const editCaptionPosition = (field, value) => edit('captionPositions', { ...(settings.captionPositions || {}), [index]: { ...captionPlacement, [field]: Number(value) } });
   const showStep = (i, playing = false) => {
     const next = Math.max(0, Math.min(steps.length - 1, i));
     onPlaybackChange({ playing, index: next, step: steps[next], settings });
@@ -106,10 +111,18 @@ export default function FotoPlayWebtoonPanel({ segment, frameCount = 1, portrait
     <div className="space-y-2 border-t border-white/10 pt-3">
       <p className="text-[11px] font-bold uppercase text-white/50">2 · Camera and captions</p>
       <label className="block text-xs text-white/70">Camera movement<select className={field} value={settings.movement} onChange={e => edit('movement', e.target.value)}>{moves.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
-      <label className="block text-xs text-white/70">Camera zoom · {Math.max(1, Math.min(1.5, Number(settings.cameraZoom ?? 1.05))).toFixed(2)}×<input aria-label="Camera zoom" className="mt-2 w-full accent-[#23c7be]" type="range" min="1" max="1.5" step="0.05" value={Math.max(1, Math.min(1.5, Number(settings.cameraZoom ?? 1.05)))} onChange={e => edit('cameraZoom', Number(e.target.value))}/></label>
+      <p className="text-xs text-white/65">Frame {activeFrame + 1} of {frameCount} · Each frame keeps its own camera zoom.</p>
+      <div className="flex flex-wrap gap-1">{Array.from({ length: frameCount }, (_, frame) => <button key={frame} type="button" onClick={() => showStep(Math.max(0, steps.findIndex(step => step.frameIndex === frame)))} className={`rounded border px-3 py-2 text-xs font-bold ${activeFrame === frame ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'border-white/20 bg-white/5 text-white'}`}>Frame {frame + 1}</button>)}</div>
+      <label className="block text-xs text-white/70">Frame {activeFrame + 1} zoom · {frameZoom.toFixed(2)}×<input aria-label="Zoom for this frame" className="mt-2 w-full accent-[#23c7be]" type="range" min="1" max="1.5" step="0.05" value={Math.max(1, Math.min(1.5, frameZoom))} onChange={e => editFrameZoom(e.target.value)}/></label>
       <label className="block text-xs text-white/70">Caption size · {settings.captionSize ?? 13}px<input aria-label="Caption size" className="mt-2 w-full accent-[#23c7be]" type="range" min="10" max="24" step="1" value={settings.captionSize ?? 13} onChange={e => edit('captionSize', Number(e.target.value))}/></label>
       <label className="block text-xs text-white/70">Seconds per caption<input className={field} type="number" min="2" max="30" value={settings.duration} onChange={e => edit('duration', clamp(e.target.value, 2, 30))}/></label>
-      <label className="block text-xs text-white/70">Caption position<select className={field} value={settings.captionPosition} onChange={e => edit('captionPosition', e.target.value)}><option value="bottom">Bottom</option><option value="middle">Middle</option><option value="top">Top</option></select></label>
+      <div className="space-y-2 rounded border border-white/10 bg-white/5 p-3">
+        <p className="text-xs font-semibold text-white">Caption {index + 1} · Position anywhere on screen</p>
+        <p className="text-[11px] text-white/50">Keep clear of app controls at the top or bottom. Each caption has an independent position.</p>
+        <label className="block text-xs text-white/70">Horizontal · {Math.round(captionPlacement.x)}%<input aria-label="Caption horizontal position" className="mt-2 w-full accent-[#23c7be]" type="range" min="10" max="90" step="1" value={captionPlacement.x} onChange={e => editCaptionPosition('x', e.target.value)}/></label>
+        <label className="block text-xs text-white/70">Vertical · {Math.round(captionPlacement.y)}%<input aria-label="Caption vertical position" className="mt-2 w-full accent-[#23c7be]" type="range" min="10" max="90" step="1" value={captionPlacement.y} onChange={e => editCaptionPosition('y', e.target.value)}/></label>
+        <button type="button" className={button} onClick={() => edit('captionPositions', { ...(settings.captionPositions || {}), [index]: { x: 50, y: 70 } })}>Reset caption position</button>
+      </div>
     </div>
     <div className="space-y-2 border-t border-white/10 pt-3">
       <p className="text-[11px] font-bold uppercase text-white/50">3 · Additional images (optional)</p>
