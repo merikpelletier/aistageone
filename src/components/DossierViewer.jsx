@@ -142,6 +142,10 @@ export default function DossierViewer({ pages, onClose, dossier }) {
   const [kitProductionPage, setKitProductionPage] = useState(null);
   const [blockPlayerData, setBlockPlayerData] = useState(null); // { blocks, characters }
   const [publishedReadingMode, setPublishedReadingMode] = useState('classic');
+  const openPublishedReader = (data) => {
+    setPublishedReadingMode(data?.blocks?.some((block) => block.webtoon) ? 'webtoon' : 'classic');
+    setBlockPlayerData(data);
+  };
   const kitProductionDismissed = React.useRef(false);
   const [isLandscape, setIsLandscape] = useState(window.innerWidth > window.innerHeight);
 
@@ -564,7 +568,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
               episodePageId={page.block_player_episode_page_id}
               dossierId={dossier?.id}
               blockIds={page.block_player_block_ids}
-              onPlay={(data) => setBlockPlayerData(data)}
+              onPlay={openPublishedReader}
             />
           )}
 
@@ -601,7 +605,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
                   <p className="text-white text-xs">🛠 Suggested tools: {page.episode_tools_hint}</p>
                 )}
                 {/* Watch Blocks button — loads EpisodeProduction for this episode page */}
-                <EpisodeBlocksButton episodePageId={page.id} dossierId={dossier?.id} onPlay={(data) => setBlockPlayerData(data)} />
+                <EpisodeBlocksButton episodePageId={page.id} dossierId={dossier?.id} onPlay={openPublishedReader} />
               </div>
             </div>
           )}
