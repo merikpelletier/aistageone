@@ -41,18 +41,20 @@ function sequence(block) {
   });
   return { frames, steps };
 }
-function TypeCaption({ value }) {
+function TypeCaption({ value, playing }) {
   const [length, setLength] = useState(0);
   useEffect(() => {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { setLength(value.length); return undefined; }
-    setLength(0);
+    setLength(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? value.length : 0);
+  }, [value]);
+  useEffect(() => {
+    if (!playing || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined;
     const delay = Math.max(15, Math.min(40, Math.floor(3000 / Math.max(value.length, 1))));
     const timer = window.setInterval(() => setLength(n => {
       if (n >= value.length) { window.clearInterval(timer); return n; }
       return n + 1;
     }), delay);
     return () => window.clearInterval(timer);
-  }, [value]);
+  }, [value, playing]);
   return <span aria-label={value}>{value.slice(0, length)}</span>;
 }
 export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic }) {
@@ -175,7 +177,7 @@ export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic
           </div>}
       </div>
     </div>
-    {step?.caption && <div key={blockIndex + '-' + stepIndex} className="pointer-events-none absolute z-20 w-max max-w-[min(78%,360px)] rounded bg-black/75 px-3 py-2 text-center font-medium leading-snug shadow-lg" style={{ left: clamp(position.x,10,90)+'%', top: clamp(position.y,10,90)+'%', transform:'translate(-50%,-50%)', fontSize:clamp(config.captionSize ?? 13,10,24)+'px' }}><TypeCaption value={step.caption}/></div>}
+    {step?.caption && <div key={blockIndex + '-' + stepIndex} className="pointer-events-none absolute z-20 w-max max-w-[min(78%,360px)] rounded bg-black/75 px-3 py-2 text-center font-medium leading-snug shadow-lg" style={{ left: clamp(position.x,10,90)+'%', top: clamp(position.y,10,90)+'%', transform:'translate(-50%,-50%)', fontSize:clamp(config.captionSize ?? 13,10,24)+'px' }}><TypeCaption value={step.caption} playing={playing}/></div>}
     {block.narration_audio && <audio ref={audio} key={block.id} src={block.narration_audio} preload="metadata" onLoadedMetadata={() => { setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0); updateAudioPosition(); }} onDurationChange={() => setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0)} onTimeUpdate={updateAudioPosition} onSeeking={updateAudioPosition} onEnded={() => { setAudioFinished(true); if (playing) nextBlock(); }} />}
     <div className="absolute left-3 right-3 top-3 z-30 flex items-center justify-between gap-2" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="flex min-w-0 gap-2 rounded-full bg-black/70 p-1 text-xs font-bold"><button onClick={onClassic} className="rounded-full px-3 py-2 text-white/70">Classic</button><span className="rounded-full bg-white px-3 py-2 text-black">Webtoon</span></div>
