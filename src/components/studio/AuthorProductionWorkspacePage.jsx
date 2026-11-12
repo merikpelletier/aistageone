@@ -215,6 +215,38 @@ function PageCanvas({ panels, ratio, selectedPanel, onSelectPanel, boxes, textMo
   </div>;
 }
 
+function WebtoonTypeOnCaption({ text, playbackIndex, fontSize, x, y }) {
+  const content = String(text || '');
+  const [visibleCount, setVisibleCount] = useState(0);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setVisibleCount(content.length);
+      return undefined;
+    }
+    setVisibleCount(0);
+    if (!content.length) return undefined;
+    // Reveal the entire caption within a readable interval; do not change existing text or audio.
+    const intervalMs = Math.max(15, Math.min(40, Math.floor(3000 / content.length)));
+    const timer = window.setInterval(() => {
+      setVisibleCount(current => {
+        if (current >= content.length) { window.clearInterval(timer); return current; }
+        return current + 1;
+      });
+    }, intervalMs);
+    return () => window.clearInterval(timer);
+  }, [content, playbackIndex]);
+  return <div className="pointer-events-none absolute z-20 w-max max-w-[min(78%,360px)] max-h-[32%] overflow-hidden break-words rounded bg-black/70 px-3 py-2 text-center font-medium leading-snug text-white shadow-lg" style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)', fontSize: `${fontSize}px` }} aria-label={content}>
+    <span>{content.slice(0, visibleCount)}</span>
+  </div>;
+}
+
+function webtoonBackdropImage(panel) {
+  if (!panel) return '';
+  if (panel.image_url) return panel.image_url;
+  if (panel.split) return webtoonBackdropImage(panel.split.a) || webtoonBackdropImage(panel.split.b);
+  return '';
+}
+
 function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playback }) {
   const viewportRef = useRef(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
@@ -240,12 +272,12 @@ function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playba
   const settings = playback?.settings || {};
   const cameraOn = Boolean(step);
   // Keep the full page visible at 1x; apply only the author's explicitly selected zoom.
-  const baseZoom = Math.max(1, Math.min(1.5, Number(settings.frameZooms?.[frameIndex] ?? settings.cameraZoom ?? 1.05) || 1.05));
+  const baseZoom = Math.max(1, Math.min(3.5, Number(settings.frameZooms?.[frameIndex] ?? settings.cameraZoom ?? 1.05) || 1.05));
   const movement = settings.movement || 'gentle';
   const motionScale = movement === 'zoom-in' ? 1.015
     : movement === 'zoom-out' ? 0.985
     : movement === 'gentle' && playback?.index % 2 ? 1.01 : 1;
-  const scale = cameraOn ? Math.max(1, Math.min(1.5, baseZoom * motionScale)) : 1;
+  const scale = cameraOn ? Math.max(1, Math.min(3.5, baseZoom * motionScale)) : 1;
   const centerX = portrait ? 0.5 : (frameIndex + 0.5) / count;
   const centerY = portrait ? (frameIndex + 0.5) / count : 0.5;
   // The page is translated within its own fitted viewport, never scaled by Classic zoom.
@@ -255,11 +287,13 @@ function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playba
   const captionPosition = settings.captionPositions?.[playback?.index] || { x: 50, y: 70 };
   const captionX = Math.max(10, Math.min(90, Number(captionPosition.x) || 50));
   const captionY = Math.max(10, Math.min(90, Number(captionPosition.y) || 70));
+  const backdropUrl = webtoonBackdropImage(panels[frameIndex]);
   return <div ref={viewportRef} data-fotoplay-webtoon-camera="true" className="relative flex min-h-0 w-full min-w-0 flex-1 self-stretch items-center justify-center overflow-hidden">
-    <div className="flex h-full w-full min-w-0 items-center justify-center transition-transform duration-700 ease-in-out" style={{ transform, transformOrigin: 'center center' }}>
+    {cameraOn && backdropUrl && <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><img src={backdropUrl} alt="" className="h-full w-full object-cover" style={{ filter: 'blur(24px) brightness(0.6)', transform: 'scale(1.14)' }} /></div>}
+    <div className="relative z-10 flex h-full w-full min-w-0 items-center justify-center transition-transform duration-700 ease-in-out" style={{ transform, transformOrigin: 'center center' }}>
       {pageWidth > 0 && <PageCanvas panels={panels} ratio={ratio} selectedPanel={selectedPanel} onSelectPanel={onSelectPanel} boxes={[]} textMode={false} onBoxesChange={() => {}} webtoonWidth={pageWidth} />}
     </div>
-    {cameraOn && step?.caption && <div key={playback.index} className="pointer-events-none absolute z-20 w-max max-w-[min(78%,360px)] max-h-[32%] overflow-hidden break-words rounded bg-black/70 px-3 py-2 text-center font-medium leading-snug text-white shadow-lg" style={{ left: `${captionX}%`, top: `${captionY}%`, transform: "translate(-50%, -50%)", fontSize: `${Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))}px` }}>{step.caption}</div>}
+    {cameraOn && step?.caption && <WebtoonTypeOnCaption key={`${playback.index}-${step.caption}`} text={step.caption} playbackIndex={playback.index} x={captionX} y={captionY} fontSize={Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))} />}
     {!cameraOn && <div className="pointer-events-none absolute bottom-3 rounded bg-black/75 px-3 py-1 text-xs font-semibold text-white/80">Complete page</div>}
   </div>;
 }
