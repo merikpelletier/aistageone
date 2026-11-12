@@ -219,25 +219,30 @@ function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playba
   const [rw, rh] = String(ratio || '16:9').split(':').map(Number);
   const portrait = rw < rh;
   const count = Math.max(1, panels.length);
-  const activeStep = playback?.step;
-  const index = Math.max(0, Math.min(count - 1, activeStep?.frameIndex ?? 0));
+  const step = playback?.step;
+  const frameIndex = Math.max(0, Math.min(count - 1, step?.frameIndex ?? 0));
   const settings = playback?.settings || {};
+  const cameraOn = Boolean(step);
+  // Keep the full page visible at 1x; apply only the author's explicitly selected zoom.
+  const baseZoom = Math.max(1, Math.min(1.5, Number(settings.cameraZoom ?? 1.05) || 1.05));
   const movement = settings.movement || 'gentle';
-  const cameraOn = Boolean(activeStep);
-  const scaleBase = Math.max(1, Math.min(2.5, Number(settings.cameraZoom ?? 1.2) || 1.2));
-  const scale = !cameraOn ? 1 : scaleBase * (movement === 'zoom-in' ? 1.07 : movement === 'zoom-out' ? 0.94 : movement === 'gentle' && playback.index % 2 ? 1.035 : 1);
-  const cx = portrait ? 0.5 : (index + 0.5) / count;
-  const cy = portrait ? (index + 0.5) / count : 0.5;
-  const dx = cameraOn ? (0.5 - cx) * scale * 100 : 0;
-  const dy = cameraOn ? (0.5 - cy) * scale * 100 : 0;
-  const transform = cameraOn ? `translate(${(0.5-cx)*scale*100}%, ${(0.5-cy)*scale*100}%) scale(${scale})` : 'none';
+  const motionScale = movement === 'zoom-in' ? 1.015
+    : movement === 'zoom-out' ? 0.985
+    : movement === 'gentle' && playback?.index % 2 ? 1.01 : 1;
+  const scale = cameraOn ? Math.max(1, Math.min(1.5, baseZoom * motionScale)) : 1;
+  const centerX = portrait ? 0.5 : (frameIndex + 0.5) / count;
+  const centerY = portrait ? (frameIndex + 0.5) / count : 0.5;
+  // The page is translated within its own fitted viewport, never scaled by Classic zoom.
+  const dx = cameraOn ? (0.5 - centerX) * scale * 100 : 0;
+  const dy = cameraOn ? (0.5 - centerY) * scale * 100 : 0;
+  const transform = cameraOn ? `translate(${dx}%, ${dy}%) scale(${scale})` : 'translate(0%, 0%) scale(1)';
   const captionPosition = settings.captionPosition === 'top' ? 'top-3' : settings.captionPosition === 'middle' ? 'top-1/2 -translate-y-1/2' : 'bottom-3';
-  return <div className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden">
-    <div className="flex w-full items-center justify-center transition-transform duration-1000 ease-in-out" style={{ transform, willChange: cameraOn ? 'transform' : 'auto' }}>
+  return <div data-fotoplay-webtoon-camera="true" className="relative flex h-full min-h-0 w-full min-w-0 items-center justify-center overflow-hidden">
+    <div className="flex h-full w-full min-w-0 items-center justify-center transition-transform duration-700 ease-in-out" style={{ transform, transformOrigin: 'center center' }}>
       <PageCanvas panels={panels} ratio={ratio} selectedPanel={selectedPanel} onSelectPanel={onSelectPanel} boxes={[]} textMode={false} onBoxesChange={() => {}} />
     </div>
-    {cameraOn && activeStep?.caption && <div key={playback.index} className={`pointer-events-none absolute inset-x-3 z-20 mx-auto w-fit max-w-[min(85%,420px)] max-h-[40%] overflow-hidden break-words rounded bg-black/70 px-3 py-2 text-center font-medium leading-snug text-white shadow-lg ${captionPosition}`} style={{ fontSize: `${Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))}px` }}>{activeStep.caption}</div>}
-    {!cameraOn && <div className="pointer-events-none absolute bottom-3 rounded bg-black/75 px-3 py-1 text-xs font-semibold text-white/80">Complete page · Press Play page to begin</div>}
+    {cameraOn && step?.caption && <div key={playback.index} className={`pointer-events-none absolute inset-x-3 z-20 mx-auto w-fit max-w-[min(85%,420px)] max-h-[35%] overflow-hidden break-words rounded bg-black/70 px-3 py-2 text-center font-medium leading-snug text-white shadow-lg ${captionPosition}`} style={{ fontSize: `${Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))}px` }}>{step.caption}</div>}
+    {!cameraOn && <div className="pointer-events-none absolute bottom-3 rounded bg-black/75 px-3 py-1 text-xs font-semibold text-white/80">Complete page</div>}
   </div>;
 }
 
