@@ -292,6 +292,8 @@ export default function AuthorProductionWorkspaceZoom(props) {
 
   const applyWorkspaceLayout = useCallback(() => {
     const root = rootRef.current;
+    // Webtoon owns the page viewport. Never apply Classic tool-drawer padding to it.
+    if (root?.querySelector('[data-fotoplay-webtoon-camera="true"]')) return;
     const canvas = findPageCanvas(root);
     if (!root || !canvas) return;
     const main = canvas.closest('main');
@@ -325,6 +327,22 @@ export default function AuthorProductionWorkspaceZoom(props) {
 
   const applyZoom = useCallback((value = zoom) => {
     const root = rootRef.current;
+    const webtoon = root?.querySelector('[data-fotoplay-webtoon-camera="true"]');
+    if (webtoon) {
+      // The camera must be the only zoom system in this mode.
+      const main = webtoon.closest('main');
+      if (main) {
+        main.style.paddingLeft = '12px';
+        main.style.paddingRight = '12px';
+        main.style.paddingTop = '12px';
+        main.style.paddingBottom = '12px';
+        main.style.overflow = 'hidden';
+        main.style.justifyContent = 'center';
+        main.style.alignItems = 'center';
+        main.style.scrollbarGutter = 'auto';
+      }
+      return;
+    }
     const canvas = findPageCanvas(root);
     if (!root || !canvas) return;
     const main = canvas.closest('main');
@@ -372,6 +390,7 @@ export default function AuthorProductionWorkspaceZoom(props) {
   }, [applyWorkspaceLayout, zoom]);
 
   const fitPage = useCallback(() => {
+    if (rootRef.current?.querySelector('[data-fotoplay-webtoon-camera="true"]')) return;
     if (isMobileViewport()) return;
     const root = rootRef.current;
     const canvas = findPageCanvas(root);
