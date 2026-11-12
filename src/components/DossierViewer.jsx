@@ -14,6 +14,7 @@ import SeriesPageViewer from '@/components/SeriesPageViewer';
 import ProductionKitViewer from '@/components/ProductionKitViewer';
 import MemberEpisodesPage from '@/components/MemberEpisodesPage';
 import BlockPlayer from '@/components/production/BlockPlayer';
+import PublishedWebtoonReader from '@/components/production/PublishedWebtoonReader';
 import SponsorContentPlacement from '@/components/SponsorContentPlacement';
 import DossierIndexPage from '@/components/DossierIndexPage';
 import DossierContestPage from '@/components/DossierContestPage';
@@ -140,6 +141,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
   const [productionEpisode, setProductionEpisode] = useState(null);
   const [kitProductionPage, setKitProductionPage] = useState(null);
   const [blockPlayerData, setBlockPlayerData] = useState(null); // { blocks, characters }
+  const [publishedReadingMode, setPublishedReadingMode] = useState('classic');
   const kitProductionDismissed = React.useRef(false);
   const [isLandscape, setIsLandscape] = useState(window.innerWidth > window.innerHeight);
 
@@ -950,14 +952,14 @@ export default function DossierViewer({ pages, onClose, dossier }) {
 
     {/* Block Player */}
     {blockPlayerData && (
-      <BlockPlayer
-        blocks={blockPlayerData.blocks}
-        characters={blockPlayerData.characters}
-        onClose={() => {
-          setBlockPlayerData(null);
-          onClose?.();
-        }}
-      />
+      <>
+        {publishedReadingMode === 'webtoon'
+          ? <PublishedWebtoonReader blocks={blockPlayerData.blocks} onClose={() => { setBlockPlayerData(null); setPublishedReadingMode('classic'); onClose?.(); }} onClassic={() => setPublishedReadingMode('classic')} />
+          : <BlockPlayer blocks={blockPlayerData.blocks} characters={blockPlayerData.characters} onClose={() => { setBlockPlayerData(null); setPublishedReadingMode('classic'); onClose?.(); }} />}
+        {publishedReadingMode === 'classic' && blockPlayerData.blocks.some(item => item.webtoon) && (
+          <button type="button" onClick={() => setPublishedReadingMode('webtoon')} className="fixed left-3 top-[calc(52px+env(safe-area-inset-top)+8px)] z-[340] rounded-full border border-white/25 bg-black/85 px-4 py-2 text-xs font-bold text-white shadow-lg" aria-label="Read in Webtoon mode">Webtoon · Mobile</button>
+        )}
+      </>
     )}
     </>
   );
