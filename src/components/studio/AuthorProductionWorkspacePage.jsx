@@ -224,19 +224,19 @@ function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playba
   const settings = playback?.settings || {};
   const movement = settings.movement || 'gentle';
   const cameraOn = Boolean(activeStep);
-  const scaleBase = Math.min(count * 0.88, 2.4);
+  const scaleBase = Math.max(1, Math.min(2.5, Number(settings.cameraZoom ?? 1.2) || 1.2));
   const scale = !cameraOn ? 1 : scaleBase * (movement === 'zoom-in' ? 1.07 : movement === 'zoom-out' ? 0.94 : movement === 'gentle' && playback.index % 2 ? 1.035 : 1);
   const cx = portrait ? 0.5 : (index + 0.5) / count;
   const cy = portrait ? (index + 0.5) / count : 0.5;
   const dx = cameraOn ? (0.5 - cx) * scale * 100 : 0;
   const dy = cameraOn ? (0.5 - cy) * scale * 100 : 0;
-  const transform = cameraOn && movement !== 'static' ? `translate(${dx}%, ${dy}%) scale(${scale})` : cameraOn ? `translate(${(0.5-cx)*scaleBase*100}%, ${(0.5-cy)*scaleBase*100}%) scale(${scaleBase})` : 'none';
+  const transform = cameraOn ? `translate(${(0.5-cx)*scale*100}%, ${(0.5-cy)*scale*100}%) scale(${scale})` : 'none';
   const captionPosition = settings.captionPosition === 'top' ? 'top-3' : settings.captionPosition === 'middle' ? 'top-1/2 -translate-y-1/2' : 'bottom-3';
   return <div className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden">
     <div className="flex w-full items-center justify-center transition-transform duration-1000 ease-in-out" style={{ transform, willChange: cameraOn ? 'transform' : 'auto' }}>
       <PageCanvas panels={panels} ratio={ratio} selectedPanel={selectedPanel} onSelectPanel={onSelectPanel} boxes={[]} textMode={false} onBoxesChange={() => {}} />
     </div>
-    {cameraOn && activeStep?.caption && <div key={playback.index} className={`pointer-events-none absolute inset-x-3 z-20 mx-auto max-w-[min(90%,680px)] rounded bg-black/80 px-4 py-3 text-center text-sm font-semibold leading-relaxed text-white shadow-lg sm:text-base ${captionPosition}`}>{activeStep.caption}</div>}
+    {cameraOn && activeStep?.caption && <div key={playback.index} className={`pointer-events-none absolute inset-x-3 z-20 mx-auto w-fit max-w-[min(85%,420px)] max-h-[40%] overflow-hidden break-words rounded bg-black/70 px-3 py-2 text-center font-medium leading-snug text-white shadow-lg ${captionPosition}`} style={{ fontSize: `${Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))}px` }}>{activeStep.caption}</div>}
     {!cameraOn && <div className="pointer-events-none absolute bottom-3 rounded bg-black/75 px-3 py-1 text-xs font-semibold text-white/80">Complete page · Press Play page to begin</div>}
   </div>;
 }
