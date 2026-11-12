@@ -49,6 +49,17 @@ export default function FotoPlayWebtoonPanel({ segment, onPersist }) {
     return existing.length ? existing : (segment.narration_text?.trim()
       ? [{ id: 'narration', text: segment.narration_text.trim() }] : []);
   }, [segment.text_boxes, segment.narration_text]);
+  // Keep existing authored text intact, but present long passages in readable mobile-sized captions.
+  const captionPages = useMemo(() => captions.flatMap((caption, captionNumber) => {
+    const words = caption.text.split(/\s+/).filter(Boolean);
+    const pages = []; let line = '';
+    for (const word of words) {
+      if (line && (line + ' ' + word).length > 95) { pages.push(line); line = word; }
+      else line = line ? line + ' ' + word : word;
+    }
+    if (line) pages.push(line);
+    return pages.map((text, part) => ({ id: caption.id, captionNumber, part, text }));
+  }), [captions]);
   const supportImages = Array.isArray(settings.supportImages) ? settings.supportImages : [];
   const sourceImage = segment.text_overlay_source_url || segment.image_url;
   const shownImage = supportIndex >= 0 ? supportImages[supportIndex]?.url : sourceImage;
@@ -89,9 +100,9 @@ export default function FotoPlayWebtoonPanel({ segment, onPersist }) {
         <p className="mt-1 text-xs text-white/55">Separate from Classic. Existing text, voice and publication are unchanged.</p></div>
       <button type="button" onClick={save} disabled={saving} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-bold text-black disabled:opacity-50">{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save Webtoon</button>
     </div>
-    <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)]">
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    <div className="mt-3 flex min-w-0 flex-col gap-3">
+      <div className="order-2 min-w-0 space-y-3">
+        <div className="grid min-w-0 grid-cols-2 gap-2">
           <label className="text-xs text-white/70">Camera movement
             <select className={field} value={settings.movement} onChange={e => edit('movement', e.target.value)}>{movements.map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select>
           </label>
@@ -109,27 +120,27 @@ export default function FotoPlayWebtoonPanel({ segment, onPersist }) {
           </label>
         </div>
         <div className="rounded-xl border border-white/10 p-3">
-          <p className="mb-2 text-xs font-bold">Captions from existing text boxes ({captions.length})</p>
-          {captions.length ? <div className="space-y-1">{captions.map((caption, index) => <button key={caption.id || index} type="button" onClick={() => { setSupportIndex(-1); setCaptionIndex(index); }} className={`block w-full rounded-lg p-2 text-left text-xs ${captionIndex === index && supportIndex < 0 ? 'bg-white/20' : 'bg-white/5'}`}><span className="mr-2 opacity-50">{index + 1}.</span>{caption.text}</button>)}</div> : <p className="text-xs text-white/50">Add narration or dialogue boxes in Classic; Webtoon reuses them.</p>}
+          <p className="mb-1 text-xs font-bold">1 · Captions ({captions.length})</p><p className="mb-2 text-[11px] text-white/55">Select a line to see it on the image. Long lines are divided automatically for mobile; the original text is unchanged.</p>
+          {captions.length ? <div className="space-y-1">{captions.map((caption, index) => <button key={caption.id || index} type="button" onClick={() => { setSupportIndex(-1); setCaptionIndex(Math.max(0, captionPages.findIndex(page => page.captionNumber === index))); }} className={"block w-full min-w-0 overflow-hidden break-words rounded-lg p-2 text-left text-xs " + (captionPages[captionIndex]?.captionNumber === index && supportIndex < 0 ? "bg-white/20" : "bg-white/5")}><span className="mr-2 opacity-50">{index + 1}.</span><span className="line-clamp-2">{caption.text}</span></button>)}</div> : <p className="text-xs text-white/50">Add narration or dialogue boxes in Classic; Webtoon reuses them.</p>}
         </div>
         <div className="rounded-xl border border-white/10 p-3">
-          <p className="mb-2 text-xs font-bold">Support images · optional</p>
+          <p className="mb-2 text-xs font-bold">3 · Support images (optional)</p>
           {supportImages.map((image, index) => <div key={image.id || index} className="mb-2 flex items-center gap-2"><button type="button" onClick={() => setSupportIndex(index)} className="min-w-0 flex-1 truncate rounded-lg bg-white/10 px-2 py-2 text-left text-xs">Slide {index + 1}</button><button type="button" aria-label="Remove support slide" className={button} onClick={() => { edit('supportImages', supportImages.filter((_, i) => i !== index)); setSupportIndex(-1); }}><Trash2 size={14} /></button></div>)}
           <div className="flex flex-wrap gap-2"><input aria-label="Support image URL" placeholder="Existing image URL" value={newImageUrl} onChange={e => setNewImageUrl(e.target.value)} className={`${field} min-w-0 flex-1`} /><button type="button" disabled={!newImageUrl.trim()} onClick={() => addImage(newImageUrl)} className={button}>Add</button><label className={`${button} inline-flex cursor-pointer items-center gap-1`}><ImagePlus size={14}/>{uploading ? 'Uploading' : 'Upload'}<input type="file" accept="image/*" disabled={uploading} className="hidden" onChange={e => { upload(e.target.files?.[0]); e.target.value = ''; }} /></label></div>
           <p className="mt-2 text-[11px] text-white/50">Add and save slides without changing the original shot image.</p>
         </div>
       </div>
-      <div className="mx-auto w-full max-w-[340px]">
-        <div className="relative aspect-[9/16] overflow-hidden rounded-xl bg-black">
+      <div className="order-1 mx-auto w-full max-w-[245px] min-w-0">
+        <p className="mb-2 text-center text-xs font-bold text-white/80">2 · Mobile preview</p><div className="relative aspect-[9/16] overflow-hidden rounded-xl border border-white/15 bg-black">
           {shownImage ? <img key={`${shownImage}-${cycle}-${playing}`} src={shownImage} alt="Webtoon camera preview" className="absolute h-full w-full object-cover" style={{ objectPosition: `${settings.focusX}% ${settings.focusY}%`, transformOrigin: `${settings.focusX}% ${settings.focusY}%`, animation: playing && settings.movement !== 'static' ? `fotoplay-webtoon-camera ${duration}s ease-in-out both` : 'none', '--webtoon-from': frames[0], '--webtoon-to': frames[1] }} /> : <p className="absolute inset-0 flex items-center justify-center text-sm text-white/50">No image yet</p>}
-          {supportIndex < 0 && captions[captionIndex] && <div className={`pointer-events-none absolute inset-x-3 ${position} rounded-lg bg-black/65 px-3 py-2 text-center text-sm font-semibold leading-relaxed text-white shadow-lg`}>{captions[captionIndex].text}</div>}
+          {supportIndex < 0 && captionPages[captionIndex] && <div className={"pointer-events-none absolute inset-x-2 max-h-[46%] overflow-hidden break-words rounded-md bg-black/75 px-2 py-2 text-center text-xs font-semibold leading-snug text-white shadow-lg " + position}>{captionPages[captionIndex].text}</div>}
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
           <button type="button" onClick={() => { setSupportIndex(-1); setCaptionIndex(index => Math.max(0, index - 1)); }} disabled={supportIndex < 0 && captionIndex === 0} className={button}><ChevronLeft size={15}/></button>
           <button type="button" onClick={resetAnimation} className={`${button} flex items-center gap-1`}><Play size={14}/> Preview camera</button>
-          <button type="button" onClick={() => { setSupportIndex(-1); setCaptionIndex(index => Math.min(captions.length - 1, index + 1)); }} disabled={captions.length === 0 || (captionIndex >= captions.length - 1 && supportIndex < 0)} className={button}><ChevronRight size={15}/></button>
+          <button type="button" onClick={() => { setSupportIndex(-1); setCaptionIndex(index => Math.min(captionPages.length - 1, index + 1)); }} disabled={captionPages.length === 0 || (captionIndex >= captionPages.length - 1 && supportIndex < 0)} className={button}><ChevronRight size={15}/></button>
         </div>
-        <p className="mt-2 text-center text-[11px] text-white/50">Static image animation only · no AI video · no speech bubbles</p>
+        <p className="mt-2 text-center text-[11px] text-white/50">{supportIndex >= 0 ? "Support image " + (supportIndex + 1) : captionPages.length ? "Caption " + (captionIndex + 1) + " / " + captionPages.length : "No captions yet"} · Fixed-image camera only</p>
       </div>
     </div>
     <style>{`@keyframes fotoplay-webtoon-camera { from { transform: var(--webtoon-from); } to { transform: var(--webtoon-to); } } @media (prefers-reduced-motion: reduce) { .fotoplay-webtoon-camera { animation: none !important; } }`}</style>
