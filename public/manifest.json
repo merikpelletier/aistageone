@@ -6,11 +6,19 @@
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
   "background_color": "#0a0a0a",
   "theme_color": "#070b0d",
   "orientation": "portrait",
-  "categories": ["entertainment", "photo", "video"],
+  "categories": [
+    "entertainment",
+    "photo",
+    "video"
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.png?v=5",
