@@ -494,6 +494,13 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
 
 export default function Index() {
   const [language, setLanguage] = useState(() => getPlatformLanguage());
+  // Keep the French installation's language preference when navigating to other pages.
+  useEffect(() => {
+    const explicitLanguage = new URLSearchParams(window.location.search).get('lang');
+    if (explicitLanguage === 'fr' || explicitLanguage === 'en') {
+      try { window.localStorage.setItem('aistage-landing-language', explicitLanguage); } catch { /* Optional storage */ }
+    }
+  }, []);
   // Browser/PWA window caption only; installed PWA manifest and other pages stay unchanged.
   useEffect(() => {
     const previousTitle = document.title;
