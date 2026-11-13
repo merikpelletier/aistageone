@@ -42,7 +42,7 @@ function CTA({ label, url, primary = false }) {
 
 export default function PrelaunchLanding() {
   const [pageLanguage, setPageLanguage] = useState(() => {
-    try { return window.localStorage.getItem('aistage-landing-language') === 'fr' ? 'fr' : 'en'; } catch { return 'en'; }
+    try { const requested = new URLSearchParams(window.location.search).get('lang'); if (requested === 'fr' || requested === 'en') return requested; return window.localStorage.getItem('aistage-landing-language') === 'fr' ? 'fr' : 'en'; } catch { return 'en'; }
   });
   const selectPageLanguage = (language) => {
     setPageLanguage(language);
