@@ -122,9 +122,11 @@ const PrivateRoute = ({ children }) => {
 
 const HomeRoute = () => {
   const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
 
   if (isAuthenticated && ['admin', 'guest'].includes(user?.role)) {
-    return <Navigate to="/Index" replace />;
+    const englishPwaLaunch = new URLSearchParams(location.search).get('source') === 'pwa';
+    return <Navigate to={englishPwaLaunch ? '/Index?lang=en' : '/Index'} replace />;
   }
 
   return <PrelaunchLanding />;
