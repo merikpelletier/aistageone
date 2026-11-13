@@ -444,6 +444,13 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
             <h2 className="text-lg font-black text-white">{t("ui", "Content Library")}</h2>
           </div>
           <div className="flex items-center gap-2">
+            {language === 'fr' && (
+              <a href="/installer-leplateau.html" target="_blank" rel="noopener noreferrer"
+                className="border border-white/25 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-white/10"
+                title="Installer LE PLATEAU IA comme application distincte">
+                Installer LE PLATEAU IA
+              </a>
+            )}
             <div role="group" aria-label="Language / Langue" className="flex border border-white/20">
               {['fr', 'en'].map(locale => (
                 <button type="button" key={locale} onClick={() => onLanguageChange(locale)} aria-pressed={language === locale}
