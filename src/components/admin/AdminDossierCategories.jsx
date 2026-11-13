@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, supabase } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Pencil, Check, X, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -22,7 +22,12 @@ export default function AdminDossierCategories() {
 
   const createMutation = useMutation({
     mutationFn: (name) => base44.entities.DossierCategory.create({ name }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['dossierCategories'] }); setNewName(''); },
+    onSuccess: async (_result, name) => {
+      await supabase.from('translation_dictionary').upsert({namespace:'category',source_key:name,translations:{en:name}}, {onConflict:'namespace,source_key',ignoreDuplicates:true});
+      qc.invalidateQueries({ queryKey: ['dossierCategories'] });
+      qc.invalidateQueries({ queryKey: ['translationDictionary'] });
+      setNewName('');
+    },
   });
 
   const updateMutation = useMutation({
