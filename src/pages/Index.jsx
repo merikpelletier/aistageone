@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ChevronDown, GripVertical, Play, Search, Sparkles } from 'lucide-react';
 import TopBanner from '@/components/TopBanner';
+import { fetchTranslationDictionary, translationLookup, translatedLabel, normalizeSearchText, searchTerms, matchesContentLanguage, getPlatformLanguage } from '@/lib/translationDictionary';
 
 const CLASS_ORDER = ['Videos', 'Story', 'Assets', 'Kits', 'Merchandise'];
 const CLASS_ACCENTS = {
@@ -65,7 +66,7 @@ function isMemberDossier(dossier) {
   return Boolean(dossier.ai_member_id || String(dossier.submitted_by_email || '').trim());
 }
 
-function buildDailyMasonry(dossiers, dayKey) {
+function buildDailyMasonry(languageDossiers, dayKey) {
   if (dossiers.length <= 2) return [...dossiers];
 
   const total = dossiers.length;
@@ -312,13 +313,15 @@ function GalleryRow({ title, dossiers }) {
   );
 }
 
-function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularityMap, dayKey }) {
+function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularityMap, dayKey, dictionary, language }) {
   const [panelHeight, setPanelHeight] = useState(() => {
     const saved = Number(window.localStorage.getItem('aistage:index-browser-height'));
     return Number.isFinite(saved) && saved >= 28 && saved <= 100 ? saved : 28;
   });
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('All');
+  const t = (namespace, key) => translatedLabel(dictionary, namespace, key, language);
+  const selectorText = key => key === 'All' ? t('ui','All') : dictionary.has(`class:${key}`) ? t('class',key) : t('category',key);
   const draggingRef = useRef(false);
 
   useEffect(() => {
@@ -355,16 +358,17 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
   }, [categories, dossierClasses, dossiers]);
 
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizeSearchText(query);
     return dossiers.filter((dossier) => {
       const selectorMatch = selected === 'All' || dossier.class === selected || dossier.category === selected;
       if (!selectorMatch) return false;
       if (!q) return true;
-      return [dossier.title, dossier.subtitle, dossier.category, dossier.class, dossier.author_name, dossier.submitted_by_name]
-        .filter(Boolean)
-        .some(value => String(value).toLowerCase().includes(q));
+      const values = [dossier.title, dossier.subtitle, dossier.author_name, dossier.submitted_by_name,
+        ...searchTerms(dictionary, 'category', dossier.category, language),
+        ...searchTerms(dictionary, 'class', dossier.class, language)];
+      return values.some(value => normalizeSearchText(value).includes(q));
     });
-  }, [dossiers, query, selected]);
+  }, [dossiers, query, selected, dictionary, language]);
 
   const rankRow = (items, seed) => {
     const sorted = [...items].sort((a, b) => (popularityMap.get(b.id) || 0) - (popularityMap.get(a.id) || 0));
@@ -419,8 +423,8 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
       <div className="border-b border-white/10 px-5 pb-3 pt-4 xl:px-7">
         <div className="mb-3 flex items-center justify-between gap-4">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/35">Browse</p>
-            <h2 className="text-lg font-black text-white">Content Library</h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/35">{t('ui','Browse')}</p>
+            <h2 className="text-lg font-black text-white">{t('ui','Content Library')}</h2>
           </div>
           <div className="flex gap-1">
             {[28, 60, 100].map(value => (
@@ -436,7 +440,7 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
               type="search"
               value={query}
               onChange={event => setQuery(event.target.value)}
-              placeholder="Search titles, creators, categories..."
+              placeholder={t('ui','Search titles, creators, categories...')}
               className="w-full border border-white/15 bg-white/[0.04] py-2.5 pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/40"
             />
           </div>
@@ -449,7 +453,7 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
                 onClick={() => setSelected(option)}
                 className={`whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
               >
-                {option}
+                {selectorText(option)}
               </button>
             ))}
           </div>
@@ -457,13 +461,16 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-4 xl:px-7">
-        {rows.length ? rows.map(row => <GalleryRow key={row.title} title={row.title} dossiers={row.dossiers} />) : <div className="flex min-h-[180px] items-center justify-center text-sm text-white/35">No content found.</div>}
+        {rows.length ? rows.map(row => <GalleryRow key={row.title} title={row.title === 'Search results' || row.title === 'Others' ? t('ui',row.title) : selectorText(row.title)} dossiers={row.dossiers} />) : <div className="flex min-h-[180px] items-center justify-center text-sm text-white/35">{t('ui','No content found.')}</div>}
       </div>
     </aside>
   );
 }
 
 export default function Index() {
+  const language = getPlatformLanguage();
+  const { data: translationRows = [] } = useQuery({ queryKey: ['translationDictionary'], queryFn: fetchTranslationDictionary, staleTime: 5 * 60 * 1000 });
+  const dictionary = useMemo(() => translationLookup(translationRows), [translationRows]);
   const { data: dossiers = [], isLoading } = useQuery({ queryKey: ['dossiers', 'published'], queryFn: () => base44.entities.Dossier.filter({ status: 'published' }, 'order'), staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false });
   const { data: categories = [] } = useQuery({ queryKey: ['dossierCategories'], queryFn: () => base44.entities.DossierCategory.list('name'), staleTime: 5 * 60 * 1000 });
   const { data: dossierClasses = [] } = useQuery({ queryKey: ['dossierClasses'], queryFn: () => base44.entities.DossierClass.list('order'), staleTime: 5 * 60 * 1000 });
@@ -480,20 +487,22 @@ export default function Index() {
   });
 
   const fillers = useMemo(() => [...configuredFillers, ...FALLBACK_FILLERS], [configuredFillers]);
+  // Apply language selection to catalog presentation only. Dossier data and publication state are untouched.
+  const languageDossiers = useMemo(() => dossiers.filter(d => matchesContentLanguage(d,language)), [dossiers,language]);
   const dayKey = localDayKey();
   const popularityMap = useMemo(() => buildPopularityMap(ratings), [ratings]);
   const desktopMasonryDossiers = useMemo(() => buildDailyMasonry(dossiers, dayKey), [dossiers, dayKey]);
 
   if (isLoading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" /></div>;
 
-  const restDossiers = dossiers.slice(1);
+  const restDossiers = languageDossiers.slice(1);
   const classSections = CLASS_ORDER.map(classLabel => ({ classLabel, dossiers: restDossiers.filter(d => d.class === classLabel) }));
   const noClass = restDossiers.filter(d => !d.class);
 
   return (
-    <div className="min-h-screen bg-black pb-24">
+    <div lang={language} className="min-h-screen bg-black pb-24">
       <div className="lg:hidden">
-        <TopBanner dossiers={dossiers} />
+        <TopBanner dossiers={languageDossiers} />
         <div className="pt-4 px-4 columns-1 sm:columns-2 gap-4">
           {classSections.map(section => <ClassSection key={section.classLabel} classLabel={section.classLabel} dossiers={section.dossiers} categories={categories} />)}
           {noClass.length > 0 && <ClassSection classLabel="Others" dossiers={noClass} categories={categories} />}
@@ -501,9 +510,9 @@ export default function Index() {
       </div>
 
       <DesktopMasonry dossiers={desktopMasonryDossiers} fillers={fillers} />
-      <DesktopClassicBrowser dossiers={dossiers} categories={categories} dossierClasses={dossierClasses} popularityMap={popularityMap} dayKey={dayKey} />
+      <DesktopClassicBrowser dossiers={languageDossiers} categories={categories} dossierClasses={dossierClasses} popularityMap={popularityMap} dayKey={dayKey} dictionary={dictionary} language={language} />
 
-      {dossiers.length === 0 && <div className="flex items-center justify-center py-20"><p className="text-white/50 text-sm">Aucun contenu disponible</p></div>}
+      {languageDossiers.length === 0 && <div className="flex items-center justify-center py-20"><p className="text-white/50 text-sm">Aucun contenu disponible</p></div>}
     </div>
   );
 }
