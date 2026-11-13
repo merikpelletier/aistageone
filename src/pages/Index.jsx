@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ChevronDown, GripVertical, Play, Search, Sparkles } from 'lucide-react';
 import TopBanner from '@/components/TopBanner';
-import { getPlatformLanguage, normalizeLocale } from '@/lib/translationDictionary';
+import { getPlatformLanguage, normalizeLocale, fetchTranslationDictionary, translationLookup, translatedLabel, normalizeSearchText, searchTerms } from '@/lib/translationDictionary';
 
 const CLASS_ORDER = ['Videos', 'Story', 'Assets', 'Kits', 'Merchandise'];
 const CLASS_ACCENTS = {
@@ -313,13 +313,22 @@ function GalleryRow({ title, dossiers }) {
   );
 }
 
-function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularityMap, dayKey, frenchFirst = false }) {
+function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularityMap, dayKey, frenchFirst = false, language, onLanguageChange, dictionary }) {
   const [panelHeight, setPanelHeight] = useState(() => {
     const saved = Number(window.localStorage.getItem('aistage:index-browser-height'));
     return Number.isFinite(saved) && saved >= 28 && saved <= 100 ? saved : 28;
   });
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('All');
+  const t = (namespace, key) => translatedLabel(dictionary, namespace, key, language);
+  const categoryLabels = new Set(categories.map(item => item.name));
+  const classLabels = new Set(dossierClasses.map(item => item.name));
+  const displayLabel = key => {
+    if (key === 'All' || key === 'Others' || key === 'Search results') return t('ui', key);
+    if (classLabels.has(key) || CLASS_ORDER.includes(key)) return t('class', key);
+    if (categoryLabels.has(key)) return t('category', key);
+    return key;
+  };
   const draggingRef = useRef(false);
 
   useEffect(() => {
@@ -356,16 +365,19 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
   }, [categories, dossierClasses, dossiers]);
 
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizeSearchText(query);
     return dossiers.filter((dossier) => {
       const selectorMatch = selected === 'All' || dossier.class === selected || dossier.category === selected;
       if (!selectorMatch) return false;
       if (!q) return true;
-      return [dossier.title, dossier.subtitle, dossier.category, dossier.class, dossier.author_name, dossier.submitted_by_name]
-        .filter(Boolean)
-        .some(value => String(value).toLowerCase().includes(q));
+      const values = [
+        dossier.title, dossier.subtitle, dossier.author_name, dossier.submitted_by_name,
+        ...searchTerms(dictionary, 'category', dossier.category, language),
+        ...searchTerms(dictionary, 'class', dossier.class, language)
+      ];
+      return values.some(value => normalizeSearchText(value).includes(q));
     });
-  }, [dossiers, query, selected]);
+  }, [dossiers, query, selected, dictionary, language]);
 
   const rankRow = (items, seed) => {
     const sorted = [...items].sort((a, b) => {
@@ -427,10 +439,18 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
       <div className="border-b border-white/10 px-5 pb-3 pt-4 xl:px-7">
         <div className="mb-3 flex items-center justify-between gap-4">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/35">Browse</p>
-            <h2 className="text-lg font-black text-white">Content Library</h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/35">{t("ui", "Browse")}</p>
+            <h2 className="text-lg font-black text-white">{t("ui", "Content Library")}</h2>
           </div>
-          <div className="flex gap-1">
+          <div className="flex items-center gap-2">
+            <div role="group" aria-label="Language / Langue" className="flex border border-white/20">
+              {['fr', 'en'].map(locale => (
+                <button type="button" key={locale} onClick={() => onLanguageChange(locale)} aria-pressed={language === locale}
+                  className={`px-3 py-1.5 text-[11px] font-bold ${language === locale ? 'bg-white text-black' : 'text-white/75 hover:text-white'}`}>
+                  {locale.toUpperCase()}
+                </button>
+              ))}
+            </div>
             {[28, 60, 100].map(value => (
               <button key={value} onClick={() => setPanelHeight(value)} className={`border px-2.5 py-1 text-[10px] font-black transition ${Math.round(panelHeight) === value ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}>{value}%</button>
             ))}
@@ -444,7 +464,7 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
               type="search"
               value={query}
               onChange={event => setQuery(event.target.value)}
-              placeholder="Search titles, creators, categories..."
+              placeholder={t("ui", "Search titles, creators, categories...")}
               className="w-full border border-white/15 bg-white/[0.04] py-2.5 pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/40"
             />
           </div>
@@ -457,7 +477,7 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
                 onClick={() => setSelected(option)}
                 className={`whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
               >
-                {option}
+                {displayLabel(option)}
               </button>
             ))}
           </div>
@@ -465,13 +485,23 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-4 xl:px-7">
-        {rows.length ? rows.map(row => <GalleryRow key={row.title} title={row.title} dossiers={row.dossiers} />) : <div className="flex min-h-[180px] items-center justify-center text-sm text-white/35">No content found.</div>}
+        {rows.length ? rows.map(row => <GalleryRow key={row.title} title={displayLabel(row.title)} dossiers={row.dossiers} />) : <div className="flex min-h-[180px] items-center justify-center text-sm text-white/35">{t("ui", "No content found.")}</div>}
       </div>
     </aside>
   );
 }
 
 export default function Index() {
+  const [language, setLanguage] = useState(() => getPlatformLanguage());
+  const changeLanguage = locale => {
+    setLanguage(locale);
+    try { window.localStorage.setItem('aistage-landing-language', locale); } catch { /* Optional storage */ }
+  };
+  const { data: translationRows = [] } = useQuery({
+    queryKey: ['translationDictionary'], queryFn: fetchTranslationDictionary,
+    staleTime: 5 * 60 * 1000, retry: false
+  });
+  const dictionary = useMemo(() => translationLookup(translationRows), [translationRows]);
   const { data: dossiers = [], isLoading } = useQuery({ queryKey: ['dossiers', 'published'], queryFn: () => base44.entities.Dossier.filter({ status: 'published' }, 'order'), staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false });
   const { data: categories = [] } = useQuery({ queryKey: ['dossierCategories'], queryFn: () => base44.entities.DossierCategory.list('name'), staleTime: 5 * 60 * 1000 });
   const { data: dossierClasses = [] } = useQuery({ queryKey: ['dossierClasses'], queryFn: () => base44.entities.DossierClass.list('order'), staleTime: 5 * 60 * 1000 });
@@ -488,7 +518,7 @@ export default function Index() {
   });
 
   const fillers = useMemo(() => [...configuredFillers, ...FALLBACK_FILLERS], [configuredFillers]);
-  const frenchFirst = getPlatformLanguage() === 'fr';
+  const frenchFirst = language === 'fr';
   const dayKey = localDayKey();
   const popularityMap = useMemo(() => buildPopularityMap(ratings), [ratings]);
   const desktopMasonryDossiers = useMemo(() => {
@@ -515,7 +545,7 @@ export default function Index() {
       </div>
 
       <DesktopMasonry dossiers={desktopMasonryDossiers} fillers={fillers} />
-      <DesktopClassicBrowser dossiers={dossiers} categories={categories} dossierClasses={dossierClasses} popularityMap={popularityMap} dayKey={dayKey} frenchFirst={frenchFirst} />
+      <DesktopClassicBrowser dossiers={dossiers} categories={categories} dossierClasses={dossierClasses} popularityMap={popularityMap} dayKey={dayKey} frenchFirst={frenchFirst} language={language} onLanguageChange={changeLanguage} dictionary={dictionary} />
 
       {dossiers.length === 0 && <div className="flex items-center justify-center py-20"><p className="text-white/50 text-sm">Aucun contenu disponible</p></div>}
     </div>
