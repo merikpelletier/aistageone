@@ -1,0 +1,30 @@
+{
+  "name": "LE PLATEAU IA",
+  "short_name": "LE PLATEAU IA",
+  "lang": "fr-CA",
+  "description": "LE PLATEAU IA — La création, le spectacle et l'intelligence artificielle.",
+  "id": "/leplateau-pwa",
+  "start_url": "/Index?lang=fr&source=leplateau-pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#080a0c",
+  "theme_color": "#080a0c",
+  "orientation": "portrait",
+  "categories": [
+    "entertainment",
+    "photo",
+    "video"
+  ],
+  "icons": [
+    {
+      "src": "/icons/leplateau.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
