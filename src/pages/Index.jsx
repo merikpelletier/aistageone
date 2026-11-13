@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ChevronDown, GripVertical, Play, Search, Sparkles } from 'lucide-react';
 import TopBanner from '@/components/TopBanner';
+import { getPlatformLanguage, normalizeLocale } from '@/lib/translationDictionary';
 
 const CLASS_ORDER = ['Videos', 'Story', 'Assets', 'Kits', 'Merchandise'];
 const CLASS_ACCENTS = {
@@ -312,7 +313,7 @@ function GalleryRow({ title, dossiers }) {
   );
 }
 
-function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularityMap, dayKey }) {
+function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularityMap, dayKey, frenchFirst = false }) {
   const [panelHeight, setPanelHeight] = useState(() => {
     const saved = Number(window.localStorage.getItem('aistage:index-browser-height'));
     return Number.isFinite(saved) && saved >= 28 && saved <= 100 ? saved : 28;
@@ -367,7 +368,14 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
   }, [dossiers, query, selected]);
 
   const rankRow = (items, seed) => {
-    const sorted = [...items].sort((a, b) => (popularityMap.get(b.id) || 0) - (popularityMap.get(a.id) || 0));
+    const sorted = [...items].sort((a, b) => {
+      if (frenchFirst) {
+        const aFR = normalizeLocale(a.default_language || a.original_language || 'en') === 'fr' ? 1 : 0;
+        const bFR = normalizeLocale(b.default_language || b.original_language || 'en') === 'fr' ? 1 : 0;
+        if (aFR !== bFR) return bFR - aFR;
+      }
+      return (popularityMap.get(b.id) || 0) - (popularityMap.get(a.id) || 0);
+    });
     const featured = sorted.slice(0, 4);
     const featuredIds = new Set(featured.map(d => d.id));
     const rest = dailyShuffle(items.filter(d => !featuredIds.has(d.id)), `${dayKey}:row:${seed}`);
@@ -480,9 +488,15 @@ export default function Index() {
   });
 
   const fillers = useMemo(() => [...configuredFillers, ...FALLBACK_FILLERS], [configuredFillers]);
+  const frenchFirst = getPlatformLanguage() === 'fr';
   const dayKey = localDayKey();
   const popularityMap = useMemo(() => buildPopularityMap(ratings), [ratings]);
-  const desktopMasonryDossiers = useMemo(() => buildDailyMasonry(dossiers, dayKey), [dossiers, dayKey]);
+  const desktopMasonryDossiers = useMemo(() => {
+    const arranged = buildDailyMasonry(dossiers, dayKey);
+    if (!frenchFirst) return arranged;
+    return [...arranged.filter(d => normalizeLocale(d.default_language || d.original_language || 'en') === 'fr'),
+      ...arranged.filter(d => normalizeLocale(d.default_language || d.original_language || 'en') !== 'fr')];
+  }, [dossiers, dayKey, frenchFirst]);
 
   if (isLoading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" /></div>;
 
@@ -501,7 +515,7 @@ export default function Index() {
       </div>
 
       <DesktopMasonry dossiers={desktopMasonryDossiers} fillers={fillers} />
-      <DesktopClassicBrowser dossiers={dossiers} categories={categories} dossierClasses={dossierClasses} popularityMap={popularityMap} dayKey={dayKey} />
+      <DesktopClassicBrowser dossiers={dossiers} categories={categories} dossierClasses={dossierClasses} popularityMap={popularityMap} dayKey={dayKey} frenchFirst={frenchFirst} />
 
       {dossiers.length === 0 && <div className="flex items-center justify-center py-20"><p className="text-white/50 text-sm">Aucun contenu disponible</p></div>}
     </div>
