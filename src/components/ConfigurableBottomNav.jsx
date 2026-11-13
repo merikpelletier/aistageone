@@ -5,6 +5,7 @@ import { Clapperboard, Handshake, MessageCircle, MoreHorizontal, Settings, Shopp
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { getPlatformLanguage } from '@/lib/translationDictionary';
 
 const NAV_ITEMS = [
   { key: 'Index', labelKey: 'nav_magazine', label: 'Magazine', icon: Clapperboard },
@@ -19,11 +20,36 @@ const NAV_ITEMS = [
   { key: 'Cart', label: 'Cart', icon: ShoppingCart, cart: true },
 ];
 
+const FRENCH_NAV_LABELS = {
+  Index: 'Scène',
+  Salons: 'Social',
+  Plus: 'Plus',
+  Studio: 'Studio',
+  MemberListing: 'Membres',
+  SponsorRequest: 'Commandites',
+  MemberDashboard: 'Compte',
+  Admin: 'Admin',
+  Boutique: 'Boutique',
+  Cart: 'Panier',
+};
+
 export default function ConfigurableBottomNav({ settings = [] }) {
   const { pathname } = useLocation();
   const { user } = useAuth();
   const [cartCount, setCartCount] = useState(0);
   const [labelOverrides, setLabelOverrides] = useState({});
+  const [language, setLanguage] = useState(() => getPlatformLanguage());
+
+  useEffect(() => {
+    const updateLanguage = () => setLanguage(getPlatformLanguage());
+    window.addEventListener('aistage-language-change', updateLanguage);
+    window.addEventListener('storage', updateLanguage);
+    return () => {
+      window.removeEventListener('aistage-language-change', updateLanguage);
+      window.removeEventListener('storage', updateLanguage);
+    };
+  }, []);
+
   const isAdmin = user?.role === 'admin';
   const navSetting = settings.find((item) => item.surface_type === 'tool' && item.surface_key === 'bottom_navigation');
   const navBackground = navSetting?.look?.background_color || '#000000';
@@ -66,7 +92,7 @@ export default function ConfigurableBottomNav({ settings = [] }) {
         const Icon = item.icon;
         const content = <>
           <div className="relative"><Icon size={20} style={{ color: navIcon }} />{item.cart && cartCount > 0 && <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full text-xs font-bold leading-none text-white" style={{ backgroundColor: navActive }}>{cartCount}</span>}</div>
-          <span className="hidden max-w-full truncate text-[10px] font-semibold tracking-wide md:block" style={{ color: navText }}>{item.account && !user ? 'LOG IN' : item.label}</span>
+          <span className="hidden max-w-full truncate text-[10px] font-semibold tracking-wide md:block" style={{ color: navText }}>{item.account && !user ? (language === 'fr' ? 'Connexion' : 'LOG IN') : (language === 'fr' ? (FRENCH_NAV_LABELS[item.key] || item.label) : item.label)}</span>
           {active && <motion.div layoutId="nav-indicator" className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full" style={{ backgroundColor: navActive }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} />}
         </>;
         const className = 'relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 md:h-16';
