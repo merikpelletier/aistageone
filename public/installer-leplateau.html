@@ -31,6 +31,9 @@
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
     let installEvent = null;
+    if (typeof navigator.install === 'function') {
+      document.getElementById('status').textContent = 'Votre navigateur prend en charge l’installation explicite de l’application française.';
+    }
     const button = document.getElementById('install');
     const status = document.getElementById('status');
     window.addEventListener('beforeinstallprompt', event => {
@@ -40,15 +43,29 @@
       status.textContent = 'La version française est prête à être installée.';
     });
     button.addEventListener('click', async () => {
-      if (!installEvent) {
-        status.textContent = 'Dans Microsoft Edge ou Chrome : ouvrez le menu (…) puis choisissez « Applications » → « Installer ce site en tant qu’application », si disponible.';
+      // Supported browsers can explicitly install a different manifest, even
+      // when AISTAGE.ONE is already installed on this origin.
+      if (typeof navigator.install === 'function') {
+        status.textContent = 'Demande d’installation de LE PLATEAU IA…';
+        try {
+          await navigator.install({ manifest: new URL('/manifest-leplateau.json', location.origin).href });
+          status.textContent = 'Demande traitée par le navigateur. Vérifiez vos applications installées.';
+        } catch (error) {
+          status.textContent = 'Installation refusée ou non disponible (' + (error?.name || 'erreur') + '). Ouvrez cette page dans un onglet normal de Microsoft Edge.';
+        }
         return;
       }
-      const prompt = installEvent;
-      installEvent = null;
-      await prompt.prompt();
-      const choice = await prompt.userChoice;
-      status.textContent = choice.outcome === 'accepted' ? 'Installation demandée au navigateur.' : 'Installation annulée.';
+      if (installEvent) {
+        const prompt = installEvent;
+        installEvent = null;
+        await prompt.prompt();
+        const choice = await prompt.userChoice;
+        status.textContent = choice.outcome === 'accepted'
+          ? 'Installation demandée au navigateur.'
+          : 'Installation annulée.';
+        return;
+      }
+      status.textContent = 'Ce navigateur ne permet pas une seconde installation depuis cette page. La version française reste accessible par le lien ci-dessous. Une adresse distincte LEPLATEAU.AI permettra une installation indépendante.';
     });
     window.addEventListener('appinstalled', () => {
       button.disabled = true;
