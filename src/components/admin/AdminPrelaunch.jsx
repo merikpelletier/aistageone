@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44, supabase } from '@/api/base44Client';
 import { Save, RefreshCw, ExternalLink, Plus, Trash2, ChevronUp, ChevronDown, Upload } from 'lucide-react';
+import { translateLanding } from '@/lib/landingFrench';
 
 const input = 'w-full border border-white/15 bg-black px-3 py-2 text-sm text-white outline-none focus:border-white/50';
 const btn = 'border border-white/25 bg-white px-3 py-2 text-xs font-black uppercase tracking-wider text-black disabled:opacity-50';
@@ -244,6 +245,47 @@ function ItemEditor({ item, onSaved, onDelete, onMove }) {
   </div>;
 }
 
+
+function FrenchLandingEditor({ record, kind, onSaved }) {
+  const [form, setForm] = useState(record.fr_content || {});
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const isSection = kind === 'section';
+  const fields = isSection ? ['eyebrow','title','subtitle','body','button_1_label','button_2_label'] : ['title','body','link_label'];
+  if (isSection && ['pre_register','join_team'].includes(record.section_key)) fields.push('button_1_url','button_2_url');
+  const names = {eyebrow:'Sur-titre',title:'Titre',subtitle:'Sous-titre',body:'Description',button_1_label:'Bouton 1',button_2_label:'Bouton 2',button_1_url:'Message de réussite',button_2_url:'Message d’erreur',link_label:'Libellé du lien'};
+  const hasMedia = isSection ? ['hero','studio','join_cast'].includes(record.section_key) : ['pillars','studio_tools','join_cast_roles'].includes(record.section_key);
+  const set = (key,value) => setForm(previous=>({...previous,[key]:value}));
+  const save = async () => {
+    setSaving(true); setMessage('');
+    const {error} = await supabase.from(isSection?'landing_sections':'landing_section_items').update({fr_content:form}).eq('id',record.id);
+    setSaving(false);
+    if(error) setMessage(error.message);
+    else {setMessage('Version française enregistrée.'); onSaved();}
+  };
+  return <div className="border border-white/15 bg-neutral-950 p-4">
+    <p className="text-xs font-black uppercase tracking-widest text-teal-300">{record.section_key.replaceAll('_',' ')}</p>
+    <p className="mb-4 mt-1 text-sm text-white/60">{record.title}</p>
+    <div className="grid gap-3 md:grid-cols-2">
+      {fields.filter(key=>typeof record[key]==='string' && record[key]).map(key=><Field key={key} label={names[key]} className={key==='body'?'md:col-span-2':''}>
+        {key==='body'
+          ? <textarea rows="3" className={input} value={form[key] ?? ''} placeholder={translateLanding(record[key],'fr')} onChange={e=>set(key,e.target.value)}/>
+          : <input className={input} value={form[key] ?? ''} placeholder={translateLanding(record[key],'fr')} onChange={e=>set(key,e.target.value)}/>}
+      </Field>)}
+      {hasMedia && <>
+        <Field label="Type de média français"><select className={input} value={form.media_type || record.media_type || 'image'} onChange={e=>set('media_type',e.target.value)}>
+          <option value="image">Image</option><option value="video">Vidéo</option>{isSection && <option value="background_video">Vidéo de fond</option>}<option value="embed">Intégration</option>
+        </select></Field>
+        <MediaUrlEditor label="Image / vidéo française" value={form.media_url || ''} onChange={v=>set('media_url',v)} accept="image/*,video/*" uploadLabel="Téléverser un média français" onFileUploaded={file=>set('media_type',file.type?.startsWith('video/')?'video':'image')}/>
+        <div className="md:col-span-2"><MediaUrlEditor label="Affiche vidéo française" value={form.poster_url || ''} onChange={v=>set('poster_url',v)} accept="image/*" uploadLabel="Téléverser une affiche" previewKind="image"/></div>
+      </>}
+    </div>
+    <p className="mt-3 text-xs text-white/45">Les champs vides conservent le contenu original ou la traduction proposée. La version anglaise reste intacte.</p>
+    {message && <p role="status" className="mt-2 text-xs text-teal-300">{message}</p>}
+    <button type="button" disabled={saving} onClick={save} className={`${btn} mt-4 inline-flex items-center gap-2`}><Save size={14}/>{saving?'Enregistrement…':'Enregistrer le français'}</button>
+  </div>;
+}
+
 function NewItem({ onCreated }) {
   const [sectionKey, setSectionKey] = useState('pillars');
   const [title, setTitle] = useState('New block');
@@ -274,6 +316,7 @@ function NewItem({ onCreated }) {
 export default function AdminPrelaunch() {
   const qc = useQueryClient();
   const [view, setView] = useState('content');
+  const [contentLanguage, setContentLanguage] = useState('en');
   const [guestEmail, setGuestEmail] = useState('');
   const [accessMessage, setAccessMessage] = useState('');
 
@@ -338,10 +381,15 @@ export default function AdminPrelaunch() {
     </div>
 
     {view==='content' && <div className="space-y-8">
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={()=>setContentLanguage('en')} className={contentLanguage==='en'?btn:darkBtn}>English — Original</button>
+        <button type="button" onClick={()=>setContentLanguage('fr')} className={contentLanguage==='fr'?btn:darkBtn}>Français — LE PLATEAU IA</button>
+        <a href={contentLanguage==='fr'?'/?lang=fr':'/?lang=en'} target="_blank" rel="noreferrer" className={`${darkBtn} ml-auto`}>Prévisualiser <ExternalLink size={13} className="inline"/></a>
+      </div>
       <div className="border border-teal-300/20 bg-teal-300/[.04] p-4 text-sm text-white/70">Everything visible on the pre-launch landing is controlled here. Media can be uploaded directly from the admin; the public URL is filled automatically, while manual URLs remain available.</div>
-      <section><h3 className="mb-3 text-xl font-black uppercase">Page sections</h3><div className="space-y-4">{sections.map(s=><SectionEditor key={s.id} section={s} onSaved={refreshAll} onMove={moveSection}/>)}</div></section>
-      <NewItem onCreated={refreshAll}/>
-      {Object.entries(grouped).map(([key,list])=><section key={key}><h3 className="mb-3 text-xl font-black uppercase">{key.replaceAll('_',' ')}</h3><div className="grid gap-3 xl:grid-cols-2">{list.map(i=><ItemEditor key={i.id} item={i} onSaved={refreshAll} onDelete={deleteItem} onMove={moveItem}/>)}</div></section>)}
+      <section><h3 className="mb-3 text-xl font-black uppercase">Page sections</h3><div className="space-y-4">{sections.map(s=>contentLanguage==='fr' ? <FrenchLandingEditor key={s.id} record={s} kind="section" onSaved={refreshAll}/> : <SectionEditor key={s.id} section={s} onSaved={refreshAll} onMove={moveSection}/>)}</div></section>
+      {contentLanguage==='en' && <NewItem onCreated={refreshAll}/>}
+      {Object.entries(grouped).map(([key,list])=><section key={key}><h3 className="mb-3 text-xl font-black uppercase">{key.replaceAll('_',' ')}</h3><div className="grid gap-3 xl:grid-cols-2">{list.map(i=>contentLanguage==='fr' ? <FrenchLandingEditor key={i.id} record={i} kind="item" onSaved={refreshAll}/> : <ItemEditor key={i.id} item={i} onSaved={refreshAll} onDelete={deleteItem} onMove={moveItem}/>)}</div></section>)}
     </div>}
 
     {view==='waitlist' && <div>
