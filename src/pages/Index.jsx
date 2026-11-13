@@ -313,7 +313,7 @@ function GalleryRow({ title, dossiers }) {
   );
 }
 
-function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularityMap, dayKey, dictionary, language }) {
+function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularityMap, dayKey, dictionary, language, languageOnly, onLanguageOnlyChange }) {
   const [panelHeight, setPanelHeight] = useState(() => {
     const saved = Number(window.localStorage.getItem('aistage:index-browser-height'));
     return Number.isFinite(saved) && saved >= 28 && saved <= 100 ? saved : 28;
@@ -426,7 +426,11 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/35">{t('ui','Browse')}</p>
             <h2 className="text-lg font-black text-white">{t('ui','Content Library')}</h2>
           </div>
-          <div className="flex gap-1">
+          <div className="flex items-center gap-2">
+            {language === 'fr' && <button type="button" onClick={() => onLanguageOnlyChange(!languageOnly)}
+              className="border border-white/25 px-2.5 py-1 text-[10px] font-bold text-white/80 hover:text-white">
+              {languageOnly ? 'FR · Voir toutes les langues' : 'Toutes langues · Filtrer FR'}
+            </button>}
             {[28, 60, 100].map(value => (
               <button key={value} onClick={() => setPanelHeight(value)} className={`border px-2.5 py-1 text-[10px] font-black transition ${Math.round(panelHeight) === value ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}>{value}%</button>
             ))}
@@ -469,6 +473,7 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
 
 export default function Index() {
   const language = getPlatformLanguage();
+  const [languageOnly, setLanguageOnly] = useState(language === 'fr');
   const { data: translationRows = [] } = useQuery({ queryKey: ['translationDictionary'], queryFn: fetchTranslationDictionary, staleTime: 5 * 60 * 1000 });
   const dictionary = useMemo(() => translationLookup(translationRows), [translationRows]);
   const { data: dossiers = [], isLoading } = useQuery({ queryKey: ['dossiers', 'published'], queryFn: () => base44.entities.Dossier.filter({ status: 'published' }, 'order'), staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false });
@@ -488,7 +493,10 @@ export default function Index() {
 
   const fillers = useMemo(() => [...configuredFillers, ...FALLBACK_FILLERS], [configuredFillers]);
   // Apply language selection to catalog presentation only. Dossier data and publication state are untouched.
-  const languageDossiers = useMemo(() => dossiers.filter(d => matchesContentLanguage(d,language)), [dossiers,language]);
+  const languageDossiers = useMemo(() => {
+    if (language === 'en') return dossiers;
+    return languageOnly ? dossiers.filter(d => matchesContentLanguage(d,language)) : dossiers;
+  }, [dossiers, language, languageOnly]);
   const dayKey = localDayKey();
   const popularityMap = useMemo(() => buildPopularityMap(ratings), [ratings]);
   const desktopMasonryDossiers = useMemo(() => buildDailyMasonry(dossiers, dayKey), [dossiers, dayKey]);
@@ -510,7 +518,7 @@ export default function Index() {
       </div>
 
       <DesktopMasonry dossiers={desktopMasonryDossiers} fillers={fillers} />
-      <DesktopClassicBrowser dossiers={languageDossiers} categories={categories} dossierClasses={dossierClasses} popularityMap={popularityMap} dayKey={dayKey} dictionary={dictionary} language={language} />
+      <DesktopClassicBrowser dossiers={languageDossiers} categories={categories} dossierClasses={dossierClasses} popularityMap={popularityMap} dayKey={dayKey} dictionary={dictionary} language={language} languageOnly={languageOnly} onLanguageOnlyChange={setLanguageOnly} />
 
       {languageDossiers.length === 0 && <div className="flex items-center justify-center py-20"><p className="text-white/50 text-sm">Aucun contenu disponible</p></div>}
     </div>
