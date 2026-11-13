@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080a0c">
+  <meta name="description" content="Installer LE PLATEAU IA en français sur cet appareil.">
+  <link rel="icon" type="image/svg+xml" href="/icons/leplateau.svg">
+  <link rel="manifest" href="/manifest-leplateau.json">
+  <title>Installer LE PLATEAU IA</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,Arial,sans-serif}*{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#080a0c;color:#fff;padding:24px}
+    main{width:min(100%,460px);text-align:center;padding:28px;border:1px solid #323740;background:#11151b}
+    img{width:112px;height:112px;object-fit:contain;margin-bottom:16px}
+    h1{font-size:25px;margin:0 0 12px}p{color:#b7bdc7;line-height:1.55}
+    button,a.action{display:block;width:100%;padding:15px;border:0;background:#347df5;color:#fff;font-size:15px;font-weight:750;cursor:pointer;text-decoration:none;margin:14px 0}
+    a.action{background:#242c36}button:disabled{opacity:.6;cursor:default}
+    #status{min-height:2.5em;font-size:14px}
+  </style>
+</head>
+<body>
+  <main>
+    <img src="/icons/leplateau.svg" alt="Logo LE PLATEAU IA" width="112" height="112">
+    <h1>LE PLATEAU IA</h1>
+    <p>Installez la version française comme une application distincte d’AISTAGE.ONE, sans changer votre installation actuelle.</p>
+    <button id="install" type="button">Installer LE PLATEAU IA</button>
+    <p id="status" role="status">Si le navigateur ne propose pas l’installation, ouvrez son menu et choisissez « Installer cette application ».</p>
+    <a class="action" href="/Index?lang=fr">Ouvrir la version française</a>
+  </main>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+    let installEvent = null;
+    const button = document.getElementById('install');
+    const status = document.getElementById('status');
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      installEvent = event;
+      button.disabled = false;
+      status.textContent = 'La version française est prête à être installée.';
+    });
+    button.addEventListener('click', async () => {
+      if (!installEvent) {
+        status.textContent = 'Dans Microsoft Edge ou Chrome : ouvrez le menu (…) puis choisissez « Applications » → « Installer ce site en tant qu’application », si disponible.';
+        return;
+      }
+      const prompt = installEvent;
+      installEvent = null;
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      status.textContent = choice.outcome === 'accepted' ? 'Installation demandée au navigateur.' : 'Installation annulée.';
+    });
+    window.addEventListener('appinstalled', () => {
+      button.disabled = true;
+      status.textContent = 'LE PLATEAU IA est installé.';
+    });
+  </script>
+</body>
+</html>
