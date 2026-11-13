@@ -539,6 +539,7 @@ export default function Index() {
   const changeLanguage = locale => {
     setLanguage(locale);
     try { window.localStorage.setItem('aistage-landing-language', locale); } catch { /* Optional storage */ }
+    window.dispatchEvent(new Event('aistage-language-change'));
   };
   const { data: translationRows = [] } = useQuery({
     queryKey: ['translationDictionary'], queryFn: fetchTranslationDictionary,
