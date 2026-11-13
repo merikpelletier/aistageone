@@ -17,6 +17,8 @@
     button,a.action{display:block;width:100%;padding:15px;border:0;background:#347df5;color:#fff;font-size:15px;font-weight:750;cursor:pointer;text-decoration:none;margin:14px 0}
     a.action{background:#242c36}button:disabled{opacity:.6;cursor:default}
     #status{min-height:2.5em;font-size:14px}
+    #native-install{display:none;margin:14px auto;min-height:48px;min-width:210px}
+    #native-install.is-supported{display:block}
   </style>
 </head>
 <body>
@@ -24,18 +26,26 @@
     <img src="/icons/leplateau.svg" alt="Logo LE PLATEAU IA" width="112" height="112">
     <h1>LE PLATEAU IA</h1>
     <p>Installez la version française comme une application distincte d’AISTAGE.ONE, sans changer votre installation actuelle.</p>
+    <install id="native-install" manifest="/manifest-leplateau.json" manifestid="/leplateau-pwa"></install>
     <button id="install" type="button">Installer LE PLATEAU IA</button>
-    <p id="status" role="status">Si le navigateur ne propose pas l’installation, ouvrez son menu et choisissez « Installer cette application ».</p>
+    <p id="status" role="status">Cette page demande l’installation de LE PLATEAU IA, et non celle d’AISTAGE.ONE.</p>
     <a class="action" href="/Index?lang=fr">Ouvrir la version française</a>
   </main>
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
     let installEvent = null;
-    if (typeof navigator.install === 'function') {
-      document.getElementById('status').textContent = 'Votre navigateur prend en charge l’installation explicite de l’application française.';
-    }
     const button = document.getElementById('install');
     const status = document.getElementById('status');
+    const nativeInstall = document.getElementById('native-install');
+    if ('HTMLInstallElement' in window) {
+      nativeInstall.classList.add('is-supported');
+      button.hidden = true;
+      status.textContent = 'Utilisez le bouton d’installation du navigateur ci-dessus pour installer LE PLATEAU IA avec son identité distincte.';
+    } else if (typeof navigator.install === 'function') {
+      status.textContent = 'Le navigateur permet de demander explicitement l’installation de LE PLATEAU IA.';
+    } else {
+      status.textContent = 'Installation distincte non prise en charge par ce navigateur. N’utilisez pas « Installer ce site » : cela peut réinstaller AISTAGE.ONE.';
+    }
     window.addEventListener('beforeinstallprompt', event => {
       event.preventDefault();
       installEvent = event;
@@ -48,7 +58,7 @@
       if (typeof navigator.install === 'function') {
         status.textContent = 'Demande d’installation de LE PLATEAU IA…';
         try {
-          await navigator.install({ manifest: new URL('/manifest-leplateau.json', location.origin).href });
+          await navigator.install({ manifest: new URL('/manifest-leplateau.json', location.origin).href, manifestId: new URL('/leplateau-pwa', location.origin).href });
           status.textContent = 'Demande traitée par le navigateur. Vérifiez vos applications installées.';
         } catch (error) {
           status.textContent = 'Installation refusée ou non disponible (' + (error?.name || 'erreur') + '). Ouvrez cette page dans un onglet normal de Microsoft Edge.';
@@ -65,7 +75,7 @@
           : 'Installation annulée.';
         return;
       }
-      status.textContent = 'Ce navigateur ne permet pas une seconde installation depuis cette page. La version française reste accessible par le lien ci-dessous. Une adresse distincte LEPLATEAU.AI permettra une installation indépendante.';
+      status.textContent = 'L’installation distincte n’est pas prise en charge ici. Le menu « Installer ce site » risquerait d’utiliser l’identité AISTAGE.ONE.';
     });
     window.addEventListener('appinstalled', () => {
       button.disabled = true;
