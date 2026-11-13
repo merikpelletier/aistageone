@@ -384,7 +384,7 @@ export default function AdminPrelaunch() {
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={()=>setContentLanguage('en')} className={contentLanguage==='en'?btn:darkBtn}>English — Original</button>
         <button type="button" onClick={()=>setContentLanguage('fr')} className={contentLanguage==='fr'?btn:darkBtn}>Français — LE PLATEAU IA</button>
-        <a href={contentLanguage==='fr'?'/?lang=fr':'/?lang=en'} target="_blank" rel="noreferrer" className={`${darkBtn} ml-auto`}>Prévisualiser <ExternalLink size={13} className="inline"/></a>
+        <a href={contentLanguage==='fr'?'/LandingPreview?lang=fr':'/LandingPreview?lang=en'} target="_blank" rel="noreferrer" className={`${darkBtn} ml-auto`}>Prévisualiser <ExternalLink size={13} className="inline"/></a>
       </div>
       <div className="border border-teal-300/20 bg-teal-300/[.04] p-4 text-sm text-white/70">Everything visible on the pre-launch landing is controlled here. Media can be uploaded directly from the admin; the public URL is filled automatically, while manual URLs remain available.</div>
       <section><h3 className="mb-3 text-xl font-black uppercase">Page sections</h3><div className="space-y-4">{sections.map(s=>contentLanguage==='fr' ? <FrenchLandingEditor key={s.id} record={s} kind="section" onSaved={refreshAll}/> : <SectionEditor key={s.id} section={s} onSaved={refreshAll} onMove={moveSection}/>)}</div></section>
