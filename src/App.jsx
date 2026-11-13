@@ -130,6 +130,14 @@ const HomeRoute = () => {
   return <PrelaunchLanding />;
 };
 
+const AdminLandingPreview = () => {
+  const { user, isAuthenticated, isLoadingAuth } = useAuth();
+  if (isLoadingAuth) return <div className="fixed inset-0 flex items-center justify-center bg-black"><div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" /></div>;
+  if (!isAuthenticated) return <Navigate to="/Login?returnTo=%2FLandingPreview" replace />;
+  if (user?.role !== 'admin') return <Navigate to="/" replace />;
+  return <PrelaunchLanding />;
+};
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
 
@@ -150,6 +158,7 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route path="/" element={<HomeRoute />} />
+      <Route path="/LandingPreview" element={<AdminLandingPreview />} />
       {Object.entries(Pages).map(([path, Page]) => (
         <Route
           key={path}
