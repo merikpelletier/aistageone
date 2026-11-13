@@ -67,6 +67,7 @@ import Admin3DLibrary from '@/components/admin/Admin3DLibrary';
 import AdminPrelaunch from '@/components/admin/AdminPrelaunch';
 import AdminSetDesignerImages from '@/components/admin/AdminSetDesignerImages';
 import AdminAnalytics from '@/components/admin/AdminAnalytics';
+import AdminTranslations from '@/components/admin/AdminTranslations';
 
 const groups = [
   {
@@ -147,6 +148,7 @@ const groups = [
     icon: Settings,
     items: [
       ['prelaunch', 'Pre-launch', Users, <AdminPrelaunch />],
+      ['translations', 'Languages & Translations', BookOpen, <AdminTranslations />],
       ['promos', 'Promos', Megaphone, <AdminPromos />],
       ['quiz', 'Quiz', Brain, <AdminQuiz />],
       ['agent', 'Agent', Bot, <AdminAgentConfig />],
