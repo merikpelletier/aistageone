@@ -7,6 +7,7 @@ import { ChevronDown, GripVertical, Play, Search, Sparkles } from 'lucide-react'
 import TopBanner from '@/components/TopBanner';
 import { getPlatformLanguage, normalizeLocale, fetchTranslationDictionary, translationLookup, translatedLabel, normalizeSearchText, searchTerms } from '@/lib/translationDictionary';
 
+const PLATEAU_ICON = 'data:image/webp;base64,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';
 const CLASS_ORDER = ['Videos', 'Story', 'Assets', 'Kits', 'Merchandise'];
 const CLASS_ACCENTS = {
   Videos: 'bg-red-600',
@@ -493,6 +494,30 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
 
 export default function Index() {
   const [language, setLanguage] = useState(() => getPlatformLanguage());
+  // Browser/PWA window caption only; installed PWA manifest and other pages stay unchanged.
+  useEffect(() => {
+    const previousTitle = document.title;
+    const currentIcons = Array.from(document.querySelectorAll('link[rel~="icon"]'));
+    const previousIcons = currentIcons.map(icon => ({icon, href:icon.getAttribute('href'), type:icon.getAttribute('type')}));
+    const addedIcon = currentIcons.length ? null : document.createElement('link');
+    const icon = currentIcons[0] || addedIcon;
+    if (addedIcon) { addedIcon.rel = 'icon'; document.head.appendChild(addedIcon); }
+    if (language === 'fr') {
+      document.title = 'LE PLATEAU IA';
+      icon.type = 'image/webp';
+      icon.href = PLATEAU_ICON;
+    } else {
+      document.title = 'AISTAGE.ONE';
+    }
+    return () => {
+      document.title = previousTitle;
+      previousIcons.forEach(({icon:target,href,type}) => {
+        if (href === null) target.removeAttribute('href'); else target.setAttribute('href',href);
+        if (type === null) target.removeAttribute('type'); else target.setAttribute('type',type);
+      });
+      addedIcon?.remove();
+    };
+  }, [language]);
   const changeLanguage = locale => {
     setLanguage(locale);
     try { window.localStorage.setItem('aistage-landing-language', locale); } catch { /* Optional storage */ }
