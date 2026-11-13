@@ -5,6 +5,87 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/api/base44Client';
 
 const ROLE_ICONS = [Users, PenTool, Code2, Handshake];
+// Landing-only translation layer: never mutates Supabase editorial content or stored form values.
+const FR_TEXT = {
+  "AI STAGE ONE": "LE PLATEAU IA",
+  "Private Preview": "Aperçu privé",
+  "PRIVATE PREVIEW": "APERÇU PRIVÉ",
+  "Login": "Connexion",
+  "THE STAGE IS ALMOST YOURS.": "LA SCÈNE EST BIENTÔT À VOUS.",
+  "Create. Perform. Publish.": "Créez. Interprétez. Publiez.",
+  "PEOPLE × STORIES × AI × A GLOBAL STAGE": "DES TALENTS × DES HISTOIRES × L’IA × UNE SCÈNE MONDIALE",
+  "A new platform where stories, characters, images, voices and creators come together.": "Une nouvelle plateforme où se rencontrent histoires, personnages, images, voix et talents créatifs.",
+  "PRE-REGISTER": "PRÉINSCRIPTION",
+  "JOIN THE TEAM": "REJOINDRE L’ÉQUIPE",
+  "Full platform access is currently limited to Admins and invited Guests.": "L’accès complet à la plateforme est actuellement réservé aux administrateurs et aux invités.",
+  "VISION": "VISION",
+  "INSIDE THE STUDIO": "DÉCOUVREZ LE STUDIO",
+  "One place where everything happens.": "Un seul espace pour donner vie à toutes vos idées.",
+  "A CREATIVE PLATFORM FOR A NEW GENERATION": "UNE PLATEFORME CRÉATIVE POUR UNE NOUVELLE GÉNÉRATION",
+  "A unified creative studio for storytellers, performers and innovators — from concept and character to voice, music, scene and final publication.": "Un studio de création intégré pour les auteurs, les interprètes et les innovateurs : du concept aux personnages, de la voix et de la musique à la mise en scène et à la publication.",
+  "Play preview": "Voir l’aperçu",
+  "NOT JUST WATCH. JOIN THE CAST.": "NE FAITES PAS QUE REGARDER. ENTREZ EN SCÈNE.",
+  "Real people. Bigger stories.": "De vrais talents. Des histoires sans limites.",
+  "A NEW KIND OF ENTERTAINMENT": "UNE NOUVELLE FORME DE DIVERTISSEMENT",
+  "Creators, performers, designers, writers, developers and partners can all have a place on the stage.": "Créateurs, interprètes, designers, auteurs, développeurs et partenaires : chacun peut trouver sa place sur scène.",
+  "PRE-LAUNCH FORMS": "FORMULAIRES DE PRÉLANCEMENT",
+  "PRE-REGISTER FOR LAUNCH ACCESS": "PRÉINSCRIVEZ-VOUS POUR LE LANCEMENT",
+  "SENDING…": "ENVOI EN COURS…",
+  "BE PART OF WHAT'S NEXT": "PARTICIPEZ À LA SUITE",
+  "Get early updates, behind-the-scenes content and be among the first to know when we open the stage to more creators.": "Recevez les premières nouvelles et des contenus en coulisses. Soyez parmi les premiers informés de l’ouverture de la plateforme à davantage de créateurs.",
+  "PRE-REGISTER →": "SE PRÉINSCRIRE →",
+  "You are already on the pre-launch list.": "Vous êtes déjà sur la liste de prélancement.",
+  "Your name": "Votre nom",
+  "Email": "Courriel",
+  "CREATIVE PEOPLE. REAL IMPACT.": "DES TALENTS CRÉATIFS. UN IMPACT RÉEL.",
+  "We're looking for exceptional creatives, technologists and partners to help shape the future of AI-powered entertainment.": "Nous recherchons des talents créatifs, des spécialistes en technologie et des partenaires d’exception pour façonner l’avenir du divertissement propulsé par l’IA.",
+  "SEND APPLICATION →": "ENVOYER MA CANDIDATURE →",
+  "Unable to send your application right now.": "Impossible d’envoyer votre candidature pour le moment.",
+  "Role / specialty": "Rôle / spécialité",
+  "Portfolio / website": "Portfolio / site Web",
+  "Tell us what you would like to bring to AI STAGE ONE": "Dites-nous ce que vous aimeriez apporter au PLATEAU IA",
+  "A global stage for a new creative generation.": "Une scène mondiale pour une nouvelle génération de talents créatifs.",
+  "Vision": "Vision",
+  "Studio": "Studio",
+  "Pre-register": "Préinscription",
+  "Shape your story, frame by frame.": "Donnez forme à votre histoire, image par image.",
+  "Creators": "Créateurs",
+  "& Performers": "et interprètes",
+  "AI is not the END of CREATIVITY": "L’IA N’EST PAS LA FIN DE LA CRÉATIVITÉ",
+  "Evolution of Content": "L’ÉVOLUTION DU CONTENU",
+  "Original AI TOOLS": "OUTILS IA ORIGINAUX",
+  "Build and edit your story.": "Créez et façonnez votre histoire.",
+  "Writers": "Auteurs",
+  "& Designers": "et designers",
+  "Creator / Performer": "Créateur / Interprète",
+  "Writer / Designer": "Auteur / Designer",
+  "Developer / Tech": "Développeur / Technologie",
+  "Brand / Partner": "Marque / Partenaire",
+  "Viewer / Fan": "Spectateur / Fan",
+  "Other": "Autre",
+  "Assets Shop": "Boutique d’assets",
+  "Build your world, one asset at a time.": "Construisez votre univers, un élément à la fois.",
+  "No subscription fees!": "AUCUN FRAIS D’ABONNEMENT !",
+  "Developers": "Développeurs",
+  "& Tech Talent": "et talents technologiques",
+  "The Dashboard": "Le tableau de bord",
+  "Control your studio. Grow your audience.": "Gérez votre studio. Développez votre public.",
+  "Partners": "Partenaires",
+  "& Collaborators": "et collaborateurs",
+  "More Than Watching": "BIEN PLUS QUE REGARDER",
+  "You are on the list. We will keep you informed.": "Vous êtes sur la liste. Nous vous tiendrons au courant.",
+  "Unable to register right now.": "Impossible de vous inscrire pour le moment.",
+  "Thank you. Your application has been received.": "Merci. Nous avons reçu votre candidature."
+};
+const translateLanding = (value, language) => language === 'fr' && typeof value === 'string' ? (FR_TEXT[value] ?? value) : value;
+const localizeLandingRecord = (record, language) => {
+  if (language !== 'fr') return record;
+  return Object.fromEntries(Object.entries(record).map(([key, value]) => [key,
+    ['title', 'subtitle', 'eyebrow', 'body', 'button_1_label', 'button_2_label', 'link_label'].includes(key)
+      ? translateLanding(value, language) : value
+  ]));
+};
+
 
 function Media({ item, className = '' }) {
   if (!item?.media_url) return <div className={`bg-neutral-900 ${className}`} />;
@@ -40,6 +121,14 @@ function CTA({ label, url, primary = false }) {
 }
 
 export default function PrelaunchLanding() {
+  const [pageLanguage, setPageLanguage] = useState(() => {
+    try { return window.localStorage.getItem('aistage-landing-language') === 'fr' ? 'fr' : 'en'; } catch { return 'en'; }
+  });
+  const selectPageLanguage = (language) => {
+    setPageLanguage(language);
+    try { window.localStorage.setItem('aistage-landing-language', language); } catch { /* Storage is optional. */ }
+    setWaitlist(current => ({ ...current, language: language === 'fr' ? 'Français' : 'English' }));
+  };
   const [waitlist, setWaitlist] = useState({ name: '', email: '', language: 'English', interest: 'Creator / Performer' });
   const [team, setTeam] = useState({ name: '', email: '', role_interest: '', portfolio_url: '', message: '' });
   const [waitMessage, setWaitMessage] = useState('');
@@ -67,11 +156,13 @@ export default function PrelaunchLanding() {
     staleTime: 15_000,
   });
 
-  const byKey = useMemo(() => Object.fromEntries(sections.map(s => [s.section_key, s])), [sections]);
-  const grouped = useMemo(() => items.reduce((acc, item) => {
+  const localizedSections = useMemo(() => sections.map(item => localizeLandingRecord(item, pageLanguage)), [sections, pageLanguage]);
+  const localizedItems = useMemo(() => items.map(item => localizeLandingRecord(item, pageLanguage)), [items, pageLanguage]);
+  const byKey = useMemo(() => Object.fromEntries(localizedSections.map(s => [s.section_key, s])), [localizedSections]);
+  const grouped = useMemo(() => localizedItems.reduce((acc, item) => {
     (acc[item.section_key] ||= []).push(item);
     return acc;
-  }, {}), [items]);
+  }, {}), [localizedItems]);
 
   const hero = byKey.hero;
   const heroNote = byKey.hero_note;
@@ -98,6 +189,8 @@ export default function PrelaunchLanding() {
   const languageOptions = languages.length ? languages : [{ id: 'en', title: 'English', link_url: 'English' }];
   const interestOptions = interests.length ? interests : [{ id: 'creator', title: 'Creator / Performer', link_url: 'Creator / Performer' }];
 
+  const t = (value) => translateLanding(value, pageLanguage);
+
   const submitWaitlist = async (e) => {
     e.preventDefault();
     setSendingWait(true);
@@ -105,11 +198,11 @@ export default function PrelaunchLanding() {
     const { error } = await supabase.from('waitlist_subscribers').insert({ ...waitlist, source: 'landing' });
     setSendingWait(false);
     if (error) {
-      if (error.code === '23505') setWaitMessage(preRegister?.button_2_label || 'You are already on the pre-launch list.');
-      else setWaitMessage(preRegister?.button_2_url || error.message || 'Unable to register right now.');
+      if (error.code === '23505') setWaitMessage(preRegister?.button_2_label || t('You are already on the pre-launch list.'));
+      else setWaitMessage(t(preRegister?.button_2_url) || error.message || t('Unable to register right now.'));
       return;
     }
-    setWaitMessage(preRegister?.button_1_url || 'You are on the list. We will keep you informed.');
+    setWaitMessage(t(preRegister?.button_1_url) || t('You are on the list. We will keep you informed.'));
     setWaitlist(v => ({ ...v, name: '', email: '' }));
   };
 
@@ -120,10 +213,10 @@ export default function PrelaunchLanding() {
     const { error } = await supabase.from('team_applications').insert(team);
     setSendingTeam(false);
     if (error) {
-      setTeamMessage(joinTeam?.button_2_label || error.message || 'Unable to send your application right now.');
+      setTeamMessage(joinTeam?.button_2_label || error.message || t('Unable to send your application right now.'));
       return;
     }
-    setTeamMessage(joinTeam?.button_1_url || 'Thank you. Your application has been received.');
+    setTeamMessage(t(joinTeam?.button_1_url) || t('Thank you. Your application has been received.'));
     setTeam({ name: '', email: '', role_interest: '', portfolio_url: '', message: '' });
   };
 
@@ -221,8 +314,8 @@ export default function PrelaunchLanding() {
           <h2 className="mt-4 max-w-lg text-5xl font-black uppercase leading-[.92]">{preRegister.title}</h2>
           {preRegister.body && <p className="mt-5 max-w-xl text-sm font-semibold leading-6 text-black/60">{preRegister.body}</p>}
           <form onSubmit={submitWaitlist} className="mt-8 grid gap-3 sm:grid-cols-2">
-            <input required value={waitlist.name} onChange={e=>setWaitlist({...waitlist,name:e.target.value})} placeholder={preRegisterFields?.title || 'Your name'} className="border border-black/20 bg-white px-4 py-3 text-sm outline-none focus:border-black"/>
-            <input required type="email" value={waitlist.email} onChange={e=>setWaitlist({...waitlist,email:e.target.value})} placeholder={preRegisterFields?.subtitle || 'Email'} className="border border-black/20 bg-white px-4 py-3 text-sm outline-none focus:border-black"/>
+            <input required value={waitlist.name} onChange={e=>setWaitlist({...waitlist,name:e.target.value})} placeholder={preRegisterFields?.title || t('Your name')} className="border border-black/20 bg-white px-4 py-3 text-sm outline-none focus:border-black"/>
+            <input required type="email" value={waitlist.email} onChange={e=>setWaitlist({...waitlist,email:e.target.value})} placeholder={preRegisterFields?.subtitle || t('Email')} className="border border-black/20 bg-white px-4 py-3 text-sm outline-none focus:border-black"/>
             <select value={waitlist.language} onChange={e=>setWaitlist({...waitlist,language:e.target.value})} className="border border-black/20 bg-white px-4 py-3 text-sm">{languageOptions.map(x=><option key={x.id} value={x.link_url || x.title}>{x.title}</option>)}</select>
             <select value={waitlist.interest} onChange={e=>setWaitlist({...waitlist,interest:e.target.value})} className="border border-black/20 bg-white px-4 py-3 text-sm">{interestOptions.map(x=><option key={x.id} value={x.link_url || x.title}>{x.title}</option>)}</select>
             <button disabled={sendingWait} className="sm:col-span-2 bg-[#091114] px-5 py-4 text-xs font-black uppercase tracking-[.16em] text-white disabled:opacity-50">{sendingWait ? (preRegister.subtitle || 'SENDING…') : (preRegister.button_1_label || 'PRE-REGISTER →')}</button>
@@ -235,11 +328,11 @@ export default function PrelaunchLanding() {
           <h2 className="mt-4 text-5xl font-black uppercase leading-[.92]">{joinTeam.title}</h2>
           {joinTeam.body && <p className="mt-5 max-w-xl text-sm font-medium leading-6 text-white/60">{joinTeam.body}</p>}
           <form onSubmit={submitTeam} className="mt-8 grid gap-3 sm:grid-cols-2">
-            <input required value={team.name} onChange={e=>setTeam({...team,name:e.target.value})} placeholder={joinTeamFields?.title || 'Your name'} className="border border-white/20 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/60"/>
-            <input required type="email" value={team.email} onChange={e=>setTeam({...team,email:e.target.value})} placeholder={joinTeamFields?.subtitle || 'Email'} className="border border-white/20 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/60"/>
-            <input value={team.role_interest} onChange={e=>setTeam({...team,role_interest:e.target.value})} placeholder={joinTeamFields?.body || 'Role / specialty'} className="border border-white/20 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/60"/>
-            <input value={team.portfolio_url} onChange={e=>setTeam({...team,portfolio_url:e.target.value})} placeholder={joinTeamFields?.button_1_label || 'Portfolio / website'} className="border border-white/20 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/60"/>
-            <textarea value={team.message} onChange={e=>setTeam({...team,message:e.target.value})} placeholder={joinTeamFields?.button_2_label || 'Tell us what you would like to bring to AI STAGE ONE'} rows="4" className="sm:col-span-2 border border-white/20 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/60"/>
+            <input required value={team.name} onChange={e=>setTeam({...team,name:e.target.value})} placeholder={joinTeamFields?.title || t('Your name')} className="border border-white/20 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/60"/>
+            <input required type="email" value={team.email} onChange={e=>setTeam({...team,email:e.target.value})} placeholder={joinTeamFields?.subtitle || t('Email')} className="border border-white/20 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/60"/>
+            <input value={team.role_interest} onChange={e=>setTeam({...team,role_interest:e.target.value})} placeholder={joinTeamFields?.body || t('Role / specialty')} className="border border-white/20 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/60"/>
+            <input value={team.portfolio_url} onChange={e=>setTeam({...team,portfolio_url:e.target.value})} placeholder={joinTeamFields?.button_1_label || t('Portfolio / website')} className="border border-white/20 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/60"/>
+            <textarea value={team.message} onChange={e=>setTeam({...team,message:e.target.value})} placeholder={joinTeamFields?.button_2_label || t('Tell us what you would like to bring to AI STAGE ONE')} rows="4" className="sm:col-span-2 border border-white/20 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/60"/>
             <button disabled={sendingTeam} className="sm:col-span-2 border border-[#c8a45f] bg-[#c8a45f] px-5 py-4 text-xs font-black uppercase tracking-[.16em] text-black disabled:opacity-50">{sendingTeam ? (joinTeam.subtitle || 'SENDING…') : (joinTeam.button_1_label || 'SEND APPLICATION →')}</button>
             {teamMessage && <p className="sm:col-span-2 text-sm font-semibold text-white/65">{teamMessage}</p>}
           </form>
@@ -258,7 +351,7 @@ export default function PrelaunchLanding() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070b0d] text-white selection:bg-[#c8a45f]/35">
+    <div lang={pageLanguage} className="min-h-screen bg-[#070b0d] text-white selection:bg-[#c8a45f]/35">
       {header && <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#070b0d]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1500px] items-center justify-between px-5 md:px-8">
           <a href="#top" className="text-lg font-black tracking-[.18em]">{header.title}</a>
@@ -266,6 +359,10 @@ export default function PrelaunchLanding() {
             {headerNav.map(item=><SmartLink key={item.id} to={item.link_url} className="hover:text-white">{item.title}</SmartLink>)}
             <SmartLink to={header.button_1_url} className="border border-[#c8a45f]/70 px-3 py-2 text-[#e0c17e]">{header.button_1_label}</SmartLink>
           </nav>
+          <div role="group" aria-label="Language / Langue" className="ml-auto mr-3 flex shrink-0 gap-1 text-[11px] font-bold md:ml-4 md:mr-0">
+            <button type="button" aria-pressed={pageLanguage === 'fr'} onClick={() => selectPageLanguage('fr')} className={`px-2 py-2 ${pageLanguage === 'fr' ? 'border border-white/70 text-white' : 'text-white/55 hover:text-white'}`}>FR</button>
+            <button type="button" aria-pressed={pageLanguage === 'en'} onClick={() => selectPageLanguage('en')} className={`px-2 py-2 ${pageLanguage === 'en' ? 'border border-white/70 text-white' : 'text-white/55 hover:text-white'}`}>EN</button>
+          </div>
           <SmartLink to={header.button_2_url || header.button_1_url} className="border border-[#c8a45f]/70 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#e0c17e] md:hidden">{header.button_2_label || header.button_1_label}</SmartLink>
         </div>
       </header>}
