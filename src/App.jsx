@@ -27,7 +27,6 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { AppContextProvider } from '@/lib/AppContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PrelaunchLanding from './pages/PrelaunchLanding';
-import PwaBrandTitlebar from './components/PwaBrandTitlebar';
 
 const { Pages, Layout } = pagesConfig;
 
@@ -199,7 +198,6 @@ function App() {
         <QueryClientProvider client={queryClientInstance}>
           <Router>
             <NavigationTracker />
-            <PwaBrandTitlebar />
             <StudioRecorderLauncher />
             <StudioAIAssistant />
             <StudioMobileUtilities />
