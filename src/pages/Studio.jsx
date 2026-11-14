@@ -7,6 +7,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Layers, Camera, ChevronRight, ChevronLeft, ChevronDown, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench, PanelLeft, FolderOpen, Video, ListVideo, Wand2, Presentation, ShoppingBag, LayoutTemplate, MoreHorizontal, Volume2, Plug, Bot } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getPlatformLanguage, fetchTranslationDictionary, translationLookup, translatedLabel } from '@/lib/translationDictionary';
 
 const HOME_ICON_MAP = { Home, Clapperboard, Theater, Wrench, Bookmark: undefined, BookOpen, Users, Layers, Film };
 const DEFAULT_HOME_ITEMS = [
@@ -122,14 +123,14 @@ const STUDIO_TOOL_SECTIONS = [
 
 const STUDIO_SHELL_TOOLS = STUDIO_TOOL_SECTIONS.flatMap((section) => section.tools);
 
-function StudioShellButton({ tool, active, onClick, compact = false }) {
+function StudioShellButton({ tool, active, onClick, compact = false, t = (_, fallback) => fallback }) {
   const Icon = tool.icon;
   return (
     <button
       type="button"
       onClick={onClick}
-      title={tool.label}
-      aria-label={tool.label}
+      title={t(`studio.tool.${tool.key}`, tool.label)}
+      aria-label={t(`studio.tool.${tool.key}`, tool.label)}
       className={`group flex items-center transition-colors ${compact ? 'min-h-[54px] px-3 gap-2 w-full' : 'w-full min-h-[42px] px-3 gap-2'} ${
         active
           ? 'bg-[#1d2126] text-white shadow-[inset_2px_0_0_#23c7be]'
@@ -137,12 +138,12 @@ function StudioShellButton({ tool, active, onClick, compact = false }) {
       }`}
     >
       <Icon size={compact ? 19 : 17} strokeWidth={2} className={`flex-shrink-0 ${active ? 'text-[#23c7be]' : ''}`} />
-      <span className={`${compact ? 'text-xs' : 'text-[11px]'} font-semibold leading-tight text-left`}>{tool.label}</span>
+      <span className={`${compact ? 'text-xs' : 'text-[11px]'} font-semibold leading-tight text-left`}>{t(`studio.tool.${tool.key}`, tool.label)}</span>
     </button>
   );
 }
 
-function ToolAccordionSection({ section, activeKey, onTool, open, onToggle }) {
+function ToolAccordionSection({ section, activeKey, onTool, open, onToggle, t = (_, fallback) => fallback }) {
   return (
     <div className="border-b border-white/10">
       <button
@@ -151,7 +152,7 @@ function ToolAccordionSection({ section, activeKey, onTool, open, onToggle }) {
         aria-expanded={open}
         className="w-full h-10 px-3 flex items-center justify-between text-white/55 hover:text-white text-[10px] font-bold uppercase tracking-[0.16em]"
       >
-        <span>{section.label}</span>
+        <span>{t(`studio.section.${section.key}`, section.label)}</span>
         <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       <AnimatePresence initial={false}>
@@ -163,7 +164,7 @@ function ToolAccordionSection({ section, activeKey, onTool, open, onToggle }) {
             className="overflow-hidden pb-1"
           >
             {section.tools.map((tool) => (
-              <StudioShellButton key={tool.key} tool={tool} active={activeKey === tool.key} onClick={() => onTool(tool)} />
+              <StudioShellButton key={tool.key} tool={tool} active={activeKey === tool.key} onClick={() => onTool(tool)} t={t} />
             ))}
           </motion.div>
         )}
@@ -172,7 +173,7 @@ function ToolAccordionSection({ section, activeKey, onTool, open, onToggle }) {
   );
 }
 
-function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
+function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children, t = (_, fallback) => fallback }) {
   const [showMobileTools, setShowMobileTools] = useState(false);
   const [menuCollapsed, setMenuCollapsed] = useState(false);
   const [openSectionKey, setOpenSectionKey] = useState('create');
@@ -206,8 +207,8 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
           type="button"
           onClick={() => window.location.assign('/')}
           className="hidden lg:flex h-8 px-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white items-center justify-center gap-1.5 flex-shrink-0 font-bold text-[11px]"
-          aria-label="Exit Studio"
-          title="Exit Studio"
+          aria-label={t('studio.menu.exit', 'Exit Studio')}
+          title={t('studio.menu.exit', 'Exit Studio')}
         >
           <ChevronLeft size={16} />
           <span>AISTAGE.ONE</span>
@@ -216,8 +217,8 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
           type="button"
           onClick={() => setMenuCollapsed((value) => !value)}
           className="hidden lg:flex w-8 h-8 bg-white/10 text-white items-center justify-center flex-shrink-0"
-          title={menuCollapsed ? 'Expand tools' : 'Collapse tools'}
-          aria-label={menuCollapsed ? 'Expand tools' : 'Collapse tools'}
+          title={menuCollapsed ? t('studio.menu.expand', 'Expand tools') : t('studio.menu.collapse', 'Collapse tools')}
+          aria-label={menuCollapsed ? t('studio.menu.expand', 'Expand tools') : t('studio.menu.collapse', 'Collapse tools')}
         >
           {menuCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
@@ -240,8 +241,8 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
                     key={tool.key}
                     type="button"
                     onClick={() => onTool(tool)}
-                    title={tool.label}
-                    aria-label={tool.label}
+                    title={t(`studio.tool.${tool.key}`, tool.label)}
+                    aria-label={t(`studio.tool.${tool.key}`, tool.label)}
                     className={`w-16 h-12 flex items-center justify-center transition-colors ${active ? 'bg-[#1d2126] text-[#23c7be] shadow-[inset_2px_0_0_#23c7be]' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
                   >
                     <Icon size={19} />
@@ -258,6 +259,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
                 onTool={onTool}
                 open={openSectionKey === section.key}
                 onToggle={() => toggleSection(section.key)}
+                t={t}
               />
             ))
           )}
@@ -280,7 +282,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
                 className={`flex flex-col items-center justify-center gap-1 px-1 ${active ? 'bg-[#1d2126] text-[#23c7be] border-t-2 border-[#23c7be]' : 'text-white/75'}`}
               >
                 <tool.icon size={19} />
-                <span className="text-[9px] font-semibold">{tool.label}</span>
+                <span className="text-[9px] font-semibold">{t(`studio.tool.${tool.key}`, tool.label)}</span>
               </button>
             );
           })}
@@ -290,7 +292,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
             className={`flex flex-col items-center justify-center gap-1 px-1 ${showMobileTools ? 'bg-[#1d2126] text-[#23c7be] border-t-2 border-[#23c7be]' : 'text-white/75'}`}
           >
             <MoreHorizontal size={20} />
-            <span className="text-[9px] font-semibold">Tools</span>
+            <span className="text-[9px] font-semibold">{t('studio.menu.tools', 'Tools')}</span>
           </button>
         </div>
       </nav>
@@ -311,6 +313,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
                 onTool={(tool) => { setShowMobileTools(false); onTool(tool); }}
                 open={openSectionKey === section.key}
                 onToggle={() => toggleSection(section.key)}
+                t={t}
               />
             ))}
             <div className="border-t border-white/10 p-3">
@@ -320,7 +323,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
                 className="w-full min-h-[48px] flex items-center gap-3 px-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-sm"
               >
                 <ChevronLeft size={18} />
-                Exit Studio
+                {t('studio.menu.exit', 'Exit Studio')}
               </button>
             </div>
           </motion.div>
@@ -444,6 +447,16 @@ export default function Studio() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [studioLanguage, setStudioLanguage] = useState(() => getPlatformLanguage());
+  const { data: studioTranslations = [] } = useQuery({ queryKey: ['translationDictionary'], queryFn: fetchTranslationDictionary, staleTime: 5 * 60 * 1000, retry: false });
+  const studioDictionary = React.useMemo(() => translationLookup(studioTranslations), [studioTranslations]);
+  const studioT = (key, fallback) => studioDictionary.has(`ui:${key}`) ? translatedLabel(studioDictionary, 'ui', key, studioLanguage) : fallback;
+  useEffect(() => {
+    const update = () => setStudioLanguage(getPlatformLanguage());
+    window.addEventListener('aistage-language-change', update);
+    window.addEventListener('storage', update);
+    return () => { window.removeEventListener('aistage-language-change', update); window.removeEventListener('storage', update); };
+  }, []);
   const [activeTab, setActiveTab] = useState(null);
   const [activeToolPanel, setActiveToolPanel] = useState(null);
   const [activeAssetId, setActiveAssetId] = useState(null);
@@ -711,7 +724,7 @@ export default function Studio() {
       : activeToolPanel?.startsWith?.('lab:')
         ? activeToolPanel.slice(4)
         : activeToolPanel || (showVideoTools ? 'ai_video' : (activeTab === 'stories' ? 'fotoplay' : null));
-  const activeShellTitle = 'AISTAGE Studio';
+  const activeShellTitle = studioT('studio.shell.title', 'AISTAGE Studio');
 
   const closeAllStudioTools = () => {
     setActiveToolPanel(null);
@@ -760,7 +773,8 @@ export default function Studio() {
       activeKey={activeShellKey}
       onTool={handleShellTool}
       title={activeShellTitle}
-      subtitle="Choose a tool — it uses the full workspace while the toolbar stays available"
+      subtitle={studioT('studio.shell.instruction', 'Choose a tool — it uses the full workspace while the toolbar stays available')}
+      t={studioT}
     >
       <div className="min-h-[calc(100vh-4rem)] relative" style={activeViewBg ? { backgroundImage: `url(${activeViewBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : undefined}>
       {activeViewBg && <div className="absolute inset-0 bg-black/40 pointer-events-none z-0" />}
@@ -798,8 +812,8 @@ export default function Studio() {
           <div className="max-w-2xl text-center">
             <div className="mx-auto mb-6 w-16 h-16 bg-black text-yellow-400 flex items-center justify-center"><Sparkles size={28} /></div>
             <p className="text-black/45 text-xs font-bold uppercase tracking-[0.28em]">AISTAGE.ONE</p>
-            <h1 className="mt-3 text-4xl md:text-6xl font-black tracking-tight text-black">Creative Studio</h1>
-            <p className="mt-4 text-sm md:text-base text-black/55">Choose a tool from the toolbar to begin.</p>
+            <h1 className="mt-3 text-4xl md:text-6xl font-black tracking-tight text-black">{studioT('studio.home.title', 'Creative Studio')}</h1>
+            <p className="mt-4 text-sm md:text-base text-black/55">{studioT('studio.home.subtitle', 'Choose a tool from the toolbar to begin.')}</p>
           </div>
         </div>
       )}
@@ -808,7 +822,7 @@ export default function Studio() {
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between gap-4">
           <div>
             <p className="text-white/45 text-[10px] tracking-[0.22em] uppercase font-bold mb-1">{user?.full_name || 'CREATOR'}</p>
-            <h1 className="text-white text-3xl md:text-4xl font-bold tracking-tight">{STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeShellKey)?.label || 'Studio'}</h1>
+            <h1 className="text-white text-3xl md:text-4xl font-bold tracking-tight">{studioT(`studio.tool.${activeShellKey}`, STUDIO_SHELL_TOOLS.find((tool) => tool.key === activeShellKey)?.label || 'Studio')}</h1>
           </div>
           <div className="hidden md:flex items-center gap-2 text-white/45 text-xs font-semibold"><FolderOpen size={15} />Creative workspace</div>
         </motion.div>
