@@ -44,7 +44,7 @@ const EditableImage = ({ label, url, box, onStart, onMove, onEnd, onCancel, onCl
       onClick={event => { event.stopPropagation(); onClear(label); }}
       aria-label={`Clear ${label} selection`}
       className="absolute right-2 top-2 z-10 border border-white/30 bg-black/85 px-3 py-2 text-xs font-bold text-white hover:bg-black">
-      CLEAR SELECTION ×
+      {t('setdesigner.generator.status.clear_selection','Clear selection')} ×
     </button>}
   </div>
 );
@@ -104,10 +104,10 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         setViewVariants(current => ({ ...current, [label]: { ...(current?.[label] || {}), night: url } }));
       }
       chooseTime(label, 'night');
-      toast.success(`${label} Night version ready. Save the set to keep it.`);
+      toast.success(`${label} ${t('setdesigner.generator.status.night_ready','Night version ready. Save the set to keep it.')}`);
     } catch (error) {
       console.error(`Night variant generation failed for ${label}`, error);
-      toast.error(error.message || 'Night conversion failed. The Day view is unchanged.');
+      toast.error(error.message || t("setdesigner.generator.status.night_failed","Night conversion failed. The Day view is unchanged."));
     } finally {
       setGenerating('');
     }
@@ -115,7 +115,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   const createZoneShot = async () => {
     if (!zoneDraft || !effectiveModel) return;
     const { parent, index, region, sourceTime, sourceUrl, type, intent, instruction, label } = zoneDraft;
-    if (!sourceUrl || !region) return toast.error('Select an area in the source image first.');
+    if (!sourceUrl || !region) return toast.error(t("setdesigner.generator.status.select_area","Select an area in the source image first."));
     setGenerating('ZoneShot');
     try {
       const original = await loadImage(sourceUrl);
@@ -146,10 +146,10 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       setActiveTimes(current => ({ ...current, [`Zone:${id}`]: sourceTime }));
       setEditRegions(current => ({ ...current, [parent]: null }));
       setZoneDraft(null);
-      toast.success('Zone Shot created. Save the set to keep it.');
+      toast.success(t("setdesigner.generator.status.zone_ready","Zone Shot created. Save the set to keep it."));
     } catch (error) {
       console.error('Create Zone Shot failed', error);
-      toast.error(error.message || 'Zone Shot creation failed; source views were not changed.');
+      toast.error(error.message || t("setdesigner.generator.status.zone_failed","Zone Shot creation failed; source views were not changed."));
     } finally {
       setGenerating('');
     }
@@ -157,7 +157,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   const beginZone = (label, index) => {
     const region = editRegions[label];
     const sourceUrl = viewUrl(label, index);
-    if (!region || !sourceUrl) return toast.error('Drag on the image to select the zone first.');
+    if (!region || !sourceUrl) return toast.error(t("setdesigner.generator.status.drag_zone","Drag on the image to select the zone first."));
     setZoneDraft({ parent: label, index, region: { ...region }, sourceUrl, sourceTime: timeFor(label),
       type: 'medium', intent: 'Character area', instruction: '', label: '' });
   };
@@ -239,7 +239,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   const creditsPerImage = priceQuote?.credits || null;
 
   const runGeneration = async (prompt, refs = [], ratio = '16:9') => {
-    if (!effectiveModel) throw new Error('No AI model available for Set Designer');
+    if (!effectiveModel) throw new Error(t("setdesigner.generator.status.no_model","No AI model available for Set Designer"));
     const res = await base44.functions.invoke('replicateGenerate', {
       method: 'compose_scene',
       prompt,
@@ -248,7 +248,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       model_key: effectiveModel,
     });
     if (res.data?.error) throw new Error(res.data.error);
-    if (!res.data?.file_url) throw new Error('Generation returned no image');
+    if (!res.data?.file_url) throw new Error(t("setdesigner.generator.status.no_image","Generation returned no image"));
     return res.data.file_url;
   };
 
@@ -315,7 +315,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     const region = editRegions[label];
     const adjustment = viewAdjustments[label]?.trim();
     if (!originalUrl || !region || !adjustment || !effectiveModel) {
-      toast.error('Select an area on the image and describe the adjustment first.');
+      toast.error(t("setdesigner.generator.status.select_adjustment","Select an area on the image and describe the adjustment first."));
       return;
     }
     setGenerating(label);
@@ -343,10 +343,10 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       ctx.drawImage(changed, x, y, width, height);
       const mergedUrl = await uploadPng(await toBlob(composite), 'set-local-adjustment.png');
       setEditPreview({ label, index, time: timeFor(label), before: originalUrl, after: mergedUrl });
-      toast.success('Adjustment ready for review. The original view has not been replaced.');
+      toast.success(t("setdesigner.generator.status.adjustment_ready","Adjustment ready for review. The original view has not been replaced."));
     } catch (error) {
       console.error('Set local adjustment failed', error);
-      toast.error(error.message || 'Local adjustment failed. Your original image is unchanged.');
+      toast.error(error.message || t("setdesigner.generator.status.adjustment_failed","Local adjustment failed. Your original image is unchanged."));
     } finally {
       setGenerating('');
     }
@@ -370,20 +370,20 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     }
     setEditRegions(current => ({ ...current, [editPreview.label]: null }));
     setEditPreview(null);
-    toast.success('Adjustment applied to the view. Save your set to keep this change.');
+    toast.success(t("setdesigner.generator.status.adjustment_applied","Adjustment applied to the view. Save your set to keep this change."));
   };
 
   const generateHero = async () => {
     if (!canGenerateHero) {
-      toast.error('Add a set name or creative brief first.');
+      toast.error(t("setdesigner.generator.status.name_brief","Add a set name or creative brief first."));
       return;
     }
     if (!effectiveModel) {
-      toast.error('No AI image model is enabled for Set Designer.');
+      toast.error(t("setdesigner.generator.status.no_model_enabled","No AI image model is enabled for Set Designer."));
       return;
     }
     if (mode === 'reference' && !setReferences.length) {
-      toast.error('Add at least one set reference image, or choose From Scratch.');
+      toast.error(t("setdesigner.generator.status.need_ref","Add at least one set reference image, or choose From Scratch."));
       return;
     }
 
@@ -396,10 +396,10 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         return next.slice(0, 8);
       });
       chooseTime('Hero', 'day');
-      toast.success('Hero set generated');
+      toast.success(t("setdesigner.generator.status.hero_generated","Hero set generated"));
     } catch (error) {
       console.error('Set Hero generation failed', error);
-      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? 'Not enough credits for this generation.' : (error.message || 'Set generation failed. Try again.'));
+      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? t("setdesigner.generator.status.no_credits","Not enough credits for this generation.") : (error.message || t("setdesigner.generator.status.generation_failed","Set generation failed. Try again.")));
     } finally {
       setGenerating('');
     }
@@ -430,10 +430,10 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         return next.slice(0, 8);
       });
       chooseTime(label, 'day');
-      toast.success(`${label} view generated`);
+      toast.success(`${label} ${t('setdesigner.generator.status.view_generated','view generated')}`);
     } catch (error) {
       console.error(`Set ${label} generation failed`, error);
-      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? 'Not enough credits for this generation.' : (error.message || `${label} generation failed.`));
+      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? t("setdesigner.generator.status.no_credits","Not enough credits for this generation.") : (error.message || `${label} ${t('setdesigner.generator.status.view_failed','generation failed.')}`));
     } finally {
       setGenerating('');
     }
@@ -456,10 +456,10 @@ export default function SetGeneratorPanel({ name, description, images, setImages
           return next.slice(0, 8);
         });
       }
-      toast.success('All continuity views generated');
+      toast.success(t("setdesigner.generator.status.all_views","All continuity views generated"));
     } catch (error) {
       console.error('Set continuity generation failed', error);
-      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? 'Not enough credits to finish all views.' : (error.message || 'Continuity generation failed.'));
+      toast.error(error.message?.includes('Insufficient') || error.message?.includes('credits') ? t("setdesigner.generator.status.not_enough_all","Not enough credits to finish all views.") : (error.message || t("setdesigner.generator.status.continuity_failed","Continuity generation failed.")));
     } finally {
       setGenerating('');
     }
