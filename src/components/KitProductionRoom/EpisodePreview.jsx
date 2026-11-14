@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { X, ChevronLeft, ChevronRight, Play, Pause, Film, RotateCcw } from 'lucide-react';
 
 const IMAGE_DURATION = 5000;
 
 export default function EpisodePreview({ production, onClose }) {
+  const tr = useStudioTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [visibleLayer, setVisibleLayer] = useState(0);
@@ -138,8 +140,8 @@ export default function EpisodePreview({ production, onClose }) {
   if (blocks.length === 0) {
     return (
       <div className="fixed inset-0 bg-black z-[80] flex flex-col items-center justify-center gap-4">
-        <p className="text-white text-sm">No scenes with media to preview yet.</p>
-        <button onClick={onClose} className="px-6 py-2.5 bg-white text-black text-sm rounded-xl font-semibold">Close</button>
+        <p className="text-white text-sm">{tr("timeline.no_scenes_with_media_to_preview_yet","No scenes with media to preview yet.")}</p>
+        <button onClick={onClose} className="px-6 py-2.5 bg-white text-black text-sm rounded-xl font-semibold">{tr("timeline.close","Close")}</button>
       </div>
     );
   }
@@ -187,7 +189,7 @@ export default function EpisodePreview({ production, onClose }) {
 
       <div className="flex items-center justify-between px-4 pt-10 pb-3 flex-shrink-0 z-30">
         <div className="min-w-0">
-          <p className="text-white/40 text-[10px] uppercase tracking-widest">Preview</p>
+          <p className="text-white/40 text-[10px] uppercase tracking-widest">{tr("timeline.preview","Preview")}</p>
           <p className="text-white text-sm font-bold truncate">{production?.episode_title || production?.production_name || 'Untitled'}</p>
         </div>
         <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-white">
