@@ -549,7 +549,7 @@ function AnimateTool({ mode, kitPage, onDone, recommendedTools = [], referenceMe
           ) : (
             <label className="flex flex-col items-center gap-2 border-2 border-dashed border-white/60 rounded-xl cursor-pointer hover:border-white py-6">
               <Upload size={16} className="text-white" />
-              <span className="text-white text-xs">Upload video</span>
+              <span className="text-white text-xs">{tr('timeline.button_upload_video','Upload video')}</span>
               <input type="file" accept="video/*" className="hidden" onChange={async e => { const f = e.target.files[0]; if (!f) return; setStatus('uploading'); const { file_url } = await base44.integrations.Core.UploadFile({ file: f }); setReferenceVideoUrl(file_url); setStatus('idle'); }} />
             </label>
           )}
@@ -580,7 +580,7 @@ function AnimateTool({ mode, kitPage, onDone, recommendedTools = [], referenceMe
           ) : (
             <div className="flex gap-2">
               <button onClick={startRec} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-red-500 bg-red-600/20 rounded-xl text-white text-xs"><Mic size={13} />{tr("timeline.record","Record")}</button>
-              <label className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-white/60 rounded-xl cursor-pointer hover:bg-white/10 text-white text-xs"><Upload size={12} />Upload audio<input type="file" accept="audio/*" className="hidden" onChange={async e => { const f = e.target.files[0]; if (!f) return; setStatus('uploading'); const { file_url } = await base44.integrations.Core.UploadFile({ file: f }); setAnimateAudioUrl(file_url); setStatus('idle'); }} /></label>
+              <label className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-white/60 rounded-xl cursor-pointer hover:bg-white/10 text-white text-xs"><Upload size={12} />{tr('timeline.button_upload_audio','Upload audio')}<input type="file" accept="audio/*" className="hidden" onChange={async e => { const f = e.target.files[0]; if (!f) return; setStatus('uploading'); const { file_url } = await base44.integrations.Core.UploadFile({ file: f }); setAnimateAudioUrl(file_url); setStatus('idle'); }} /></label>
             </div>
           )}
         </div>
@@ -932,17 +932,17 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
 
       <div className="space-y-3">
         <div>
-          <p className="text-white text-[10px] uppercase tracking-widest mb-1">Title</p>
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Scene title…" className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50" />
+          <p className="text-white text-[10px] uppercase tracking-widest mb-1">{tr('timeline.label_title','Title')}</p>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder={tr('timeline.placeholder_scene_title','Scene title…')} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50" />
         </div>
         <div>
-          <p className="text-white text-[10px] uppercase tracking-widest mb-1">Description</p>
-          <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Short description…" rows={2}
+          <p className="text-white text-[10px] uppercase tracking-widest mb-1">{tr('timeline.label_description','Description')}</p>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={tr('timeline.placeholder_scene_description','Short description…')} rows={2}
             className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50 resize-none" />
         </div>
         <div>
           <p className="text-white text-[10px] uppercase tracking-widest mb-1">{tr("timeline.dialogue_optional","Dialogue (optional)")}</p>
-          <textarea value={dialogue} onChange={e => setDialogue(e.target.value)} placeholder="Character lines for this scene…" rows={2}
+          <textarea value={dialogue} onChange={e => setDialogue(e.target.value)} placeholder={tr('timeline.placeholder_character_lines','Character lines for this scene…')} rows={2}
             className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50 resize-none" />
         </div>
         <div>
@@ -1030,17 +1030,17 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
 
         <div className="space-y-3">
           <div>
-            <p className="text-white text-[10px] uppercase tracking-widest mb-1">Title</p>
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Scene title…" className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50" />
+            <p className="text-white text-[10px] uppercase tracking-widest mb-1">{tr('timeline.label_title','Title')}</p>
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder={tr('timeline.placeholder_scene_title','Scene title…')} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50" />
           </div>
           <div>
-            <p className="text-white text-[10px] uppercase tracking-widest mb-1">Description</p>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Short description…" rows={2}
+            <p className="text-white text-[10px] uppercase tracking-widest mb-1">{tr('timeline.label_description','Description')}</p>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={tr('timeline.placeholder_scene_description','Short description…')} rows={2}
               className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50 resize-none" />
           </div>
           <div>
             <p className="text-white text-[10px] uppercase tracking-widest mb-1">{tr("timeline.dialogue_optional","Dialogue (optional)")}</p>
-            <textarea value={dialogue} onChange={e => setDialogue(e.target.value)} placeholder="Character lines for this scene…" rows={2}
+            <textarea value={dialogue} onChange={e => setDialogue(e.target.value)} placeholder={tr('timeline.placeholder_character_lines','Character lines for this scene…')} rows={2}
               className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50 resize-none" />
           </div>
           <div>
