@@ -421,9 +421,9 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
     if (!response.ok) throw new Error(t("setdesigner.editor.status.source_failed","The source image could not be loaded for extraction."));
     const bitmap = await createImageBitmap(await response.blob());
     try {
-      const [l,t,r,b] = bbox;
+      const [l,topCoord,r,b] = bbox;
       const x = Math.floor(bitmap.width * l / 1000);
-      const y = Math.floor(bitmap.height * t / 1000);
+      const y = Math.floor(bitmap.height * topCoord / 1000);
       const w = Math.min(bitmap.width-x, Math.max(1, Math.ceil(bitmap.width * (r-l)/1000)));
       const h = Math.min(bitmap.height-y, Math.max(1, Math.ceil(bitmap.height * (b-t)/1000)));
       const canvas = document.createElement('canvas');
@@ -698,9 +698,9 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                 >
                   <img src={images[0]} alt="Hero set reference: drag to select an object" className="block h-auto w-full pointer-events-none" draggable={false} />
                   {detectedElements.filter(item => item.included !== false && item.source_image_url === images[0]).map((item, i) => {
-                    const [l,t,r,b] = item.bbox || [0,0,0,0];
+                    const [l,topCoord,r,b] = item.bbox || [0,0,0,0];
                     return <div key={item.id} className="pointer-events-none absolute border border-[#23c7be]/65 bg-[#23c7be]/10" style={{
-                      left:`${l/10}%`,top:`${t/10}%`,width:`${(r-l)/10}%`,height:`${(b-t)/10}%`,
+                      left:`${l/10}%`,top:`${topCoord/10}%`,width:`${(r-l)/10}%`,height:`${(b-t)/10}%`,
                     }}><span className="absolute left-0 top-0 bg-black/80 px-1 text-[10px] text-white">{item.name || `Selection ${i+1}`}</span></div>;
                   })}
                   {selectionPreview && <div className="pointer-events-none absolute border-2 border-[#23c7be] bg-[#23c7be]/20" style={{
@@ -722,7 +722,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {detectedElements.map((item, index) => {
-                  const [l,t,r,b] = item.bbox || [0,0,1000,1000];
+                  const [l,topCoord,r,b] = item.bbox || [0,0,1000,1000];
                   return <div key={item.id} className={`space-y-2 border border-white/15 p-3 ${item.included === false ? 'opacity-50' : ''}`}>
                     <div className="flex items-center justify-between gap-2">
                       <label className="flex items-center gap-2 text-xs text-white"><input type="checkbox" checked={item.included !== false} onChange={event => { setReferencesDirty(true); setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, included: event.target.checked } : el)); }} / >{t("setdesigner.editor.sheet.include","Include")}</label>
@@ -732,7 +732,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                     <p className="text-[11px] text-white/45">{t("setdesigner.editor.sheet.area","Area in original image")}</p>
                     <div className="relative aspect-video overflow-hidden bg-black">
                       <img src={item.source_image_url || images[0]} alt={item.name || t("setdesigner.editor.sheet.area","Area in original image")} className="h-full w-full object-fill" />
-                      <div className="pointer-events-none absolute border-2 border-[#23c7be]" style={{left:`${l/10}%`,top:`${t/10}%`,width:`${(r-l)/10}%`,height:`${(b-t)/10}%`}} />
+                      <div className="pointer-events-none absolute border-2 border-[#23c7be]" style={{left:`${l/10}%`,top:`${topCoord/10}%`,width:`${(r-l)/10}%`,height:`${(b-t)/10}%`}} />
                     </div>
                     <div className="grid grid-cols-4 gap-1">
                       {['L','T','R','B'].map((label, coordinate) => <label key={label} className="text-[10px] text-white/45">{label}<input type="number" min="0" max="1000" value={item.bbox?.[coordinate] ?? 0} onChange={event => { setReferencesDirty(true); setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, bbox: el.bbox.map((v,i) => i===coordinate ? Math.max(0,Math.min(1000,Number(event.target.value))) : v), image_url:'', replacement:false } : el)); }} className="mt-1 w-full border border-white/15 bg-black px-1 py-1 text-xs text-white" /></label>)}
