@@ -12,7 +12,7 @@ function findPageCanvas(root) {
   return [...root.querySelectorAll('div')].find((node) => {
     const ratio = node.style?.aspectRatio;
     if (!ratio) return false;
-    return [...node.querySelectorAll('span')].some((span) => span.textContent?.trim() === 'FRAME 1');
+    return Boolean(node.querySelector('[data-fotoplay-frame="1"]'));
   }) || null;
 }
 
