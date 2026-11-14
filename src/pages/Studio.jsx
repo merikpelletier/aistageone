@@ -200,7 +200,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
   };
 
   return (
-    <div className="studio-shell min-h-screen bg-[#202328] text-white">
+    <div className="studio-shell min-h-screen bg-[#202328] text-white" style={{ paddingTop: 'env(titlebar-area-height, 0px)' }}>
       <div className="sticky top-0 z-[5000] h-14 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-3 md:px-4 gap-3">
         <button
           type="button"
