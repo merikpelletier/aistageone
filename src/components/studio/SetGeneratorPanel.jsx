@@ -510,7 +510,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
           </div>
         </div>
         <button type="button" onClick={generateHero} disabled={Boolean(generating) || !canGenerateHero || !effectiveModel || modelsLoading} className="flex min-w-[220px] items-center justify-center gap-2 bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.06] disabled:text-white/30">
-          {generating === 'Hero' ? <><Loader2 size={16} className="animate-spin" / >{t('setdesigner.generator.generating_hero', 'Generating Hero...')}</> : <><Camera size={16} / >{t('setdesigner.generator.generate_hero', 'Generate Hero Set')}{creditsPerImage ? ` · ${creditsPerImage}` : ''}</>}
+          {generating === 'Hero' ? <><Loader2 size={16} className="animate-spin" />{t('setdesigner.generator.generating_hero', 'Generating Hero...')}</> : <><Camera size={16} />{t('setdesigner.generator.generate_hero', 'Generate Hero Set')}{creditsPerImage ? ` · ${creditsPerImage}` : ''}</>}
         </button>
       </div>
 
