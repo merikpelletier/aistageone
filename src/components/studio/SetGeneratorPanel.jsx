@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { toast } from 'sonner';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const VIEW_SPECS = [
   ['Wide', `Move the camera significantly farther back from the Hero camera position and use a noticeably wider field of view. Reveal substantially more of the SAME room on the left, right, foreground and ceiling/floor. The result must NOT reuse the Hero framing or crop. Keep the same architectural geometry and object positions.`],
@@ -49,6 +50,7 @@ const EditableImage = ({ label, url, box, onStart, onMove, onEnd, onCancel, onCl
 );
 
 export default function SetGeneratorPanel({ name, description, images, setImages, viewVariants = {}, setViewVariants, zoneShots = [], setZoneShots, compositionElements = [] }) {
+  const t = useStudioTranslation();
   const [mode, setMode] = useState(images?.filter(Boolean).length ? 'reference' : 'scratch');
   const [masterOpen, setMasterOpen] = useState(!images?.[0]);
   const [generating, setGenerating] = useState('');
@@ -468,47 +470,47 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     <section className="set-generator-panel border border-white/10 bg-[#17191d] p-5 sm:p-6">
       <button type="button" onClick={() => setMasterOpen(open => !open)} aria-expanded={masterOpen}
         className="flex w-full items-center justify-between gap-3 border-b border-white/10 pb-3 text-left">
-        <span className="text-sm font-black uppercase tracking-widest text-[#23c7be]">Master Set Creation</span>
-        <span className="text-xs text-white/65">{masterOpen ? 'Collapse ▲' : 'Expand ▼'}</span>
+        <span className="text-sm font-black uppercase tracking-widest text-[#23c7be]">{t('setdesigner.generator.master', 'Master Set Creation')}</span>
+        <span className="text-xs text-white/65">{masterOpen ? t('setdesigner.generator.collapse', 'Collapse ▲') : t('setdesigner.generator.expand', 'Expand ▼')}</span>
       </button>
       {masterOpen && <>
       <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-[#23c7be]"><Sparkles size={16} /><span className="text-[10px] font-black uppercase tracking-[0.18em]">Generate the set</span></div>
-          <h3 className="mt-1 text-xl font-black text-white">Create from scratch or build from references</h3>
-          <p className="mt-1 max-w-2xl text-xs leading-5 text-white/45">Generate the Hero first, then choose only the additional production views you need. Composition elements are included as separate object references. Each generated image is billed separately.</p>
+          <div className="flex items-center gap-2 text-[#23c7be]"><Sparkles size={16} /><span className="text-[10px] font-black uppercase tracking-[0.18em]">{t('setdesigner.generator.generate', 'Generate the set')}</span></div>
+          <h3 className="mt-1 text-xl font-black text-white">{t('setdesigner.generator.creation', 'Create from scratch or build from references')}</h3>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-white/45">{t('setdesigner.generator.intro', 'Generate the Hero first, then choose only the additional production views you need. Composition elements are included as separate object references. Each generated image is billed separately.')}</p>
         </div>
         <div className="grid min-w-[280px] grid-cols-2 border border-white/10 bg-black/25 p-1">
-          <button type="button" onClick={() => setMode('scratch')} disabled={Boolean(generating)} className={`px-4 py-2.5 text-xs font-black ${mode === 'scratch' ? 'bg-[#23c7be] text-black' : 'text-white/65 hover:text-white'} disabled:opacity-40`}>FROM SCRATCH</button>
-          <button type="button" onClick={() => setMode('reference')} disabled={Boolean(generating)} className={`px-4 py-2.5 text-xs font-black ${mode === 'reference' ? 'bg-[#23c7be] text-black' : 'text-white/65 hover:text-white'} disabled:opacity-40`}>FROM REFERENCE</button>
+          <button type="button" onClick={() => setMode('scratch')} disabled={Boolean(generating)} className={`px-4 py-2.5 text-xs font-black ${mode === 'scratch' ? 'bg-[#23c7be] text-black' : 'text-white/65 hover:text-white'} disabled:opacity-40`}>{t('setdesigner.generator.scratch', 'From scratch')}</button>
+          <button type="button" onClick={() => setMode('reference')} disabled={Boolean(generating)} className={`px-4 py-2.5 text-xs font-black ${mode === 'reference' ? 'bg-[#23c7be] text-black' : 'text-white/65 hover:text-white'} disabled:opacity-40`}>{t('setdesigner.generator.reference', 'From reference')}</button>
         </div>
       </div>
 
       <div className="mt-5 grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
-          <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-white/45">AI Model</label>
+          <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-white/45">{t('setdesigner.generator.model', 'AI Model')}</label>
           <select
             value={effectiveModel || ''}
             onChange={event => setSelectedModel(event.target.value || null)}
             disabled={modelsLoading || modelOptions.length === 0 || Boolean(generating)}
             className="w-full border border-white/15 bg-black/25 px-3 py-3 text-sm font-bold text-white outline-none focus:border-[#23c7be] disabled:opacity-50"
           >
-            {modelsLoading && <option value="">Loading models…</option>}
-            {!modelsLoading && modelOptions.length === 0 && <option value="">No model enabled for Set Designer</option>}
+            {modelsLoading && <option value="">{t('setdesigner.generator.loading', 'Loading models…')}</option>}
+            {!modelsLoading && modelOptions.length === 0 && <option value="">{t('setdesigner.generator.no_model', 'No model enabled for Set Designer')}</option>}
             {modelOptions.map(model => (
               <option key={model.model_key} value={model.model_key}>
-                {model.name || model.model_key}{model.recommended ? ' — Recommended' : ''}{model.credits ? ` — ${model.credits} credits` : ''}
+                {model.name || model.model_key}{model.recommended ? ' — ' + t('setdesigner.generator.recommended', 'Recommended') : ''}{model.credits ? ` — ${model.credits} ${t('setdesigner.generator.credits', 'credits')}` : ''}
               </option>
             ))}
           </select>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/45">
-            <span>{mode === 'scratch' ? 'No set reference required.' : `${referenceCount} set reference${referenceCount === 1 ? '' : 's'} will guide the Hero generation.`}</span>
-            {compositionElements.length > 0 && <span>{compositionElements.length} composition element{compositionElements.length === 1 ? '' : 's'} will be included.</span>}
-            <span>AI cost per image: {priceLoading ? 'Calculating…' : creditsPerImage ? `${creditsPerImage} credits` : effectiveModel ? 'Unable to calculate' : 'Select a model'}</span>
+            <span>{mode === 'scratch' ? t('setdesigner.generator.no_ref', 'No set reference required.') : `${referenceCount} ${t('setdesigner.generator.refs', 'set references will guide the Hero generation.')}`}</span>
+            {compositionElements.length > 0 && <span>{compositionElements.length} {t('setdesigner.generator.elements', 'composition elements will be included.')}</span>}
+            <span>{t('setdesigner.generator.cost', 'AI cost per image')}: {priceLoading ? t('setdesigner.generator.calculating', 'Calculating…') : creditsPerImage ? `${creditsPerImage} ${t('setdesigner.generator.credits', 'credits')}` : effectiveModel ? t('setdesigner.generator.unavailable', 'Unable to calculate') : t('setdesigner.generator.select_model', 'Select a model')}</span>
           </div>
         </div>
         <button type="button" onClick={generateHero} disabled={Boolean(generating) || !canGenerateHero || !effectiveModel || modelsLoading} className="flex min-w-[220px] items-center justify-center gap-2 bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[0.06] disabled:text-white/30">
-          {generating === 'Hero' ? <><Loader2 size={16} className="animate-spin" />GENERATING HERO...</> : <><Camera size={16} />GENERATE HERO SET{creditsPerImage ? ` · ${creditsPerImage}` : ''}</>}
+          {generating === 'Hero' ? <><Loader2 size={16} className="animate-spin" / >{t('setdesigner.generator.generating_hero', 'Generating Hero...')}</> : <><Camera size={16} / >{t('setdesigner.generator.generate_hero', 'Generate Hero Set')}{creditsPerImage ? ` · ${creditsPerImage}` : ''}</>}
         </button>
       </div>
 
