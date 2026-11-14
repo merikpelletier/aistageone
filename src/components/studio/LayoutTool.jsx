@@ -364,7 +364,7 @@ export default function LayoutTool({ user, onClose }) {
       if (!uploaded.length) throw new Error(t('Upload did not return an image URL', 'Upload did not return an image URL'));
 
       uploaded.forEach((url) => addSourceUrl(url, uploadTarget));
-      toast.success(uploaded.length === 1 ? 'Image uploaded' : `${uploaded.length} images uploaded`);
+      toast.success(uploaded.length === 1 ? t('Image uploaded', 'Image uploaded') : `${uploaded.length} ${t('images uploaded', 'images uploaded')}`);
     } catch (error) {
       toast.error(error?.message || t('Unable to upload image', 'Unable to upload image'));
     } finally {
@@ -687,7 +687,7 @@ export default function LayoutTool({ user, onClose }) {
             <>
               <Picker title="Format" items={FORMATS} value={format} onChange={(value) => { setFormat(value); setComposeResultUrl(''); }} columns="grid-cols-5" />
               <div className="rounded-[3px] border border-[#23c7be]/25 bg-[#23c7be]/[0.06] p-3 text-xs font-semibold leading-relaxed text-white/70">
-                Compose exact does not send your images to the AI model. The base image and overlays are rendered as supplied; only position, scale, rotation, opacity and layer order are applied.
+                {t("Compose exact does not send your images to the AI model. The base image and overlays are rendered as supplied; only position, scale, rotation, opacity and layer order are applied.", "Compose exact does not send your images to the AI model. The base image and overlays are rendered as supplied; only position, scale, rotation, opacity and layer order are applied.")}
               </div>
 
               <input ref={fileInputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" multiple className="hidden" onChange={handleUploadFiles} />
@@ -696,7 +696,7 @@ export default function LayoutTool({ user, onClose }) {
                 <Label>Base image · locked as-is</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => startUpload('compose-base')} disabled={uploading} className="flex min-h-14 items-center justify-center gap-2 rounded-[3px] border border-[#23c7be]/45 bg-[#23c7be]/10 px-3 py-3 text-sm font-black text-[#23c7be] transition hover:bg-[#23c7be]/15 disabled:opacity-40">
-                    {uploading ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />} Upload
+                    {uploading ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />} {t('Upload', 'Upload')}
                   </button>
                   <button type="button" onClick={() => openAssetsShop('compose-base')} className="flex min-h-14 items-center justify-center gap-2 rounded-[3px] border border-white/15 bg-white/[0.04] px-3 py-3 text-sm font-black text-white transition hover:border-[#23c7be]/50 hover:text-[#23c7be]">
                     <Store size={17} /> {t("Assets Shop", "Assets Shop")}
@@ -717,7 +717,7 @@ export default function LayoutTool({ user, onClose }) {
                 <Label>Overlay assets · exact images</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => startUpload('compose-overlay')} disabled={uploading || composeOverlays.length >= 6} className="flex min-h-14 items-center justify-center gap-2 rounded-[3px] border border-[#23c7be]/45 bg-[#23c7be]/10 px-3 py-3 text-sm font-black text-[#23c7be] transition hover:bg-[#23c7be]/15 disabled:opacity-40">
-                    {uploading ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />} Upload overlay
+                    {uploading ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />} {t('Upload overlay', 'Upload overlay')}
                   </button>
                   <button type="button" onClick={() => openAssetsShop('compose-overlay')} disabled={composeOverlays.length >= 6} className="flex min-h-14 items-center justify-center gap-2 rounded-[3px] border border-white/15 bg-white/[0.04] px-3 py-3 text-sm font-black text-white transition hover:border-[#23c7be]/50 hover:text-[#23c7be] disabled:opacity-40">
                     <Store size={17} /> {t("Assets Shop", "Assets Shop")}
@@ -808,7 +808,7 @@ export default function LayoutTool({ user, onClose }) {
               {composeResultUrl && (
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   <button onClick={() => saveToVault(composeResultUrl, 'Exact composition')} disabled={saving} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black transition hover:bg-white/[0.08] disabled:opacity-50">
-                    {saving ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />} Save to Vault
+                    {saving ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />} {t('Save to Vault', 'Save to Vault')}
                   </button>
                   <button onClick={() => downloadUrl(composeResultUrl, 'exact_composition')} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black transition hover:bg-white/[0.08]">
                     <Download size={17} /> {t("Download", "Download")}
@@ -823,7 +823,7 @@ export default function LayoutTool({ user, onClose }) {
               </div>
               <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 <button onClick={() => saveToVault()} disabled={saving} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black transition hover:bg-white/[0.08] disabled:opacity-50">
-                  {saving ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />} Save to Vault
+                  {saving ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />} {t('Save to Vault', 'Save to Vault')}
                 </button>
                 <button onClick={download} className="flex items-center justify-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black transition hover:bg-white/[0.08]">
                   <Download size={17} /> {t("Download", "Download")}
