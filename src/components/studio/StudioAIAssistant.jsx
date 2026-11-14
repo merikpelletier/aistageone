@@ -5,6 +5,7 @@ import { BookOpen, BookmarkPlus, Bot, Check, Loader2, Pencil, Plus, Save, Search
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/api/base44Client';
 import { useAppContext } from '@/lib/AppContext';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const assistantModes = [
   { value: 'hybrid', label: 'Hybrid' },
@@ -83,6 +84,7 @@ function AssistantMarkdown({ children }) {
 
 export default function StudioAIAssistant() {
   const location = useLocation();
+  const t = useStudioTranslation();
   const { appContext } = useAppContext();
   const visible = location.pathname.toLowerCase() === '/studio';
 
@@ -321,12 +323,12 @@ export default function StudioAIAssistant() {
     <button
       type="button"
       onClick={() => setOpen(true)}
-      title="AI Assistant"
+      title={t('studio.assistant.title', 'AI Assistant')}
       aria-label="Open AI Assistant"
       className="w-full min-h-[46px] px-3 flex items-center gap-2 bg-teal-500 hover:bg-teal-400 text-black border-t border-black/10 font-bold text-[11px]"
     >
       <Sparkles size={14} className="flex-shrink-0" />
-      <span className="truncate">AI Assistant</span>
+      <span className="truncate">{t('studio.assistant.title', 'AI Assistant')}</span>
     </button>
   );
 
@@ -351,8 +353,8 @@ export default function StudioAIAssistant() {
                 {panel === 'chat' ? <Bot size={17} /> : <BookOpen size={17} />}
               </div>
               <div className="min-w-0">
-                <div className="text-[9px] uppercase tracking-[0.2em] text-white/45">AISTAGE.ONE</div>
-                <div className="font-bold text-sm truncate">{panel === 'chat' ? 'AI Assistant' : 'Creator Journal'}</div>
+                <div className="text-[9px] uppercase tracking-[0.2em] text-white/45">{t('studio.brand.name', 'AISTAGE.ONE')}</div>
+                <div className="font-bold text-sm truncate">{panel === 'chat' ? t('studio.assistant.title', 'AI Assistant') : t('studio.assistant.journal', 'Creator Journal')}</div>
               </div>
             </div>
             <div className="flex items-center gap-2">
