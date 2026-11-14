@@ -7,6 +7,7 @@ import { audioInput, AUDIO_TOOLS } from '../../../supabase/functions/_shared/stu
 import { toast } from 'sonner';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const terminal = job => !job || ['succeeded', 'failed'].includes(job.status);
 const field = 'w-full bg-white/10 text-white rounded-xl p-3 border border-white/20';
@@ -25,6 +26,7 @@ const buildPilotMusicPrompt = piece => [
 ].filter(Boolean).join('\n');
 
 export default function StudioAudioTool({ tool, user }) {
+  const t = useStudioTranslation();
   const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
   const [lyrics, setLyrics] = useState('');
@@ -131,7 +133,7 @@ export default function StudioAudioTool({ tool, user }) {
       } catch (loadError) {
         if (!disposed) {
           setPilotMusicOptions([]);
-          setPilotMusicError(loadError?.message || 'AI Pilot music could not load.');
+          setPilotMusicError(loadError?.message || t('AI Pilot music could not load.', 'AI Pilot music could not load.'));
         }
       } finally {
         if (!disposed) setPilotMusicLoading(false);
@@ -219,7 +221,7 @@ export default function StudioAudioTool({ tool, user }) {
     setDownloading(true);
     try {
       const response = await fetch(job.file_url);
-      if (!response.ok) throw new Error('Download failed. Please try again.');
+      if (!response.ok) throw new Error(t('Download failed. Please try again.', 'Download failed. Please try again.'));
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -237,8 +239,8 @@ export default function StudioAudioTool({ tool, user }) {
     const source = job?.status === 'succeeded' && job?.file_url
       ? job
       : history.find(item => item.status === 'succeeded' && item.file_url);
-    if (!source?.file_url) { toast.error('Generate a music track first.'); return; }
-    setEditorSource({ url: source.file_url, name: source.title || 'Generated music', source: 'generated' });
+    if (!source?.file_url) { toast.error(t('Generate a music track first.', 'Generate a music track first.')); return; }
+    setEditorSource({ url: source.file_url, name: source.title || t('Generated music', 'Generated music'), source: 'generated' });
   };
   const openVaultAudio = async () => {
     if (!user?.email) return;
@@ -247,18 +249,18 @@ export default function StudioAudioTool({ tool, user }) {
     try {
       const assets = await base44.entities.VaultAsset.filter({ user_email: user.email, media_type: 'audio' }, '-created_date', 100);
       setVaultAudioAssets(assets || []);
-    } catch (err) { toast.error(err.message || 'Could not load audio from Vault.'); }
+    } catch (err) { toast.error(err.message || t('Could not load audio from Vault.', 'Could not load audio from Vault.')); }
     finally { setVaultAudioLoading(false); }
   };
   const uploadMusicFile = async (file) => {
     if (!file) return;
-    if (!file.type?.startsWith('audio/')) { toast.error('Choose an audio file.'); return; }
+    if (!file.type?.startsWith('audio/')) { toast.error(t('Choose an audio file.', 'Choose an audio file.')); return; }
     setAudioUploading(true);
     try {
       const result = await base44.integrations.Core.UploadFile({ file });
-      setEditorSource({ url: result.file_url, name: file.name.replace(/\.[^.]+$/, '') || 'Uploaded music', source: 'upload' });
-      toast.success('Audio loaded into Music editor.');
-    } catch (err) { toast.error(err.message || 'Could not upload audio.'); }
+      setEditorSource({ url: result.file_url, name: file.name.replace(/\.[^.]+$/, '') || t('Uploaded music', 'Uploaded music'), source: 'upload' });
+      toast.success(t('Audio loaded into Music editor.', 'Audio loaded into Music editor.'));
+    } catch (err) { toast.error(err.message || t('Could not upload audio.', 'Could not upload audio.')); }
     finally { setAudioUploading(false); if (audioFileInput.current) audioFileInput.current.value = ''; }
   };
 
@@ -268,27 +270,27 @@ export default function StudioAudioTool({ tool, user }) {
       {tool === 'music' ? (
         <section className="studio-panel-secondary p-4 space-y-3">
           <div>
-            <div className="studio-tool-eyebrow">Music source</div>
-            <p className="text-sm text-[var(--studio-text-muted)]">Generate a track here, upload your own audio, or bring one from your Vault.</p>
+            <div className="studio-tool-eyebrow">{t("Music source", "Music source")}</div>
+            <p className="text-sm text-[var(--studio-text-muted)]">{t("Generate a track here, upload your own audio, or bring one from your Vault.", "Generate a track here, upload your own audio, or bring one from your Vault.")}</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button className="studio-button studio-button-secondary" onClick={openGeneratedEditor}>Generated</button>
-            <button className="studio-button studio-button-secondary" disabled={audioUploading} onClick={() => audioFileInput.current?.click()}>{audioUploading ? 'Uploading…' : 'Upload'}</button>
+            <button className="studio-button studio-button-secondary" onClick={openGeneratedEditor}>{t("Generated", "Generated")}</button>
+            <button className="studio-button studio-button-secondary" disabled={audioUploading} onClick={() => audioFileInput.current?.click()}>{audioUploading ? t('Uploading…', 'Uploading…') : t('Upload', 'Upload')}</button>
             <input ref={audioFileInput} type="file" accept="audio/*" className="hidden" onChange={e => uploadMusicFile(e.target.files?.[0])} />
-            <button className="studio-button studio-button-secondary" onClick={openVaultAudio}>Vault</button>
+            <button className="studio-button studio-button-secondary" onClick={openVaultAudio}>{t("Vault", "Vault")}</button>
           </div>
         </section>
       ) : null}
       {tool === 'music' ? (
         <section className="studio-panel-secondary p-4 space-y-2">
-          <div className="studio-tool-eyebrow">AI Pilot Music</div>
-          <p className="text-sm text-[var(--studio-text-muted)]">Load a music piece from an AI Pilot active on one of your projects.</p>
+          <div className="studio-tool-eyebrow">{t("AI Pilot Music", "AI Pilot Music")}</div>
+          <p className="text-sm text-[var(--studio-text-muted)]">{t("Load a music piece from an AI Pilot active on one of your projects.", "Load a music piece from an AI Pilot active on one of your projects.")}</p>
           <select className={field + ' bg-black'} value={selectedPilotMusic} onChange={e => applyPilotMusic(e.target.value)} disabled={busy || pilotMusicLoading || pilotMusicOptions.length === 0}>
-            <option value="">{pilotMusicLoading ? 'Loading AI Pilot music…' : pilotMusicOptions.length ? 'Select an AI Pilot music piece' : 'No active AI Pilot music piece'}</option>
-            {pilotMusicOptions.map(option => <option key={option.key} value={option.key}>{option.projectName} — {option.pilotName} — {option.piece?.name || 'Unnamed music piece'}</option>)}
+            <option value="">{pilotMusicLoading ? t('Loading AI Pilot music…', 'Loading AI Pilot music…') : pilotMusicOptions.length ? t('Select an AI Pilot music piece', 'Select an AI Pilot music piece') : t('No active AI Pilot music piece', 'No active AI Pilot music piece')}</option>
+            {pilotMusicOptions.map(option => <option key={option.key} value={option.key}>{option.projectName} — {option.pilotName} — {option.piece?.name || t('Unnamed music piece', 'Unnamed music piece')}</option>)}
           </select>
           {pilotMusicError ? <p className="text-xs text-red-300">{pilotMusicError}</p> : null}
-          {selectedPilotMusic ? <p className="text-xs text-[var(--studio-accent)]">AI Pilot direction loaded into the music prompt and lyrics fields. You can still adjust them before generation.</p> : null}
+          {selectedPilotMusic ? <p className="text-xs text-[var(--studio-accent)]">{t("AI Pilot direction loaded into the music prompt and lyrics fields. You can still adjust them before generation.", "AI Pilot direction loaded into the music prompt and lyrics fields. You can still adjust them before generation.")}</p> : null}
         </section>
       ) : null}
       {tool === 'music' && editorSource ? (
@@ -299,57 +301,57 @@ export default function StudioAudioTool({ tool, user }) {
         />
       ) : null}
       <div className="space-y-2">
-        <label className="block">AI Model
+        <label className="block">{t("AI Model", "AI Model")}
           <select className={field + ' bg-black'} value={effectiveModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={busy || modelsLoading || modelOptions.length === 0}>
-            {modelsLoading ? <option value="">Loading models…</option> : null}
-            {!modelsLoading && modelOptions.length === 0 ? <option value="">No model available</option> : null}
+            {modelsLoading ? <option value="">{t('Loading models…', 'Loading models…')}</option> : null}
+            {!modelsLoading && modelOptions.length === 0 ? <option value="">{t('No model available', 'No model available')}</option> : null}
             {modelOptions.map(m => (
               <option key={m.model_key} value={m.model_key}>
-                {m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}
+                {m.name || m.model_key}{m.recommended ? ` — ${t('Recommended', 'Recommended')}` : ''}{m.credits ? ` — ${m.credits} ${t('credits', 'credits')}` : ''}
               </option>
             ))}
           </select>
         </label>
         <div className="flex items-center justify-between text-sm text-white/70">
-          <span>AI cost</span>
-          <span>{priceLoading ? 'Calculating…' : priceQuote?.credits ? `${priceQuote.credits} credits` : 'Calculated automatically'}</span>
+          <span>{t("AI cost", "AI cost")}</span>
+          <span>{priceLoading ? t('Calculating…', 'Calculating…') : priceQuote?.credits ? `${priceQuote.credits} ${t('credits', 'credits')}` : t('Calculated automatically', 'Calculated automatically')}</span>
         </div>
       </div>
-      <label className="block">Name
+      <label className="block">{t("Name", "Name")}
         <input className={field} maxLength={120} value={title} onChange={e => setTitle(e.target.value)} placeholder={AUDIO_TOOLS[tool].label} disabled={busy} />
       </label>
       {tool === 'music' ? (
         <>
-          <label className="block">Music type
+          <label className="block">{t("Music type", "Music type")}
             <select className={field + ' bg-black'} value={mode} onChange={e => setMode(e.target.value)} disabled={busy}>
-              <option className="bg-black" value="instrumental">Instrumental</option>
-              <option className="bg-black" value="lyrics">Song — my lyrics</option>
-              <option className="bg-black" value="auto">Song — generate lyrics</option>
+              <option className="bg-black" value="instrumental">{t("Instrumental", "Instrumental")}</option>
+              <option className="bg-black" value="lyrics">{t("Song — my lyrics", "Song — my lyrics")}</option>
+              <option className="bg-black" value="auto">{t("Song — generate lyrics", "Song — generate lyrics")}</option>
             </select>
           </label>
-          <label className="block">Duration
+          <label className="block">{t("Duration", "Duration")}
             <div className="flex items-center gap-3">
               <input className={field} type="number" min="5" max="300" step="1" value={duration} onChange={e => setDuration(e.target.value === '' ? '' : Number(e.target.value))} disabled={busy} />
-              <span className="whitespace-nowrap text-white/70">seconds</span>
+              <span className="whitespace-nowrap text-white/70">{t("seconds", "seconds")}</span>
             </div>
-            <span className="text-xs text-white/45">5–300 seconds</span>
+            <span className="text-xs text-white/45">5–300 {t("seconds", "seconds")}</span>
           </label>
         </>
       ) : (
-        <label className="block">Duration: {duration} seconds
+        <label className="block">Duration: {duration} {t("seconds", "seconds")}
           <input className="w-full accent-yellow-400" type="range" min="1" max="10" step="0.5" value={duration} onChange={e => setDuration(Number(e.target.value))} disabled={busy} />
         </label>
       )}
-      <label className="block">{tool === 'music' ? 'Describe the music: style, mood, instruments…' : 'Describe the sound effect'}
+      <label className="block">{tool === 'music' ? t('Describe the music: style, mood, instruments…', 'Describe the music: style, mood, instruments…') : t('Describe the sound effect', 'Describe the sound effect')}
         <textarea className={field} rows={3} maxLength={2000} value={prompt} onChange={e => setPrompt(e.target.value)} disabled={busy} />
       </label>
       {tool === 'music' && mode === 'lyrics' ? (
-        <label className="block">Lyrics
-          <textarea className={field} rows={7} maxLength={3500} value={lyrics} onChange={e => setLyrics(e.target.value)} placeholder={'[Verse]\nYour lyrics…\n[Chorus]'} disabled={busy} />
+        <label className="block">{t("Lyrics", "Lyrics")}
+          <textarea className={field} rows={7} maxLength={3500} value={lyrics} onChange={e => setLyrics(e.target.value)} placeholder={t('[Verse]\nYour lyrics…\n[Chorus]', '[Verse]\nYour lyrics…\n[Chorus]')} disabled={busy} />
           <span className="text-xs">{lyrics.length}/3500</span>
         </label>
       ) : null}
-      <label className="block">Download format
+      <label className="block">{t("Download format", "Download format")}
         <select className={field + ' bg-black'} value={format} onChange={e => setFormat(e.target.value)} disabled={busy}>
           <option className="bg-black" value="mp3">MP3</option>
           <option className="bg-black" value="wav">WAV</option>
@@ -358,7 +360,7 @@ export default function StudioAudioTool({ tool, user }) {
       {error ? <p role="alert" className="text-red-300">{error}</p> : null}
       {job?.error ? <p role="status" className="text-yellow-300">{job.error}</p> : null}
       <button className="w-full rounded-xl bg-yellow-400 text-black font-bold p-3 disabled:opacity-50" disabled={loading || busy || !config?.ready} onClick={generate}>
-        {busy ? 'Generating… You can return later.' : 'Generate ' + AUDIO_TOOLS[tool].label + (priceQuote?.credits ? ' · ' + priceQuote.credits + ' credits' : '')}
+        {busy ? t('Generating… You can return later.', 'Generating… You can return later.') : t('Generate', 'Generate') + ' ' + t(AUDIO_TOOLS[tool].label, AUDIO_TOOLS[tool].label) + (priceQuote?.credits ? ' · ' + priceQuote.credits + ' ' + t('credits', 'credits') : '')}
       </button>
       {!loading && !config?.ready ? <p className="text-sm">Enable this tool in Admin before generating.</p> : null}
       {job?.status === 'succeeded' && job.file_url ? (
@@ -366,38 +368,38 @@ export default function StudioAudioTool({ tool, user }) {
           <p className="font-bold">{job.title}</p>
           <audio controls src={job.file_url} className="w-full" />
           <div className="flex gap-3 flex-wrap">
-            <button className="rounded-xl bg-yellow-400 text-black font-bold px-4 py-2" onClick={() => setVault(job)}>Save to Vault</button>
-            {tool === 'music' ? <button className="rounded-xl border border-white/30 px-4 py-2" onClick={() => setEditorSource({ url: job.file_url, name: job.title || 'Generated music', source: 'generated' })}>Edit music</button> : null}
-            <button className="rounded-xl border border-white/30 px-4 py-2" disabled={downloading} onClick={download}>{downloading ? 'Downloading…' : 'Download'}</button>
+            <button className="rounded-xl bg-yellow-400 text-black font-bold px-4 py-2" onClick={() => setVault(job)}>Save to {t("Vault", "Vault")}</button>
+            {tool === 'music' ? <button className="rounded-xl border border-white/30 px-4 py-2" onClick={() => setEditorSource({ url: job.file_url, name: job.title || 'Generated music', source: 'generated' })}>{t("Edit music", "Edit music")}</button> : null}
+            <button className="rounded-xl border border-white/30 px-4 py-2" disabled={downloading} onClick={download}>{downloading ? t('Downloading…', 'Downloading…') : t('Download', 'Download')}</button>
           </div>
         </div>
       ) : null}
-      {history.length ? <details><summary className="cursor-pointer">Recent generations</summary>
+      {history.length ? <details><summary className="cursor-pointer">{t("Recent generations", "Recent generations")}</summary>
         <div className="mt-2 space-y-2">{history.map(item => (
           <button key={item.id} disabled={sending} onClick={() => { setJob(item); setError(''); }} className="block text-left w-full rounded-lg bg-white/10 p-2">
             {item.title} · {item.status} · {new Date(item.created_at).toLocaleString()}
           </button>
         ))}</div>
       </details> : null}
-      {tool === 'sound_fx' && (!config || config.model === 'sepal/audiogen') ? <p className="text-xs text-white/60">AudioGen model licence: non-commercial. Commercial authorization must be checked before commercial use.</p> : null}
-      {vault ? <SaveToVaultModal userEmail={user?.email} imageUrl={vault.file_url} mediaType="audio" onClose={() => setVault(null)} onSaved={() => { setVault(null); toast.success('Audio saved to your Vault.'); }} /> : null}
+      {tool === 'sound_fx' && (!config || config.model === 'sepal/audiogen') ? <p className="text-xs text-white/60">{t("AudioGen model licence: non-commercial. Commercial authorization must be checked before commercial use.", "AudioGen model licence: non-commercial. Commercial authorization must be checked before commercial use.")}</p> : null}
+      {vault ? <SaveToVaultModal userEmail={user?.email} imageUrl={vault.file_url} mediaType="audio" onClose={() => setVault(null)} onSaved={() => { setVault(null); toast.success(t('Audio saved to your Vault.', 'Audio saved to your Vault.')); }} /> : null}
       {tool === 'music' && showVaultAudio ? (
         <div className="fixed inset-0 z-[99998] bg-black/80 flex items-center justify-center p-4">
           <div className="studio-panel w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
             <div className="studio-tool-header flex items-center justify-between">
-              <div><div className="studio-tool-eyebrow">Vault</div><h3 className="studio-tool-title">Choose audio</h3></div>
-              <button className="studio-button studio-button-secondary !min-h-9" onClick={() => setShowVaultAudio(false)}>Close</button>
+              <div><div className="studio-tool-eyebrow">{t("Vault", "Vault")}</div><h3 className="studio-tool-title">{t("Choose audio", "Choose audio")}</h3></div>
+              <button className="studio-button studio-button-secondary !min-h-9" onClick={() => setShowVaultAudio(false)}>{t("Close", "Close")}</button>
             </div>
             <div className="p-4 overflow-y-auto space-y-2">
-              {vaultAudioLoading ? <p className="text-sm text-[var(--studio-text-muted)]">Loading audio…</p> : null}
-              {!vaultAudioLoading && !vaultAudioAssets.length ? <p className="text-sm text-[var(--studio-text-muted)]">No audio files in your Vault.</p> : null}
+              {vaultAudioLoading ? <p className="text-sm text-[var(--studio-text-muted)]">{t("Loading audio…", "Loading audio…")}</p> : null}
+              {!vaultAudioLoading && !vaultAudioAssets.length ? <p className="text-sm text-[var(--studio-text-muted)]">{t("No audio files in your Vault.", "No audio files in your Vault.")}</p> : null}
               {vaultAudioAssets.map(asset => (
                 <button key={asset.id} className="w-full text-left studio-panel-secondary p-3 flex items-center gap-3 hover:border-[var(--studio-accent)]" onClick={() => {
-                  setEditorSource({ url: asset.url, name: asset.name || 'Vault audio', source: 'vault' });
+                  setEditorSource({ url: asset.url, name: asset.name || t('Vault audio', 'Vault audio'), source: 'vault' });
                   setShowVaultAudio(false);
                 }}>
                   <div className="min-w-0 flex-1"><div className="font-semibold truncate">{asset.name || 'Audio'}</div><div className="text-xs text-[var(--studio-text-faint)] truncate">{asset.url}</div></div>
-                  <span className="text-xs text-[var(--studio-accent)]">Open</span>
+                  <span className="text-xs text-[var(--studio-accent)]">{t("Open", "Open")}</span>
                 </button>
               ))}
             </div>
