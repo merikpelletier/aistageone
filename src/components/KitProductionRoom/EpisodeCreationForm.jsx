@@ -94,14 +94,14 @@ export default function EpisodeCreationForm({
       <input
         value={episodeTitle}
         onChange={e => setEpisodeTitle(e.target.value)}
-        placeholder="Episode title…"
+        placeholder={tr('timeline.placeholder_episode_title','Episode title…')}
         disabled={isLocked}
         className={`w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
       />
       <textarea
         value={episodeDesc}
         onChange={e => setEpisodeDesc(e.target.value)}
-        placeholder="Episode description…"
+        placeholder={tr('timeline.placeholder_episode_description','Episode description…')}
         rows={2}
         disabled={isLocked}
         className={`w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 resize-none ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
