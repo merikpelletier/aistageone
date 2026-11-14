@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Layers, Camera, ChevronRight, ChevronLeft, ChevronDown, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench, PanelLeft, FolderOpen, Video, ListVideo, Wand2, Presentation, ShoppingBag, LayoutTemplate, MoreHorizontal, Volume2, Plug, Bot } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getPlatformLanguage, fetchTranslationDictionary, translationLookup, translatedLabel } from '@/lib/translationDictionary';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const HOME_ICON_MAP = { Home, Clapperboard, Theater, Wrench, Bookmark: undefined, BookOpen, Users, Layers, Film };
 const DEFAULT_HOME_ITEMS = [
@@ -174,6 +175,7 @@ function ToolAccordionSection({ section, activeKey, onTool, open, onToggle, t = 
 }
 
 function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children, t = (_, fallback) => fallback }) {
+  const brandLabel = t('studio.brand.name', 'AISTAGE.ONE');
   const [showMobileTools, setShowMobileTools] = useState(false);
   const [menuCollapsed, setMenuCollapsed] = useState(false);
   const [openSectionKey, setOpenSectionKey] = useState('create');
@@ -211,7 +213,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children, t = 
           title={t('studio.menu.exit', 'Exit Studio')}
         >
           <ChevronLeft size={16} />
-          <span>AISTAGE.ONE</span>
+          <span>{brandLabel}</span>
         </button>
         <button
           type="button"
@@ -223,7 +225,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children, t = 
           {menuCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
         <div className="min-w-0 flex-1">
-          <div className="text-[9px] uppercase tracking-[0.22em] text-white/50 font-semibold">AISTAGE.ONE</div>
+          <div className="text-[9px] uppercase tracking-[0.22em] text-white/50 font-semibold">{brandLabel}</div>
           <div className="font-semibold text-sm truncate">{title || 'Studio'}</div>
         </div>
         {subtitle && <div className="hidden xl:block text-xs text-white/45 truncate max-w-[34vw]">{subtitle}</div>}
@@ -447,6 +449,7 @@ export default function Studio() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const studioBrandT = useStudioTranslation();
   const [studioLanguage, setStudioLanguage] = useState(() => getPlatformLanguage());
   const { data: studioTranslations = [] } = useQuery({ queryKey: ['translationDictionary'], queryFn: fetchTranslationDictionary, staleTime: 5 * 60 * 1000, retry: false });
   const studioDictionary = React.useMemo(() => translationLookup(studioTranslations), [studioTranslations]);
@@ -811,7 +814,7 @@ export default function Studio() {
         <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-6 bg-[#d8d8d3]">
           <div className="max-w-2xl text-center">
             <div className="mx-auto mb-6 w-16 h-16 bg-black text-yellow-400 flex items-center justify-center"><Sparkles size={28} /></div>
-            <p className="text-black/45 text-xs font-bold uppercase tracking-[0.28em]">AISTAGE.ONE</p>
+            <p className="text-black/45 text-xs font-bold uppercase tracking-[0.28em]">{studioBrandT('studio.brand.name', 'AISTAGE.ONE')}</p>
             <h1 className="mt-3 text-4xl md:text-6xl font-black tracking-tight text-black">{studioT('studio.home.title', 'Creative Studio')}</h1>
             <p className="mt-4 text-sm md:text-base text-black/55">{studioT('studio.home.subtitle', 'Choose a tool from the toolbar to begin.')}</p>
           </div>
