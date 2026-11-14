@@ -164,22 +164,22 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   const zoneForm = label => zoneDraft?.parent === label ? (
     <div className="mt-3 space-y-2 border border-[#23c7be]/40 bg-black/35 p-3">
       <p className="text-xs font-black text-[#8ee9e4]">{t('setdesigner.generator.zone.create', 'Create Zone Shot')} — {label}</p>
-      <input aria-label="Zone Shot name" value={zoneDraft.label} onChange={event => setZoneDraft(d => ({ ...d, label: event.target.value }))}
+      <input aria-label={t('setdesigner.generator.zone.name_aria', 'Zone Shot name')} value={zoneDraft.label} onChange={event => setZoneDraft(d => ({ ...d, label: event.target.value }))}
         placeholder={t("setdesigner.generator.zone.name","Shot name — e.g. Lounge beneath staircase")} className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white" />
-      <select aria-label="Zone Shot framing" value={zoneDraft.type} onChange={event => setZoneDraft(d => ({ ...d, type: event.target.value }))}
+      <select aria-label={t('setdesigner.generator.zone.framing_aria', 'Zone Shot framing')} value={zoneDraft.type} onChange={event => setZoneDraft(d => ({ ...d, type: event.target.value }))}
         className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white">
         <option value="wide">{t("setdesigner.generator.zone.wide","Wide Zone")}</option><option value="medium">{t("setdesigner.generator.zone.medium","Medium Zone")}</option><option value="close">{t("setdesigner.generator.zone.close","Close Zone")}</option><option value="detail">{t("setdesigner.generator.zone.detail","Detail Zone")}</option>
       </select>
-      <select aria-label="Zone Shot purpose" value={zoneDraft.intent} onChange={event => setZoneDraft(d => ({ ...d, intent: event.target.value }))}
+      <select aria-label={t('setdesigner.generator.zone.purpose_aria', 'Zone Shot purpose')} value={zoneDraft.intent} onChange={event => setZoneDraft(d => ({ ...d, intent: event.target.value }))}
         className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white">
-        {['Establishing focus', 'Cinematic insert', 'Character area', 'Prop area', 'Architecture focus'].map(v => <option key={v}>{t('setdesigner.generator.zone.focus.' + ({'Establishing focus':'establishing','Cinematic insert':'insert','Character area':'character','Prop area':'prop','Architecture focus':'architecture'}[v]),v)}</option>)}
+        {['Establishing focus', 'Cinematic insert', 'Character area', 'Prop area', 'Architecture focus'].map(v => <option key={v} value={v}>{t('setdesigner.generator.zone.focus.' + ({'Establishing focus':'establishing','Cinematic insert':'insert','Character area':'character','Prop area':'prop','Architecture focus':'architecture'}[v]),v)}</option>)}
       </select>
-      <textarea aria-label="Zone Shot directions" rows={2} value={zoneDraft.instruction} onChange={event => setZoneDraft(d => ({ ...d, instruction: event.target.value }))}
+      <textarea aria-label={t('setdesigner.generator.zone.directions_aria', 'Zone Shot directions')} rows={2} value={zoneDraft.instruction} onChange={event => setZoneDraft(d => ({ ...d, instruction: event.target.value }))}
         placeholder={t("setdesigner.generator.zone.instructions","Optional: describe what to emphasize in this zone")} className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white" />
       <div className="flex gap-2">
         <button type="button" disabled={Boolean(generating) || !effectiveModel} onClick={createZoneShot}
           className="bg-[#23c7be] px-3 py-2 text-xs font-black text-black disabled:opacity-40">
-          {generating === 'ZoneShot' ? 'GENERATING...' : `GENERATE ZONE SHOT${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
+          {generating === 'ZoneShot' ? t('setdesigner.generator.creating', 'Generating...') : `${t('setdesigner.generator.zone.generate','Generate Zone Shot')}${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
         </button>
         <button type="button" onClick={() => setZoneDraft(null)} className="border border-white/20 px-3 py-2 text-xs text-white">{t("setdesigner.generator.zone.cancel","CANCEL")}</button>
       </div>
@@ -189,22 +189,22 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     const key = `Zone:${shot.id}`;
     const url = viewUrl(key, -1);
     return <div key={shot.id} className="min-w-0 space-y-2 border border-white/20 bg-[#121518] p-3">
-      <input aria-label="Rename Zone Shot" value={shot.label || ''} onChange={event => setZoneShots(current => current.map(s => s.id === shot.id ? { ...s, label: event.target.value } : s))}
+      <input aria-label={t('setdesigner.generator.zone.rename_aria', 'Rename Zone Shot')} value={shot.label || ''} onChange={event => setZoneShots(current => current.map(s => s.id === shot.id ? { ...s, label: event.target.value } : s))}
         className="w-full border-b border-white/20 bg-transparent py-1 text-sm font-bold text-white" />
-      <p className="text-[11px] text-white/50">{t('setdesigner.generator.zone.create', 'Create Zone Shot')} · {shot.type} · {t('setdesigner.generator.zone.from', 'from')} {shot.parent} ({shot.source_time})</p>
+      <p className="text-[11px] text-white/50" >{t('setdesigner.generator.zone.shot','Zone Shot')} · {t('setdesigner.generator.zone.'+shot.type, shot.type)} · {t('setdesigner.generator.zone.from', 'from')} {shot.parent} ({shot.source_time})</p>
       {timeSwitcher(key)}
       <EditableImage t={t} label={key} url={url} box={editBox(key)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} />
       <details className="border-t border-white/10 pt-2">
         <summary className="cursor-pointer text-xs font-bold text-[#8ee9e4]">{t("setdesigner.generator.zone.edit","EDIT ZONE SHOT")}</summary>
-      <textarea aria-label="Zone Shot adjustment" value={viewAdjustments[key] || ''} onChange={event => adjustView(key, event.target.value)}
+      <textarea aria-label={t('setdesigner.generator.zone.adjustment_aria', 'Zone Shot adjustment')} value={viewAdjustments[key] || ''} onChange={event => adjustView(key, event.target.value)}
         rows={2} placeholder={t("setdesigner.generator.zone.adjustment","Adjustment instructions for this Zone Shot")} className="w-full border border-white/15 bg-black/25 p-2 text-xs text-white" />
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => localEdit(key, -1)} disabled={!url || !editRegions[key] || !viewAdjustments[key]?.trim() || Boolean(generating) || !effectiveModel}
-          className="border border-[#23c7be]/40 px-3 py-2 text-xs text-[#8ee9e4] disabled:opacity-30">APPLY ADJUSTMENT</button>
+          className="border border-[#23c7be]/40 px-3 py-2 text-xs text-[#8ee9e4] disabled:opacity-30">{t('setdesigner.generator.apply', 'Apply adjustment')}</button>
         <button type="button" onClick={() => generateNight(key, -1)} disabled={!shot.day || Boolean(generating) || !effectiveModel}
-          className="border border-white/20 px-3 py-2 text-xs text-white disabled:opacity-30">{shot.night ? 'REGENERATE NIGHT' : 'CREATE NIGHT VERSION'}</button>
+          className="border border-white/20 px-3 py-2 text-xs text-white disabled:opacity-30">{shot.night ? t('setdesigner.generator.night_regenerate', 'Regenerate night version') : t('setdesigner.generator.night_create', 'Create night version')}</button>
         <button type="button" onClick={() => setZoneShots(current => current.filter(s => s.id !== shot.id))}
-          className="border border-red-400/30 px-3 py-2 text-xs text-red-200">DELETE</button>
+          className="border border-red-400/30 px-3 py-2 text-xs text-red-200">{t('setdesigner.generator.zone.delete', 'Delete')}</button>
       </div>
       </details>
     </div>;
