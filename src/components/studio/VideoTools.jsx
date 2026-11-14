@@ -563,7 +563,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   };
 
   const deleteScene = async (scene) => {
-    if (!window.confirm(`Delete "${scene.title || t('shoot.untitled','Untitled scene')}" from My Scenes? This cannot be undone.`)) return;
+    if (!window.confirm(t('shoot.message.delete_scene','Delete "{title}" from My Scenes? This cannot be undone.').replace('{title}',scene.title || t('shoot.untitled','Untitled scene')))) return;
     setDeletingSceneId(scene.id);
     try {
       const { data: authData, error: authError } = await supabase.auth.getUser();
@@ -723,7 +723,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setStep('plan');
     try {
       await saveScene({ shot_plan: nextShots, status: 'planned' });
-      toast.success(`${shot.label} added`);
+      toast.success(`${shot.label} ${t('shoot.message.shot_added','added')}`);
     } catch (error) {
       toast.error(error.message || t("shoot.message.shot_save_failed","Shot could not be saved."));
     }
@@ -974,7 +974,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     if (selectedCast.some((member) => !member.reference_url)) return toast.error(t("shoot.message.missing_character_ref","Every selected character needs a reference image."));
     if (!setReference.url) return toast.error(t("shoot.message.missing_set_ref","Add a set reference before generating this shot."));
     const requiredRefs = shotReferences(shot);
-    if (requiredRefs.length > modelReferenceMax) return toast.error(`This shot has ${requiredRefs.length} visual references, but the selected video model supports ${modelReferenceMax}. Reduce references or select a model with a higher limit. No identity reference will be discarded.`);
+    if (requiredRefs.length > modelReferenceMax) return toast.error(t('shoot.message.ref_limit','This shot has {count} visual references, but the selected video model supports {max}. Reduce references or select a model with a higher limit. No identity reference will be discarded.').replace('{count}',requiredRefs.length).replace('{max}',modelReferenceMax));
     if (new Set(requiredRefs.map((ref) => ref.url)).size !== requiredRefs.length) return toast.error(t("shoot.message.duplicated_refs","The same image is assigned to multiple roles in this shot. Select distinct reference images so character identities are unambiguous."));
     if (shotMode(shot) === 'standard') {
       const incompleteBeat = (shot.lines || []).find((line) => (line.dialogue || line.action) && !line.character_id);
@@ -984,7 +984,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const finalPrompt = finalPromptForShot(shot).trim();
     if (!finalPrompt) return toast.error(t("shoot.message.final_prompt_empty","Final prompt cannot be empty."));
     const speechSeconds = estimatedSpeechSeconds(shotDialogueText(shot));
-    if (speechSeconds > Number(shot.duration || 0)) return toast.error(`Dialogue needs about ${Math.ceil(speechSeconds)}s but this shot is ${shot.duration}s. Increase duration or shorten the dialogue.`);
+    if (speechSeconds > Number(shot.duration || 0)) return toast.error(t('shoot.message.dialogue_too_long','Dialogue needs about {needed}s but this shot is {duration}s. Increase duration or shorten the dialogue.').replace('{needed}',Math.ceil(speechSeconds)).replace('{duration}',shot.duration));
     setBusy(true);
     setRegeneratingShotId(shot.result_url ? shot.id : null);
     setActiveShotId(shot.id);
@@ -1038,7 +1038,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       const currentScene = sceneId || (await saveScene({ shot_plan: nextShots, status: 'shooting' })).id;
       const { error: updateError } = await supabase.from('shoot_scene').update({ shot_plan: nextShots, status: 'shooting', updated_at: new Date().toISOString() }).eq('id', currentScene);
       if (updateError) throw updateError;
-      toast.success(`${shot.label} generated`);
+      toast.success(`${shot.label} ${t('shoot.message.shot_generated','generated')}`);
     } catch (error) {
       toast.error(error?.message || t("shoot.message.shot_generation_failed","Shot generation failed"));
     } finally {
