@@ -163,25 +163,25 @@ export default function SetGeneratorPanel({ name, description, images, setImages
   };
   const zoneForm = label => zoneDraft?.parent === label ? (
     <div className="mt-3 space-y-2 border border-[#23c7be]/40 bg-black/35 p-3">
-      <p className="text-xs font-black text-[#8ee9e4]">CREATE ZONE SHOT — {label}</p>
+      <p className="text-xs font-black text-[#8ee9e4]">{t('setdesigner.generator.zone.create', 'Create Zone Shot')} — {label}</p>
       <input aria-label="Zone Shot name" value={zoneDraft.label} onChange={event => setZoneDraft(d => ({ ...d, label: event.target.value }))}
-        placeholder="Shot name — e.g. Lounge beneath staircase" className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white" />
+        placeholder={t("setdesigner.generator.zone.name","Shot name — e.g. Lounge beneath staircase")} className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white" />
       <select aria-label="Zone Shot framing" value={zoneDraft.type} onChange={event => setZoneDraft(d => ({ ...d, type: event.target.value }))}
         className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white">
-        <option value="wide">Wide Zone</option><option value="medium">Medium Zone</option><option value="close">Close Zone</option><option value="detail">Detail Zone</option>
+        <option value="wide">{t("setdesigner.generator.zone.wide","Wide Zone")}</option><option value="medium">{t("setdesigner.generator.zone.medium","Medium Zone")}</option><option value="close">{t("setdesigner.generator.zone.close","Close Zone")}</option><option value="detail">{t("setdesigner.generator.zone.detail","Detail Zone")}</option>
       </select>
       <select aria-label="Zone Shot purpose" value={zoneDraft.intent} onChange={event => setZoneDraft(d => ({ ...d, intent: event.target.value }))}
         className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white">
-        {['Establishing focus', 'Cinematic insert', 'Character area', 'Prop area', 'Architecture focus'].map(v => <option key={v}>{v}</option>)}
+        {['Establishing focus', 'Cinematic insert', 'Character area', 'Prop area', 'Architecture focus'].map(v => <option key={v}>{t('setdesigner.generator.zone.focus.' + ({'Establishing focus':'establishing','Cinematic insert':'insert','Character area':'character','Prop area':'prop','Architecture focus':'architecture'}[v]),v)}</option>)}
       </select>
       <textarea aria-label="Zone Shot directions" rows={2} value={zoneDraft.instruction} onChange={event => setZoneDraft(d => ({ ...d, instruction: event.target.value }))}
-        placeholder="Optional: describe what to emphasize in this zone" className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white" />
+        placeholder={t("setdesigner.generator.zone.instructions","Optional: describe what to emphasize in this zone")} className="w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white" />
       <div className="flex gap-2">
         <button type="button" disabled={Boolean(generating) || !effectiveModel} onClick={createZoneShot}
           className="bg-[#23c7be] px-3 py-2 text-xs font-black text-black disabled:opacity-40">
           {generating === 'ZoneShot' ? 'GENERATING...' : `GENERATE ZONE SHOT${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
         </button>
-        <button type="button" onClick={() => setZoneDraft(null)} className="border border-white/20 px-3 py-2 text-xs text-white">CANCEL</button>
+        <button type="button" onClick={() => setZoneDraft(null)} className="border border-white/20 px-3 py-2 text-xs text-white">{t("setdesigner.generator.zone.cancel","CANCEL")}</button>
       </div>
     </div>
   ) : null;
@@ -191,13 +191,13 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     return <div key={shot.id} className="min-w-0 space-y-2 border border-white/20 bg-[#121518] p-3">
       <input aria-label="Rename Zone Shot" value={shot.label || ''} onChange={event => setZoneShots(current => current.map(s => s.id === shot.id ? { ...s, label: event.target.value } : s))}
         className="w-full border-b border-white/20 bg-transparent py-1 text-sm font-bold text-white" />
-      <p className="text-[11px] text-white/50">ZONE SHOT · {shot.type} · from {shot.parent} ({shot.source_time})</p>
+      <p className="text-[11px] text-white/50">{t('setdesigner.generator.zone.create', 'Create Zone Shot')} · {shot.type} · {t('setdesigner.generator.zone.from', 'from')} {shot.parent} ({shot.source_time})</p>
       {timeSwitcher(key)}
       <EditableImage t={t} label={key} url={url} box={editBox(key)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} />
       <details className="border-t border-white/10 pt-2">
-        <summary className="cursor-pointer text-xs font-bold text-[#8ee9e4]">EDIT ZONE SHOT</summary>
+        <summary className="cursor-pointer text-xs font-bold text-[#8ee9e4]">{t("setdesigner.generator.zone.edit","EDIT ZONE SHOT")}</summary>
       <textarea aria-label="Zone Shot adjustment" value={viewAdjustments[key] || ''} onChange={event => adjustView(key, event.target.value)}
-        rows={2} placeholder="Adjustment instructions for this Zone Shot" className="w-full border border-white/15 bg-black/25 p-2 text-xs text-white" />
+        rows={2} placeholder={t("setdesigner.generator.zone.adjustment","Adjustment instructions for this Zone Shot")} className="w-full border border-white/15 bg-black/25 p-2 text-xs text-white" />
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => localEdit(key, -1)} disabled={!url || !editRegions[key] || !viewAdjustments[key]?.trim() || Boolean(generating) || !effectiveModel}
           className="border border-[#23c7be]/40 px-3 py-2 text-xs text-[#8ee9e4] disabled:opacity-30">APPLY ADJUSTMENT</button>
@@ -532,22 +532,22 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         <div className="mt-5 border-t border-white/10 pt-5">
           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/45">Production views</p>
-              <p className="mt-1 text-xs text-white/40">Choose the angles you need. Composition elements keep the same physical placement across views.</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/45">{t("setdesigner.generator.views","Production views")}</p>
+              <p className="mt-1 text-xs text-white/40">{t("setdesigner.generator.views_help","Choose the angles you need. Composition elements keep the same physical placement across views.")}</p>
             </div>
             <button type="button" onClick={generateAllViews} disabled={Boolean(generating) || !effectiveModel} className="border border-[#23c7be]/35 bg-[#23c7be]/10 px-4 py-2.5 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/15 disabled:opacity-40">
-              GENERATE ALL VIEWS{creditsPerImage ? ` · ${creditsPerImage * VIEW_SPECS.length} CREDITS` : ''}
+              {t("setdesigner.generator.generate_all","Generate all views")}{creditsPerImage ? ` · ${creditsPerImage * VIEW_SPECS.length} ${t('setdesigner.generator.credits', 'credits')}` : ''}
             </button>
           </div>
           <div className="mb-4 space-y-3 border border-white/15 bg-black/20 p-4">
-            <p className="text-xs font-bold text-white/80">Reverse camera · Choose the view</p>
-            <p className="text-xs leading-5 text-white/50">No camera terminology or prompt required. Choose what you want to see; Set writes the camera instructions automatically.</p>
+            <p className="text-xs font-bold text-white/80">{t("setdesigner.generator.reverse","Reverse camera · Choose the view")}</p>
+            <p className="text-xs leading-5 text-white/50">{t("setdesigner.generator.reverse_help","No camera terminology or prompt required. Choose what you want to see; Set writes the camera instructions automatically.")}</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {[
-                ['auto', 'Automatic reverse', 'Let Set choose according to the Hero'],
-                ['interior', 'Opposite side of the room', 'Interior reverse angle'],
-                ['entrance', 'Looking away from the building', 'View outward from its entrance'],
-                ['rear', 'Back of the building', 'Rear exterior, not a camera reverse'],
+                ['auto', t('setdesigner.generator.reverse.auto', 'Automatic reverse'), t('setdesigner.generator.reverse.auto_help', 'Let Set choose according to the Hero')],
+                ['interior', t('setdesigner.generator.reverse.interior', 'Opposite side of the room'), t('setdesigner.generator.reverse.interior_help', 'Interior reverse angle')],
+                ['entrance', t('setdesigner.generator.reverse.entrance', 'Looking away from the building'), t('setdesigner.generator.reverse.entrance_help', 'View outward from its entrance')],
+                ['rear', t('setdesigner.generator.reverse.rear', 'Back of the building'), t('setdesigner.generator.reverse.rear_help', 'Rear exterior, not a camera reverse')],
               ].map(([value, label, detail]) => (
                 <button key={value} type="button" disabled={Boolean(generating)}
                   aria-pressed={reverseType === value}
@@ -559,28 +559,28 @@ export default function SetGeneratorPanel({ name, description, images, setImages
               ))}
             </div>
             <details>
-              <summary className="cursor-pointer text-xs text-white/60 hover:text-white">Optional: add details for the unseen area</summary>
+              <summary className="cursor-pointer text-xs text-white/60 hover:text-white">{t("setdesigner.generator.reverse.optional","Optional: add details for the unseen area")}</summary>
               <textarea id="reverse-direction" value={reverseDirection} onChange={(event) => setReverseDirection(event.target.value)}
                 disabled={Boolean(generating)} rows={3}
-                aria-label="Additional reverse view details"
-                placeholder="For example: a circular driveway and palm-lined approach"
+                aria-label={t("setdesigner.generator.reverse.aria","Additional reverse view details")}
+                placeholder={t("setdesigner.generator.reverse.placeholder","For example: a circular driveway and palm-lined approach")}
                 className="mt-2 w-full border border-white/15 bg-[#101215] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-[#23c7be] focus:outline-none" />
             </details>
-            <p className="text-[11px] text-white/40">Unseen areas are inferred by AI and may not exactly match the real architecture.</p>
+            <p className="text-[11px] text-white/40">{t("setdesigner.generator.reverse.warning","Unseen areas are inferred by AI and may not exactly match the real architecture.")}</p>
           </div>
           <div className="mb-4 border border-white/15 bg-black/20 p-3">
-            <div className="text-xs font-black text-white">HERO — DAY / NIGHT</div>
+            <div className="text-xs font-black text-white" >Hero — {t('setdesigner.generator.day', 'Day')} / {t('setdesigner.generator.night', 'Night')}</div>
             {timeSwitcher('Hero')}
             <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
               <div className="w-full max-w-md"><EditableImage t={t} label="Hero" url={viewUrl('Hero', 0)} box={editBox('Hero')} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} /></div>
               <button type="button" onClick={() => generateNight('Hero', 0)} disabled={Boolean(generating) || !effectiveModel || !heroImage}
                 className="border border-[#23c7be]/40 px-3 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">
-                {generating === 'Hero' ? 'GENERATING...' : viewVariants?.Hero?.night ? 'REGENERATE NIGHT' : 'CREATE NIGHT VERSION'}
+                {generating === 'Hero' ? t("setdesigner.generator.creating","Generating...") : viewVariants?.Hero?.night ? t("setdesigner.generator.night_regenerate","Regenerate night version") : t("setdesigner.generator.night_create","Create night version")}
                 {creditsPerImage ? ` · ${creditsPerImage}` : ''}
               </button>
             </div>
             <button type="button" onClick={() => beginZone('Hero', 0)} disabled={!viewUrl('Hero', 0) || Boolean(generating)}
-              className="mt-3 border border-[#23c7be]/40 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-30">CREATE ZONE SHOT · SELECT AREA ABOVE FIRST</button>
+              className="mt-3 border border-[#23c7be]/40 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-30">{t("setdesigner.generator.zone.create_help","CREATE ZONE SHOT · SELECT AREA ABOVE FIRST")}</button>
             {zoneForm('Hero')}
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
@@ -593,18 +593,18 @@ export default function SetGeneratorPanel({ name, description, images, setImages
                 {timeSwitcher(label)}
                 <div className="mt-2"><EditableImage t={t} label={label} url={viewUrl(label, index)} box={editBox(label)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} /></div>
                 <textarea id={`set-view-adjustment-${label}`} value={viewAdjustments[label] || ''} onChange={event => adjustView(label, event.target.value)} disabled={Boolean(generating)} rows={3} placeholder={t('setdesigner.generator.change_placeholder', 'Describe only the change you want')} className="mt-2 w-full border border-white/15 bg-black/25 px-2 py-2 text-xs text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
-                <p className="mt-1 text-[11px] text-white/45">Drag on the image to select the area to change.</p>
+                <p className="mt-1 text-[11px] text-white/45">{t("setdesigner.generator.area_help","Drag on the image to select the area to change.")}</p>
                 <button type="button" onClick={() => localEdit(label, index)} disabled={!exists || !editRegions[label] || !viewAdjustments[label]?.trim() || Boolean(generating) || !effectiveModel}
-                  className="mt-2 w-full border border-[#23c7be]/50 px-2 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">{busy ? 'APPLYING...' : 'APPLY ADJUSTMENT'}</button>
+                  className="mt-2 w-full border border-[#23c7be]/50 px-2 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">{busy ? t("setdesigner.generator.applying","Applying...") : t("setdesigner.generator.apply","Apply adjustment")}</button>
                 {images?.[index] && <button type="button" onClick={() => generateNight(label, index)} disabled={Boolean(generating) || !effectiveModel}
                   className="mt-2 w-full border border-white/20 px-2 py-2 text-xs font-black text-white/80 disabled:opacity-30">
-                  {busy ? 'GENERATING...' : viewVariants?.[label]?.night ? 'REGENERATE NIGHT VERSION' : 'CREATE NIGHT VERSION'}{creditsPerImage ? ` · ${creditsPerImage}` : ''}
+                  {busy ? t("setdesigner.generator.creating","Generating...") : viewVariants?.[label]?.night ? t("setdesigner.generator.night_regenerate","Regenerate night version") : t("setdesigner.generator.night_create","Create night version")}{creditsPerImage ? ` · ${creditsPerImage}` : ''}
                 </button>}
                 <button type="button" onClick={() => beginZone(label, index)} disabled={!viewUrl(label, index) || Boolean(generating)}
-                  className="mt-2 w-full border border-[#23c7be]/40 px-2 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">CREATE ZONE SHOT · SELECT AREA ABOVE FIRST</button>
+                  className="mt-2 w-full border border-[#23c7be]/40 px-2 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">{t("setdesigner.generator.zone.create_help","CREATE ZONE SHOT · SELECT AREA ABOVE FIRST")}</button>
                 {zoneForm(label)}
                 <button type="button" onClick={() => generateView(index, label, instruction)} disabled={Boolean(generating) || !effectiveModel} className="mt-2 w-full border border-[#23c7be]/35 px-2 py-2 text-xs font-black text-[#8ee9e4] hover:bg-[#23c7be]/10 disabled:opacity-40">
-                  {busy ? 'GENERATING...' : images?.[index] ? `REGENERATE DAY${creditsPerImage ? ` · ${creditsPerImage}` : ''}` : `GENERATE DAY${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
+                  {busy ? t("setdesigner.generator.creating","Generating...") : images?.[index] ? `${t("setdesigner.generator.day_regenerate","Regenerate day")}${creditsPerImage ? ` · ${creditsPerImage}` : ''}` : `${t("setdesigner.generator.day_generate","Generate day")}${creditsPerImage ? ` · ${creditsPerImage}` : ''}`}
                 </button>
               </div>;
             })}
@@ -615,15 +615,15 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       {editPreview && (
         <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/90 p-4">
           <div className="w-full max-w-5xl space-y-4 bg-[#17191d] p-5">
-            <h3 className="text-lg font-black text-white">Review {editPreview.label} adjustment</h3>
+            <h3 className="text-lg font-black text-white">{t('setdesigner.generator.review', 'Review adjustment')} {editPreview.label}</h3>
             <div className="grid gap-3 md:grid-cols-2">
-              <div><p className="mb-2 text-xs text-white/60">Original</p><img src={editPreview.before} alt="Unchanged original view" className="w-full" /></div>
-              <div><p className="mb-2 text-xs text-white/60">Adjusted preview</p><img src={editPreview.after} alt="Locally adjusted view" className="w-full" /></div>
+              <div><p className="mb-2 text-xs text-white/60">{t("setdesigner.generator.original","Original")}</p><img src={editPreview.before} alt="Unchanged original view" className="w-full" /></div>
+              <div><p className="mb-2 text-xs text-white/60">{t("setdesigner.generator.preview","Adjusted preview")}</p><img src={editPreview.after} alt="Locally adjusted view" className="w-full" /></div>
             </div>
-            <p className="text-xs text-white/55">Only the selected area is replaced. The original remains unchanged until you accept.</p>
+            <p className="text-xs text-white/55">{t("setdesigner.generator.review_help","Only the selected area is replaced. The original remains unchanged until you accept.")}</p>
             <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setEditPreview(null)} className="border border-white/20 px-5 py-2 text-sm text-white">DISCARD</button>
-              <button type="button" onClick={acceptEdit} className="bg-[#23c7be] px-5 py-2 text-sm font-black text-black">ACCEPT ADJUSTMENT</button>
+              <button type="button" onClick={() => setEditPreview(null)} className="border border-white/20 px-5 py-2 text-sm text-white">{t("setdesigner.generator.discard","DISCARD")}</button>
+              <button type="button" onClick={acceptEdit} className="bg-[#23c7be] px-5 py-2 text-sm font-black text-black">{t("setdesigner.generator.accept","ACCEPT ADJUSTMENT")}</button>
             </div>
           </div>
         </div>
