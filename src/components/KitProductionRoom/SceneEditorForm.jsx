@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { base44 } from '@/api/base44Client';
 import { ChevronLeft, X, Upload, Users, Film, Mic, MapPin, Zap, Clapperboard, Video, CheckCircle2, Loader2 } from 'lucide-react';
 
@@ -12,6 +13,7 @@ const blockTypeConfig = {
 
 // ── Video Upload Panel ───────────────────────────────────────────────────
 function VideoUploadPanel({ block, kitPage, onPublish, onClose, character }) {
+  const tr = useStudioTranslation();
   const [uploadingFile, setUploadingFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(block.media_url || null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -48,13 +50,13 @@ function VideoUploadPanel({ block, kitPage, onPublish, onClose, character }) {
           </button>
         </div>
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2 border border-white/20 rounded-xl text-white text-xs hover:bg-white/5">Discard</button>
+          <button onClick={onClose} className="flex-1 py-2 border border-white/20 rounded-xl text-white text-xs hover:bg-white/5">{tr("timeline.discard","Discard")}</button>
           <button 
             onClick={() => onPublish(previewUrl, 'video')}
             className="flex-1 py-2 bg-green-600 hover:bg-green-500 rounded-xl text-white text-xs font-medium flex items-center justify-center gap-1"
           >
             <CheckCircle2 size={12} />
-            Use This Video
+            {tr('timeline.use_this_video','Use This Video')}
           </button>
         </div>
       </div>
@@ -76,7 +78,7 @@ function VideoUploadPanel({ block, kitPage, onPublish, onClose, character }) {
         <div className="px-3 py-2 bg-black/30 rounded-xl border-l-2 border-red-500/50">
           <div className="flex items-center gap-1.5 mb-1">
             <Mic size={10} className="text-red-400" />
-            <span className="text-red-400 text-[10px] font-bold uppercase">Dialogue</span>
+            <span className="text-red-400 text-[10px] font-bold uppercase">{tr("timeline.dialogue","Dialogue")}</span>
           </div>
           <p className="text-white/80 text-xs italic">"{block.dialogue}"</p>
         </div>
@@ -86,13 +88,13 @@ function VideoUploadPanel({ block, kitPage, onPublish, onClose, character }) {
         {uploadingFile ? (
           <>
             <Loader2 size={32} className="text-white animate-spin" />
-            <span className="text-white text-sm">Uploading...</span>
+            <span className="text-white text-sm">{tr("timeline.uploading","Uploading...")}</span>
           </>
         ) : (
           <>
             <Video size={32} className="text-white" />
             <div className="text-center">
-              <p className="text-white font-semibold text-sm">Upload Video</p>
+              <p className="text-white font-semibold text-sm">{tr("timeline.upload_video","Upload Video")}</p>
               <p className="text-white text-xs mt-1">MP4, MOV, WebM</p>
             </div>
           </>
@@ -109,13 +111,14 @@ function VideoUploadPanel({ block, kitPage, onPublish, onClose, character }) {
       {errorMsg && <p className="text-red-400 text-xs text-center">{errorMsg}</p>}
 
       <div className="flex gap-2">
-        <button onClick={onClose} className="flex-1 py-2 border border-white/20 rounded-xl text-white text-xs hover:bg-white/5">Cancel</button>
+        <button onClick={onClose} className="flex-1 py-2 border border-white/20 rounded-xl text-white text-xs hover:bg-white/5">{tr("timeline.cancel","Cancel")}</button>
       </div>
     </div>
   );
 }
 
 export default function SceneEditorForm({ block, onSave, onProduce, onCancel, kitPage, dossier }) {
+  const tr = useStudioTranslation();
   const [editingBlock, setEditingBlock] = useState(block);
   const [saving, setSaving] = useState(false);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
@@ -150,17 +153,17 @@ export default function SceneEditorForm({ block, onSave, onProduce, onCancel, ki
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <button onClick={onCancel} className="text-white hover:text-white flex items-center gap-1 text-xs">
-          <ChevronLeft size={15} />Back
+          <ChevronLeft size={15} />{tr("timeline.back","Back")}
         </button>
         <div className={`w-8 h-8 ${config.color} rounded-lg flex items-center justify-center`}>
           <Icon size={14} className="text-black" />
         </div>
-        <p className="text-white text-sm font-bold">{config.label} Scene</p>
+        <p className="text-white text-sm font-bold" >{tr('timeline.' + config.label.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''),config.label)} {tr('timeline.scene','Scene')}</p>
       </div>
 
       {/* Block Type */}
       <div>
-        <label className="text-white text-[10px] uppercase tracking-widest mb-2 block">BLOCK TYPE</label>
+        <label className="text-white text-[10px] uppercase tracking-widest mb-2 block">{tr("timeline.block_type","BLOCK TYPE")}</label>
         <div className="flex flex-wrap gap-2">
           {Object.entries(blockTypeConfig).map(([key, cfg]) => (
             <button
@@ -172,7 +175,7 @@ export default function SceneEditorForm({ block, onSave, onProduce, onCancel, ki
                   : 'border-white/20 text-white hover:border-white/50 hover:text-white'
               }`}
             >
-              {cfg.label}
+              {tr('timeline.'+cfg.label.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''),cfg.label)}
             </button>
           ))}
         </div>
@@ -180,14 +183,14 @@ export default function SceneEditorForm({ block, onSave, onProduce, onCancel, ki
 
       {/* Section Tool */}
       <div className="pt-4 border-t border-white/10">
-        <label className="text-white text-[10px] uppercase tracking-widest mb-2 block">SECTION TOOL</label>
+        <label className="text-white text-[10px] uppercase tracking-widest mb-2 block">{tr("timeline.section_tool","SECTION TOOL")}</label>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setShowUploadPanel(true)}
             className="flex items-center gap-1.5 px-3 py-2 border border-white/60 rounded-xl text-white text-xs font-medium hover:bg-white/10 transition-colors"
           >
             <Upload size={13} />
-            Upload
+            {tr("timeline.upload","Upload")}
           </button>
         </div>
       </div>
@@ -207,22 +210,22 @@ export default function SceneEditorForm({ block, onSave, onProduce, onCancel, ki
 
       {/* Title */}
       <div>
-        <label className="text-white text-[10px] uppercase tracking-widest mb-1 block">TITLE</label>
+        <label className="text-white text-[10px] uppercase tracking-widest mb-1 block">{tr("timeline.title","TITLE")}</label>
         <input
           value={editingBlock.title || ''}
           onChange={(e) => setEditingBlock({...editingBlock, title: e.target.value})}
-          placeholder="Scene title..."
+          placeholder={tr("timeline.scene_title","Scene title...")}
           className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50"
         />
       </div>
 
       {/* Description */}
       <div>
-        <label className="text-white text-[10px] uppercase tracking-widest mb-1 block">DESCRIPTION</label>
+        <label className="text-white text-[10px] uppercase tracking-widest mb-1 block">{tr("timeline.description","DESCRIPTION")}</label>
         <textarea
           value={editingBlock.description || ''}
           onChange={(e) => setEditingBlock({...editingBlock, description: e.target.value})}
-          placeholder="Short description..."
+          placeholder={tr("timeline.short_description","Short description...")}
           rows={2}
           className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50 resize-none"
         />
@@ -237,7 +240,7 @@ export default function SceneEditorForm({ block, onSave, onProduce, onCancel, ki
         <textarea
           value={editingBlock.dialogue || ''}
           onChange={(e) => setEditingBlock({...editingBlock, dialogue: e.target.value})}
-          placeholder="Character lines for this scene..."
+          placeholder={tr("timeline.character_lines_for_this_scene","Character lines for this scene...")}
           rows={2}
           className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50 resize-none"
         />
