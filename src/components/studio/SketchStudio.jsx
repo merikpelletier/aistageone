@@ -247,13 +247,13 @@ export default function SketchStudio({ user }) {
 
   const handleGenerate = async () => {
     if (!selected || !photoUrl) return;
-    if (!styleChosen) { toast.error('Choose a style first'); return; }
-    if (!outputChosen) { toast.error('Choose Image or Video first'); return; }
+    if (!styleChosen) { toast.error(tr('stages.error.choose_style','Choose a style first')); return; }
+    if (!outputChosen) { toast.error(tr('stages.error.choose_output','Choose Image or Video first')); return; }
 
     setIsGenerating(true);
     try {
       if (isImageStage) {
-        if (!activeImagePrompt) throw new Error('This Stage has no image prompt for this style.');
+        if (!activeImagePrompt) throw new Error(tr('stages.error.image_prompt','This Stage has no image prompt for this style.'));
         const res = await base44.functions.invoke('replicateGenerate', {
           method: 'compose_scene',
           prompt: activeImagePrompt,
@@ -262,7 +262,7 @@ export default function SketchStudio({ user }) {
           model_key: effectiveModel || undefined,
         });
         const url = res?.data?.file_url || res?.file_url;
-        if (!url) throw new Error(res?.data?.error || 'Image generation returned no URL');
+        if (!url) throw new Error(res?.data?.error || tr('stages.error.image_url','Image generation returned no URL'));
         setResult(url);
         setIsGenerating(false);
         refreshBalance();
@@ -281,7 +281,7 @@ export default function SketchStudio({ user }) {
           prompt = actions[i] ?? actions[0] ?? '';
         }
       }
-      if (!prompt && !useMorph) throw new Error('This Stage has no video prompt for this style.');
+      if (!prompt && !useMorph) throw new Error(tr('stages.error.video_prompt','This Stage has no video prompt for this style.'));
 
       let genImage = photoUrl;
       if (photoFile) {
@@ -308,17 +308,17 @@ export default function SketchStudio({ user }) {
         model_key: effectiveModel || undefined,
       });
       const job = res?.data?.job || res?.job || null;
-      if (!job?.id) throw new Error(res?.data?.error || 'Failed to start Stage video generation');
+      if (!job?.id) throw new Error(res?.data?.error || tr('stages.error.start_video','Failed to start Stage video generation'));
       setGenerationJob(job);
       setResult(null);
       refreshBalance();
-      toast.success('Video generation started');
+      toast.success(tr('stages.error.video_started','Video generation started'));
     } catch (err) {
       setIsGenerating(false);
       const data = err?.response?.data || {};
-      const msg = data.error || data.message || err?.message || 'Generation failed';
+      const msg = data.error || data.message || err?.message || tr('stages.error.generation','Generation failed');
       if (data.error === 'Insufficient tokens' || /insufficient (tokens|credits)/i.test(String(msg))) {
-        toast.error('Not enough credits — buy more to generate.');
+        toast.error(tr('stages.error.not_enough','Not enough credits — buy more to generate.'));
         setShowBuyTokens(true);
         refreshBalance();
       } else {
@@ -350,7 +350,7 @@ export default function SketchStudio({ user }) {
       URL.revokeObjectURL(objectUrl);
     } catch {
       window.open(result, '_blank', 'noopener,noreferrer');
-      toast.error('Direct download was blocked. The result was opened in a new tab instead.');
+      toast.error(tr('stages.error.download_blocked','Direct download was blocked. The result was opened in a new tab instead.'));
     }
   };
 
@@ -384,7 +384,7 @@ export default function SketchStudio({ user }) {
             {isLoading ? <div className="flex min-h-72 items-center justify-center rounded-[4px] border border-white/10 bg-[#17191d]"><Loader2 size={28} className="animate-spin text-[#23c7be]"/></div> : filtered.length === 0 ? <div className="flex min-h-72 flex-col items-center justify-center rounded-[4px] border border-dashed border-white/15 bg-[#17191d] p-10 text-center"><Sparkles size={36} className="text-[#23c7be]"/><p className="mt-4 text-lg font-black">{tr("stages.empty","No Stages here yet")}</p></div> : <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">{filtered.map((t) => {
               const type = t.output_type || 'video';
               const label = type === 'both' ? tr('output.both','Image + Video') : type === 'image' ? tr('output.image','Image') : tr('output.video','Video');
-              return <motion.button key={t.id} whileTap={{ scale: 0.98 }} onClick={() => openTheme(t)} className="overflow-hidden rounded-[4px] border border-white/10 bg-[#17191d] text-left transition hover:border-[#23c7be]/45 hover:shadow-[inset_2px_0_0_#23c7be]"><div className="relative aspect-[16/10] bg-[#1d2126]">{t.cover_image ? <img src={t.cover_image} alt={t.name} className="h-full w-full object-cover"/> : <div className="flex h-full w-full items-center justify-center">{type === 'image' ? <ImageIcon size={32} className="text-[#23c7be]"/> : <Film size={32} className="text-[#23c7be]"/>}</div>}<span className="absolute left-2 top-2 rounded-[3px] border border-white/10 bg-black/70 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-white/80">{label}</span></div><div className="p-3.5"><p className="truncate text-sm font-black text-white">{t.name}</p>{t.description && <p className="mt-1 line-clamp-2 text-xs text-white/45">{t.description}</p>}</div></motion.button>;
+              return <motion.button key={t.id} whileTap={{ scale: 0.98 }} onClick={() => openTheme(t)} className="overflow-hidden rounded-[4px] border border-white/10 bg-[#17191d] text-left transition hover:border-[#23c7be]/45 hover:shadow-[inset_2px_0_0_#23c7be]"><div className="relative aspect-[16/10] bg-[#1d2126]">{t.cover_image ? <img src={t.cover_image} alt={t.name} className="h-full w-full object-cover"/> : <div className="flex h-full w-full items-center justify-center">{type === 'image' ? <ImageIcon size={32} className="text-[#23c7be]"/> : <Film size={32} className="text-[#23c7be]"/>}</div>}<span className="absolute left-2 top-2 rounded-[3px] border border-white/10 bg-black/70 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-white/80">{label}</span></div><div className="p-3.5"><p className="truncate text-sm font-black text-white">{tr('stages.theme.'+t.name,t.name)}</p>{t.description && <p className="mt-1 line-clamp-2 text-xs text-white/45">{tr('stages.description.'+t.description,t.description)}</p>}</div></motion.button>;
             })}</div>}
           </section>
         </div>
@@ -396,7 +396,7 @@ export default function SketchStudio({ user }) {
     <div className="mx-auto max-w-5xl">
       <button onClick={() => { setSelected(null); setResult(null); setSelectedStyleIndex(null); setSelectedOutput(null); }} className="mb-4 flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white"><ChevronLeft size={20}/> Back to Stages</button>
       <div className="rounded-[4px] border border-white/10 bg-[#17191d] p-5 md:p-6">
-        <div className="mb-5 flex gap-3 border-b border-white/10 pb-4"><img src={photoUrl} alt="you" className="h-16 w-16 flex-shrink-0 rounded-[3px] object-cover"/><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-wide text-[#23c7be]"><User size={12} className="mr-1 inline"/>{configuredOutput === 'both' ? tr('kind.both','Image + Video Stage') : configuredOutput === 'image' ? tr('kind.image','Image Stage') : tr('kind.video','Video Stage')}</p><h3 className="mt-1 text-lg font-black text-white">{selected.name}</h3>{selected.description && <p className="mt-1 text-sm text-white/45">{selected.description}</p>}<p className="mt-2 line-clamp-3 text-xs text-white/65">{selected.scenario}</p></div></div>
+        <div className="mb-5 flex gap-3 border-b border-white/10 pb-4"><img src={photoUrl} alt="you" className="h-16 w-16 flex-shrink-0 rounded-[3px] object-cover"/><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-wide text-[#23c7be]"><User size={12} className="mr-1 inline"/>{configuredOutput === 'both' ? tr('kind.both','Image + Video Stage') : configuredOutput === 'image' ? tr('kind.image','Image Stage') : tr('kind.video','Video Stage')}</p><h3 className="mt-1 text-lg font-black text-white">{tr('stages.theme.'+selected.name,selected.name)}</h3>{selected.description && <p className="mt-1 text-sm text-white/45">{tr('stages.description.'+selected.description,selected.description)}</p>}<p className="mt-2 line-clamp-3 text-xs text-white/65">{selected.scenario}</p></div></div>
 
         {styles.length > 0 && <div className="mb-5"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">1 · {tr("stages.choose_style","Choose a style")}</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{styles.map((style, index) => <button key={`${style.name}-${index}`} onClick={() => chooseStyle(index)} disabled={isGenerating && isVideoStage} className={`overflow-hidden rounded-[3px] border text-left transition disabled:opacity-50 ${selectedStyleIndex === index ? 'border-[#23c7be] bg-[#23c7be]/10 shadow-[inset_2px_0_0_#23c7be]' : 'border-white/10 bg-white/[0.03] hover:border-white/25'}`}>{style.preview_image ? <img src={style.preview_image} alt={style.name} className="aspect-[4/3] w-full object-cover"/> : <div className="flex aspect-[4/3] items-center justify-center bg-[#202328]"><ImageIcon size={24} className="text-[#23c7be]"/></div>}<div className="px-3 py-2 text-xs font-black text-white">{style.name}</div></button>)}</div></div>}
 
