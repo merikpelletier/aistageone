@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo } from 'react';
 import VoicePreviewButton from '@/components/studio/VoicePreviewButton';
 import { VOICE_LANGUAGES, VOICE_NAMES } from '@/lib/voiceCatalog';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
+import { getPlatformLanguage } from '@/lib/translationDictionary';
 
 function inputSchema(model) {
   return model?.schema?.components?.schemas?.Input?.properties || {};
@@ -49,8 +51,11 @@ function modelLanguages(model) {
 }
 
 export default function VoicePicker({ value, onChange, language, onLanguageChange, disabled = false, preview = true, model = null }) {
+  const t = useStudioTranslation();
+  const locale = getPlatformLanguage();
   const voiceInfo = useMemo(() => modelVoiceInfo(model), [model]);
   const languages = useMemo(() => modelLanguages(model), [model]);
+  const languageNames = useMemo(() => new Intl.DisplayNames([locale], { type: 'language' }), [locale]);
   const providerName = model?.model_key?.startsWith('inworld/') ? 'Inworld' : model?.model_key?.startsWith('elevenlabs/') ? 'ElevenLabs' : (model?.name || 'ElevenLabs');
 
   useEffect(() => {
@@ -66,19 +71,19 @@ export default function VoicePicker({ value, onChange, language, onLanguageChang
 
   return <div className="w-full min-w-0 space-y-2" data-voice-catalog={model?.model_key || 'speech-model'}>
     <div className="flex items-center gap-2">
-      <label className="min-w-0 flex-1 text-xs">Voice · {voiceInfo.voices.length} choices
-        <select aria-label="Voice" value={voiceInfo.voices.includes(value) ? value : ''} onChange={event => onChange(event.target.value)} disabled={disabled || !voiceInfo.voices.length} className="mt-1 w-full rounded-xl border border-neutral-500 bg-white px-3 py-2 text-sm font-semibold text-black disabled:opacity-50">
-          {!voiceInfo.voices.length && <option value="">No preset voices available</option>}
+      <label className="min-w-0 flex-1 text-xs">{t('Voice · {count} choices', 'Voice · {count} choices').replace('{count}', String(voiceInfo.voices.length))}
+        <select aria-label={t('Voice', 'Voice')} value={voiceInfo.voices.includes(value) ? value : ''} onChange={event => onChange(event.target.value)} disabled={disabled || !voiceInfo.voices.length} className="mt-1 w-full rounded-xl border border-neutral-500 bg-white px-3 py-2 text-sm font-semibold text-black disabled:opacity-50">
+          {!voiceInfo.voices.length && <option value="">{t('No preset voices available', 'No preset voices available')}</option>}
           {voiceInfo.voices.map(name => <option key={name} value={name}>{name}</option>)}
         </select>
       </label>
       {preview && value && voiceInfo.voices.includes(value) && <VoicePreviewButton voiceId={value} modelKey={model?.model_key} language={language} disabled={disabled} />}
     </div>
-    {onLanguageChange && <label className="block text-xs">Speech language
-      <select aria-label="Speech language" value={language || languages[0]?.[0] || 'en'} onChange={event => onLanguageChange(event.target.value)} disabled={disabled} className="mt-1 w-full rounded-xl border border-neutral-500 bg-white px-3 py-2 text-sm text-black">
-        {languages.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+    {onLanguageChange && <label className="block text-xs">{t('Speech language', 'Speech language')}
+      <select aria-label={t('Speech language', 'Speech language')} value={language || languages[0]?.[0] || 'en'} onChange={event => onLanguageChange(event.target.value)} disabled={disabled} className="mt-1 w-full rounded-xl border border-neutral-500 bg-white px-3 py-2 text-sm text-black">
+        {languages.map(([code, name]) => <option key={code} value={code}>{code === 'auto' ? t('Auto detect', 'Auto detect') : (locale === 'fr' ? languageNames.of(code) || name : name)}</option>)}
       </select>
     </label>}
-    <p className="text-[10px] opacity-70">{providerName} via Replicate · voices and languages follow the selected AI model when available.</p>
+    <p className="text-[10px] opacity-70">{t('{provider} via Replicate · voices and languages follow the selected AI model when available.', '{provider} via Replicate · voices and languages follow the selected AI model when available.').replace('{provider}', providerName)}</p>
   </div>;
 }
