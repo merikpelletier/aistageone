@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Maximize2, Minus, Plus, ZoomIn, X } from 'lucide-react';
 import AuthorProductionWorkspacePage from './AuthorProductionWorkspacePage';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const TOOL_WIDTH = 430;
@@ -283,6 +284,7 @@ const mobileStyles = `
 `;
 
 export default function AuthorProductionWorkspaceZoom(props) {
+  const t = useStudioTranslation();
   const rootRef = useRef(null);
   const [zoom, setZoom] = useState(80);
   const [fitActive, setFitActive] = useState(false);
@@ -455,8 +457,8 @@ export default function AuthorProductionWorkspaceZoom(props) {
     <button
       type="button"
       onClick={() => setZoomOpen((open) => !open)}
-      title="Page zoom"
-      aria-label="Page zoom"
+      title={t('fotoplay.zoom.title', 'Page zoom')}
+      aria-label={t('fotoplay.zoom.title', 'Page zoom')}
       className={`flex h-12 w-12 items-center justify-center border transition ${zoomOpen ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'border-white/10 bg-[#16191d] text-white/70 hover:border-white/30 hover:text-white'}`}
       data-fotoplay-page-zoom-tool="true"
     >
@@ -471,15 +473,15 @@ export default function AuthorProductionWorkspaceZoom(props) {
     {zoomToolButton}
     {zoomOpen && <div className="fixed right-[72px] top-[220px] z-[195] w-[250px] border border-white/15 bg-[#111418] p-4 text-white shadow-2xl" data-fotoplay-zoom-panel="true">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#23c7be]">FotoPlay tool</p><p className="font-black">Page zoom</p></div>
+        <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#23c7be]">{t('fotoplay.page.tool', 'FotoPlay tool')}</p><p className="font-black">{t('fotoplay.zoom.title', 'Page zoom')}</p></div>
         <button type="button" onClick={() => setZoomOpen(false)} className="p-2 text-white/60 hover:text-white"><X size={16} /></button>
       </div>
       <div className="grid grid-cols-[44px_1fr_44px] gap-2">
-        <button type="button" onClick={() => setManualZoom(zoom - 10)} title="Zoom out" className="flex h-10 items-center justify-center border border-white/10 bg-[#1c2025] hover:border-[#23c7be]"><Minus size={16} /></button>
+        <button type="button" onClick={() => setManualZoom(zoom - 10)} title={t('fotoplay.zoom.out', 'Zoom out')} className="flex h-10 items-center justify-center border border-white/10 bg-[#1c2025] hover:border-[#23c7be]"><Minus size={16} /></button>
         <button type="button" onClick={() => setManualZoom(100)} title="100%" className="h-10 border border-white/10 bg-[#1c2025] px-2 text-sm font-black hover:border-[#23c7be]">{zoom}%</button>
-        <button type="button" onClick={() => setManualZoom(zoom + 10)} title="Zoom in" className="flex h-10 items-center justify-center border border-white/10 bg-[#1c2025] hover:border-[#23c7be]"><Plus size={16} /></button>
+        <button type="button" onClick={() => setManualZoom(zoom + 10)} title={t('fotoplay.zoom.in', 'Zoom in')} className="flex h-10 items-center justify-center border border-white/10 bg-[#1c2025] hover:border-[#23c7be]"><Plus size={16} /></button>
       </div>
-      <button type="button" onClick={fitPage} className={`mt-2 flex h-10 w-full items-center justify-center gap-2 border px-3 text-xs font-black ${fitActive ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'border-white/10 bg-[#1c2025] text-white hover:border-[#23c7be]'}`}><Maximize2 size={15} /> Fit page</button>
+      <button type="button" onClick={fitPage} className={`mt-2 flex h-10 w-full items-center justify-center gap-2 border px-3 text-xs font-black ${fitActive ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'border-white/10 bg-[#1c2025] text-white hover:border-[#23c7be]'}`}><Maximize2 size={15} /> {t('fotoplay.zoom.fit', 'Fit page')}</button>
     </div>}
   </div>;
 }
