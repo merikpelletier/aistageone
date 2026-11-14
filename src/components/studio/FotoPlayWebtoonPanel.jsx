@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, ImagePlus, Loader2, Pause, Play, Save, Trash2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const moves = [['gentle', 'Gentle zoom'], ['zoom-in', 'Zoom in'], ['zoom-out', 'Zoom out'], ['static', 'Static']];
 const defaults = { movement: 'gentle', duration: 5, captionPosition: 'bottom', cameraZoom: 1.05, captionSize: 13, frameZooms: {}, captionPositions: {}, supportImages: [] };
@@ -34,6 +35,7 @@ export function webtoonSequence(segment, frameCount, portrait) {
 }
 
 export default function FotoPlayWebtoonPanel({ segment, frameCount = 1, portrait = false, onPersist, playback, onPlaybackChange }) {
+  const t = useStudioTranslation();
   const [settings, setSettings] = useState(() => ({ ...defaults, ...(segment.webtoon || {}) }));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -76,9 +78,9 @@ export default function FotoPlayWebtoonPanel({ segment, frameCount = 1, portrait
     setSaving(true);
     try {
       const result = await onPersist({ webtoon: settings });
-      if (!result) throw new Error('Webtoon settings could not be saved');
-      toast.success('Webtoon settings saved');
-    } catch (e) { toast.error(e.message || 'Save failed'); }
+      if (!result) throw new Error(t('fotoplay.webtoon.save_failed_detail', 'Webtoon settings could not be saved'));
+      toast.success(t('fotoplay.webtoon.saved', 'Webtoon settings saved'));
+    } catch (e) { toast.error(e.message || t('fotoplay.webtoon.save_failed', 'Save failed')); }
     finally { setSaving(false); }
   };
   const addImage = (url) => { if (!url?.trim()) return; edit('supportImages', [...(settings.supportImages || []), { id: crypto.randomUUID(), url: url.trim() }]); setNewImageUrl(''); };
@@ -87,49 +89,49 @@ export default function FotoPlayWebtoonPanel({ segment, frameCount = 1, portrait
     setUploading(true);
     try {
       const response = await base44.integrations.Core.UploadFile({ file });
-      if (!response?.file_url) throw new Error('Upload failed');
+      if (!response?.file_url) throw new Error(t('fotoplay.webtoon.upload_failed', 'Upload failed'));
       addImage(response.file_url);
-    } catch (e) { toast.error(e.message || 'Upload failed'); }
+    } catch (e) { toast.error(e.message || t('fotoplay.webtoon.upload_failed', 'Upload failed')); }
     finally { setUploading(false); }
   };
   return <section className="min-w-0 space-y-4 text-white">
     <div>
-      <h3 className="text-sm font-black text-[#23c7be]">Webtoon · Page camera</h3>
-      <p className="mt-1 text-xs leading-relaxed text-white/65">The original page stays in the center. Play moves the camera from frame to frame. Captions replace bubbles during Webtoon reading.</p>
+      <h3 className="text-sm font-black text-[#23c7be]">{t('fotoplay.webtoon.title', 'Webtoon · Page camera')}</h3>
+      <p className="mt-1 text-xs leading-relaxed text-white/65">{t('fotoplay.webtoon.intro', 'The original page stays in the center. Play moves the camera from frame to frame. Captions replace bubbles during Webtoon reading.')}</p>
     </div>
     <div className="space-y-2">
-      <p className="text-[11px] font-bold uppercase text-white/50">1 · Read the page</p>
-      <button type="button" onClick={() => active ? onPlaybackChange({ playing: false, index, step: current, settings }) : showStep(playback?.step ? index : 0, true)} className="flex w-full items-center justify-center gap-2 rounded bg-[#23c7be] px-3 py-3 text-sm font-black text-black">{active ? <Pause size={17}/> : <Play size={17}/>} {active ? 'Pause reading' : 'Play page'}</button>
+      <p className="text-[11px] font-bold uppercase text-white/50">{t('fotoplay.webtoon.section_read', '1 · Read the page')}</p>
+      <button type="button" onClick={() => active ? onPlaybackChange({ playing: false, index, step: current, settings }) : showStep(playback?.step ? index : 0, true)} className="flex w-full items-center justify-center gap-2 rounded bg-[#23c7be] px-3 py-3 text-sm font-black text-black">{active ? <Pause size={17}/> : <Play size={17}/>} {active ? t('fotoplay.webtoon.pause', 'Pause reading') : t('fotoplay.webtoon.play', 'Play page')}</button>
       <div className="flex items-center justify-between gap-2">
-        <button type="button" className={button} onClick={() => showStep(index - 1)} disabled={index === 0}><ChevronLeft size={15}/> Previous</button>
+        <button type="button" className={button} onClick={() => showStep(index - 1)} disabled={index === 0}><ChevronLeft size={15}/> {t('fotoplay.webtoon.previous', 'Previous')}</button>
         <span className="text-center text-xs text-white/60">{steps.length ? index + 1 : 0} / {steps.length}</span>
-        <button type="button" className={button} onClick={() => showStep(index + 1)} disabled={index >= steps.length - 1}>Next <ChevronRight size={15}/></button>
+        <button type="button" className={button} onClick={() => showStep(index + 1)} disabled={index >= steps.length - 1}>{t('fotoplay.webtoon.next', 'Next')} <ChevronRight size={15}/></button>
       </div>
-      <button type="button" className={button + ' w-full'} onClick={() => onPlaybackChange({ playing: false, index: 0, step: null, settings })}>Show complete page</button>
-      <p className="text-[11px] text-white/50">{frameCount} frames in their original layout · {steps.filter(s => s.caption).length} caption moments</p>
+      <button type="button" className={button + ' w-full'} onClick={() => onPlaybackChange({ playing: false, index: 0, step: null, settings })}>{t('fotoplay.webtoon.show_all', 'Show complete page')}</button>
+      <p className="text-[11px] text-white/50">{frameCount} {t('fotoplay.webtoon.frames', 'frames in their original layout')} · {steps.filter(s => s.caption).length} {t('fotoplay.webtoon.captions_count', 'caption moments')}</p>
     </div>
     <div className="space-y-2 border-t border-white/10 pt-3">
-      <p className="text-[11px] font-bold uppercase text-white/50">2 · Camera and captions</p>
-      <label className="block text-xs text-white/70">Camera movement<select className={field} value={settings.movement} onChange={e => edit('movement', e.target.value)}>{moves.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
-      <p className="text-xs text-white/65">Frame {activeFrame + 1} of {frameCount} · Each frame keeps its own camera zoom.</p>
-      <div className="flex flex-wrap gap-1">{Array.from({ length: frameCount }, (_, frame) => <button key={frame} type="button" onClick={() => showStep(Math.max(0, steps.findIndex(step => step.frameIndex === frame)))} className={`rounded border px-3 py-2 text-xs font-bold ${activeFrame === frame ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'border-white/20 bg-white/5 text-white'}`}>Frame {frame + 1}</button>)}</div>
-      <label className="block text-xs text-white/70">Frame {activeFrame + 1} zoom · {frameZoom.toFixed(2)}×<input aria-label="Zoom for this frame" className="mt-2 w-full accent-[#23c7be]" type="range" min="1" max="3.5" step="0.05" value={Math.max(1, Math.min(3.5, frameZoom))} onChange={e => editFrameZoom(e.target.value)}/></label>
-      <label className="block text-xs text-white/70">Caption size · {settings.captionSize ?? 13}px<input aria-label="Caption size" className="mt-2 w-full accent-[#23c7be]" type="range" min="10" max="24" step="1" value={settings.captionSize ?? 13} onChange={e => edit('captionSize', Number(e.target.value))}/></label>
-      <label className="block text-xs text-white/70">Seconds per caption<input className={field} type="number" min="2" max="30" value={settings.duration} onChange={e => edit('duration', clamp(e.target.value, 2, 30))}/></label>
+      <p className="text-[11px] font-bold uppercase text-white/50">{t('fotoplay.webtoon.section_camera', '2 · Camera and captions')}</p>
+      <label className="block text-xs text-white/70">{t('fotoplay.webtoon.camera_movement', 'Camera movement')}<select className={field} value={settings.movement} onChange={e => edit('movement', e.target.value)}>{moves.map(([id, label]) => <option key={id} value={id}{t('fotoplay.webtoon.' + ({gentle:'move_gentle','zoom-in':'move_in','zoom-out':'move_out',static:'move_static'}[id]), label)}</option>)}</select></label>
+      <p className="text-xs text-white/65">{t('fotoplay.webtoon.frame', 'Frame')} {activeFrame + 1} {t('fotoplay.webtoon.of', 'of')} {frameCount} · {t('fotoplay.webtoon.frame_zoom_help', 'Each frame keeps its own camera zoom.')}</p>
+      <div className="flex flex-wrap gap-1">{Array.from({ length: frameCount }, (_, frame) => <button key={frame} type="button" onClick={() => showStep(Math.max(0, steps.findIndex(step => step.frameIndex === frame)))} className={`rounded border px-3 py-2 text-xs font-bold ${activeFrame === frame ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'border-white/20 bg-white/5 text-white'}`}>{t('fotoplay.webtoon.frame', 'Frame')} {frame + 1}</button>)}</div>
+      <label className="block text-xs text-white/70">{t('fotoplay.webtoon.frame', 'Frame')} {activeFrame + 1} {t('fotoplay.webtoon.zoom', 'zoom')} · {frameZoom.toFixed(2)}×<input aria-label={t('fotoplay.webtoon.zoom_accessible', 'Zoom for this frame')} className="mt-2 w-full accent-[#23c7be]" type="range" min="1" max="3.5" step="0.05" value={Math.max(1, Math.min(3.5, frameZoom))} onChange={e => editFrameZoom(e.target.value)}/></label>
+      <label className="block text-xs text-white/70">{t('fotoplay.webtoon.caption_size', 'Caption size')} · {settings.captionSize ?? 13}px<input aria-label={t('fotoplay.webtoon.caption_size', 'Caption size')} className="mt-2 w-full accent-[#23c7be]" type="range" min="10" max="24" step="1" value={settings.captionSize ?? 13} onChange={e => edit('captionSize', Number(e.target.value))}/></label>
+      <label className="block text-xs text-white/70">{t('fotoplay.webtoon.seconds', 'Seconds per caption')}<input className={field} type="number" min="2" max="30" value={settings.duration} onChange={e => edit('duration', clamp(e.target.value, 2, 30))}/></label>
       <div className="space-y-2 rounded border border-white/10 bg-white/5 p-3">
-        <p className="text-xs font-semibold text-white">Caption {index + 1} · Position anywhere on screen</p>
-        <p className="text-[11px] text-white/50">Keep clear of app controls at the top or bottom. Each caption has an independent position.</p>
-        <label className="block text-xs text-white/70">Horizontal · {Math.round(captionPlacement.x)}%<input aria-label="Caption horizontal position" className="mt-2 w-full accent-[#23c7be]" type="range" min="10" max="90" step="1" value={captionPlacement.x} onChange={e => editCaptionPosition('x', e.target.value)}/></label>
-        <label className="block text-xs text-white/70">Vertical · {Math.round(captionPlacement.y)}%<input aria-label="Caption vertical position" className="mt-2 w-full accent-[#23c7be]" type="range" min="10" max="90" step="1" value={captionPlacement.y} onChange={e => editCaptionPosition('y', e.target.value)}/></label>
-        <button type="button" className={button} onClick={() => edit('captionPositions', { ...(settings.captionPositions || {}), [index]: { x: 50, y: 70 } })}>Reset caption position</button>
+        <p className="text-xs font-semibold text-white">{t('fotoplay.webtoon.caption', 'Caption')} {index + 1} · {t('fotoplay.webtoon.position_anywhere', 'Position anywhere on screen')}</p>
+        <p className="text-[11px] text-white/50">{t('fotoplay.webtoon.caption_help', 'Keep clear of app controls at the top or bottom. Each caption has an independent position.')}</p>
+        <label className="block text-xs text-white/70">{t('fotoplay.webtoon.horizontal', 'Horizontal')} · {Math.round(captionPlacement.x)}%<input aria-label={t('fotoplay.webtoon.caption_horizontal', 'Caption horizontal position')} className="mt-2 w-full accent-[#23c7be]" type="range" min="10" max="90" step="1" value={captionPlacement.x} onChange={e => editCaptionPosition('x', e.target.value)}/></label>
+        <label className="block text-xs text-white/70">{t('fotoplay.webtoon.vertical', 'Vertical')} · {Math.round(captionPlacement.y)}%<input aria-label={t('fotoplay.webtoon.caption_vertical', 'Caption vertical position')} className="mt-2 w-full accent-[#23c7be]" type="range" min="10" max="90" step="1" value={captionPlacement.y} onChange={e => editCaptionPosition('y', e.target.value)}/></label>
+        <button type="button" className={button} onClick={() => edit('captionPositions', { ...(settings.captionPositions || {}), [index]: { x: 50, y: 70 } })}>{t('fotoplay.webtoon.reset_caption', 'Reset caption position')}</button>
       </div>
     </div>
     <div className="space-y-2 border-t border-white/10 pt-3">
-      <p className="text-[11px] font-bold uppercase text-white/50">3 · Additional images (optional)</p>
-      {(settings.supportImages || []).map((image, i) => <div className="flex min-w-0 gap-2" key={image.id || i}><span className="min-w-0 flex-1 truncate rounded bg-white/5 p-2 text-xs">Image {i+1}</span><button type="button" className={button} onClick={() => edit('supportImages', settings.supportImages.filter((_, j) => j !== i))} aria-label="Remove image"><Trash2 size={15}/></button></div>)}
-      <div className="flex min-w-0 flex-wrap gap-2"><input value={newImageUrl} onChange={e => setNewImageUrl(e.target.value)} placeholder="Existing image URL" className={field + ' flex-1'} /><button type="button" className={button} disabled={!newImageUrl.trim()} onClick={() => addImage(newImageUrl)}>Add</button><label className={button + ' cursor-pointer'}><ImagePlus size={15}/>{uploading ? 'Uploading' : 'Upload'}<input type="file" className="hidden" accept="image/*" disabled={uploading} onChange={e => { upload(e.target.files?.[0]); e.target.value = ''; }}/></label></div>
-      <p className="text-[11px] text-white/45">Saved separately from your original page. Additional images are not yet included in the automatic camera path.</p>
+      <p className="text-[11px] font-bold uppercase text-white/50">{t('fotoplay.webtoon.section_images', '3 · Additional images (optional)')}</p>
+      {(settings.supportImages || []).map((image, i) => <div className="flex min-w-0 gap-2" key={image.id || i}><span className="min-w-0 flex-1 truncate rounded bg-white/5 p-2 text-xs">{t('fotoplay.webtoon.image', 'Image')} {i+1}</span><button type="button" className={button} onClick={() => edit('supportImages', settings.supportImages.filter((_, j) => j !== i))} aria-label={t('fotoplay.webtoon.remove_image', 'Remove image')}><Trash2 size={15}/></button></div>)}
+      <div className="flex min-w-0 flex-wrap gap-2"><input value={newImageUrl} onChange={e => setNewImageUrl(e.target.value)} placeholder={t('fotoplay.webtoon.url', 'Existing image URL')} className={field + ' flex-1'} /><button type="button" className={button} disabled={!newImageUrl.trim()} onClick={() => addImage(newImageUrl)}>{t('fotoplay.webtoon.add', 'Add')}</button><label className={button + ' cursor-pointer'}><ImagePlus size={15}/>{uploading ? t('fotoplay.webtoon.uploading','Uploading') : t('fotoplay.webtoon.upload','Upload')}<input type="file" className="hidden" accept="image/*" disabled={uploading} onChange={e => { upload(e.target.files?.[0]); e.target.value = ''; }}/></label></div>
+      <p className="text-[11px] text-white/45">{t('fotoplay.webtoon.images_help', 'Saved separately from your original page. Additional images are not yet included in the automatic camera path.')}</p>
     </div>
-    <button type="button" className="flex w-full items-center justify-center gap-2 rounded bg-white px-3 py-3 text-xs font-black text-black disabled:opacity-50" onClick={save} disabled={saving}>{saving ? <Loader2 size={15} className="animate-spin"/> : <Save size={15}/>} Save Webtoon settings</button>
+    <button type="button" className="flex w-full items-center justify-center gap-2 rounded bg-white px-3 py-3 text-xs font-black text-black disabled:opacity-50" onClick={save} disabled={saving}>{saving ? <Loader2 size={15} className="animate-spin"/> : <Save size={15}/>} {t('fotoplay.webtoon.save', 'Save Webtoon settings')}</button>
   </section>;
 }
