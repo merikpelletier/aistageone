@@ -1666,7 +1666,7 @@ export default function TimelineBlock({ block, character, hasUserVersion, onProd
           {hasUserVersion && (
             <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-green-500/20 border border-green-500/50 rounded-full">
               <CheckCircle2 size={10} className="text-green-400" />
-              <span className="text-green-400 text-[9px] font-bold">Ready</span>
+              <span className="text-green-400 text-[9px] font-bold">{tr('timeline.blockui.ready_plain','Ready')}</span>
             </div>
           )}
         </div>
