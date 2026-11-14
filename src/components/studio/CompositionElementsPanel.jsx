@@ -81,7 +81,7 @@ function AssetsShopPicker({ onSelect, onClose }) {
               {filtered.map(asset => catalogImages(asset).map((url, index) => (
                 <button key={`${asset.id}-${index}`} type="button" onClick={() => onSelect(url, asset.title || '')} className="overflow-hidden border border-white/10 bg-black text-left hover:border-[#23c7be]/60">
                   <div className="aspect-[4/3] bg-[#0b0d0f]"><img src={url} alt={asset.title || t('setdesigner.composition.asset', "Asset")} className="h-full w-full object-contain" /></div>
-                  <div className="p-3"><p className="truncate text-xs font-black text-white">{asset.title || t('setdesigner.composition.untitled', "Untitled asset")}</p><p className="mt-1 text-[10px] text-white/35">{t('setdesigner.composition.image', "Image")} {index + 1} {t('setdesigner.composition.of', "of")} {catalogImages(asset).length</p></div>
+                  <div className="p-3"><p className="truncate text-xs font-black text-white">{asset.title || t('setdesigner.composition.untitled', "Untitled asset")}</p><p className="mt-1 text-[10px] text-white/35">{t('setdesigner.composition.image', "Image")} {index + 1} {t('setdesigner.composition.of', "of")} {catalogImages(asset).length}</p></div>
                 </button>
               )))}
             </div>
