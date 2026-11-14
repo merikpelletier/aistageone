@@ -10,6 +10,7 @@ import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import SetGeneratorPanel from '@/components/studio/SetGeneratorPanel';
 import CompositionElementsPanel from '@/components/studio/CompositionElementsPanel';
 import { toast } from 'sonner';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import SET_DESIGNER_IMAGES from '@/setDesignerImages/all';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
@@ -143,6 +144,7 @@ function ChoiceGroup({ label, options, value, onChange }) {
 }
 
 export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, embedded = false }) {
+  const t = useStudioTranslation();
   const qc = useQueryClient();
   const [projectId, setProjectId] = useState(asset?.id || null);
   const [name, setName] = useState(asset?.name || '');
@@ -567,10 +569,10 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
       <div className="flex min-h-screen flex-col bg-[#202328] text-white">
         <div className="sticky top-0 z-10 flex min-h-16 items-center justify-between border-b border-white/10 bg-[#17191d]/95 px-5 py-3 backdrop-blur">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#23c7be]">Set Designer</p>
-            <h2 className="text-xl font-black text-white">{projectId ? 'Edit your set' : 'Create a set'}</h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#23c7be]">{t('setdesigner.workspace.brand', 'Set Designer')}</p>
+            <h2 className="text-xl font-black text-white">{projectId ? t('setdesigner.editor.edit', 'Edit your set') : t('setdesigner.editor.create', 'Create a set')}</h2>
           </div>
-          <button onClick={onClose} className="border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black text-white hover:bg-white/10">{embedded ? 'MY SETS' : <X size={20} />}</button>
+          <button onClick={onClose} className="border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black text-white hover:bg-white/10">{embedded ? t('setdesigner.editor.my_sets', 'My Sets') : <X size={20} />}</button>
         </div>
 
         <div className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 pb-28 sm:px-5">
@@ -631,7 +633,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                 </div>
                 <div className="hidden border-l border-white/10 pl-5 text-right lg:block">
                   <p className="text-[9px] font-bold uppercase tracking-[0.34em] text-white/25">AI Stage One</p>
-                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.24em] text-white/55">Set Designer</p>
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.24em] text-white/55">{t('setdesigner.workspace.brand', 'Set Designer')}</p>
                   <span className="mt-3 ml-auto block h-px w-10 bg-[#b9a06a]/70" />
                 </div>
               </div>
@@ -810,9 +812,9 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
 
         <div className="sticky bottom-0 z-10 border-t border-white/10 bg-[#17191d]/95 px-5 py-3 backdrop-blur">
           <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
-            <p className="hidden text-xs text-white/35 sm:block">{name.trim() ? `${name.trim()} · ${referenceCount} reference${referenceCount === 1 ? '' : 's'} · ${compositionElements.length} composition element${compositionElements.length === 1 ? '' : 's'}` : 'Name your set to create it.'}</p>
+            <p className="hidden text-xs text-white/35 sm:block">{name.trim() ? `${name.trim()} · ${referenceCount} reference${referenceCount === 1 ? '' : 's'} · ${compositionElements.length} composition element${compositionElements.length === 1 ? '' : 's'}` : t('setdesigner.editor.name_required', 'Name your set to create it.')}</p>
             <button onClick={() => handleSave()} disabled={saving || !name.trim()} className="ml-auto min-w-[210px] border border-[#23c7be] bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:border-white/10 disabled:bg-white/[0.05] disabled:text-white/30">
-              {saving ? 'SAVING...' : 'SAVE SET'}
+              {saving ? t('setdesigner.editor.saving', 'Saving...') : t('setdesigner.editor.save', 'Save Set')}
             </button>
           </div>
         </div>
