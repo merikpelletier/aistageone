@@ -95,15 +95,15 @@ function OloShopSetPicker({ selectedImages = [], onToggle, onSelect, onClose }) 
                   const full = !onSelect && !selected && selectedImages.filter(Boolean).length >= 8;
                   return <button key={`${asset.id}-${url}`} onClick={() => onSelect ? onSelect(url, asset.title) : onToggle(url)} disabled={full} className={`group relative aspect-[4/3] overflow-hidden rounded-[3px] border transition ${selected ? 'border-[#23c7be]' : 'border-transparent hover:border-[#23c7be]/60'} ${full ? 'cursor-not-allowed opacity-35' : ''}`} title={`Use image ${index + 1} of ${asset.title || 'this asset'}`}>
                     <img src={url} alt={`${asset.title || 'Assets Shop asset'} · image ${index + 1}`} className="h-full w-full object-contain transition duration-300 group-hover:scale-105" />
-                    <span className={`absolute bottom-1.5 right-1.5 rounded-[3px] px-2 py-0.5 text-[9px] font-black ${selected ? 'bg-[#23c7be] text-black' : 'bg-black/80 text-white'}`}>{selected ? 'Selected' : `${index + 1}/${gallery.length}`}</span>
+                    <span className={`absolute bottom-1.5 right-1.5 rounded-[3px] px-2 py-0.5 text-[9px] font-black ${selected ? 'bg-[#23c7be] text-black' : 'bg-black/80 text-white'}`}>{selected ? t("setdesigner.editor.shop.selected","Selected") : `${index + 1}/${gallery.length}`}</span>
                   </button>;
                 })}</div>
-                <div className="p-3"><div className="flex items-center justify-between gap-3"><p className="truncate text-sm font-black text-white">{asset.title || 'Untitled'}</p><span className="flex-shrink-0 text-[10px] font-bold text-[#8ee9e4]">{gallery.length} image{gallery.length === 1 ? '' : 's'}</span></div><p className="mt-1 truncate text-[10px] text-white/40">{asset.creator_name || 'Assets Shop'}{selectedCount ? ` · ${selectedCount} selected` : ''}</p></div>
+                <div className="p-3"><div className="flex items-center justify-between gap-3"><p className="truncate text-sm font-black text-white">{asset.title || t("setdesigner.editor.shop.untitled","Untitled")}</p><span className="flex-shrink-0 text-[10px] font-bold text-[#8ee9e4]">{gallery.length} {t("setdesigner.editor.shop.images","images")}</span></div><p className="mt-1 truncate text-[10px] text-white/40">{asset.creator_name || 'Assets Shop'}{selectedCount ? ` · ${selectedCount} ${t("setdesigner.editor.shop.selected_count","selected")}` : ''}</p></div>
               </article>;
             })}</div>
             : <div className="flex min-h-64 items-center justify-center rounded-[4px] border border-dashed border-white/15 text-sm text-white/45">{t("setdesigner.editor.shop.none","No published Assets Shop item matches this search.")}</div>}
         </div>
-        <footer className="flex items-center justify-between border-t border-white/10 p-4"><span className="text-xs font-bold text-white/50">{onSelect ? 'Choose one image to add to the Reference Sheet' : `${selectedImages.filter(Boolean).length}/8 set images selected`}</span><button onClick={onClose} className="rounded-[3px] bg-[#23c7be] px-6 py-3 text-sm font-black text-black">{t("setdesigner.editor.shop.done","Done")}</button></footer>
+        <footer className="flex items-center justify-between border-t border-white/10 p-4"><span className="text-xs font-bold text-white/50">{onSelect ? t("setdesigner.editor.shop.choose","Choose one image to add to the Reference Sheet") : `${selectedImages.filter(Boolean).length}/8 ${t("setdesigner.editor.shop.set_selected","set images selected")}`}</span><button onClick={onClose} className="rounded-[3px] bg-[#23c7be] px-6 py-3 text-sm font-black text-black">{t("setdesigner.editor.shop.done","Done")}</button></footer>
       </motion.div>
     </motion.div>
   );
@@ -713,9 +713,9 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
             ) : <p className="mt-3 text-xs text-white/45">{t("setdesigner.editor.sheet.no_hero","Add a Hero set image to begin selecting objects.")}</p>}
             {!!detectedElements.length && <div className="mt-5 space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold text-white/65">{detectedElements.length} selected regions</p>
+                <p className="text-xs font-semibold text-white/65" >{detectedElements.length} {t("setdesigner.editor.sheet.selected","selected regions")}</p>
                 <button type="button" onClick={() => {
-                  if (window.confirm('Clear the current selections? The saved reference sheet will remain unchanged until you save.')) {
+                  if (window.confirm(t("setdesigner.editor.sheet.confirm_clear","Clear the current selections? The saved reference sheet will remain unchanged until you save."))) {
                     setDetectedElements([]); setReferencesDirty(true);
                   }
                 }} className="border border-white/15 px-3 py-1.5 text-xs text-white/70 hover:text-white">{t("setdesigner.editor.sheet.clear","Clear selections")}</button>
@@ -726,12 +726,12 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                   return <div key={item.id} className={`space-y-2 border border-white/15 p-3 ${item.included === false ? 'opacity-50' : ''}`}>
                     <div className="flex items-center justify-between gap-2">
                       <label className="flex items-center gap-2 text-xs text-white"><input type="checkbox" checked={item.included !== false} onChange={event => { setReferencesDirty(true); setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, included: event.target.checked } : el)); }} /> Include</label>
-                      <button type="button" onClick={() => { setReferencesDirty(true); setDetectedElements(current => current.filter(el => el.id !== item.id)); }} className="text-xs text-red-300/75 hover:text-red-300">Remove</button>
+                      <button type="button" onClick={() => { setReferencesDirty(true); setDetectedElements(current => current.filter(el => el.id !== item.id)); }} className="text-xs text-red-300/75 hover:text-red-300">{t("setdesigner.editor.sheet.remove","Remove")}</button>
                     </div>
-                    <input value={item.name} placeholder={`Name selection ${index+1}`} aria-label={`Selection ${index+1} name`} onChange={event => { setReferencesDirty(true); setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, name: event.target.value } : el)); }} className="w-full border border-white/15 bg-black px-2 py-2 text-xs text-white" />
+                    <input value={item.name} placeholder={`${t("setdesigner.editor.sheet.name_selection","Name selection")} ${index+1}`} aria-label={`${t("setdesigner.editor.sheet.selection","Selection")} ${index+1} name`} onChange={event => { setReferencesDirty(true); setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, name: event.target.value } : el)); }} className="w-full border border-white/15 bg-black px-2 py-2 text-xs text-white" />
                     <p className="text-[11px] text-white/45">{t("setdesigner.editor.sheet.area","Area in original image")}</p>
                     <div className="relative aspect-video overflow-hidden bg-black">
-                      <img src={item.source_image_url || images[0]} alt={item.name || 'Selected area'} className="h-full w-full object-fill" />
+                      <img src={item.source_image_url || images[0]} alt={item.name || t("setdesigner.editor.sheet.area","Area in original image")} className="h-full w-full object-fill" />
                       <div className="pointer-events-none absolute border-2 border-[#23c7be]" style={{left:`${l/10}%`,top:`${t/10}%`,width:`${(r-l)/10}%`,height:`${(b-t)/10}%`}} />
                     </div>
                     <div className="grid grid-cols-4 gap-1">
@@ -743,22 +743,22 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
               <button type="button" onClick={createReferenceSheet} disabled={extracting || saving || Boolean(referenceUploadingId) || !detectedElements.some(item => item.included !== false)}
                 className="inline-flex items-center gap-2 bg-[#23c7be] px-4 py-2.5 text-xs font-bold text-[#071211] disabled:opacity-40">
                 {extracting ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-                Add Selected References
+                {t("setdesigner.editor.sheet.add_selected","Add Selected References")}
               </button>
             </div>}
             {referenceSheet && <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold text-white/70">Saved Reference Sheet · {savedReferenceDraft.length} objects</p>
+                  <p className="text-xs font-semibold text-white/70" >{t("setdesigner.editor.sheet.saved","Saved Reference Sheet")} · {savedReferenceDraft.length} {t("setdesigner.editor.sheet.objects","objects")}</p>
                   <p className="mt-1 text-xs text-white/40">{t("setdesigner.editor.sheet.edit_help","Edit each saved image here, not in the object selection above. Changes are saved only when you confirm.")}</p>
                 </div>
                 <button type="button" onClick={() => saveSavedReferences()} disabled={saving || Boolean(referenceUploadingId) || !referencesDirty}
                   className="bg-[#23c7be] px-3 py-2 text-xs font-bold text-black disabled:opacity-40">
-                  {saving ? 'Saving…' : 'Save Reference Sheet Changes'}
+                  {saving ? t("setdesigner.editor.sheet.saving","Saving…") : t("setdesigner.editor.sheet.save_changes","Save Reference Sheet Changes")}
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
-                <span className="mr-2 text-xs font-semibold text-white/65">Add Reference</span>
+                <span className="mr-2 text-xs font-semibold text-white/65">{t("setdesigner.editor.sheet.add_reference","Add Reference")}</span>
                 <label className="cursor-pointer border border-white/20 px-3 py-2 text-xs text-white hover:bg-white/10">
                   {newReferenceUploading ? 'Uploading…' : 'Upload'}
                   <input type="file" accept="image/*" disabled={newReferenceUploading || saving} className="hidden" onChange={uploadExternalReference} />
@@ -773,15 +773,15 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                 </label>
                 <label className="block text-xs text-white/60">Image model
                   <select value={chosenNewReferenceModel} onChange={event => setNewReferenceModel(event.target.value)} className="mt-2 w-full border border-white/20 bg-black p-3 text-sm text-white">
-                    {newReferenceModelsLoading && <option value="">Loading models…</option>}
+                    {newReferenceModelsLoading && <option value="">{t("setdesigner.editor.sheet.loading_models","Loading models…")}</option>}
                     {!newReferenceModelsLoading && !newReferenceModels.length && <option value="">{t("setdesigner.editor.sheet.no_models","No image model available")}</option>}
                     {newReferenceModels.map(model => <option key={model.model_key} value={model.model_key}>{model.name || model.model_key}</option>)}
                   </select>
                 </label>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-xs text-white/50">Generation cost: {newReferencePriceLoading ? 'Calculating…' : newReferenceQuote?.credits ? `${newReferenceQuote.credits} credits` : 'Unavailable'}</span>
+                  <span className="text-xs text-white/50">{t("setdesigner.editor.sheet.cost","Generation cost")}: {newReferencePriceLoading ? t("setdesigner.editor.sheet.calculating","Calculating…") : newReferenceQuote?.credits ? `${newReferenceQuote.credits} ${t("setdesigner.editor.sheet.credits","credits")}` : t("setdesigner.editor.sheet.unavailable","Unavailable")}</span>
                   <button type="button" onClick={generateExternalReference} disabled={newReferenceGenerating || newReferencePriceLoading || !newReferenceQuote?.credits || !chosenNewReferenceModel || !newReferencePrompt.trim()} className="bg-[#23c7be] px-4 py-2.5 text-xs font-bold text-black disabled:opacity-40">
-                    {newReferenceGenerating ? 'Generating…' : 'Generate Reference'}
+                    {newReferenceGenerating ? t("setdesigner.editor.sheet.generating","Generating…") : t("setdesigner.editor.sheet.generate","Generate Reference")}
                   </button>
                 </div>
               </div>}
@@ -797,7 +797,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                     <button type="button" onClick={() => { setEnhanceReferenceId(item.id); setEnhancePrompt('Improve sharpness, clarity and fine detail without changing the actual object or its design.'); setEnhanceModelKey(''); }}
                       className="border border-[#23c7be]/50 px-2 py-1.5 text-xs text-[#8ee9e4] hover:bg-[#23c7be]/10">{t("setdesigner.editor.sheet.ai_edit","AI Edit / Enhance")}</button>
                     <button type="button" onClick={() => { if (window.confirm(`Remove ${item.name || 'this reference'} from the saved reference sheet?`)) { setSavedReferenceDraft(current => current.filter(el => el.id !== item.id)); setReferencesDirty(true); } }}
-                      className="border border-red-400/20 px-2 py-1.5 text-xs text-red-300 hover:bg-red-500/10">Remove</button>
+                      className="border border-red-400/20 px-2 py-1.5 text-xs text-red-300 hover:bg-red-500/10">{t("setdesigner.editor.sheet.remove","Remove")}</button>
                   </div>
                 </div>)}
               </div>
@@ -837,25 +837,25 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
             <div className="w-full max-w-2xl space-y-4 border border-white/20 bg-[#17191d] p-5 text-white" onClick={event => event.stopPropagation()}>
               <div className="flex items-center justify-between gap-4">
                 <h3 className="text-lg font-bold">{t("setdesigner.editor.enhance.title","Edit saved reference with AI")}</h3>
-                <button type="button" onClick={() => setEnhanceReferenceId(null)} disabled={enhancingImage} aria-label="Close AI editor"><X size={18}/></button>
+                <button type="button" onClick={() => setEnhanceReferenceId(null)} disabled={enhancingImage} aria-label={t("setdesigner.editor.enhance.close","Close AI editor")}><X size={18}/></button>
               </div>
               {enhanceTarget?.image_url && <img src={enhanceTarget.image_url} alt={enhanceTarget.name} className="mx-auto max-h-48 w-full object-contain" />}
-              <label className="block text-xs text-white/60">Editing direction
+              <label className="block text-xs text-white/60" >{t("setdesigner.editor.enhance.direction","Editing direction")}
                 <textarea rows={3} value={enhancePrompt} onChange={event => setEnhancePrompt(event.target.value)} className="mt-2 w-full border border-white/20 bg-black/30 p-3 text-sm text-white"/>
               </label>
-              <label className="block text-xs text-white/60">AI image model
+              <label className="block text-xs text-white/60" >{t("setdesigner.editor.enhance.model","AI image model")}
                 <select value={chosenEnhanceModel} onChange={event => setEnhanceModelKey(event.target.value)}
                   className="mt-2 w-full border border-white/20 bg-black/30 p-3 text-sm text-white">
-                  {enhanceModelsLoading && <option value="">Loading…</option>}
+                  {enhanceModelsLoading && <option value="">{t("setdesigner.editor.enhance.loading","Loading…")}</option>}
                   {!enhanceModelsLoading && !enhanceModels.length && <option value="">{t("setdesigner.editor.sheet.no_models","No image model available")}</option>}
                   {enhanceModels.map(model => <option key={model.model_key} value={model.model_key}>{model.name || model.model_key}</option>)}
                 </select>
               </label>
-              <p className="text-xs text-white/60">Cost: {enhancePriceLoading ? 'Calculating…' : enhanceQuote?.credits ? `${enhanceQuote.credits} credits` : 'Unavailable'}. The original remains saved until you approve the result.</p>
+              <p className="text-xs text-white/60">{t("setdesigner.editor.enhance.cost","Cost")}: {enhancePriceLoading ? t("setdesigner.editor.sheet.calculating","Calculating…") : enhanceQuote?.credits ? `${enhanceQuote.credits} ${t("setdesigner.editor.sheet.credits","credits")}` : t("setdesigner.editor.sheet.unavailable","Unavailable")}. {t("setdesigner.editor.enhance.original","The original remains saved until you approve the result.")}</p>
               <button type="button" onClick={enhanceSavedReference}
                 disabled={enhancingImage || enhancePriceLoading || !enhanceQuote?.credits || !chosenEnhanceModel || !enhancePrompt.trim()}
                 className="w-full bg-[#23c7be] px-4 py-3 text-sm font-bold text-black disabled:opacity-40">
-                {enhancingImage ? 'Generating…' : 'Generate edited image'}
+                {enhancingImage ? t("setdesigner.editor.sheet.generating","Generating…") : t("setdesigner.editor.enhance.generate","Generate edited image")}
               </button>
             </div>
           </div>
