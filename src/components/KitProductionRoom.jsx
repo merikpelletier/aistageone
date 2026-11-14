@@ -18,12 +18,14 @@ import SceneListView from './KitProductionRoom/SceneListView';
 import EpisodesTabBar from './KitProductionRoom/EpisodesTabBar';
 import ProductionHeader from './KitProductionRoom/ProductionHeader';
 import EpisodePreview from './KitProductionRoom/EpisodePreview';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
 const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
 // ── Small image picker grid ───────────────────────────────────────────────────
 function ImagePicker({ label, icon, items, selectedKey, onSelect, emptyText, allowVault, allowUpload, onVaultOpen, onUpload }) {
+  const tr = useStudioTranslation();
   const [lightboxUrl, setLightboxUrl] = useState(null);
 
   return (
@@ -101,6 +103,7 @@ function ImagePicker({ label, icon, items, selectedKey, onSelect, emptyText, all
 
 // ── Compose Scene (the main tool) ─────────────────────────────────────────────
 function ComposeScene({ kitPage, onDone, onCancel, recommendedTools = [], referenceMedia = [] }) {
+  const tr = useStudioTranslation();
   const [selectedCharacterKey, setSelectedCharacterKey] = useState(null);
   const [selectedSetKey, setSelectedSetKey] = useState(null);
   const [selectedCostumeKey, setSelectedCostumeKey] = useState(null);
@@ -217,8 +220,8 @@ function ComposeScene({ kitPage, onDone, onCancel, recommendedTools = [], refere
   if (status === 'generating') return (
     <div className="flex flex-col items-center gap-3 py-12">
       <Loader2 size={32} className="text-red-400 animate-spin" />
-      <p className="text-white text-sm">Generating scene... (1–3 min)</p>
-      <p className="text-white text-xs text-center">AI is composing your scene with the selected references</p>
+      <p className="text-white text-sm">{tr("timeline.generating_scene_1_3_min","Generating scene... (1–3 min)")}</p>
+      <p className="text-white text-xs text-center">{tr("timeline.ai_is_composing_your_scene_with_the_selected_references","AI is composing your scene with the selected references")}</p>
     </div>
   );
 
@@ -236,7 +239,7 @@ function ComposeScene({ kitPage, onDone, onCancel, recommendedTools = [], refere
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Users size={12} className="text-white" />
-            <p className="text-white text-sm font-semibold uppercase tracking-wider">Character</p>
+            <p className="text-white text-sm font-semibold uppercase tracking-wider">{tr("timeline.character","Character")}</p>
           </div>
           <div className="flex gap-2">
             <label className="w-10 h-10 flex items-center justify-center border border-white/60 rounded-xl cursor-pointer hover:bg-white/10 text-white transition-all">
@@ -254,7 +257,7 @@ function ComposeScene({ kitPage, onDone, onCancel, recommendedTools = [], refere
           </div>
         </div>
         {charItems.length === 0 ? (
-          <p className="text-white text-sm italic">No characters in this kit</p>
+          <p className="text-white text-sm italic">{tr("timeline.no_characters_in_this_kit","No characters in this kit")}</p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {charItems.map(({ key, imgUrl, name, placeholder }) => {
@@ -315,15 +318,15 @@ function ComposeScene({ kitPage, onDone, onCancel, recommendedTools = [], refere
         {actorPhoto && (
           <div className="flex items-center gap-3 px-4 py-3 bg-white/10 border border-white/20 rounded-2xl">
             <img src={actorPhoto.previewUrl} alt="" className="w-12 h-12 rounded-xl object-cover" />
-            <span className="text-white text-base flex-1">Your photo selected</span>
+            <span className="text-white text-base flex-1">{tr("timeline.your_photo_selected","Your photo selected")}</span>
             <button onClick={() => setActorPhoto(null)} className="text-white hover:text-white"><X size={18} /></button>
           </div>
         )}
         {showVaultPicker && vaultPickerFor === 'character' && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-white text-sm">Pick from Vault</p>
-              <button onClick={() => { setShowVaultPicker(false); setVaultPickerFor(null); }} className="text-white text-sm">Cancel</button>
+              <p className="text-white text-sm">{tr("timeline.pick_from_vault","Pick from Vault")}</p>
+              <button onClick={() => { setShowVaultPicker(false); setVaultPickerFor(null); }} className="text-white text-sm">{tr("timeline.cancel","Cancel")}</button>
             </div>
             <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
               {vaultAssets.map(a => (
@@ -337,8 +340,8 @@ function ComposeScene({ kitPage, onDone, onCancel, recommendedTools = [], refere
         {vaultPickerFor === 'set' && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-white text-sm">Pick from Vault for Set</p>
-              <button onClick={() => { setShowVaultPicker(false); setVaultPickerFor(null); }} className="text-white text-sm">Cancel</button>
+              <p className="text-white text-sm">{tr("timeline.pick_from_vault_for_set","Pick from Vault for Set")}</p>
+              <button onClick={() => { setShowVaultPicker(false); setVaultPickerFor(null); }} className="text-white text-sm">{tr("timeline.cancel","Cancel")}</button>
             </div>
             <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
               {vaultAssets.map(a => (
@@ -352,8 +355,8 @@ function ComposeScene({ kitPage, onDone, onCancel, recommendedTools = [], refere
         {vaultPickerFor === 'costume' && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-white text-sm">Pick from Vault for Costume</p>
-              <button onClick={() => { setShowVaultPicker(false); setVaultPickerFor(null); }} className="text-white text-sm">Cancel</button>
+              <p className="text-white text-sm">{tr("timeline.pick_from_vault_for_costume","Pick from Vault for Costume")}</p>
+              <button onClick={() => { setShowVaultPicker(false); setVaultPickerFor(null); }} className="text-white text-sm">{tr("timeline.cancel","Cancel")}</button>
             </div>
             <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
               {vaultAssets.map(a => (
@@ -408,7 +411,7 @@ function ComposeScene({ kitPage, onDone, onCancel, recommendedTools = [], refere
       <textarea
         value={scenePrompt}
         onChange={e => setScenePrompt(e.target.value)}
-        placeholder="Describe mood, action, lighting… (optional)"
+        placeholder={tr("timeline.describe_mood_action_lighting_optional","Describe mood, action, lighting… (optional)")}
         rows={2}
         className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/40 resize-none"
       />
@@ -439,6 +442,7 @@ function ComposeScene({ kitPage, onDone, onCancel, recommendedTools = [], refere
 
 // ── Animate / Lip Sync tool ───────────────────────────────────────────────────
 function AnimateTool({ mode, kitPage, onDone, recommendedTools = [], referenceMedia = [] }) {
+  const tr = useStudioTranslation();
   const [animateImage, setAnimateImage] = useState(null);
   const [animateImageUrl, setAnimateImageUrl] = useState(null);
   const [referenceVideoUrl, setReferenceVideoUrl] = useState(null);
@@ -508,7 +512,7 @@ function AnimateTool({ mode, kitPage, onDone, recommendedTools = [], referenceMe
   if (status === 'generating') return (
     <div className="flex flex-col items-center gap-3 py-12">
       <Loader2 size={32} className="text-amber-400 animate-spin" />
-      <p className="text-white text-sm">Generating... (1–4 min)</p>
+      <p className="text-white text-sm">{tr("timeline.generating_1_4_min","Generating... (1–4 min)")}</p>
     </div>
   );
 
@@ -517,7 +521,7 @@ function AnimateTool({ mode, kitPage, onDone, recommendedTools = [], referenceMe
       {/* Image input */}
       {mode !== 'lip_sync' && (
         <div>
-          <p className="text-white text-[11px] uppercase tracking-wider mb-1">Image to animate</p>
+          <p className="text-white text-[11px] uppercase tracking-wider mb-1">{tr("timeline.image_to_animate","Image to animate")}</p>
           {(animateImageUrl || animateImage) ? (
             <div className="relative rounded-xl overflow-hidden">
               <img src={animateImageUrl || animateImage?.previewUrl} alt="" className="w-full max-h-48 object-contain bg-black/30 rounded-xl" />
@@ -526,7 +530,7 @@ function AnimateTool({ mode, kitPage, onDone, recommendedTools = [], referenceMe
           ) : (
             <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-amber-500 rounded-xl cursor-pointer hover:border-amber-400 transition-colors py-8">
               <Upload size={20} className="text-amber-400" />
-              <span className="text-white text-xs">Upload image</span>
+              <span className="text-white text-xs">{tr("timeline.upload_image","Upload image")}</span>
               <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files[0] && setAnimateImage({ file: e.target.files[0], previewUrl: URL.createObjectURL(e.target.files[0]) })} />
             </label>
           )}
@@ -567,15 +571,15 @@ function AnimateTool({ mode, kitPage, onDone, recommendedTools = [], referenceMe
             <div className="space-y-2">
               <audio src={audioUrl} controls className="w-full" />
               <div className="flex gap-2">
-                <button onClick={() => { setAudioBlob(null); setAudioUrl(null); setRecState('idle'); }} className="flex-1 py-2 border border-white/60 rounded-xl text-white text-xs">Re-record</button>
-                <button onClick={submitRec} className="flex-1 py-2 bg-red-600 rounded-xl text-white text-xs">Use This →</button>
+                <button onClick={() => { setAudioBlob(null); setAudioUrl(null); setRecState('idle'); }} className="flex-1 py-2 border border-white/60 rounded-xl text-white text-xs">{tr("timeline.re_record","Re-record")}</button>
+                <button onClick={submitRec} className="flex-1 py-2 bg-red-600 rounded-xl text-white text-xs">{tr("timeline.use_this","Use This →")}</button>
               </div>
             </div>
           ) : recState === 'uploading' ? (
-            <div className="flex items-center gap-2 py-2 text-white text-xs"><Loader2 size={12} className="animate-spin" /> Uploading...</div>
+            <div className="flex items-center gap-2 py-2 text-white text-xs"><Loader2 size={12} className="animate-spin" /> {tr("timeline.uploading","Uploading...")}</div>
           ) : (
             <div className="flex gap-2">
-              <button onClick={startRec} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-red-500 bg-red-600/20 rounded-xl text-white text-xs"><Mic size={13} />Record</button>
+              <button onClick={startRec} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-red-500 bg-red-600/20 rounded-xl text-white text-xs"><Mic size={13} />{tr("timeline.record","Record")}</button>
               <label className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-white/60 rounded-xl cursor-pointer hover:bg-white/10 text-white text-xs"><Upload size={12} />Upload audio<input type="file" accept="audio/*" className="hidden" onChange={async e => { const f = e.target.files[0]; if (!f) return; setStatus('uploading'); const { file_url } = await base44.integrations.Core.UploadFile({ file: f }); setAnimateAudioUrl(file_url); setStatus('idle'); }} /></label>
             </div>
           )}
@@ -584,14 +588,14 @@ function AnimateTool({ mode, kitPage, onDone, recommendedTools = [], referenceMe
 
       {/* Motion prompt */}
       {mode !== 'lip_sync' && (
-        <textarea value={animatePrompt} onChange={e => setAnimatePrompt(e.target.value)} placeholder="Motion prompt (optional)…" rows={2}
+        <textarea value={animatePrompt} onChange={e => setAnimatePrompt(e.target.value)} placeholder={tr("timeline.motion_prompt_optional","Motion prompt (optional)…")} rows={2}
           className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white text-sm placeholder-white/30 focus:outline-none focus:border-amber-400/50 resize-none" />
       )}
 
       {/* Aspect Ratio selector — independent per tool */}
       {mode !== 'lip_sync' && (
         <div>
-          <p className="text-white text-[11px] uppercase tracking-wider mb-1">Aspect Ratio</p>
+          <p className="text-white text-[11px] uppercase tracking-wider mb-1">{tr("timeline.aspect_ratio","Aspect Ratio")}</p>
           <div className="flex gap-1.5 flex-wrap">
             {VIDEO_RATIOS.map(r => (
               <button key={r} onClick={() => setAspectRatio(r)}
@@ -616,6 +620,7 @@ function AnimateTool({ mode, kitPage, onDone, recommendedTools = [], referenceMe
 
 // ── AI Video tool ─────────────────────────────────────────────────────────────
 function AIVideoTool({ onDone, recommendedTools = [], referenceMedia = [] }) {
+  const tr = useStudioTranslation();
   const [prompt, setPrompt] = useState('');
   const [status, setStatus] = useState('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -645,16 +650,16 @@ function AIVideoTool({ onDone, recommendedTools = [], referenceMedia = [] }) {
   if (status === 'generating') return (
     <div className="flex flex-col items-center gap-3 py-12">
       <Loader2 size={32} className="text-amber-400 animate-spin" />
-      <p className="text-white text-sm">Generating video... (2–5 min)</p>
+      <p className="text-white text-sm">{tr("timeline.generating_video_2_5_min","Generating video... (2–5 min)")}</p>
     </div>
   );
 
   return (
     <div className="space-y-3">
-      <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Describe the video… e.g. 'Cinematic drone shot flying over the Nile at sunset'" rows={4}
+      <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={tr("timeline.describe_the_video_e_g_cinematic_drone_shot_flying_over_the_nile_at_sunset","Describe the video… e.g. 'Cinematic drone shot flying over the Nile at sunset'")} rows={4}
         className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-amber-400/50 resize-none" />
       <div>
-        <p className="text-white text-[11px] uppercase tracking-wider mb-1">Aspect Ratio</p>
+        <p className="text-white text-[11px] uppercase tracking-wider mb-1">{tr("timeline.aspect_ratio","Aspect Ratio")}</p>
         <div className="flex gap-1.5 flex-wrap">
           {VIDEO_RATIOS.map(r => (
             <button key={r} onClick={() => setAspectRatio(r)}
@@ -665,7 +670,7 @@ function AIVideoTool({ onDone, recommendedTools = [], referenceMedia = [] }) {
         </div>
       </div>
       {errorMsg && <p className="text-red-400 text-xs">{errorMsg}</p>}
-      <Button onClick={handleRun} disabled={!prompt.trim()} className="w-full bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-40">Generate Video →</Button>
+      <Button onClick={handleRun} disabled={!prompt.trim()} className="w-full bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-40">{tr("timeline.generate_video","Generate Video →")}</Button>
     </div>
   );
 }
@@ -680,6 +685,7 @@ const BLOCK_TYPES = [
 
 // ── Block editor — opens directly on the compose tool ────────────────────────
 function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recommendedTools = [], referenceMedia = [] }) {
+  const tr = useStudioTranslation();
   const [title, setTitle] = useState(block.title || '');
   const [description, setDescription] = useState(block.description || '');
   const [blockType, setBlockType] = useState(block.block_type || null);
@@ -797,7 +803,7 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
       {!mediaUrl && (
         <div className="space-y-3">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-white text-[10px] uppercase tracking-widest font-semibold">Upload Video</p>
+            <p className="text-white text-[10px] uppercase tracking-widest font-semibold">{tr("timeline.upload_video","Upload Video")}</p>
             <div className="flex gap-2">
               <label className="w-10 h-10 flex items-center justify-center border border-white/60 rounded-xl cursor-pointer hover:bg-white/10 text-white transition-all">
                 <Upload size={20} />
@@ -813,14 +819,14 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
             </div>
           </div>
           <div className="space-y-1.5">
-            <p className="text-white text-[10px] uppercase tracking-widest font-semibold">Video Link</p>
+            <p className="text-white text-[10px] uppercase tracking-widest font-semibold">{tr("timeline.video_link","Video Link")}</p>
             <div className="flex gap-2">
               <input
                 type="url"
                 value={videoLink}
                 onChange={e => { setVideoLink(e.target.value); if (videoLinkError) setVideoLinkError(''); }}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); useVideoLink(); } }}
-                placeholder="Paste a video URL…"
+                placeholder={tr("timeline.paste_a_video_url","Paste a video URL…")}
                 className="min-w-0 flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50"
               />
               <button
@@ -837,8 +843,8 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
           {showVaultPicker && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-white text-sm">Pick from Vault</p>
-                <button onClick={() => setShowVaultPicker(false)} className="text-white text-sm">Cancel</button>
+                <p className="text-white text-sm">{tr("timeline.pick_from_vault","Pick from Vault")}</p>
+                <button onClick={() => setShowVaultPicker(false)} className="text-white text-sm">{tr("timeline.cancel","Cancel")}</button>
               </div>
               {/* Unfiled Videos */}
               {vaultAssets.filter(a => !a.folder_id).length > 0 && (
@@ -876,7 +882,7 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
                     {isExpanded && (
                       <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pl-2">
                         {folderVideos.length === 0 ? (
-                          <p className="text-white text-xs col-span-2 text-center py-4">Empty folder</p>
+                          <p className="text-white text-xs col-span-2 text-center py-4">{tr("timeline.empty_folder","Empty folder")}</p>
                         ) : (
                           folderVideos.map(a => (
                             <button key={a.id} onClick={() => { handleMediaDone(a.url, 'video'); setShowVaultPicker(false); }}>
@@ -891,8 +897,8 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
               })}
               {vaultAssets.length === 0 && vaultFolders.length === 0 && (
                 <div className="py-8 text-center">
-                  <p className="text-white text-sm">No videos in vault yet</p>
-                  <p className="text-white text-xs mt-1">Upload a video first or generate one in the Studio</p>
+                  <p className="text-white text-sm">{tr("timeline.no_videos_in_vault_yet","No videos in vault yet")}</p>
+                  <p className="text-white text-xs mt-1">{tr("timeline.upload_a_video_first_or_generate_one_in_the_studio","Upload a video first or generate one in the Studio")}</p>
                 </div>
               )}
             </div>
@@ -901,7 +907,7 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
       )}
       {!mediaUrl && (
         <div className="space-y-2">
-          <p className="text-white text-[10px] uppercase tracking-widest font-semibold">Paste Video Link</p>
+          <p className="text-white text-[10px] uppercase tracking-widest font-semibold">{tr("timeline.paste_video_link","Paste Video Link")}</p>
           <div className="flex gap-2">
             <input
               type="url"
@@ -935,17 +941,17 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
             className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50 resize-none" />
         </div>
         <div>
-          <p className="text-white text-[10px] uppercase tracking-widest mb-1">Dialogue (optional)</p>
+          <p className="text-white text-[10px] uppercase tracking-widest mb-1">{tr("timeline.dialogue_optional","Dialogue (optional)")}</p>
           <textarea value={dialogue} onChange={e => setDialogue(e.target.value)} placeholder="Character lines for this scene…" rows={2}
             className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50 resize-none" />
         </div>
         <div>
-          <p className="text-white text-[10px] uppercase tracking-widest mb-1">Production Instructions (optional)</p>
-          <textarea value={productionInstructions} onChange={e => setProductionInstructions(e.target.value)} placeholder="Step-by-step instructions…" rows={2}
+          <p className="text-white text-[10px] uppercase tracking-widest mb-1">{tr("timeline.production_instructions_optional","Production Instructions (optional)")}</p>
+          <textarea value={productionInstructions} onChange={e => setProductionInstructions(e.target.value)} placeholder={tr("timeline.step_by_step_instructions","Step-by-step instructions…")} rows={2}
             className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50 resize-none" />
         </div>
       </div>
-      <button onClick={save} className="w-full py-2.5 bg-white text-black text-sm font-medium rounded-xl">Save Scene</button>
+      <button onClick={save} className="w-full py-2.5 bg-white text-black text-sm font-medium rounded-xl">{tr("timeline.save_scene","Save Scene")}</button>
     </div>
   );
 
@@ -955,10 +961,10 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
       <div className="flex items-center gap-3 px-4 pt-10 pb-3 border-b border-white/10 flex-shrink-0">
         <button onClick={onClose} className="p-1 text-white hover:text-white"><ChevronLeft size={24} /></button>
         <div className="flex-1 min-w-0">
-          <p className="text-white text-xs uppercase tracking-wider">Block</p>
+          <p className="text-white text-xs uppercase tracking-wider">{tr("timeline.block","Block")}</p>
           <p className="text-white text-sm font-medium truncate">{title || 'New Scene'}</p>
         </div>
-        <button onClick={save} className="px-3 py-1.5 bg-white text-black text-xs rounded-lg font-medium">Save</button>
+        <button onClick={save} className="px-3 py-1.5 bg-white text-black text-xs rounded-lg font-medium">{tr("timeline.save","Save")}</button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{scrollbarColor: 'rgba(255,255,255,0.2) transparent', scrollbarWidth: 'thin'}}>
@@ -987,7 +993,7 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
         {!mediaUrl && (
           <div className="space-y-3">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-white text-[10px] uppercase tracking-widest font-semibold">Upload Video</p>
+              <p className="text-white text-[10px] uppercase tracking-widest font-semibold">{tr("timeline.upload_video","Upload Video")}</p>
               <div className="flex gap-2">
                 <label className="w-10 h-10 flex items-center justify-center border border-white/60 rounded-xl cursor-pointer hover:bg-white/10 text-white transition-all">
                   <Upload size={20} />
@@ -1007,8 +1013,8 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
             {showVaultPicker && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-white text-sm">Pick from Vault</p>
-                  <button onClick={() => setShowVaultPicker(false)} className="text-white text-sm">Cancel</button>
+                  <p className="text-white text-sm">{tr("timeline.pick_from_vault","Pick from Vault")}</p>
+                  <button onClick={() => setShowVaultPicker(false)} className="text-white text-sm">{tr("timeline.cancel","Cancel")}</button>
                 </div>
                 <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                   {vaultAssets.map(a => (
@@ -1033,13 +1039,13 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
               className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50 resize-none" />
           </div>
           <div>
-            <p className="text-white text-[10px] uppercase tracking-widest mb-1">Dialogue (optional)</p>
+            <p className="text-white text-[10px] uppercase tracking-widest mb-1">{tr("timeline.dialogue_optional","Dialogue (optional)")}</p>
             <textarea value={dialogue} onChange={e => setDialogue(e.target.value)} placeholder="Character lines for this scene…" rows={2}
               className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50 resize-none" />
           </div>
           <div>
-            <p className="text-white text-[10px] uppercase tracking-widest mb-1">Production Instructions (optional)</p>
-            <textarea value={productionInstructions} onChange={e => setProductionInstructions(e.target.value)} placeholder="Step-by-step instructions…" rows={2}
+            <p className="text-white text-[10px] uppercase tracking-widest mb-1">{tr("timeline.production_instructions_optional","Production Instructions (optional)")}</p>
+            <textarea value={productionInstructions} onChange={e => setProductionInstructions(e.target.value)} placeholder={tr("timeline.step_by_step_instructions","Step-by-step instructions…")} rows={2}
               className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/50 resize-none" />
           </div>
         </div>
@@ -1050,6 +1056,7 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
 
 // ── Main KitProductionRoom ────────────────────────────────────────────────────
 export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClose, initialBlockId, initialBlockType, producedMedia, onMediaProduced, referenceMedia = [], productionMethodFromUrl, blockDetailsFromStorage, embedded = false }) {
+  const tr = useStudioTranslation();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { setAppContext } = useAppContext();
@@ -1390,9 +1397,9 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
 
   if (!user) return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center gap-4 px-8">
-      <p className="text-white text-sm text-center">Log in to build your production.</p>
-      <button onClick={() => base44.auth.redirectToLogin(window.location.href)} className="px-6 py-3 bg-white text-black text-sm rounded-xl">Log in</button>
-      <button onClick={onClose} className="text-white text-xs underline">Go back</button>
+      <p className="text-white text-sm text-center">{tr("timeline.log_in_to_build_your_production","Log in to build your production.")}</p>
+      <button onClick={() => base44.auth.redirectToLogin(window.location.href)} className="px-6 py-3 bg-white text-black text-sm rounded-xl">{tr("timeline.log_in","Log in")}</button>
+      <button onClick={onClose} className="text-white text-xs underline">{tr("timeline.go_back","Go back")}</button>
     </div>
   );
 
@@ -1462,45 +1469,45 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
         <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-neutral-950 border border-white/15 rounded-2xl p-5 space-y-4">
             <div>
-              <p className="text-white text-lg font-bold">Publish Timeline</p>
-              <p className="text-white/50 text-xs mt-1">Complete the required publication controls before going live.</p>
+              <p className="text-white text-lg font-bold">{tr("timeline.publish_timeline","Publish Timeline")}</p>
+              <p className="text-white/50 text-xs mt-1">{tr("timeline.complete_the_required_publication_controls_before_going_live","Complete the required publication controls before going live.")}</p>
             </div>
 
             <div>
-              <label className="text-white text-xs font-bold block mb-1.5">Content rating</label>
+              <label className="text-white text-xs font-bold block mb-1.5">{tr("timeline.content_rating","Content rating")}</label>
               <select
                 value={publishRating}
                 onChange={(e) => setPublishRating(e.target.value)}
                 className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-3 text-white"
               >
-                <option value="all">All audiences</option>
+                <option value="all">{tr("timeline.all_audiences","All audiences")}</option>
                 <option value="13+">13+</option>
                 <option value="18+">18+</option>
               </select>
             </div>
 
             <div>
-              <label className="text-white text-xs font-bold block mb-1.5">Original language</label>
+              <label className="text-white text-xs font-bold block mb-1.5">{tr("timeline.original_language","Original language")}</label>
               <select
                 value={publishLanguage}
                 onChange={(e) => setPublishLanguage(e.target.value)}
                 className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-3 text-white"
               >
-                <option value="en">English</option>
+                <option value="en">{tr("timeline.english","English")}</option>
                 <option value="fr">Français</option>
                 <option value="es">Español</option>
               </select>
             </div>
 
             <div>
-              <label className="text-white text-xs font-bold block mb-1.5">Audience access</label>
+              <label className="text-white text-xs font-bold block mb-1.5">{tr("timeline.audience_access","Audience access")}</label>
               <select
                 value={publishAccess}
                 onChange={(e) => setPublishAccess(e.target.value)}
                 className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-3 text-white"
               >
-                <option value="public">Public</option>
-                <option value="subscribers">Subscribers only</option>
+                <option value="public">{tr("timeline.public","Public")}</option>
+                <option value="subscribers">{tr("timeline.subscribers_only","Subscribers only")}</option>
               </select>
             </div>
 
@@ -1523,7 +1530,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                 disabled={publishing}
                 className="flex-1 py-3 rounded-xl border border-white/20 text-white text-sm font-bold disabled:opacity-50"
               >
-                Cancel
+                {tr("timeline.cancel","Cancel")}
               </button>
               <button
                 type="button"
@@ -1653,7 +1660,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                   <div className="p-5 space-y-3">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-                      <p className="text-yellow-400 text-[10px] uppercase tracking-[0.25em] font-black">Episode Details</p>
+                      <p className="text-yellow-400 text-[10px] uppercase tracking-[0.25em] font-black">{tr("timeline.episode_details","Episode Details")}</p>
                     </div>
                     {episodePage.episode_title && (
                       <p className="text-white text-2xl font-black leading-tight">{episodePage.episode_title}</p>
@@ -1676,7 +1683,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-white text-base font-black uppercase tracking-wider">Production Timeline</p>
+                      <p className="text-white text-base font-black uppercase tracking-wider">{tr("timeline.production_timeline","Production Timeline")}</p>
                       <p className="text-white text-xs mt-0.5">{masterTimeline.length} blocks to produce</p>
                     </div>
                     <button
@@ -1684,7 +1691,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                       className="flex items-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-500 rounded-2xl text-white font-black transition-colors shadow-lg shadow-red-600/30"
                     >
                       <Play size={16} className="fill-white" />
-                      <span className="text-sm">Play</span>
+                      <span className="text-sm">{tr("timeline.play","Play")}</span>
                     </button>
                   </div>
                   <div className="space-y-3">
@@ -1706,7 +1713,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
               
               {!masterTimeline.length && (
                 <div className="flex flex-col items-center gap-4 py-20">
-                  <p className="text-white text-sm">No episode yet</p>
+                  <p className="text-white text-sm">{tr("timeline.no_episode_yet","No episode yet")}</p>
                   <button onClick={createEpisode} className="px-6 py-3 bg-white text-black text-sm font-semibold rounded-full hover:bg-white/90">+ Create First Episode</button>
                 </div>
               )}
@@ -1719,8 +1726,8 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                 <div className="flex items-center gap-2 px-4 py-3 bg-red-900/20 border border-red-600/30 rounded-xl">
                   <span className="text-xl">🔒</span>
                   <div>
-                    <p className="text-red-400 text-sm font-semibold">Episode Locked</p>
-                    <p className="text-red-400/60 text-xs">No modifications allowed</p>
+                    <p className="text-red-400 text-sm font-semibold">{tr("timeline.episode_locked","Episode Locked")}</p>
+                    <p className="text-red-400/60 text-xs">{tr("timeline.no_modifications_allowed","No modifications allowed")}</p>
                   </div>
                 </div>
               )}
@@ -1789,7 +1796,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
             
             {/* Show hint if no production exists */}
             {!production && !isEpisodeLocked && (
-              <p className="text-white text-xs text-center py-4">Create an episode first to add scenes</p>
+              <p className="text-white text-xs text-center py-4">{tr("timeline.create_an_episode_first_to_add_scenes","Create an episode first to add scenes")}</p>
             )}
 
             {/* Episode Details Banner */}
@@ -1799,7 +1806,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                 <div className="p-5 space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-                    <p className="text-yellow-400 text-[10px] uppercase tracking-[0.25em] font-black">Episode Details</p>
+                    <p className="text-yellow-400 text-[10px] uppercase tracking-[0.25em] font-black">{tr("timeline.episode_details","Episode Details")}</p>
                   </div>
                   {episodePage.episode_title && (
                     <p className="text-white text-2xl font-black leading-tight">{episodePage.episode_title}</p>
@@ -1822,7 +1829,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
               <div className="space-y-3 pb-4 border-b border-white/10">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-white text-base font-black uppercase tracking-wider">Production Timeline</p>
+                    <p className="text-white text-base font-black uppercase tracking-wider">{tr("timeline.production_timeline","Production Timeline")}</p>
                     <p className="text-white text-xs mt-0.5">{masterTimeline.length} blocks to produce</p>
                   </div>
                   <button
@@ -1830,7 +1837,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                     className="flex items-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-500 rounded-2xl text-white font-black transition-colors shadow-lg shadow-red-600/30"
                   >
                     <Play size={16} className="fill-white" />
-                    <span className="text-sm">Play</span>
+                    <span className="text-sm">{tr("timeline.play","Play")}</span>
                   </button>
                 </div>
                 <div className="space-y-3">
@@ -1888,7 +1895,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                   <button onClick={() => setEditingBlock(null)} className="text-white hover:text-white">
                     <ChevronLeft size={20} />
                   </button>
-                  <p className="text-white text-sm font-semibold flex-1">Edit Scene</p>
+                  <p className="text-white text-sm font-semibold flex-1">{tr("timeline.edit_scene","Edit Scene")}</p>
                 </div>
                 <BlockEditor
                   block={editingBlock}
