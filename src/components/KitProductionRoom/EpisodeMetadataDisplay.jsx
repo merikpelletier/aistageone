@@ -1,4 +1,5 @@
 import React from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { useQuery } from '@tanstack/react-query';
 import { Film, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -25,6 +26,7 @@ export default function EpisodeMetadataDisplay({
   onSave,
   saving
 }) {
+  const tr = useStudioTranslation();
   const { data: categories = [] } = useQuery({
     queryKey: ['dossierCategories'],
     queryFn: () => base44.entities.DossierCategory.list('name'),
@@ -43,8 +45,8 @@ export default function EpisodeMetadataDisplay({
     <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4 md:p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#23c7be]">Episode</p>
-          <p className="mt-1 text-sm text-white/40">Publication details and episode identity</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#23c7be]">{tr("timeline.episode","Episode")}</p>
+          <p className="mt-1 text-sm text-white/40">{tr("timeline.publication_details_and_episode_identity","Publication details and episode identity")}</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -55,7 +57,7 @@ export default function EpisodeMetadataDisplay({
               <div className="flex h-full w-full items-center justify-center text-[#23c7be]/70"><Film size={18} /></div>
             )}
             {posterImage && !isLocked && (
-              <button onClick={() => onPosterChange?.(null)} className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-[2px] bg-black/80 text-white/70 hover:text-white" title="Remove poster">
+              <button onClick={() => onPosterChange?.(null)} className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-[2px] bg-black/80 text-white/70 hover:text-white" title={tr("timeline.remove_poster","Remove poster")}>
                 <X size={10} />
               </button>
             )}
@@ -63,18 +65,18 @@ export default function EpisodeMetadataDisplay({
 
           {!isLocked && (
             <label className="cursor-pointer rounded-[3px] border border-white/10 bg-white/[0.04] px-3 py-2 text-[10px] font-black uppercase tracking-wide text-white/65 transition hover:border-[#23c7be]/40 hover:text-white">
-              {posterImage ? 'Change poster' : 'Add poster'}
+              {posterImage ? tr('timeline.change_poster','Change poster') : tr('timeline.add_poster','Add poster')}
               <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadPoster(e.target.files?.[0])} />
             </label>
           )}
 
-          {isLocked && <span className="rounded-[3px] border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-black uppercase tracking-wider text-white/45">Locked</span>}
+          {isLocked && <span className="rounded-[3px] border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-black uppercase tracking-wider text-white/45">{tr("timeline.locked","Locked")}</span>}
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">Category</p>
+          <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">{tr("timeline.category","Category")}</p>
           <select
             value={category || ''}
             onChange={e => onCategoryChange?.(e.target.value)}
@@ -82,13 +84,13 @@ export default function EpisodeMetadataDisplay({
             disabled={isLocked}
             className={`${fieldClass} ${!category ? 'text-white/35' : ''}`}
           >
-            <option value="">Select a category…</option>
+            <option value="">{tr("timeline.select_a_category","Select a category…")}</option>
             {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
           </select>
         </div>
 
         <div>
-          <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">Episode Title</p>
+          <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">{tr("timeline.episode_title","Episode Title")}</p>
           <input
             value={episodeTitle}
             onChange={e => onTitleChange(e.target.value)}
@@ -100,12 +102,12 @@ export default function EpisodeMetadataDisplay({
       </div>
 
       <div className="mt-4">
-        <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">Series Description</p>
+        <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">{tr("timeline.series_description","Series Description")}</p>
         <textarea
           value={seriesDesc || ''}
           onChange={e => onSeriesChange?.(e.target.value)}
           onBlur={onSave}
-          placeholder="Describe the series…"
+          placeholder={tr("timeline.describe_the_series","Describe the series…")}
           rows={3}
           disabled={isLocked}
           className={`${fieldClass} resize-none`}
@@ -113,7 +115,7 @@ export default function EpisodeMetadataDisplay({
       </div>
 
       <div className="mt-4">
-        <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">Episode Description</p>
+        <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">{tr("timeline.episode_description","Episode Description")}</p>
         <textarea
           value={episodeDesc}
           onChange={e => onDescChange(e.target.value)}
@@ -131,7 +133,7 @@ export default function EpisodeMetadataDisplay({
           disabled={isLocked || !episodeTitle?.trim()}
           className="min-w-[110px] rounded-[3px] border border-[#23c7be] bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:border-white/10 disabled:bg-white/[0.05] disabled:text-white/30"
         >
-          {saving ? 'Saving…' : 'Save Episode'}
+          {saving ? tr('timeline.saving','Saving…') : tr('timeline.save_episode','Save Episode')}
         </button>
       </div>
 
@@ -147,7 +149,7 @@ export default function EpisodeMetadataDisplay({
       </div>
 
       <div className="mt-4 border-t border-white/10 pt-4">
-        <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">Publication Date</p>
+        <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/45">{tr("timeline.publication_date","Publication Date")}</p>
         <input
           type="date"
           value={publicationDate || ''}
