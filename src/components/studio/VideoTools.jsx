@@ -480,12 +480,12 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   };
 
   useEffect(() => {
-    loadShootProjects().catch((error) => toast.error(error.message || 'Shoot projects could not load.'));
+    loadShootProjects().catch((error) => toast.error(error.message || t("shoot.message.projects_load","Shoot projects could not load.")));
   }, []);
 
   const createShootProject = async () => {
     const name = newProjectName.trim();
-    if (!name) return toast.error('Enter a project name.');
+    if (!name) return toast.error(t("shoot.message.project_name","Enter a project name."));
     setProjectsBusy(true);
     try {
       const { data: auth, error: authError } = await supabase.auth.getUser();
@@ -498,13 +498,13 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       setShootProjects((items) => [...items, data]);
       setSelectedProjectId(data.id);
       setNewProjectName('');
-      toast.success('Shoot project created.');
-    } catch (error) { toast.error(error.message || 'Project could not be created.'); }
+      toast.success(t("shoot.message.project_created","Shoot project created."));
+    } catch (error) { toast.error(error.message || t("shoot.message.project_create_failed","Project could not be created.")); }
     finally { setProjectsBusy(false); }
   };
 
   const renameShootProject = async (project) => {
-    const name = window.prompt('Rename Shoot project:', project.name)?.trim();
+    const name = window.prompt(t("shoot.message.project_rename_prompt","Rename Shoot project:"), project.name)?.trim();
     if (!name || name === project.name) return;
     setProjectsBusy(true);
     try {
@@ -516,8 +516,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
         .eq('id', project.id).eq('user_id', auth.user.id).select('id,name,created_at').single();
       if (error) throw error;
       setShootProjects((items) => items.map((item) => item.id === data.id ? data : item));
-      toast.success('Project renamed.');
-    } catch (error) { toast.error(error.message || 'Project could not be renamed.'); }
+      toast.success(t("shoot.message.project_renamed","Project renamed."));
+    } catch (error) { toast.error(error.message || t("shoot.message.project_rename_failed","Project could not be renamed.")); }
     finally { setProjectsBusy(false); }
   };
 
@@ -534,8 +534,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       if (error) throw error;
       setSavedScenes((items) => items.map((item) => item.id === data.id ? { ...item, project_id: data.project_id } : item));
       if (sceneId === data.id) setSceneProjectId(data.project_id);
-      toast.success('Scene moved to project.');
-    } catch (error) { toast.error(error.message || 'Scene could not be moved.'); }
+      toast.success(t("shoot.message.scene_moved","Scene moved to project."));
+    } catch (error) { toast.error(error.message || t("shoot.message.scene_move_failed","Scene could not be moved.")); }
     finally { setProjectsBusy(false); }
   };
 
@@ -550,7 +550,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       if (error) throw error;
       setSavedScenes(data || []);
     } catch (error) {
-      toast.error(error?.message || 'My Scenes could not load.');
+      toast.error(error?.message || t("shoot.message.scene_load_failed","My Scenes could not load."));
     } finally {
       setLoadingScenes(false);
     }
@@ -598,9 +598,9 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
         setEditRatio('16:9');
         setStep('setup');
       }
-      toast.success('Scene deleted.');
+      toast.success(t("shoot.message.scene_deleted","Scene deleted."));
     } catch (error) {
-      toast.error(error?.message || 'Scene could not be deleted.');
+      toast.error(error?.message || t("shoot.message.scene_delete_failed","Scene could not be deleted."));
     } finally {
       setDeletingSceneId(null);
     }
@@ -629,7 +629,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setEditPlayhead(0);
     setStep(restoredStatus === 'planned' ? 'plan' : (canShoot ? 'shoot' : 'setup'));
     setShowMyScenes(false);
-    toast.success('Scene restored');
+    toast.success(t("shoot.message.scene_restored","Scene restored"));
   };
 
   const activeShot = shotPlan.find((shot) => shot.id === activeShotId) || shotPlan[0] || null;
@@ -703,7 +703,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
 
   const addShot = async () => {
     if (selectedScenePassage === null || !scenePassages[selectedScenePassage]) {
-      toast.error('Select a Scene passage first.');
+      toast.error(t("shoot.message.passage_needed","Select a Scene passage first."));
       return;
     }
     const source = cleanScenePassage(scenePassages[selectedScenePassage]);
@@ -725,7 +725,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       await saveScene({ shot_plan: nextShots, status: 'planned' });
       toast.success(`${shot.label} added`);
     } catch (error) {
-      toast.error(error.message || 'Shot could not be saved.');
+      toast.error(error.message || t("shoot.message.shot_save_failed","Shot could not be saved."));
     }
   };
 
@@ -741,7 +741,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setStep('plan');
     try {
       await saveScene({ shot_plan: [], status: 'planned' });
-      toast.success('Old shot plan removed. Select a Scene passage to create your first shot.');
+      toast.success(t("shoot.message.plan_cleared","Old shot plan removed. Select a Scene passage to create your first shot."));
     } catch (error) {
       toast.error(error.message);
     }
@@ -758,7 +758,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const { error } = await supabase.from('shoot_scene').update({ shot_plan: nextShots, updated_at: new Date().toISOString() }).eq('id', sceneId);
     if (error) {
       setShotPlan(previousShots);
-      toast.error(error.message || 'Could not update shot cast.');
+      toast.error(error.message || t("shoot.message.cast_update_failed","Could not update shot cast."));
     }
   };
 
@@ -817,7 +817,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const currentScene = sceneId || (await saveScene({ shot_plan: nextShots, status: 'shooting' })).id;
     const { error } = await supabase.from('shoot_scene').update({ shot_plan: nextShots, status: 'shooting', updated_at: new Date().toISOString() }).eq('id', currentScene);
     if (error) throw error;
-    toast.success('Shot video replaced');
+    toast.success(t("shoot.message.shot_replaced","Shot video replaced"));
   };
 
   const applyPickedVideoReference = async (url, name, target = pickerTarget) => {
@@ -828,7 +828,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
         setShowVaultPicker(false);
         setPickerTarget(null);
       } catch (error) {
-        toast.error(error?.message || 'Shot video could not be replaced.');
+        toast.error(error?.message || t("shoot.message.shot_replace_failed","Shot video could not be replaced."));
       }
       return;
     }
@@ -873,7 +873,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       try {
         await saveScene({ status: completed ? 'complete' : (approved ? 'approved' : (shotPlan.length ? 'planned' : 'setup')) });
       } catch (error) {
-        toast.error(error.message || 'Current scene could not be saved.');
+        toast.error(error.message || t("shoot.message.scene_save_failed","Current scene could not be saved."));
         return;
       }
     }
@@ -899,7 +899,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     setEditRatio('16:9');
     setShowMyScenes(false);
     setStep('setup');
-    toast.success(hasCurrentScene ? 'Scene saved. New scene ready.' : 'New scene ready.');
+    toast.success(hasCurrentScene ? t("shoot.message.new_scene_saved","Scene saved. New scene ready.") : t("shoot.message.new_scene_ready","New scene ready."));
   };
 
   const shotReferences = (shot) => {
@@ -952,7 +952,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   const invokeGenerateVideo = async (body, headers = undefined) => {
     const { data, error } = await supabase.functions.invoke('generateVideo', { body, ...(headers ? { headers } : {}) });
     if (error) {
-      let message = error.message || 'Shot generation failed';
+      let message = error.message || t("shoot.message.shot_generation_failed","Shot generation failed");
       try {
         if (error.context && typeof error.context.json === 'function' && !error.context.bodyUsed) {
           const details = await error.context.json();
@@ -970,19 +970,19 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       try { await saveScene({ status: 'approved' }); } catch (error) { return toast.error(error.message); }
     }
     const selectedCast = shotCast(shot);
-    if (shot.framing === 'Over-the-shoulder' && selectedCast.length < 2) return toast.error('Over-the-shoulder requires two selected characters.');
-    if (selectedCast.some((member) => !member.reference_url)) return toast.error('Every selected character needs a reference image.');
-    if (!setReference.url) return toast.error('Add a set reference before generating this shot.');
+    if (shot.framing === 'Over-the-shoulder' && selectedCast.length < 2) return toast.error(t("shoot.message.ots_two","Over-the-shoulder requires two selected characters."));
+    if (selectedCast.some((member) => !member.reference_url)) return toast.error(t("shoot.message.missing_character_ref","Every selected character needs a reference image."));
+    if (!setReference.url) return toast.error(t("shoot.message.missing_set_ref","Add a set reference before generating this shot."));
     const requiredRefs = shotReferences(shot);
     if (requiredRefs.length > modelReferenceMax) return toast.error(`This shot has ${requiredRefs.length} visual references, but the selected video model supports ${modelReferenceMax}. Reduce references or select a model with a higher limit. No identity reference will be discarded.`);
-    if (new Set(requiredRefs.map((ref) => ref.url)).size !== requiredRefs.length) return toast.error('The same image is assigned to multiple roles in this shot. Select distinct reference images so character identities are unambiguous.');
+    if (new Set(requiredRefs.map((ref) => ref.url)).size !== requiredRefs.length) return toast.error(t("shoot.message.duplicated_refs","The same image is assigned to multiple roles in this shot. Select distinct reference images so character identities are unambiguous."));
     if (shotMode(shot) === 'standard') {
       const incompleteBeat = (shot.lines || []).find((line) => (line.dialogue || line.action) && !line.character_id);
-      if (incompleteBeat) return toast.error('Every active dialogue/action line must be assigned to a character.');
+      if (incompleteBeat) return toast.error(t("shoot.message.missing_dialogue_character","Every active dialogue/action line must be assigned to a character."));
     }
-    if (shot.transition_reference_id && !shotReferences(shot).some((ref) => ref.shotReference?.id === shot.transition_reference_id)) return toast.error('The selected transition reference is no longer available.');
+    if (shot.transition_reference_id && !shotReferences(shot).some((ref) => ref.shotReference?.id === shot.transition_reference_id)) return toast.error(t("shoot.message.transition_missing","The selected transition reference is no longer available."));
     const finalPrompt = finalPromptForShot(shot).trim();
-    if (!finalPrompt) return toast.error('Final prompt cannot be empty.');
+    if (!finalPrompt) return toast.error(t("shoot.message.final_prompt_empty","Final prompt cannot be empty."));
     const speechSeconds = estimatedSpeechSeconds(shotDialogueText(shot));
     if (speechSeconds > Number(shot.duration || 0)) return toast.error(`Dialogue needs about ${Math.ceil(speechSeconds)}s but this shot is ${shot.duration}s. Increase duration or shorten the dialogue.`);
     setBusy(true);
@@ -1040,7 +1040,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       if (updateError) throw updateError;
       toast.success(`${shot.label} generated`);
     } catch (error) {
-      toast.error(error?.message || 'Shot generation failed');
+      toast.error(error?.message || t("shoot.message.shot_generation_failed","Shot generation failed"));
     } finally {
       setRegeneratingShotId(null);
       setBusy(false);
@@ -1048,8 +1048,8 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   };
 
   const modifyActiveShotVideo = async (shot) => {
-    if (!shot?.result_url) return toast.error('Generate this shot before modifying it.');
-    if (!modifyVideoPrompt.trim()) return toast.error('Describe what to change.');
+    if (!shot?.result_url) return toast.error(t("shoot.message.need_shot_first","Generate this shot before modifying it."));
+    if (!modifyVideoPrompt.trim()) return toast.error(t("shoot.message.describe_changes","Describe what to change."));
     setBusy(true);
     try {
       const startData = await invokeGenerateVideo({
@@ -1080,21 +1080,21 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       const { error: updateError } = await supabase.from('shoot_scene').update({ shot_plan: nextShots, status: 'shooting', updated_at: new Date().toISOString() }).eq('id', currentScene);
       if (updateError) throw updateError;
       setModifyVideoPrompt('');
-      toast.success('Video modified');
+      toast.success(t("shoot.message.video_modified","Video modified"));
     } catch (error) {
-      toast.error(error?.message || 'Video modification failed');
+      toast.error(error?.message || t("shoot.message.video_modify_failed","Video modification failed"));
     } finally {
       setBusy(false);
     }
   };
 
   const approvePlan = async () => {
-    if (!shotPlan.length) return toast.error('Add at least one shot.');
+    if (!shotPlan.length) return toast.error(t("shoot.message.no_shots","Add at least one shot."));
     setApproved(true);
     setStep('shoot');
     try {
       await saveScene({ shot_plan: shotPlan, status: 'approved' });
-      toast.success('Shot plan approved');
+      toast.success(t("shoot.message.plan_approved","Shot plan approved"));
     } catch (error) {
       toast.error(error.message);
     }
@@ -1142,7 +1142,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
   }, [step]);
 
   const openEditor = () => {
-    if (!shotPlan.some((shot) => shot.result_url)) return toast.error('Generate at least one shot before editing.');
+    if (!shotPlan.some((shot) => shot.result_url)) return toast.error(t("shoot.message.need_generation","Generate at least one shot before editing."));
     const savedTimeline = Array.isArray(shotPlan[0]?.editor_timeline) ? shotPlan[0].editor_timeline.filter((clip) => clip?.url) : [];
     const syncedTimeline = savedTimeline.map((clip) => {
       const sourceShot = shotPlan.find((shot) => shot.id === clip.shot_id);
@@ -1201,7 +1201,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
         if (error) throw error;
       } else await saveScene({ shot_plan: nextShots });
     } catch (error) {
-      toast.error(error.message || 'Timeline could not be saved.');
+      toast.error(error.message || t("shoot.message.timeline_failed","Timeline could not be saved."));
     }
   };
 
@@ -1250,7 +1250,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
     const clip = location?.clip;
     if (!clip) return;
     const at = Number(clip.trim_start || 0) + Number(location.local || 0);
-    if (at <= Number(clip.trim_start) + 0.05 || at >= Number(clip.trim_end) - 0.05) return toast.error('Move the playhead inside the trimmed clip before splitting.');
+    if (at <= Number(clip.trim_start) + 0.05 || at >= Number(clip.trim_end) - 0.05) return toast.error(t("shoot.message.playhead_split","Move the playhead inside the trimmed clip before splitting."));
     const left = { ...clip, id: crypto.randomUUID(), trim_end: at, label: `${clip.label} A` };
     const right = { ...clip, id: crypto.randomUUID(), trim_start: at, label: `${clip.label} B` };
     rememberEdit();
@@ -1272,9 +1272,9 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       if (error) throw error;
       const { data } = supabase.storage.from('media').getPublicUrl(path);
       setEditMusic((value) => ({ ...value, url: data.publicUrl, name: file.name, start: 0, trim_start: 0, trim_end: 0, duration: 0, loop: false, fade_in: 0, fade_out: 0 }));
-      toast.success('Music added');
+      toast.success(t("shoot.message.music_added","Music added"));
     } catch (error) {
-      toast.error(error.message || 'Music upload failed.');
+      toast.error(error.message || t("shoot.message.music_upload_failed","Music upload failed."));
     }
   };
 
@@ -1287,9 +1287,9 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
         const { error } = await supabase.from('shoot_scene').update({ shot_plan: nextShots, updated_at: new Date().toISOString() }).eq('id', sceneId);
         if (error) throw error;
       } else await saveScene({ shot_plan: nextShots });
-      toast.success('Edit saved');
+      toast.success(t("shoot.message.edit_saved","Edit saved"));
     } catch (error) {
-      toast.error(error.message || 'Edit could not be saved.');
+      toast.error(error.message || t("shoot.message.edit_save_failed","Edit could not be saved."));
     }
   };
 
@@ -1437,9 +1437,9 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
-      toast.success('Scene exported');
+      toast.success(t("shoot.message.scene_exported","Scene exported"));
     } catch (error) {
-      toast.error(error.message || 'Export failed. Some video hosts may block browser-side rendering.');
+      toast.error(error.message || t("shoot.message.export_failed","Export failed. Some video hosts may block browser-side rendering."));
     } finally {
       setExportingEdit(false);
     }
@@ -1459,7 +1459,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
       setVaultSaveSource('scene');
       setShowSaveVault(true);
     } catch (error) {
-      toast.error(error.message || 'Could not save the edit to Vault.');
+      toast.error(error.message || t("shoot.message.vault_save_failed","Could not save the edit to Vault."));
     } finally {
       setSavingEditToVault(false);
     }
@@ -1599,7 +1599,7 @@ export default function VideoTools({ onClose, referenceMedia = [], productionMet
         {showVaultPicker && userEmail && <VaultPickerModal userEmail={userEmail} mediaType={pickerTarget?.type === 'music' ? 'audio' : (pickerTarget?.type === 'shot-video-reference' || pickerTarget?.type === 'shot-video-replacement') ? 'video' : 'image'} onSelect={(url, name) => (pickerTarget?.type === 'shot-video-reference' || pickerTarget?.type === 'shot-video-replacement') ? applyPickedVideoReference(url, name || (pickerTarget?.type === 'shot-video-replacement' ? 'Vault replacement video' : 'Vault video reference')) : applyPickedImage(url, name || (pickerTarget?.type === 'music' ? 'Vault music' : 'Vault reference'))} onClose={() => { setShowVaultPicker(false); setPickerTarget(null); }} embedded={embedded} />}
         {showAssetsShop && <AssetsShopPicker embedded={embedded} onSelect={(url, name) => applyPickedImage(url, name)} onClose={() => { setShowAssetsShop(false); setPickerTarget(null); }} />}
         {showAIPilotImages && <ShootAIPilotImagePicker embedded={embedded} target={pickerTarget?.type === 'set' ? 'set' : 'cast'} onSelect={(url, name, characterData) => applyPickedImage(url, name, pickerTarget, characterData)} onClose={() => { setShowAIPilotImages(false); setPickerTarget(null); }} />}
-        {showSaveVault && vaultVideoUrl && userEmail && <SaveToVaultModal userEmail={userEmail} imageUrl={vaultVideoUrl} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={() => { setShowSaveVault(false); toast.success(vaultSaveSource === 'scene' ? 'Scene saved to Vault' : 'Shot saved to Vault'); }} />}
+        {showSaveVault && vaultVideoUrl && userEmail && <SaveToVaultModal userEmail={userEmail} imageUrl={vaultVideoUrl} mediaType="video" onClose={() => setShowSaveVault(false)} onSaved={() => { setShowSaveVault(false); toast.success(vaultSaveSource === 'scene' ? t("shoot.message.scene_saved_vault","Scene saved to Vault") : t("shoot.message.shot_saved_vault","Shot saved to Vault")); }} />}
       </motion.div>
     </div>
   );
