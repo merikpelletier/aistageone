@@ -41,6 +41,7 @@ const writeBriefField = (text, label, value) => {
 };
 
 function OloShopSetPicker({ selectedImages = [], onToggle, onSelect, onClose }) {
+  const t = useStudioTranslation();
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('all');
   const { data: categories = [] } = useQuery({
@@ -72,19 +73,19 @@ function OloShopSetPicker({ selectedImages = [], onToggle, onSelect, onClose }) 
     <motion.div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/90 p-3 backdrop-blur-md" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[4px] border border-white/10 bg-[#17191d] shadow-2xl" initial={{ y: 24, scale: 0.98 }} animate={{ y: 0, scale: 1 }} exit={{ y: 24, scale: 0.98 }} onClick={event => event.stopPropagation()}>
         <header className="flex items-center justify-between border-b border-white/10 p-5">
-          <div><p className="text-xs font-black uppercase tracking-[0.24em] text-[#23c7be]">Assets Shop</p><h3 className="mt-1 text-2xl font-black text-white">Choose set references</h3><p className="mt-1 text-xs text-white/45">Choose images from published Assets Shop items.</p></div>
+          <div><p className="text-xs font-black uppercase tracking-[0.24em] text-[#23c7be]">Assets Shop</p><h3 className="mt-1 text-2xl font-black text-white">{t("setdesigner.editor.shop.title","Choose set references")}</h3><p className="mt-1 text-xs text-white/45">{t("setdesigner.editor.shop.help","Choose images from published Assets Shop items.")}</p></div>
           <button onClick={onClose} className="rounded-[3px] bg-white/10 p-2 text-white hover:bg-white/20"><X size={19} /></button>
         </header>
         <div className="space-y-3 border-b border-white/10 p-4">
-          <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search Assets Shop" className="w-full rounded-[3px] border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-[#23c7be]" />
+          <input value={search} onChange={event => setSearch(event.target.value)} placeholder={t("setdesigner.editor.shop.search","Search Assets Shop")} className="w-full rounded-[3px] border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-[#23c7be]" />
           <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-            <button onClick={() => setCategoryId('all')} className={`flex-shrink-0 rounded-[3px] px-4 py-2 text-xs font-black ${categoryId === 'all' ? 'bg-[#23c7be] text-black' : 'bg-white/[0.06] text-white'}`}>All</button>
-            {categories.map(category => <button key={category.id} onClick={() => setCategoryId(category.id)} className={`flex-shrink-0 rounded-[3px] px-4 py-2 text-xs font-black ${categoryId === category.id ? 'bg-[#23c7be] text-black' : 'bg-white/[0.06] text-white'}`}>{category.label_en || category.label_fr || category.key}</button>)}
+            <button onClick={() => setCategoryId('all')} className={`flex-shrink-0 rounded-[3px] px-4 py-2 text-xs font-black ${categoryId === 'all' ? 'bg-[#23c7be] text-black' : 'bg-white/[0.06] text-white'}`}>{t("setdesigner.editor.shop.all","All")}</button>
+            {categories.map(category => <button key={category.id} onClick={() => setCategoryId(category.id)} className={`flex-shrink-0 rounded-[3px] px-4 py-2 text-xs font-black ${categoryId === category.id ? 'bg-[#23c7be] text-black' : 'bg-white/[0.06] text-white'}`}>{(t('setdesigner.workspace.brand', 'Set Designer') === 'Conception de décors' ? category.label_fr : category.label_en) || category.label_en || category.label_fr || category.key}</button>)}
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {isLoading ? <div className="flex min-h-64 items-center justify-center"><Loader2 className="animate-spin text-[#23c7be]" /></div>
-            : error ? <div className="rounded-[4px] border border-red-400/25 bg-red-400/10 p-8 text-center text-red-100">Assets Shop could not load. Try again.</div>
+            : error ? <div className="rounded-[4px] border border-red-400/25 bg-red-400/10 p-8 text-center text-red-100">{t("setdesigner.editor.shop.error","Assets Shop could not load. Try again.")}</div>
             : filteredAssets.length ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{filteredAssets.map(asset => {
               const gallery = catalogImages(asset);
               const selectedCount = gallery.filter(url => selectedImages.includes(url)).length;
@@ -100,20 +101,21 @@ function OloShopSetPicker({ selectedImages = [], onToggle, onSelect, onClose }) 
                 <div className="p-3"><div className="flex items-center justify-between gap-3"><p className="truncate text-sm font-black text-white">{asset.title || 'Untitled'}</p><span className="flex-shrink-0 text-[10px] font-bold text-[#8ee9e4]">{gallery.length} image{gallery.length === 1 ? '' : 's'}</span></div><p className="mt-1 truncate text-[10px] text-white/40">{asset.creator_name || 'Assets Shop'}{selectedCount ? ` · ${selectedCount} selected` : ''}</p></div>
               </article>;
             })}</div>
-            : <div className="flex min-h-64 items-center justify-center rounded-[4px] border border-dashed border-white/15 text-sm text-white/45">No published Assets Shop item matches this search.</div>}
+            : <div className="flex min-h-64 items-center justify-center rounded-[4px] border border-dashed border-white/15 text-sm text-white/45">{t("setdesigner.editor.shop.none","No published Assets Shop item matches this search.")}</div>}
         </div>
-        <footer className="flex items-center justify-between border-t border-white/10 p-4"><span className="text-xs font-bold text-white/50">{onSelect ? 'Choose one image to add to the Reference Sheet' : `${selectedImages.filter(Boolean).length}/8 set images selected`}</span><button onClick={onClose} className="rounded-[3px] bg-[#23c7be] px-6 py-3 text-sm font-black text-black">Done</button></footer>
+        <footer className="flex items-center justify-between border-t border-white/10 p-4"><span className="text-xs font-bold text-white/50">{onSelect ? 'Choose one image to add to the Reference Sheet' : `${selectedImages.filter(Boolean).length}/8 set images selected`}</span><button onClick={onClose} className="rounded-[3px] bg-[#23c7be] px-6 py-3 text-sm font-black text-black">{t("setdesigner.editor.shop.done","Done")}</button></footer>
       </motion.div>
     </motion.div>
   );
 }
 
 function ChoiceGroup({ label, options, value, onChange }) {
+  const t = useStudioTranslation();
   return (
     <div className="min-w-0">
       <div className="mb-3 flex items-center gap-3">
         <span className="h-5 w-[3px] bg-[#23c7be] shadow-[0_0_12px_rgba(35,199,190,.7)]" />
-        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-white/85">{label}</p>
+        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-white/85">{t('setdesigner.choice.label.' + label, label)}</p>
         <span className="h-px flex-1 bg-gradient-to-r from-white/18 to-transparent" />
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
@@ -132,7 +134,7 @@ function ChoiceGroup({ label, options, value, onChange }) {
               <span className="absolute inset-x-0 top-0 h-px bg-white/10" />
               <span className={`absolute left-0 top-0 h-full w-[2px] transition ${selected ? 'bg-[#23c7be]' : 'bg-transparent group-hover:bg-white/25'}`} />
               <span className="absolute bottom-0 left-0 right-0 flex items-end justify-between gap-2 p-3">
-                <span className={`text-[11px] font-black leading-tight ${selected ? 'text-white' : 'text-white/82'}`}>{option}</span>
+                <span className={`text-[11px] font-black leading-tight ${selected ? 'text-white' : 'text-white/82'}`}>{t('setdesigner.choice.option.' + option, option)}</span>
                 {selected && <span className="h-1.5 w-1.5 bg-[#23c7be] shadow-[0_0_8px_rgba(35,199,190,.9)]" />}
               </span>
             </button>
@@ -588,32 +590,32 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
                     <div className="mb-5 flex h-16 w-16 items-center justify-center border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Camera size={28} /></div>
-                    <h3 className="text-2xl font-black">Build the world before the shot.</h3>
-                    <p className="mt-2 max-w-md text-sm leading-6 text-white/45">Start from scratch or use references, then define the visual language of the location so every shot belongs to the same world.</p>
+                    <h3 className="text-2xl font-black">{t("setdesigner.editor.hero.headline","Build the world before the shot.")}</h3>
+                    <p className="mt-2 max-w-md text-sm leading-6 text-white/45">{t("setdesigner.editor.hero.description","Start from scratch or use references, then define the visual language of the location so every shot belongs to the same world.")}</p>
                   </div>
                 )}
                 <div className="absolute left-4 top-4 border border-white/15 bg-black/70 px-3 py-2 backdrop-blur">
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#23c7be]">Hero Reference</p>
-                  <p className="text-[11px] text-white/65">{heroImage ? 'Image 1 anchors the set' : 'No image selected yet'}</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#23c7be]">{t("setdesigner.editor.hero.label","Hero Reference")}</p>
+                  <p className="text-[11px] text-white/65">{heroImage ? t('setdesigner.editor.hero.anchor', 'Image 1 anchors the set') : t('setdesigner.editor.hero.none', 'No image selected yet')}</p>
                 </div>
                 <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
-                  {referenceCount < 8 && <label className="flex cursor-pointer items-center gap-2 bg-[#23c7be] px-4 py-2.5 text-xs font-black text-[#071211] transition hover:bg-[#35d8cf]"><Upload size={14} />Import reference<input type="file" accept="image/*" className="hidden" onChange={handleUpload} /></label>}
+                  {referenceCount < 8 && <label className="flex cursor-pointer items-center gap-2 bg-[#23c7be] px-4 py-2.5 text-xs font-black text-[#071211] transition hover:bg-[#35d8cf]"><Upload size={14} />{t("setdesigner.editor.hero.import","Import reference")}<input type="file" accept="image/*" className="hidden" onChange={handleUpload} /></label>}
                   {referenceCount < 8 && <button type="button" onClick={() => setVaultPickerOpen(true)} className="flex items-center gap-2 border border-white/15 bg-black/65 px-4 py-2.5 text-xs font-bold text-white backdrop-blur hover:bg-black/80"><Bookmark size={14} />Vault</button>}
-                  <button type="button" onClick={() => setOloPickerOpen(true)} className="flex items-center gap-2 border border-[#23c7be]/35 bg-black/65 px-4 py-2.5 text-xs font-bold text-[#8ee9e4] backdrop-blur hover:bg-black/80"><ShoppingBag size={14} />Assets Shop</button>
+                  <button type="button" onClick={() => setOloPickerOpen(true)} className="flex items-center gap-2 border border-[#23c7be]/35 bg-black/65 px-4 py-2.5 text-xs font-bold text-[#8ee9e4] backdrop-blur hover:bg-black/80"><ShoppingBag size={14} />{t("setdesigner.editor.hero.assets","Assets Shop")}</button>
                 </div>
               </div>
 
               <div className="space-y-5 p-5 sm:p-6">
                 <div>
                   <div className="mb-2 flex items-center gap-2 text-[#23c7be]"><Sparkles size={16} /><span className="text-[10px] font-black uppercase tracking-[0.18em]">Creative brief</span></div>
-                  <input value={name} onChange={e => setName(e.target.value)} placeholder="Name this world — e.g. Glass House at Midnight" className="w-full border-0 border-b border-white/15 bg-transparent px-0 py-3 text-2xl font-black text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
-                  <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the place as a director would: architecture, atmosphere, story, textures, what the camera should feel..." rows={9} className="mt-4 w-full resize-none border border-white/10 bg-black/25 px-4 py-4 text-sm leading-6 text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
+                  <input value={name} onChange={e => setName(e.target.value)} placeholder={t("setdesigner.editor.hero.name_placeholder","Name this world — e.g. Glass House at Midnight")} className="w-full border-0 border-b border-white/15 bg-transparent px-0 py-3 text-2xl font-black text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
+                  <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t("setdesigner.editor.hero.description_placeholder","Describe the place as a director would: architecture, atmosphere, story, textures, what the camera should feel...")} rows={9} className="mt-4 w-full resize-none border border-white/10 bg-black/25 px-4 py-4 text-sm leading-6 text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
                 </div>
                 <div className="border-t border-white/10 pt-4">
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/45">Production tags</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/45">{t("setdesigner.editor.hero.tags","Production tags")}</p>
                   <form onSubmit={addTag} className="mt-2 flex gap-2">
-                    <input value={tagInput} onChange={e => setTagInput(e.target.value)} placeholder="interior, palace, runway..." className="min-w-0 flex-1 border border-white/10 bg-black/25 px-3 py-2.5 text-xs text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
-                    <button type="submit" disabled={!tagInput.trim()} className="border border-white/10 bg-white/[0.05] px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10 disabled:text-white/25">Add</button>
+                    <input value={tagInput} onChange={e => setTagInput(e.target.value)} placeholder={t("setdesigner.editor.hero.tag_placeholder","interior, palace, runway...")} className="min-w-0 flex-1 border border-white/10 bg-black/25 px-3 py-2.5 text-xs text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
+                    <button type="submit" disabled={!tagInput.trim()} className="border border-white/10 bg-white/[0.05] px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10 disabled:text-white/25">{t("setdesigner.editor.hero.add","Add")}</button>
                   </form>
                   {tags.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{tags.map(tag => <span key={tag} className="flex items-center gap-1.5 border border-[#23c7be]/25 bg-[#23c7be]/10 px-2.5 py-1.5 text-[11px] font-medium text-[#8ee9e4]">{tag}<button type="button" onClick={() => removeTag(tag)} className="hover:text-white"><X size={11} /></button></span>)}</div>}
                 </div>
@@ -627,9 +629,9 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
               <div className="relative flex items-start gap-4">
                 <div className="flex h-11 w-11 items-center justify-center border border-[#23c7be]/45 bg-[#071618] text-[#23c7be] shadow-[inset_0_0_24px_rgba(35,199,190,.08)]"><Eye size={19} /></div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#23c7be]">Creative Direction</p>
-                  <h3 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-[28px]">Give the set a visual language</h3>
-                  <p className="mt-1.5 max-w-2xl text-xs leading-5 text-white/42">Every choice is written into the production brief above, so it stays attached to the set.</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#23c7be]">{t("setdesigner.editor.creative.title","Creative Direction")}</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-[28px]">{t("setdesigner.editor.creative.headline","Give the set a visual language")}</h3>
+                  <p className="mt-1.5 max-w-2xl text-xs leading-5 text-white/42">{t("setdesigner.editor.creative.description","Every choice is written into the production brief above, so it stays attached to the set.")}</p>
                 </div>
                 <div className="hidden border-l border-white/10 pl-5 text-right lg:block">
                   <p className="text-[9px] font-bold uppercase tracking-[0.34em] text-white/25">AI Stage One</p>
@@ -647,8 +649,8 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
               <ChoiceGroup label="Image treatment" options={REALISM_OPTIONS} value={readBriefField(description, 'Image treatment')} onChange={value => setCreativeField('Image treatment', value)} />
             </div>
             <div className="grid gap-4 border-t border-white/10 bg-black/10 p-5 sm:grid-cols-2 sm:p-7">
-              <div><label className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-white/45">Architecture / spatial idea</label><input value={readBriefField(description, 'Architecture')} onChange={e => setCreativeField('Architecture', e.target.value)} placeholder="Brutalist atrium, narrow Paris apartment..." className="w-full border border-white/10 bg-[#0c0f11] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" /></div>
-              <div><label className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-white/45">Materials / palette</label><input value={readBriefField(description, 'Materials')} onChange={e => setCreativeField('Materials', e.target.value)} placeholder="smoked glass, wet concrete, teal accents..." className="w-full border border-white/10 bg-[#0c0f11] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" /></div>
+              <div><label className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-white/45">{t("setdesigner.editor.creative.architecture","Architecture / spatial idea")}</label><input value={readBriefField(description, 'Architecture')} onChange={e => setCreativeField('Architecture', e.target.value)} placeholder={t("setdesigner.editor.creative.architecture_example","Brutalist atrium, narrow Paris apartment...")} className="w-full border border-white/10 bg-[#0c0f11] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" /></div>
+              <div><label className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-white/45">{t("setdesigner.editor.creative.materials","Materials / palette")}</label><input value={readBriefField(description, 'Materials')} onChange={e => setCreativeField('Materials', e.target.value)} placeholder={t("setdesigner.editor.creative.materials_example","smoked glass, wet concrete, teal accents...")} className="w-full border border-white/10 bg-[#0c0f11] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" /></div>
             </div>
           </section>
 
@@ -658,31 +660,31 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
 
           <section className="border border-white/10 bg-[#17191d] p-5 sm:p-6">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div><div className="flex items-center gap-2 text-[#23c7be]"><ImagePlus size={16} /><p className="text-[10px] font-black uppercase tracking-[0.18em]">Visual Continuity Board</p></div><h3 className="mt-1 text-lg font-black">Eight references, eight production purposes</h3><p className="mt-1 text-xs text-white/40">The order gives each image a role. The first image is the visual anchor for the whole set.</p></div>
-              <span className="text-xs font-black text-white/45">{referenceCount}/8 REFERENCES</span>
+              <div><div className="flex items-center gap-2 text-[#23c7be]"><ImagePlus size={16} /><p className="text-[10px] font-black uppercase tracking-[0.18em]">{t("setdesigner.editor.board.title","Visual Continuity Board")}</p></div><h3 className="mt-1 text-lg font-black">{t("setdesigner.editor.board.headline","Eight references, eight production purposes")}</h3><p className="mt-1 text-xs text-white/40">{t("setdesigner.editor.board.help","The order gives each image a role. The first image is the visual anchor for the whole set.")}</p></div>
+              <span className="text-xs font-black text-white/45">{referenceCount}/8 {t("setdesigner.editor.board.references","references")}</span>
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               {IMAGE_ROLES.map((role, idx) => {
                 const url = images[idx];
                 return (
                   <div key={role} className={`relative aspect-[4/3] overflow-hidden border ${url ? 'border-white/10 bg-black' : 'border-dashed border-white/15 bg-black/15'}`}>
-                    {url ? <img src={url} alt={`${role} set reference`} className="h-full w-full object-cover" /> : <div className="flex h-full flex-col items-center justify-center px-3 text-center text-white/25"><Camera size={18} /><span className="mt-2 text-[10px] font-bold">Add reference</span></div>}
-                    <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between gap-2 bg-black/80 px-2.5 py-2 backdrop-blur"><span className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-white/75">{idx + 1}. {role}</span>{url && <button type="button" onClick={() => removeImage(idx)} className="flex h-5 w-5 flex-shrink-0 items-center justify-center bg-white/10 text-white hover:bg-white/20"><X size={10} /></button>}</div>
+                    {url ? <img src={url} alt={`${role} set reference`} className="h-full w-full object-cover" /> : <div className="flex h-full flex-col items-center justify-center px-3 text-center text-white/25"><Camera size={18} /><span className="mt-2 text-[10px] font-bold">{t("setdesigner.editor.board.add","Add reference")}</span></div>}
+                    <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between gap-2 bg-black/80 px-2.5 py-2 backdrop-blur"><span className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-white/75">{idx + 1}. {t('setdesigner.choice.option.' + role, role)}</span>{url && <button type="button" onClick={() => removeImage(idx)} className="flex h-5 w-5 flex-shrink-0 items-center justify-center bg-white/10 text-white hover:bg-white/20"><X size={10} /></button>}</div>
                     {url && <div className="absolute left-2 top-2 flex gap-1.5">
-                      <button type="button" onClick={() => downloadImage(url, role)} className="flex h-7 items-center gap-1 border border-white/20 bg-black/80 px-2 text-[9px] font-black text-white backdrop-blur hover:bg-black"><Download size={11} />DOWNLOAD</button>
+                      <button type="button" onClick={() => downloadImage(url, role)} className="flex h-7 items-center gap-1 border border-white/20 bg-black/80 px-2 text-[9px] font-black text-white backdrop-blur hover:bg-black"><Download size={11} />{t("setdesigner.editor.board.download","Download")}</button>
                       <button type="button" onClick={() => setVaultSaveUrl(url)} className="flex h-7 items-center gap-1 border border-[#23c7be]/35 bg-black/80 px-2 text-[9px] font-black text-[#8ee9e4] backdrop-blur hover:bg-black"><Bookmark size={11} />VAULT</button>
                     </div>}
                   </div>
                 );
               })}
             </div>
-            {uploading && <div className="mt-3 flex items-center gap-2 text-xs font-bold text-[#8ee9e4]"><Loader2 size={14} className="animate-spin" />Adding reference...</div>}
+            {uploading && <div className="mt-3 flex items-center gap-2 text-xs font-bold text-[#8ee9e4]"><Loader2 size={14} className="animate-spin" />{t("setdesigner.editor.board.adding","Adding reference...")}</div>}
           </section>
 
           <section className="border border-white/10 bg-[#17191d] p-4 sm:p-5">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#23c7be]">Set Reference Sheet</p>
-            <h3 className="mt-1 text-lg font-bold text-white">Select exactly what you want to extract</h3>
-            <p className="mt-1 text-xs text-white/50">Draw a rectangle on the Hero image to add a new element. Already saved references keep their edited images and can be changed separately below.</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#23c7be]">{t("setdesigner.editor.sheet.title","Set Reference Sheet")}</p>
+            <h3 className="mt-1 text-lg font-bold text-white">{t("setdesigner.editor.sheet.headline","Select exactly what you want to extract")}</h3>
+            <p className="mt-1 text-xs text-white/50">{t("setdesigner.editor.sheet.help","Draw a rectangle on the Hero image to add a new element. Already saved references keep their edited images and can be changed separately below.")}</p>
             {images[0] ? (
               <div className="mt-4">
                 <div
@@ -706,9 +708,9 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                     width:`${(selectionPreview[2]-selectionPreview[0])/10}%`,height:`${(selectionPreview[3]-selectionPreview[1])/10}%`,
                   }} />}
                 </div>
-                <p className="mt-2 text-xs text-white/45">Select only NEW objects here. Existing saved references and their edits are preserved below.</p>
+                <p className="mt-2 text-xs text-white/45">{t("setdesigner.editor.sheet.new_only","Select only NEW objects here. Existing saved references and their edits are preserved below.")}</p>
               </div>
-            ) : <p className="mt-3 text-xs text-white/45">Add a Hero set image to begin selecting objects.</p>}
+            ) : <p className="mt-3 text-xs text-white/45">{t("setdesigner.editor.sheet.no_hero","Add a Hero set image to begin selecting objects.")}</p>}
             {!!detectedElements.length && <div className="mt-5 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold text-white/65">{detectedElements.length} selected regions</p>
@@ -716,7 +718,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                   if (window.confirm('Clear the current selections? The saved reference sheet will remain unchanged until you save.')) {
                     setDetectedElements([]); setReferencesDirty(true);
                   }
-                }} className="border border-white/15 px-3 py-1.5 text-xs text-white/70 hover:text-white">Clear selections</button>
+                }} className="border border-white/15 px-3 py-1.5 text-xs text-white/70 hover:text-white">{t("setdesigner.editor.sheet.clear","Clear selections")}</button>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {detectedElements.map((item, index) => {
@@ -727,7 +729,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                       <button type="button" onClick={() => { setReferencesDirty(true); setDetectedElements(current => current.filter(el => el.id !== item.id)); }} className="text-xs text-red-300/75 hover:text-red-300">Remove</button>
                     </div>
                     <input value={item.name} placeholder={`Name selection ${index+1}`} aria-label={`Selection ${index+1} name`} onChange={event => { setReferencesDirty(true); setDetectedElements(current => current.map(el => el.id === item.id ? { ...el, name: event.target.value } : el)); }} className="w-full border border-white/15 bg-black px-2 py-2 text-xs text-white" />
-                    <p className="text-[11px] text-white/45">Area in original image</p>
+                    <p className="text-[11px] text-white/45">{t("setdesigner.editor.sheet.area","Area in original image")}</p>
                     <div className="relative aspect-video overflow-hidden bg-black">
                       <img src={item.source_image_url || images[0]} alt={item.name || 'Selected area'} className="h-full w-full object-fill" />
                       <div className="pointer-events-none absolute border-2 border-[#23c7be]" style={{left:`${l/10}%`,top:`${t/10}%`,width:`${(r-l)/10}%`,height:`${(b-t)/10}%`}} />
@@ -748,7 +750,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold text-white/70">Saved Reference Sheet · {savedReferenceDraft.length} objects</p>
-                  <p className="mt-1 text-xs text-white/40">Edit each saved image here, not in the object selection above. Changes are saved only when you confirm.</p>
+                  <p className="mt-1 text-xs text-white/40">{t("setdesigner.editor.sheet.edit_help","Edit each saved image here, not in the object selection above. Changes are saved only when you confirm.")}</p>
                 </div>
                 <button type="button" onClick={() => saveSavedReferences()} disabled={saving || Boolean(referenceUploadingId) || !referencesDirty}
                   className="bg-[#23c7be] px-3 py-2 text-xs font-bold text-black disabled:opacity-40">
@@ -761,18 +763,18 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                   {newReferenceUploading ? 'Uploading…' : 'Upload'}
                   <input type="file" accept="image/*" disabled={newReferenceUploading || saving} className="hidden" onChange={uploadExternalReference} />
                 </label>
-                <button type="button" onClick={() => setReferenceSource('vault')} className="border border-white/20 px-3 py-2 text-xs text-white hover:bg-white/10">My Vault</button>
+                <button type="button" onClick={() => setReferenceSource('vault')} className="border border-white/20 px-3 py-2 text-xs text-white hover:bg-white/10">{t("setdesigner.editor.sheet.my_vault","My Vault")}</button>
                 <button type="button" onClick={() => setReferenceSource('shop')} className="border border-white/20 px-3 py-2 text-xs text-white hover:bg-white/10">Assets Shop</button>
-                <button type="button" onClick={() => { setReferenceSource(current => current === 'prompt' ? null : 'prompt'); setNewReferenceModel(''); }} className="border border-[#23c7be]/50 px-3 py-2 text-xs text-[#8ee9e4] hover:bg-[#23c7be]/10">Create with Prompt</button>
+                <button type="button" onClick={() => { setReferenceSource(current => current === 'prompt' ? null : 'prompt'); setNewReferenceModel(''); }} className="border border-[#23c7be]/50 px-3 py-2 text-xs text-[#8ee9e4] hover:bg-[#23c7be]/10">{t("setdesigner.editor.sheet.create_prompt","Create with Prompt")}</button>
               </div>
               {referenceSource === 'prompt' && <div className="space-y-3 border border-white/15 bg-black/25 p-4">
                 <label className="block text-xs text-white/60">Describe the new object or reference
-                  <textarea rows={3} value={newReferencePrompt} onChange={event => setNewReferencePrompt(event.target.value)} placeholder="A white porcelain place setting, silver flatware, neutral grey backdrop…" className="mt-2 w-full border border-white/20 bg-black p-3 text-sm text-white" />
+                  <textarea rows={3} value={newReferencePrompt} onChange={event => setNewReferencePrompt(event.target.value)} placeholder={t("setdesigner.editor.sheet.prompt_example","A white porcelain place setting, silver flatware, neutral grey backdrop…")} className="mt-2 w-full border border-white/20 bg-black p-3 text-sm text-white" />
                 </label>
                 <label className="block text-xs text-white/60">Image model
                   <select value={chosenNewReferenceModel} onChange={event => setNewReferenceModel(event.target.value)} className="mt-2 w-full border border-white/20 bg-black p-3 text-sm text-white">
                     {newReferenceModelsLoading && <option value="">Loading models…</option>}
-                    {!newReferenceModelsLoading && !newReferenceModels.length && <option value="">No image model available</option>}
+                    {!newReferenceModelsLoading && !newReferenceModels.length && <option value="">{t("setdesigner.editor.sheet.no_models","No image model available")}</option>}
                     {newReferenceModels.map(model => <option key={model.model_key} value={model.model_key}>{model.name || model.model_key}</option>)}
                   </select>
                 </label>
@@ -791,22 +793,22 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                   <input aria-label={`Reference ${index+1} name`} value={item.name || ''} onChange={event => updateSavedReference(item.id, { name: event.target.value })}
                     className="w-full border border-white/15 bg-black px-2 py-2 text-xs font-semibold text-white" />
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => setEditingSavedReferenceId(item.id)} className="border border-white/20 px-2 py-1.5 text-xs text-white hover:bg-white/10">Crop / Reframe</button>
+                    <button type="button" onClick={() => setEditingSavedReferenceId(item.id)} className="border border-white/20 px-2 py-1.5 text-xs text-white hover:bg-white/10">{t("setdesigner.editor.sheet.crop","Crop / Reframe")}</button>
                     <button type="button" onClick={() => { setEnhanceReferenceId(item.id); setEnhancePrompt('Improve sharpness, clarity and fine detail without changing the actual object or its design.'); setEnhanceModelKey(''); }}
-                      className="border border-[#23c7be]/50 px-2 py-1.5 text-xs text-[#8ee9e4] hover:bg-[#23c7be]/10">AI Edit / Enhance</button>
+                      className="border border-[#23c7be]/50 px-2 py-1.5 text-xs text-[#8ee9e4] hover:bg-[#23c7be]/10">{t("setdesigner.editor.sheet.ai_edit","AI Edit / Enhance")}</button>
                     <button type="button" onClick={() => { if (window.confirm(`Remove ${item.name || 'this reference'} from the saved reference sheet?`)) { setSavedReferenceDraft(current => current.filter(el => el.id !== item.id)); setReferencesDirty(true); } }}
                       className="border border-red-400/20 px-2 py-1.5 text-xs text-red-300 hover:bg-red-500/10">Remove</button>
                   </div>
                 </div>)}
               </div>
-              {referencesDirty && <p className="text-xs text-[#8ee9e4]">You have unsaved changes to the reference sheet.</p>}
+              {referencesDirty && <p className="text-xs text-[#8ee9e4]">{t("setdesigner.editor.sheet.unsaved","You have unsaved changes to the reference sheet.")}</p>}
             </div>}
           </section>
 
           <section className="grid gap-3 sm:grid-cols-3">
-            <div className="border border-white/10 bg-[#17191d] p-4"><Sun size={17} className="text-[#23c7be]" /><p className="mt-3 text-sm font-black">Day / Night continuity</p><p className="mt-1 text-xs leading-5 text-white/40">Use slots 7 and 8 to keep the same environment readable across lighting changes.</p></div>
-            <div className="border border-white/10 bg-[#17191d] p-4"><Camera size={17} className="text-[#23c7be]" /><p className="mt-3 text-sm font-black">Camera-ready angles</p><p className="mt-1 text-xs leading-5 text-white/40">Wide, reverse and side references make the location useful beyond a single hero image.</p></div>
-            <div className="border border-white/10 bg-[#17191d] p-4"><Moon size={17} className="text-[#23c7be]" /><p className="mt-3 text-sm font-black">One world, many shots</p><p className="mt-1 text-xs leading-5 text-white/40">The brief and reference board stay together as one reusable production set.</p></div>
+            <div className="border border-white/10 bg-[#17191d] p-4"><Sun size={17} className="text-[#23c7be]" /><p className="mt-3 text-sm font-black">{t("setdesigner.editor.info.daynight","Day / Night continuity")}</p><p className="mt-1 text-xs leading-5 text-white/40">{t("setdesigner.editor.info.daynight_help","Use slots 7 and 8 to keep the same environment readable across lighting changes.")}</p></div>
+            <div className="border border-white/10 bg-[#17191d] p-4"><Camera size={17} className="text-[#23c7be]" /><p className="mt-3 text-sm font-black">{t("setdesigner.editor.info.angles","Camera-ready angles")}</p><p className="mt-1 text-xs leading-5 text-white/40">{t("setdesigner.editor.info.angles_help","Wide, reverse and side references make the location useful beyond a single hero image.")}</p></div>
+            <div className="border border-white/10 bg-[#17191d] p-4"><Moon size={17} className="text-[#23c7be]" /><p className="mt-3 text-sm font-black">{t("setdesigner.editor.info.world","One world, many shots")}</p><p className="mt-1 text-xs leading-5 text-white/40">{t("setdesigner.editor.info.world_help","The brief and reference board stay together as one reusable production set.")}</p></div>
           </section>
         </div>
 
@@ -834,7 +836,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
           <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/85 p-4" onClick={() => !enhancingImage && setEnhanceReferenceId(null)}>
             <div className="w-full max-w-2xl space-y-4 border border-white/20 bg-[#17191d] p-5 text-white" onClick={event => event.stopPropagation()}>
               <div className="flex items-center justify-between gap-4">
-                <h3 className="text-lg font-bold">Edit saved reference with AI</h3>
+                <h3 className="text-lg font-bold">{t("setdesigner.editor.enhance.title","Edit saved reference with AI")}</h3>
                 <button type="button" onClick={() => setEnhanceReferenceId(null)} disabled={enhancingImage} aria-label="Close AI editor"><X size={18}/></button>
               </div>
               {enhanceTarget?.image_url && <img src={enhanceTarget.image_url} alt={enhanceTarget.name} className="mx-auto max-h-48 w-full object-contain" />}
@@ -845,7 +847,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                 <select value={chosenEnhanceModel} onChange={event => setEnhanceModelKey(event.target.value)}
                   className="mt-2 w-full border border-white/20 bg-black/30 p-3 text-sm text-white">
                   {enhanceModelsLoading && <option value="">Loading…</option>}
-                  {!enhanceModelsLoading && !enhanceModels.length && <option value="">No image model available</option>}
+                  {!enhanceModelsLoading && !enhanceModels.length && <option value="">{t("setdesigner.editor.sheet.no_models","No image model available")}</option>}
                   {enhanceModels.map(model => <option key={model.model_key} value={model.model_key}>{model.name || model.model_key}</option>)}
                 </select>
               </label>
