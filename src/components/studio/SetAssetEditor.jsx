@@ -93,8 +93,8 @@ function OloShopSetPicker({ selectedImages = [], onToggle, onSelect, onClose }) 
                 <div className={`grid gap-1 bg-zinc-900 p-1 ${gallery.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>{gallery.map((url, index) => {
                   const selected = !onSelect && selectedImages.includes(url);
                   const full = !onSelect && !selected && selectedImages.filter(Boolean).length >= 8;
-                  return <button key={`${asset.id}-${url}`} onClick={() => onSelect ? onSelect(url, asset.title) : onToggle(url)} disabled={full} className={`group relative aspect-[4/3] overflow-hidden rounded-[3px] border transition ${selected ? 'border-[#23c7be]' : 'border-transparent hover:border-[#23c7be]/60'} ${full ? 'cursor-not-allowed opacity-35' : ''}`} title={`Use image ${index + 1} of ${asset.title || 'this asset'}`}>
-                    <img src={url} alt={`${asset.title || 'Assets Shop asset'} · ${t("setdesigner.editor.shop.image","image")} ${index + 1}`} className="h-full w-full object-contain transition duration-300 group-hover:scale-105" />
+                  return <button key={`${asset.id}-${url}`} onClick={() => onSelect ? onSelect(url, asset.title) : onToggle(url)} disabled={full} className={`group relative aspect-[4/3] overflow-hidden rounded-[3px] border transition ${selected ? 'border-[#23c7be]' : 'border-transparent hover:border-[#23c7be]/60'} ${full ? 'cursor-not-allowed opacity-35' : ''}`} title={`${t('setdesigner.editor.shop.use_image', 'Use image')} ${index + 1} ${t('setdesigner.editor.shop.of', 'of')} ${asset.title || t('setdesigner.editor.shop.this_asset', 'this asset')}`}>
+                    <img src={url} alt={`${asset.title || t('setdesigner.editor.shop.shop_asset', 'Assets Shop asset')} · ${t("setdesigner.editor.shop.image","image")} ${index + 1}`} className="h-full w-full object-contain transition duration-300 group-hover:scale-105" />
                     <span className={`absolute bottom-1.5 right-1.5 rounded-[3px] px-2 py-0.5 text-[9px] font-black ${selected ? 'bg-[#23c7be] text-black' : 'bg-black/80 text-white'}`}>{selected ? t("setdesigner.editor.shop.selected","Selected") : `${index + 1}/${gallery.length}`}</span>
                   </button>;
                 })}</div>
@@ -607,7 +607,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
 
               <div className="space-y-5 p-5 sm:p-6">
                 <div>
-                  <div className="mb-2 flex items-center gap-2 text-[#23c7be]"><Sparkles size={16} /><span className="text-[10px] font-black uppercase tracking-[0.18em]">Creative brief</span></div>
+                  <div className="mb-2 flex items-center gap-2 text-[#23c7be]"><Sparkles size={16} /><span className="text-[10px] font-black uppercase tracking-[0.18em]" >{t('setdesigner.editor.hero.brief', 'Creative brief')}</span></div>
                   <input value={name} onChange={e => setName(e.target.value)} placeholder={t("setdesigner.editor.hero.name_placeholder","Name this world — e.g. Glass House at Midnight")} className="w-full border-0 border-b border-white/15 bg-transparent px-0 py-3 text-2xl font-black text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
                   <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t("setdesigner.editor.hero.description_placeholder","Describe the place as a director would: architecture, atmosphere, story, textures, what the camera should feel...")} rows={9} className="mt-4 w-full resize-none border border-white/10 bg-black/25 px-4 py-4 text-sm leading-6 text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" />
                 </div>
@@ -688,7 +688,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
             {images[0] ? (
               <div className="mt-4">
                 <div
-                  role="group" aria-label="Select object regions on the set image"
+                  role="group" aria-label={t('setdesigner.editor.shop.select_region', 'Select object regions on the set image')}
                   className="relative w-full max-w-5xl cursor-crosshair select-none overflow-hidden border border-white/20 bg-black"
                   style={{ touchAction: 'none' }}
                   onPointerDown={beginSelection}
@@ -764,7 +764,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
                   <input type="file" accept="image/*" disabled={newReferenceUploading || saving} className="hidden" onChange={uploadExternalReference} />
                 </label>
                 <button type="button" onClick={() => setReferenceSource('vault')} className="border border-white/20 px-3 py-2 text-xs text-white hover:bg-white/10">{t("setdesigner.editor.sheet.my_vault","My Vault")}</button>
-                <button type="button" onClick={() => setReferenceSource('shop')} className="border border-white/20 px-3 py-2 text-xs text-white hover:bg-white/10">Assets Shop</button>
+                <button type="button" onClick={() => setReferenceSource('shop')} className="border border-white/20 px-3 py-2 text-xs text-white hover:bg-white/10" >{t('setdesigner.editor.shop.assets_label', 'Assets Shop')}</button>
                 <button type="button" onClick={() => { setReferenceSource(current => current === 'prompt' ? null : 'prompt'); setNewReferenceModel(''); }} className="border border-[#23c7be]/50 px-3 py-2 text-xs text-[#8ee9e4] hover:bg-[#23c7be]/10">{t("setdesigner.editor.sheet.create_prompt","Create with Prompt")}</button>
               </div>
               {referenceSource === 'prompt' && <div className="space-y-3 border border-white/15 bg-black/25 p-4">
@@ -814,7 +814,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
 
         <div className="sticky bottom-0 z-10 border-t border-white/10 bg-[#17191d]/95 px-5 py-3 backdrop-blur">
           <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
-            <p className="hidden text-xs text-white/35 sm:block">{name.trim() ? `${name.trim()} · ${referenceCount} reference${referenceCount === 1 ? '' : 's'} · ${compositionElements.length} composition element${compositionElements.length === 1 ? '' : 's'}` : t('setdesigner.editor.name_required', 'Name your set to create it.')}</p>
+            <p className="hidden text-xs text-white/35 sm:block">{name.trim() ? `${name.trim()} · ${referenceCount} ${t('setdesigner.editor.board.references', 'references')} · ${compositionElements.length} ${t('setdesigner.editor.board.elements_count', 'composition elements')}` : t('setdesigner.editor.name_required', 'Name your set to create it.')}</p>
             <button onClick={() => handleSave()} disabled={saving || !name.trim()} className="ml-auto min-w-[210px] border border-[#23c7be] bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:border-white/10 disabled:bg-white/[0.05] disabled:text-white/30">
               {saving ? t('setdesigner.editor.saving', 'Saving...') : t('setdesigner.editor.save', 'Save Set')}
             </button>
