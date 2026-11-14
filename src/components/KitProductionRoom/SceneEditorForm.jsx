@@ -69,7 +69,7 @@ function VideoUploadPanel({ block, kitPage, onPublish, onClose, character }) {
         <div className="px-3 py-2 bg-white/5 rounded-xl">
           <div className="flex items-center gap-2">
             <Users size={12} className="text-white" />
-            <span className="text-white text-xs">Assigned: <span className="text-white font-semibold">{currentActor.name}</span></span>
+            <span className="text-white text-xs">{tr("timeline.assigned_label","Assigned:")} <span className="text-white font-semibold">{currentActor.name}</span></span>
           </div>
         </div>
       )}
