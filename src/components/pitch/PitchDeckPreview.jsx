@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Image as ImageIcon, List, Loader2, Monitor, Music, Pause, Play, Smartphone, Square, Tablet, Volume2, VolumeX } from 'lucide-react';
 import { getPitchTemplate } from './pitchDeckTemplates';
 import { usePitchVoiceReader } from '@/hooks/usePitchVoiceReader';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 export const mediaUrl = (item) => item?.source_media_url || item?.media_url || item?.file_url || '';
 export const mediaThumbnail = (item) => item?.source_thumbnail_url || item?.thumbnail_url || mediaUrl(item);
@@ -40,6 +41,7 @@ const variants = {
 };
 
 export default function PitchDeckPreview({ project, sections = [], media = [], characters = [], selectedId, onSelectSection, standalone = false, publicMode = false }) {
+  const t = useStudioTranslation();
   const [current, setCurrent] = useState(0);
   const [device, setDevice] = useState('desktop');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -57,7 +59,7 @@ export default function PitchDeckPreview({ project, sections = [], media = [], c
   }, [selectedId, visible]);
   useEffect(() => { if (current >= visible.length) setCurrent(Math.max(0, visible.length - 1)); }, [current, visible.length]);
 
-  if (!visible.length) return <div className="flex min-h-[520px] items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 text-sm text-zinc-500">Add a section to begin your pitch.</div>;
+  if (!visible.length) return <div className="flex min-h-[520px] items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 text-sm text-zinc-500">{t('Add a section to begin your pitch.', 'Add a section to begin your pitch.')}</div>;
 
   const section = visible[current];
   const url = mediaUrl(section);
@@ -71,7 +73,7 @@ export default function PitchDeckPreview({ project, sections = [], media = [], c
   const width = standalone ? 'w-full' : device === 'mobile' ? 'max-w-[340px]' : device === 'tablet' ? 'max-w-2xl' : 'w-full';
   const height = standalone ? 'min-h-[calc(100dvh-5rem)]' : 'min-h-[560px]';
   const headingStyle = { fontFamily: template.serif ? 'Georgia, serif' : 'inherit' };
-  const Text = <div className="relative z-10 space-y-4"><h2 className={`text-3xl font-bold md:text-5xl ${foreground}`} style={headingStyle}>{title || 'Untitled section'}</h2>{subtitle && <p className={`text-lg italic md:text-xl ${muted}`}>{subtitle}</p>}{section.show_text !== false && body && <div className={`pitch-body max-w-3xl text-sm leading-relaxed md:text-base ${muted}`} dangerouslySetInnerHTML={{ __html: body }} />}</div>;
+  const Text = <div className="relative z-10 space-y-4"><h2 className={`text-3xl font-bold md:text-5xl ${foreground}`} style={headingStyle}>{title || t('Untitled section', 'Untitled section')}</h2>{subtitle && <p className={`text-lg italic md:text-xl ${muted}`}>{subtitle}</p>}{section.show_text !== false && body && <div className={`pitch-body max-w-3xl text-sm leading-relaxed md:text-base ${muted}`} dangerouslySetInnerHTML={{ __html: body }} />}</div>;
 
   const render = () => {
     if (layout === 'hero') return <div className={`relative flex ${height} items-center justify-center overflow-hidden px-8 text-center`}><div className="absolute inset-0">{url ? <Media url={url} title={title} className="h-full w-full object-cover" /> : null}</div>{url && <div className="absolute inset-0 bg-black/55" />}{Text}</div>;
@@ -92,18 +94,18 @@ export default function PitchDeckPreview({ project, sections = [], media = [], c
       <motion.div key={section.id} initial={(variants[section.transition_type] || variants.fade).initial} animate={(variants[section.transition_type] || variants.fade).animate} transition={{ duration: .55 }}>{render()}</motion.div>
     </div>
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-zinc-400">
-      <button onClick={() => go(current - 1)} disabled={current === 0} aria-label="Previous section" className="rounded-full border border-zinc-700 p-2 disabled:opacity-25"><ChevronLeft size={18} /></button>
+      <button onClick={() => go(current - 1)} disabled={current === 0} aria-label={t('Previous section', 'Previous section')} className="rounded-full border border-zinc-700 p-2 disabled:opacity-25"><ChevronLeft size={18} /></button>
       <div className="flex flex-wrap items-center justify-center gap-2">
         <button onClick={() => setMenuOpen(!menuOpen)} className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 px-3 text-xs"><List size={15} /> {current + 1} / {visible.length}</button>
         {section.narration_audio_url && (
           <div className="flex items-center gap-2">
-            <button onClick={() => { if (!reader.isReading) reader.toggle(); else if (reader.isPaused) reader.resume(); }} disabled={reader.isReading && !reader.isPaused} aria-label="Play narration" title="Play narration" className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 text-xs font-bold text-cyan-300 disabled:opacity-40">{reader.isGenerating ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />} PLAY</button>
-            <button onClick={() => { if (reader.isReading && !reader.isPaused) reader.pause(); }} disabled={!reader.isReading || reader.isPaused} aria-label="Pause narration" title="Pause narration" className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 text-xs font-bold text-zinc-300 disabled:opacity-40"><Pause size={15} /> PAUSE</button>
-            <button onClick={reader.toggleMute} aria-label={reader.isMuted ? 'Unmute narration' : 'Mute narration'} title={reader.isMuted ? 'Unmute narration' : 'Mute narration'} className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 text-xs font-bold text-zinc-300">{reader.isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}</button>
+            <button onClick={() => { if (!reader.isReading) reader.toggle(); else if (reader.isPaused) reader.resume(); }} disabled={reader.isReading && !reader.isPaused} aria-label={t('Play narration', 'Play narration')} title={t('Play narration', 'Play narration')} className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 text-xs font-bold text-cyan-300 disabled:opacity-40">{reader.isGenerating ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />} {t('PLAY', 'PLAY')}</button>
+            <button onClick={() => { if (reader.isReading && !reader.isPaused) reader.pause(); }} disabled={!reader.isReading || reader.isPaused} aria-label={t('Pause narration', 'Pause narration')} title={t('Pause narration', 'Pause narration')} className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 text-xs font-bold text-zinc-300 disabled:opacity-40"><Pause size={15} /> {t('PAUSE', 'PAUSE')}</button>
+            <button onClick={reader.toggleMute} aria-label={reader.isMuted ? t('Unmute narration', 'Unmute narration') : t('Mute narration', 'Mute narration')} title={reader.isMuted ? t('Unmute narration', 'Unmute narration') : t('Mute narration', 'Mute narration')} className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 text-xs font-bold text-zinc-300">{reader.isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}</button>
           </div>
         )}
       </div>
-      <button onClick={() => go(current + 1)} disabled={current === visible.length - 1} aria-label="Next section" className="rounded-full border border-zinc-700 p-2 disabled:opacity-25"><ChevronRight size={18} /></button>
+      <button onClick={() => go(current + 1)} disabled={current === visible.length - 1} aria-label={t('Next section', 'Next section')} className="rounded-full border border-zinc-700 p-2 disabled:opacity-25"><ChevronRight size={18} /></button>
     </div>
     {reader.error && <p className="mt-2 text-center text-xs text-red-400">{reader.error}</p>}
     {menuOpen && <div className="absolute bottom-12 left-1/2 z-40 w-72 -translate-x-1/2 rounded-xl border border-zinc-700 bg-zinc-950 p-2 shadow-2xl">{visible.map((item, index) => <button key={item.id} onClick={() => { go(index); setMenuOpen(false); }} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs ${index === current ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-300 hover:bg-zinc-800'}`}><span className="text-zinc-600">{index + 1}</span><span className="truncate">{item.title || item.section_type}</span></button>)}</div>}
