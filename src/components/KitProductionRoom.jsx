@@ -762,7 +762,7 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
 
   const BlockTypePicker = () => (
     <div className="space-y-2">
-      <p className="text-white text-[10px] uppercase tracking-widest font-semibold">Block Type</p>
+      <p className="text-white text-[10px] uppercase tracking-widest font-semibold">{tr("timeline.scene_kind","Block Type")}</p>
       <div className="flex flex-wrap gap-2">
         {BLOCK_TYPES.map(bt => (
           <button
@@ -774,7 +774,7 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
                 : 'border-white/20 text-white hover:border-white/50 hover:text-white'
             }`}
           >
-            {bt.label}
+            {tr('timeline.block_'+bt.id,bt.label)}
           </button>
         ))}
       </div>
@@ -796,7 +796,7 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
           )}
           <button onClick={() => { setMediaUrl(null); setMediaType(null); }}
             className="absolute top-2 right-2 px-2 py-1 bg-black/70 rounded-lg text-white text-xs hover:text-white flex items-center gap-1">
-            <Wand2 size={10} />Replace
+            <Wand2 size={10} />{tr("timeline.replace","Replace")}
           </button>
         </div>
       )}
@@ -985,7 +985,7 @@ function BlockEditor({ block, kitPage, onUpdate, onClose, inline = false, recomm
               onClick={() => { setMediaUrl(null); setMediaType(null); }}
               className="absolute top-2 right-2 px-2 py-1 bg-black/70 rounded-lg text-white text-xs hover:text-white flex items-center gap-1"
             >
-              <Wand2 size={10} />Replace
+              <Wand2 size={10} />{tr("timeline.replace","Replace")}
             </button>
           </div>
         )}
@@ -1519,7 +1519,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                 className="mt-0.5 h-4 w-4"
               />
               <span className="text-white text-xs">
-                I confirm that this Timeline may be published in the AISTAGE.ONE Magazine.
+                {tr("timeline.confirm_magazine","I confirm that this Timeline may be published in the AISTAGE.ONE Magazine.")}
               </span>
             </label>
 
@@ -1552,20 +1552,20 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                       qc.invalidateQueries({ queryKey: ['dossiers'] });
                       qc.invalidateQueries({ queryKey: ['publishedDossiers'] });
                       setShowPublishModal(false);
-                      toast.success('Timeline published!');
+                      toast.success(tr("timeline.published","Timeline published!"));
                       navigate(`/Magazine?dossier=${res.data.dossier_id}`);
                     } else {
-                      toast.error(res.data?.error || 'Timeline was not published');
+                      toast.error(res.data?.error || tr("timeline.pub_fail","Timeline was not published"));
                     }
                   } catch (err) {
-                    toast.error(err.response?.data?.error || err.message || 'Publish failed');
+                    toast.error(err.response?.data?.error || err.message || tr("timeline.something_wrong","Publish failed"));
                   } finally {
                     setPublishing(false);
                   }
                 }}
                 className="flex-1 py-3 rounded-xl bg-yellow-400 text-black text-sm font-black disabled:opacity-50"
               >
-                {publishing ? 'Publishing…' : 'Publish'}
+                {publishing ? tr("timeline.publishing","Publishing…") : tr("timeline.publish","Publish")}
               </button>
             </div>
           </div>
@@ -1631,8 +1631,8 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
           onClose={onClose}
           onPreview={() => setShowEpisodePreview(true)}
           onPublish={() => {
-            if (!production?.id) { toast.error('No episode selected to publish'); return; }
-            if (!production?.blocks?.filter(b => b.media_url).length) { toast.error('Add media to your scenes before publishing'); return; }
+            if (!production?.id) { toast.error(tr("timeline.no_episode_selected_to_publish","No episode selected to publish")); return; }
+            if (!production?.blocks?.filter(b => b.media_url).length) { toast.error(tr("timeline.add_media_to_your_scenes_before_publishing","Add media to your scenes before publishing")); return; }
             setPublishConfirmed(false);
             setShowPublishModal(true);
           }}
@@ -1684,7 +1684,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-white text-base font-black uppercase tracking-wider">{tr("timeline.production_timeline","Production Timeline")}</p>
-                      <p className="text-white text-xs mt-0.5">{masterTimeline.length} blocks to produce</p>
+                      <p className="text-white text-xs mt-0.5">{masterTimeline.length} {tr("timeline.blocks_to_produce","blocks to produce")}</p>
                     </div>
                     <button
                       onClick={() => setShowBlockPlayer(true)}
@@ -1714,7 +1714,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
               {!masterTimeline.length && (
                 <div className="flex flex-col items-center gap-4 py-20">
                   <p className="text-white text-sm">{tr("timeline.no_episode_yet","No episode yet")}</p>
-                  <button onClick={createEpisode} className="px-6 py-3 bg-white text-black text-sm font-semibold rounded-full hover:bg-white/90">+ Create First Episode</button>
+                  <button onClick={createEpisode} className="px-6 py-3 bg-white text-black text-sm font-semibold rounded-full hover:bg-white/90">+ {tr("timeline.create_first_episode","Create First Episode")}</button>
                 </div>
               )}
             </div>
@@ -1790,7 +1790,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
               <button onClick={addBlock}
                 className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-red-600/50 hover:border-red-600 rounded-xl text-red-400 hover:text-red-300 transition-colors">
                 <Plus size={18} />
-                <span className="text-sm font-semibold">+ Add Scene</span>
+                <span className="text-sm font-semibold">+ {tr("timeline.add_scene","Add Scene")}</span>
               </button>
             )}
             
@@ -1830,7 +1830,7 @@ export default function KitProductionRoom({ kitPage: kitPageProp, dossier, onClo
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-white text-base font-black uppercase tracking-wider">{tr("timeline.production_timeline","Production Timeline")}</p>
-                    <p className="text-white text-xs mt-0.5">{masterTimeline.length} blocks to produce</p>
+                    <p className="text-white text-xs mt-0.5">{masterTimeline.length} {tr("timeline.blocks_to_produce","blocks to produce")}</p>
                   </div>
                   <button
                     onClick={() => setShowBlockPlayer(true)}
