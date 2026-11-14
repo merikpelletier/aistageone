@@ -238,7 +238,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   const handleOloToggle = (url) => {
     setImages(current => {
       if (current.includes(url)) return current.map(image => image === url ? null : image);
-      if (current.filter(Boolean).length >= 8) { toast.error('A set can contain up to 8 images'); return current; }
+      if (current.filter(Boolean).length >= 8) { toast.error(t("setdesigner.editor.status.max_images","A set can contain up to 8 images")); return current; }
       const next = [...current];
       const emptyIndex = next.findIndex(value => !value);
       if (emptyIndex >= 0) next[emptyIndex] = url;
@@ -259,7 +259,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         else next.push(file_url);
         return next.slice(0, 8);
       });
-      toast.success('Image added to set', { icon: <Check size={16} /> });
+      toast.success(t("setdesigner.editor.status.image_added","Image added to set"), { icon: <Check size={16} /> });
     } finally {
       setUploading(false);
     }
@@ -328,25 +328,25 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
     }]);
     setReferencesDirty(true);
     setReferenceSource(null);
-    toast.success('Reference added to the sheet. Save changes to keep it.');
+    toast.success(t("setdesigner.editor.status.ref_added","Reference added to the sheet. Save changes to keep it."));
   };
 
   const uploadExternalReference = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    if (!file.type.startsWith('image/')) return toast.error('Choose an image.');
+    if (!file.type.startsWith('image/')) return toast.error(t("setdesigner.editor.status.choose_image","Choose an image."));
     setNewReferenceUploading(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      if (!file_url) throw new Error('Upload returned no image.');
+      if (!file_url) throw new Error(t("setdesigner.editor.status.no_upload","Upload returned no image."));
       addExternalReference(file_url, file.name.replace(/\\.[^.]+$/, ''));
-    } catch (error) { toast.error(error.message || 'Could not upload reference.'); }
+    } catch (error) { toast.error(error.message || t("setdesigner.editor.status.upload_failed","Could not upload reference.")); }
     finally { setNewReferenceUploading(false); }
   };
 
   const generateExternalReference = async () => {
-    if (!newReferencePrompt.trim() || !chosenNewReferenceModel || !newReferenceQuote?.credits) return toast.error('Enter a prompt and choose a priced image model.');
+    if (!newReferencePrompt.trim() || !chosenNewReferenceModel || !newReferenceQuote?.credits) return toast.error(t("setdesigner.editor.status.prompt_model","Enter a prompt and choose a priced image model."));
     if (!window.confirm(`Generate one reference for ${newReferenceQuote.credits} credits?`)) return;
     setNewReferenceGenerating(true);
     try {
@@ -356,10 +356,10 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         reference_image_urls: [], aspect_ratio: '1:1',
       });
       if (result.data?.error) throw new Error(result.data.error);
-      if (!result.data?.file_url) throw new Error('Image model returned no file.');
+      if (!result.data?.file_url) throw new Error(t("setdesigner.editor.status.no_generated_file","Image model returned no file."));
       addExternalReference(result.data.file_url, newReferencePrompt.trim().slice(0, 100));
       setNewReferencePrompt('');
-    } catch (error) { toast.error(error.message || 'Could not generate reference.'); }
+    } catch (error) { toast.error(error.message || t("setdesigner.editor.status.generate_failed","Could not generate reference.")); }
     finally { setNewReferenceGenerating(false); }
   };
 
@@ -370,13 +370,13 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
 
   const saveSavedReferences = async (entries = savedReferenceDraft) => {
     if (!referenceSheet) return;
-    if (entries.some(item => !item.name?.trim() || !item.image_url)) return toast.error('Each saved reference needs a name and image.');
+    if (entries.some(item => !item.name?.trim() || !item.image_url)) return toast.error(t("setdesigner.editor.status.need_name_image","Each saved reference needs a name and image."));
     const sheet = { ...referenceSheet, extracted_elements: entries, updated_at: new Date().toISOString() };
     const saved = await handleSave(sheet);
     if (saved) {
       setSavedReferenceDraft(entries);
       setReferencesDirty(false);
-      toast.success('Saved references updated.');
+      toast.success(t("setdesigner.editor.status.references_updated","Saved references updated."));
     }
   };
 
@@ -385,17 +385,17 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
     setReferenceUploadingId(editingSavedReferenceId);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      if (!file_url) throw new Error('Edited image upload failed.');
+      if (!file_url) throw new Error(t("setdesigner.editor.status.upload_edit_failed","Edited image upload failed."));
       updateSavedReference(editingSavedReferenceId, { image_url: file_url, replacement: true });
       setEditingSavedReferenceId(null);
-      toast.success('Image crop ready. Save Reference Sheet to keep it.');
-    } catch (error) { toast.error(error.message || 'Could not crop reference image.'); }
+      toast.success(t("setdesigner.editor.status.crop_ready","Image crop ready. Save Reference Sheet to keep it."));
+    } catch (error) { toast.error(error.message || t("setdesigner.editor.status.crop_failed","Could not crop reference image.")); }
     finally { setReferenceUploadingId(null); }
   };
 
   const enhanceSavedReference = async () => {
     const target = savedReferenceDraft.find(item => item.id === enhanceReferenceId);
-    if (!target?.image_url || !chosenEnhanceModel || !enhancePrompt.trim() || !enhanceQuote?.credits) return toast.error('Select an image model, enter the edit direction and confirm the price.');
+    if (!target?.image_url || !chosenEnhanceModel || !enhancePrompt.trim() || !enhanceQuote?.credits) return toast.error(t("setdesigner.editor.status.enhance_needed","Select an image model, enter the edit direction and confirm the price."));
     if (!window.confirm(`Generate an enhanced version for ${enhanceQuote.credits} credits? The saved original will remain unchanged until you save.`)) return;
     setEnhancingImage(true);
     try {
@@ -407,18 +407,18 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         aspect_ratio: '1:1',
       });
       if (res.data?.error) throw new Error(res.data.error);
-      if (!res.data?.file_url) throw new Error('No edited image returned.');
+      if (!res.data?.file_url) throw new Error(t("setdesigner.editor.status.no_edited_image","No edited image returned."));
       updateSavedReference(enhanceReferenceId, { image_url: res.data.file_url, replacement: true });
       setEnhanceReferenceId(null);
       setEnhancePrompt('');
-      toast.success('Enhanced draft ready. Save Reference Sheet to keep it.');
-    } catch (error) { toast.error(error.message || 'Could not enhance reference image.'); }
+      toast.success(t("setdesigner.editor.status.enhance_ready","Enhanced draft ready. Save Reference Sheet to keep it."));
+    } catch (error) { toast.error(error.message || t("setdesigner.editor.status.enhance_failed","Could not enhance reference image.")); }
     finally { setEnhancingImage(false); }
   };
 
   const cropObject = async (source, bbox, index) => {
     const response = await fetch(source);
-    if (!response.ok) throw new Error('The source image could not be loaded for extraction.');
+    if (!response.ok) throw new Error(t("setdesigner.editor.status.source_failed","The source image could not be loaded for extraction."));
     const bitmap = await createImageBitmap(await response.blob());
     try {
       const [l,t,r,b] = bbox;
@@ -429,18 +429,18 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       const context = canvas.getContext('2d');
-      if (!context) throw new Error('Canvas cropping unavailable.');
+      if (!context) throw new Error(t("setdesigner.editor.status.crop_unavailable","Canvas cropping unavailable."));
       context.drawImage(bitmap, x, y, w, h, 0, 0, w, h);
       const blob = await new Promise((resolve,reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Crop failed')), 'image/png'));
       const { file_url } = await base44.integrations.Core.UploadFile({ file: new File([blob], `set-object-${index}.png`, { type:'image/png' }) });
-      if (!file_url) throw new Error('Extracted object could not be stored.');
+      if (!file_url) throw new Error(t("setdesigner.editor.status.extract_store_failed","Extracted object could not be stored."));
       return file_url;
     } finally { bitmap.close(); }
   };
 
   const buildReferenceSheet = () => {
     const views = IMAGE_ROLES.map((role, index) => ({ role, url: images[index] })).filter((item) => Boolean(item.url));
-    if (!views.length) throw new Error('Add at least one set reference image before creating the sheet.');
+    if (!views.length) throw new Error(t("setdesigner.editor.status.need_reference","Add at least one set reference image before creating the sheet."));
     const elements = compositionElements.filter((item) => item?.image_url || item?.name).map((item) => ({
       id: item.id, image_url: item.image_url || '', name: item.name || '',
       role: item.role || '', priority: item.priority || '', placement: item.placement || '',
@@ -458,20 +458,20 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
   };
 
   const createReferenceSheet = async () => {
-    if (!name.trim()) return toast.error('Name the Set first.');
-    if (!images[0]) return toast.error('Add a Hero reference first.');
+    if (!name.trim()) return toast.error(t("setdesigner.editor.status.name_first","Name the Set first."));
+    if (!images[0]) return toast.error(t("setdesigner.editor.status.hero_first","Add a Hero reference first."));
     setExtracting(true);
     try {
       const chosen = detectedElements.filter(item => item.included !== false);
       if (chosen.some(item => item.source_image_url !== images[0] && !item.replacement && !item.image_url))
-        throw new Error('A reference has a different source image. Select it again.');
-      if (!chosen.length) throw new Error('Select at least one object from the image first.');
-      if (chosen.some(item => !item.name?.trim())) throw new Error('Name each selected element before saving.');
+        throw new Error(t("setdesigner.editor.status.different_source","A reference has a different source image. Select it again."));
+      if (!chosen.length) throw new Error(t("setdesigner.editor.status.select_object","Select at least one object from the image first."));
+      if (chosen.some(item => !item.name?.trim())) throw new Error(t("setdesigner.editor.status.name_objects","Name each selected element before saving."));
       const extracted = [];
       for (let index = 0; index < chosen.length; index++) {
         const item = chosen[index];
         if (!Array.isArray(item.bbox) || item.bbox.length !== 4 || item.bbox.some(v => !Number.isFinite(v)) ||
-          item.bbox[2] <= item.bbox[0] || item.bbox[3] <= item.bbox[1]) throw new Error('Invalid bounding box; correct the selected element.');
+          item.bbox[2] <= item.bbox[0] || item.bbox[3] <= item.bbox[1]) throw new Error(t("setdesigner.editor.status.invalid_box","Invalid bounding box; correct the selected element."));
         const url = item.image_url && (item.source_image_url === images[0] || item.replacement)
           ? item.image_url : await cropObject(images[0], item.bbox, index);
         extracted.push({ ...item, source_image_url: images[0], image_url: url });
@@ -484,7 +484,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
       const sheet = { ...buildReferenceSheet(), extracted_elements: [...existing, ...additions] };
       const saved = await handleSave(sheet);
       if (saved) { setDetectedElements([]); setReferencesDirty(false); }
-    } catch (error) { toast.error(error.message || 'Reference sheet extraction failed.'); }
+    } catch (error) { toast.error(error.message || t("setdesigner.editor.status.extraction_failed","Reference sheet extraction failed.")); }
     finally { setExtracting(false); }
   };
 
@@ -526,11 +526,11 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
       if (newSheet?.version === 1) { setReferenceSheet(newSheet); setSavedReferenceDraft(Array.isArray(newSheet.extracted_elements) ? newSheet.extracted_elements : []); }
       qc.invalidateQueries({ queryKey: ['setDesignerProjects'] });
       onSaved?.(saved);
-      toast.success(newSheet?.version === 1 ? 'Set reference sheet created and saved' : projectId ? 'Set updated' : 'Set saved');
+      toast.success(newSheet?.version === 1 ? t("setdesigner.editor.status.sheet_saved","Set reference sheet created and saved") : projectId ? t("setdesigner.editor.status.set_updated","Set updated") : t("setdesigner.editor.status.set_saved","Set saved"));
       return saved;
     } catch (error) {
       console.error('Set Designer project save failed', error);
-      toast.error(error?.message || 'Set could not be saved. Try again.');
+      toast.error(error?.message || t("setdesigner.editor.status.set_save_failed","Set could not be saved. Try again."));
       return null;
     } finally {
       setSaving(false);
@@ -555,7 +555,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
       URL.revokeObjectURL(objectUrl);
     } catch (error) {
       console.error('Set image download failed', error);
-      toast.error('Image could not be downloaded.');
+      toast.error(t("setdesigner.editor.status.download_failed","Image could not be downloaded."));
     }
   };
 
