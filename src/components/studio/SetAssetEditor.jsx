@@ -579,7 +579,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
           <SetGeneratorPanel name={name} description={description} images={images} setImages={setImages} viewVariants={viewVariants} setViewVariants={setViewVariants} zoneShots={zoneShots} setZoneShots={setZoneShots} compositionElements={compositionElements} />
 
           <details key={heroImage ? 'master-ready' : 'master-empty'} defaultOpen={!heroImage} className="border border-white/10 bg-[#17191d]">
-            <summary className="cursor-pointer p-4 text-sm font-black uppercase tracking-wider text-[#23c7be]">Master Set Details & Creative Direction — {heroImage ? 'Expand to edit' : 'Required for creation'}</summary>
+            <summary className="cursor-pointer p-4 text-sm font-black uppercase tracking-wider text-[#23c7be]">{t('setdesigner.details.heading', 'Master Set Details & Creative Direction')} — {heroImage ? t('setdesigner.details.expand', 'Expand to edit') : t('setdesigner.details.required', 'Required for creation')}</summary>
           <section className="overflow-hidden border-t border-white/10 bg-[#17191d]">
             <div className="grid lg:grid-cols-[1.35fr_0.65fr]">
               <div className="relative min-h-[360px] border-b border-white/10 bg-[#0d0f12] lg:min-h-[520px] lg:border-b-0 lg:border-r">
