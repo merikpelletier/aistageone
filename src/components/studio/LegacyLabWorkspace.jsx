@@ -4,6 +4,7 @@ import { supabase } from '@/api/supabaseClient';
 import AvailableProjectsPortal from '@/components/studio/AvailableProjectsPortal';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import StudioAudioTool from '@/components/studio/StudioAudioTool';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import InlineHeadshot from '@/components/studio/InlineHeadshot';
 import TokenPurchaseModal from '@/components/studio/TokenPurchaseModal';
 import VaultDrawer from '@/components/VaultDrawer';
@@ -565,6 +566,7 @@ function TokenBalance({ userEmail, onBuyTokens }) {
 
 export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoiceRecorder, onOpenAudioUploader, onOpenDubbing, onOpenTTS, onOpenVideo, onOpenLipSync, onOpenAnimateImage, onJoinProject, onOpenFreeTimeline, onOpenLayout, hideProjects = false, directTool = null, directMode = false }) {
   const navigate = useNavigate();
+  const t = useStudioTranslation();
   const [activeTool, setActiveTool] = useState(directTool || null);
   const [balance, setBalance] = useState(null);
   const [showBuyTokens, setShowBuyTokens] = useState(false);
@@ -630,7 +632,7 @@ export default function LabWorkspace({ user, onOpenActor, onOpenSet, onOpenVoice
       <AnimatePresence>
         {activeTool && (
           <motion.div key={activeTool} initial={{ opacity: 0, y: -20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.95 }} transition={{ duration: 0.2, ease: "easeOut" }} className={`aistage-tool-surface bg-black rounded-3xl p-6 shadow-2xl border-2 border-yellow-400/30${activeToolLook.text_color ? ' aistage-tool-text' : ''}${activeToolLook.icon_color ? ' aistage-tool-icons' : ''}`} style={activeToolStyle} id="active-tool-panel">
-            <div className="flex items-center justify-between mb-5 pb-3 border-b border-white/10"><div className="flex items-center gap-2"><div className={`w-8 h-8 ${configuredToolGroups.find(g => g.tools.some(t => t.id === activeTool))?.color || 'bg-emerald-600'} rounded-lg flex items-center justify-center`}>{(() => { const tool = configuredTools.find(t => t.id === activeTool); const Icon = tool?.icon; return Icon ? <Icon size={16} className="text-white" /> : null; })()}</div><p className="text-yellow-400 text-lg font-bold">{configuredTools.find(item => item.id === activeTool)?.label}</p></div>{!(activeTool === 'music' || activeTool === 'sound_fx') && <button onClick={() => setActiveTool(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"><X size={16} /></button>}</div>
+            <div className="flex items-center justify-between mb-5 pb-3 border-b border-white/10"><div className="flex items-center gap-2"><div className={`w-8 h-8 ${configuredToolGroups.find(g => g.tools.some(t => t.id === activeTool))?.color || 'bg-emerald-600'} rounded-lg flex items-center justify-center`}>{(() => { const tool = configuredTools.find(t => t.id === activeTool); const Icon = tool?.icon; return Icon ? <Icon size={16} className="text-white" /> : null; })()}</div><p className="text-yellow-400 text-lg font-bold">{activeTool === 'music' ? t('Music', 'Music') : configuredTools.find(item => item.id === activeTool)?.label}</p></div>{!(activeTool === 'music' || activeTool === 'sound_fx') && <button onClick={() => setActiveTool(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"><X size={16} /></button>}</div>
             {(activeTool === 'music' || activeTool === 'sound_fx') && <StudioAudioTool key={activeTool} tool={activeTool} user={user} />}
             {activeTool === 'dress_actor' && <InlineDressActor userEmail={user?.email} onDone={(url, type, savedId) => handleResult(url, type, savedId)} />}
             {activeTool === 'headshot' && <InlineHeadshot userEmail={user?.email} onDone={(url, type, savedId) => handleResult(url, type, savedId)} />}
