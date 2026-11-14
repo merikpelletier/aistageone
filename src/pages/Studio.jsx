@@ -201,7 +201,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
 
   return (
     <div className="studio-shell min-h-screen bg-[#202328] text-white" style={{ paddingTop: 'env(titlebar-area-height, 0px)' }}>
-      <div className="sticky top-0 z-[5000] h-14 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-3 md:px-4 gap-3">
+      <div className="sticky z-[5000] h-14 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-3 md:px-4 gap-3" style={{ top: 'env(titlebar-area-height, 0px)' }}>
         <button
           type="button"
           onClick={() => window.location.assign('/')}
@@ -229,7 +229,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children }) {
       </div>
 
       <div className="flex min-h-[calc(100vh-3.5rem)]">
-        <aside className={`hidden lg:block sticky z-[5000] top-14 self-start h-[calc(100vh-3.5rem)] flex-shrink-0 bg-[#17191d] border-r border-white/10 overflow-y-auto transition-[width] duration-200 ${menuCollapsed ? 'w-[64px]' : 'w-[210px]'}`}>
+        <aside className={`hidden lg:block sticky z-[5000] self-start h-[calc(100vh-3.5rem)] flex-shrink-0 bg-[#17191d] border-r border-white/10 overflow-y-auto transition-[width] duration-200 ${menuCollapsed ? 'w-[64px]' : 'w-[210px]'}`} style={{ top: 'calc(3.5rem + env(titlebar-area-height, 0px))' }}>
           {menuCollapsed ? (
             <div className="py-2">
               {STUDIO_SHELL_TOOLS.map((tool) => {
