@@ -28,7 +28,7 @@ const buildHeroPrompt = (name, description, compositionElements = []) => `Create
 
 const buildViewPrompt = (name, description, instruction, compositionElements = []) => `${buildHeroPrompt(name, description, compositionElements)}\n\nCAMERA CONTINUITY TASK:\nThe supplied Hero image defines a real three-dimensional set. Treat it as a spatial reference, not as a composition to copy. Infer the room geometry, architecture, furniture placement, windows, doors, stairs, fixtures, materials and proportions from it.\n\n${instruction}\n\nNON-NEGOTIABLE CONTINUITY RULES:\n- This must be the exact SAME location and production set, never a redesign.\n- Preserve architecture, dimensions, materials, furniture, fixtures, windows, doors, stairs and object placement.\n- Preserve the visual identity and palette.\n- Preserve the SAME physical placement of all composition elements within the set. Their apparent position, scale, occlusion and visibility must change naturally according to the new camera angle.\n- Required composition elements must not be omitted or substituted.\n- For camera-angle views, physically relocate the virtual camera in the inferred 3D space. Do not fake a new angle by mirroring, cropping, zooming or making a small framing change.\n- EXCEPTION FOR LEFT AND RIGHT: these are orthogonal, straight-on side elevations, NOT cinematic camera angles; obey the requested flat wall-facing composition and avoid all three-quarter framing.\n- The new viewpoint must show correct parallax and reveal/occlude elements according to the new camera position.\n- No people, no added text.\n- 16:9 cinematic production reference image.`;
 
-const EditableImage = ({ label, url, box, onStart, onMove, onEnd, onCancel, onClear }) => (
+const EditableImage = ({ label, url, box, onStart, onMove, onEnd, onCancel, onClear, t }) => (
   <div className="relative aspect-video overflow-hidden border border-white/15 bg-black select-none"
     style={{ touchAction: 'none', cursor: url ? 'crosshair' : 'default' }}
     onPointerDown={event => url && onStart(event, label)}
@@ -37,7 +37,7 @@ const EditableImage = ({ label, url, box, onStart, onMove, onEnd, onCancel, onCl
     onPointerCancel={onCancel}
   >
     {url ? <img src={url} alt={`Current ${label} view — drag to select the area to adjust`} draggable={false} className="h-full w-full object-contain pointer-events-none" /> :
-      <div className="flex h-full items-center justify-center text-xs text-white/35">No {label} image yet</div>}
+      <div className="flex h-full items-center justify-center text-xs text-white/35">{t('setdesigner.generator.no_image', 'No image yet')}{label === 'Hero' ? '' : ` (${label})`}</div>}
     {box && <div className="pointer-events-none absolute border-2 border-[#23c7be] bg-[#23c7be]/15"
       style={{ left: `${box.x * 100}%`, top: `${box.y * 100}%`, width: `${box.width * 100}%`, height: `${box.height * 100}%` }} />}
     {box && <button type="button" onPointerDown={event => event.stopPropagation()}
@@ -84,10 +84,10 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         <button key={time} type="button" onClick={() => chooseTime(label, time)} disabled={Boolean(generating)}
           aria-pressed={timeFor(label) === time}
           className={`border px-3 py-1.5 text-xs font-bold ${timeFor(label) === time ? 'border-[#23c7be] bg-[#23c7be]/20 text-[#8ee9e4]' : 'border-white/15 text-white/60'}`}>
-          {time === 'day' ? 'DAY' : 'NIGHT'}{time === 'night' && (zoneFor(label)?.night || viewVariants?.[label]?.night) ? ' ✓' : ''}
+          {time === 'day' ? t('setdesigner.generator.day', 'Day') : t('setdesigner.generator.night', 'Night')}{time === 'night' && (zoneFor(label)?.night || viewVariants?.[label]?.night) ? ' ✓' : ''}
         </button>
       ))}
-      {timeFor(label) === 'night' && !(zoneFor(label)?.night || viewVariants?.[label]?.night) && <span className="text-[11px] text-white/45">Night version not created</span>}
+      {timeFor(label) === 'night' && !(zoneFor(label)?.night || viewVariants?.[label]?.night) && <span className="text-[11px] text-white/45">{t('setdesigner.generator.night_missing', 'Night version not created')}</span>}
     </div>
   );
   const nightPrompt = label => `Transform the supplied existing ${label} production view of the exact same set into a believable nighttime photograph. This is an image-to-image LIGHTING AND TIME-OF-DAY conversion, NOT a new view. Keep the camera in the EXACT same position, with identical framing, perspective, architecture, floor plan, doors, windows, furniture, props, textures, and object positions. Do not add, remove, move, replace, or redesign any object. The entire scene must read as NIGHT: dark outdoor sky and grounds seen through all windows, credible illuminated outdoor entrances where relevant, realistic interior practical lights, sconces and fixtures, atmospheric contrast and accurate reflections. Preserve geometry and all non-lighting details; no new people, logos or text. No cropping, mirroring or camera movement. 16:9.`;
@@ -193,7 +193,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
         className="w-full border-b border-white/20 bg-transparent py-1 text-sm font-bold text-white" />
       <p className="text-[11px] text-white/50">ZONE SHOT · {shot.type} · from {shot.parent} ({shot.source_time})</p>
       {timeSwitcher(key)}
-      <EditableImage label={key} url={url} box={editBox(key)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} />
+      <EditableImage t={t} label={key} url={url} box={editBox(key)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} />
       <details className="border-t border-white/10 pt-2">
         <summary className="cursor-pointer text-xs font-bold text-[#8ee9e4]">EDIT ZONE SHOT</summary>
       <textarea aria-label="Zone Shot adjustment" value={viewAdjustments[key] || ''} onChange={event => adjustView(key, event.target.value)}
@@ -515,14 +515,14 @@ export default function SetGeneratorPanel({ name, description, images, setImages
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
-        <EditableImage label="Hero" url={viewUrl('Hero', 0)} box={editBox('Hero')} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} />
+        <EditableImage t={t} label="Hero" url={viewUrl('Hero', 0)} box={editBox('Hero')} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} />
         <div>
           {timeSwitcher('Hero')}
-          <label htmlFor="set-view-adjustment-hero" className="mb-2 block text-xs font-bold text-white/70">Hero · Adjustment instructions</label>
-          <textarea id="set-view-adjustment-hero" value={viewAdjustments.Hero || ''} onChange={event => adjustView('Hero', event.target.value)} disabled={Boolean(generating)} rows={4} placeholder="Describe only the change you want" className="w-full border border-white/15 bg-black/25 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
-          <p className="mt-1 text-xs text-white/45">Drag on the image to select an area. Only that area will be edited.</p>
+          <label htmlFor="set-view-adjustment-hero" className="mb-2 block text-xs font-bold text-white/70">Hero · {t('setdesigner.generator.adjustment', 'Adjustment instructions')}</label>
+          <textarea id="set-view-adjustment-hero" value={viewAdjustments.Hero || ''} onChange={event => adjustView('Hero', event.target.value)} disabled={Boolean(generating)} rows={4} placeholder={t('setdesigner.generator.change_placeholder', 'Describe only the change you want')} className="w-full border border-white/15 bg-black/25 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
+          <p className="mt-1 text-xs text-white/45">{t('setdesigner.generator.select_area', 'Drag on the image to select an area. Only that area will be edited.')}</p>
           <button type="button" onClick={() => localEdit('Hero', 0)} disabled={!viewUrl('Hero', 0) || !editRegions.Hero || !viewAdjustments.Hero?.trim() || Boolean(generating) || !effectiveModel}
-            className="mt-2 w-full border border-[#23c7be]/50 px-3 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">{generating === 'Hero' ? 'APPLYING...' : 'APPLY ADJUSTMENT'}</button>
+            className="mt-2 w-full border border-[#23c7be]/50 px-3 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">{generating === 'Hero' ? t('setdesigner.generator.applying', 'Applying...') : t('setdesigner.generator.apply', 'Apply adjustment')}</button>
         </div>
       </div>
 
@@ -572,7 +572,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
             <div className="text-xs font-black text-white">HERO — DAY / NIGHT</div>
             {timeSwitcher('Hero')}
             <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-              <div className="w-full max-w-md"><EditableImage label="Hero" url={viewUrl('Hero', 0)} box={editBox('Hero')} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} /></div>
+              <div className="w-full max-w-md"><EditableImage t={t} label="Hero" url={viewUrl('Hero', 0)} box={editBox('Hero')} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} /></div>
               <button type="button" onClick={() => generateNight('Hero', 0)} disabled={Boolean(generating) || !effectiveModel || !heroImage}
                 className="border border-[#23c7be]/40 px-3 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">
                 {generating === 'Hero' ? 'GENERATING...' : viewVariants?.Hero?.night ? 'REGENERATE NIGHT' : 'CREATE NIGHT VERSION'}
@@ -591,8 +591,8 @@ export default function SetGeneratorPanel({ name, description, images, setImages
               return <div key={label} className={`border p-3 ${exists ? 'border-[#23c7be]/35 bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}>
                 <label htmlFor={`set-view-adjustment-${label}`} className="block text-xs font-black text-white">{label.toUpperCase()}</label>
                 {timeSwitcher(label)}
-                <div className="mt-2"><EditableImage label={label} url={viewUrl(label, index)} box={editBox(label)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} /></div>
-                <textarea id={`set-view-adjustment-${label}`} value={viewAdjustments[label] || ''} onChange={event => adjustView(label, event.target.value)} disabled={Boolean(generating)} rows={3} placeholder="Describe only the change you want" className="mt-2 w-full border border-white/15 bg-black/25 px-2 py-2 text-xs text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
+                <div className="mt-2"><EditableImage t={t} label={label} url={viewUrl(label, index)} box={editBox(label)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} /></div>
+                <textarea id={`set-view-adjustment-${label}`} value={viewAdjustments[label] || ''} onChange={event => adjustView(label, event.target.value)} disabled={Boolean(generating)} rows={3} placeholder={t('setdesigner.generator.change_placeholder', 'Describe only the change you want')} className="mt-2 w-full border border-white/15 bg-black/25 px-2 py-2 text-xs text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
                 <p className="mt-1 text-[11px] text-white/45">Drag on the image to select the area to change.</p>
                 <button type="button" onClick={() => localEdit(label, index)} disabled={!exists || !editRegions[label] || !viewAdjustments[label]?.trim() || Boolean(generating) || !effectiveModel}
                   className="mt-2 w-full border border-[#23c7be]/50 px-2 py-2 text-xs font-black text-[#8ee9e4] disabled:opacity-30">{busy ? 'APPLYING...' : 'APPLY ADJUSTMENT'}</button>
