@@ -895,7 +895,7 @@ export default function Studio() {
 
       {activeToolPanel === 'stages' && (
         <div className="absolute inset-0 z-20 bg-[#202328]">
-          <StudioWorkspaceTool title="Stages"><div className="p-4 md:p-6"><SketchStudio user={user} /></div></StudioWorkspaceTool>
+          <StudioWorkspaceTool title={studioT("stages.title", "Stages")}><div className="p-4 md:p-6"><SketchStudio user={user} /></div></StudioWorkspaceTool>
         </div>
       )}
 
