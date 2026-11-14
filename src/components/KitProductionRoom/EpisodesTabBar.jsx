@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { Plus, ChevronDown, X, Film } from 'lucide-react';
 
 export default function EpisodesTabBar({
@@ -9,6 +10,7 @@ export default function EpisodesTabBar({
   createEpisode,
   isEpisodeLocked
 }) {
+  const tr = useStudioTranslation();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -26,7 +28,7 @@ export default function EpisodesTabBar({
   }, [open]);
 
   const active = episodes.find(e => e.id === activeEpisodeId);
-  const activeLabel = active?.episode_title?.trim() || (active ? `Timeline ${episodes.indexOf(active) + 1}` : 'Select a timeline…');
+  const activeLabel = active?.episode_title?.trim() || (active ? `${tr('timeline.timeline','Timeline')} ${episodes.indexOf(active) + 1}` : tr('timeline.select_a_timeline','Select a timeline…'));
 
   return (
     <div className="flex flex-shrink-0 items-center gap-2 border-b border-white/10 bg-[#202328] px-5 py-3 md:px-6">
@@ -45,18 +47,18 @@ export default function EpisodesTabBar({
           <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-[4px] border border-white/10 bg-[#17191d] shadow-2xl">
             <div className="max-h-64 overflow-y-auto py-1" style={{ scrollbarWidth: 'thin' }}>
               {episodes.length === 0 ? (
-                <p className="px-4 py-3 text-xs text-white/45">No timelines yet — tap “New”.</p>
+                <p className="px-4 py-3 text-xs text-white/45">{tr("timeline.no_timelines_yet_tap_new","No timelines yet — tap “New”.")}</p>
               ) : (
                 episodes.map((ep, idx) => {
                   const isActive = ep.id === activeEpisodeId;
-                  const label = ep.episode_title?.trim() || `Timeline ${idx + 1}`;
+                  const label = ep.episode_title?.trim() || `${tr('timeline.timeline','Timeline')} ${idx + 1}`;
                   return (
                     <div key={ep.id} className={`mx-1 flex items-center gap-2 rounded-[3px] border px-3 py-2.5 transition-colors ${isActive ? 'border-[#23c7be]/35 bg-[#23c7be]/10' : 'border-transparent hover:bg-white/[0.04]'}`}>
                       <button onClick={() => { selectEpisode(ep); setOpen(false); }} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                         {ep.poster_image ? <img src={ep.poster_image} alt="" className="h-8 w-8 flex-shrink-0 rounded-[3px] object-cover" /> : <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[3px] bg-white/[0.05]"><Film size={14} className="text-white/35" /></div>}
                         <span className={`truncate text-sm ${isActive ? 'font-black text-[#8ee9e4]' : 'font-medium text-white'}`}>{label}</span>
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); deleteEpisode(ep.id); }} className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[3px] text-white/40 transition hover:bg-red-500/10 hover:text-red-300" title="Delete timeline"><X size={14} /></button>
+                      <button onClick={(e) => { e.stopPropagation(); deleteEpisode(ep.id); }} className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[3px] text-white/40 transition hover:bg-red-500/10 hover:text-red-300" title={tr("timeline.delete_timeline","Delete timeline")}><X size={14} /></button>
                     </div>
                   );
                 })
@@ -66,8 +68,8 @@ export default function EpisodesTabBar({
         )}
       </div>
 
-      <button onClick={createEpisode} className="flex flex-shrink-0 items-center gap-1.5 rounded-[3px] border border-[#23c7be]/35 bg-[#23c7be]/10 px-4 py-3 text-xs font-black text-[#8ee9e4] transition hover:bg-[#23c7be]/15" title="Start a new timeline">
-        <Plus size={14} /> New
+      <button onClick={createEpisode} className="flex flex-shrink-0 items-center gap-1.5 rounded-[3px] border border-[#23c7be]/35 bg-[#23c7be]/10 px-4 py-3 text-xs font-black text-[#8ee9e4] transition hover:bg-[#23c7be]/15" title={tr("timeline.start_a_new_timeline","Start a new timeline")}>
+        <Plus size={14} /> {tr("timeline.new","New")}
       </button>
     </div>
   );
