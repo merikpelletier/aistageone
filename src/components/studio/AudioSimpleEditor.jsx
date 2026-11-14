@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Download, RotateCcw, RotateCw, Scissors, Trash2, Repeat2, Save, Play, Pause } from 'lucide-react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const fmt = seconds => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}.${Math.floor((seconds % 1) * 10)}`;
@@ -87,6 +88,7 @@ function encodeWav(buffer) {
 }
 
 export default function AudioSimpleEditor({ sourceUrl, sourceName = 'Music', onSaveToVault }) {
+  const t = useStudioTranslation();
   const canvasRef = useRef(null);
   const audioContextRef = useRef(null);
   const sourceNodeRef = useRef(null);
@@ -127,7 +129,7 @@ export default function AudioSimpleEditor({ sourceUrl, sourceName = 'Music', onS
     setFuture([]);
     setCuts([]);
     fetch(sourceUrl)
-      .then(response => { if (!response.ok) throw new Error('Unable to load this audio file.'); return response.arrayBuffer(); })
+      .then(response => { if (!response.ok) throw new Error(t('Unable to load this audio file.', 'Unable to load this audio file.')); return response.arrayBuffer(); })
       .then(async bytes => {
         const context = new AudioContext();
         const decoded = await context.decodeAudioData(bytes.slice(0));
@@ -224,7 +226,7 @@ export default function AudioSimpleEditor({ sourceUrl, sourceName = 'Music', onS
   const addCut = () => { if (playhead > 0.02 && playhead < duration - 0.02) setCuts(previous => [...new Set([...previous, playhead])]); };
   const trim = () => commit(sliceBuffer(buffer, selectionStart, selectionEnd));
   const deleteSelection = () => {
-    if (selectionStart <= 0.001 && selectionEnd >= duration - 0.001) return toast.error('Select a smaller section first.');
+    if (selectionStart <= 0.001 && selectionEnd >= duration - 0.001) return toast.error(t('Select a smaller section first.', 'Select a smaller section first.'));
     commit(concatBuffers(buffer, [[0, selectionStart], [selectionEnd, duration]]));
   };
   const loopSelection = () => {
@@ -281,20 +283,20 @@ export default function AudioSimpleEditor({ sourceUrl, sourceName = 'Music', onS
       const file = new File([blob], `${sourceName || 'music'} edited.wav`, { type: 'audio/wav' });
       const result = await base44.integrations.Core.UploadFile({ file });
       onSaveToVault?.(result.file_url);
-    } catch (error) { toast.error(error.message || 'Could not upload edited audio.'); }
+    } catch (error) { toast.error(error.message || t('Could not upload edited audio.', 'Could not upload edited audio.')); }
     finally { setSaving(false); }
   };
 
-  if (loading) return <div className="studio-panel-secondary p-5 text-sm text-[var(--studio-text-muted)]">Loading audio editor…</div>;
+  if (loading) return <div className="studio-panel-secondary p-5 text-sm text-[var(--studio-text-muted)]">{t("Loading audio editor…", "Loading audio editor…")}</div>;
   if (!buffer) return null;
 
   return (
     <section className="studio-panel-secondary p-4 sm:p-5 space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div><div className="studio-tool-eyebrow">Edit music</div><div className="font-bold truncate max-w-[520px]">{sourceName}</div></div>
+        <div><div className="studio-tool-eyebrow">{t("Edit music", "Edit music")}</div><div className="font-bold truncate max-w-[520px]">{sourceName}</div></div>
         <div className="flex gap-2">
-          <button className="studio-button studio-button-secondary !min-h-9" onClick={undo} disabled={!history.length}><RotateCcw size={15}/>Undo</button>
-          <button className="studio-button studio-button-secondary !min-h-9" onClick={redo} disabled={!future.length}><RotateCw size={15}/>Redo</button>
+          <button className="studio-button studio-button-secondary !min-h-9" onClick={undo} disabled={!history.length}><RotateCcw size={15}/>{t("Undo", "Undo")}</button>
+          <button className="studio-button studio-button-secondary !min-h-9" onClick={redo} disabled={!future.length}><RotateCw size={15}/>{t("Redo", "Redo")}</button>
         </div>
       </div>
 
@@ -303,44 +305,44 @@ export default function AudioSimpleEditor({ sourceUrl, sourceName = 'Music', onS
         setPlayhead(clamp(((event.clientX - rect.left) / rect.width) * duration, 0, duration));
       }}/>
       <div className="flex items-center gap-3">
-        <button className="studio-button studio-button-primary !min-h-9" onClick={play}>{playing ? <Pause size={15}/> : <Play size={15}/>} {playing ? 'Pause' : 'Play'}</button>
+        <button className="studio-button studio-button-primary !min-h-9" onClick={play}>{playing ? <Pause size={15}/> : <Play size={15}/>} {playing ? t('Pause', 'Pause') : t('Play', 'Play')}</button>
         <span className="text-sm tabular-nums text-[var(--studio-text-muted)]">{fmt(playhead)} / {fmt(duration)}</span>
-        <button className="studio-button studio-button-secondary !min-h-9 ml-auto" onClick={addCut}><Scissors size={15}/>Split at playhead</button>
+        <button className="studio-button studio-button-secondary !min-h-9 ml-auto" onClick={addCut}><Scissors size={15}/>{t("Split at playhead", "Split at playhead")}</button>
       </div>
 
-      {segments.length > 1 ? <div className="flex flex-wrap gap-2">{segments.map((segment, index) => <button key={`${segment.start}-${segment.end}`} onClick={() => selectSegment(segment)} className="studio-button studio-button-secondary !min-h-8 !px-3 text-xs">Segment {index + 1} · {fmt(segment.end - segment.start)}</button>)}</div> : null}
+      {segments.length > 1 ? <div className="flex flex-wrap gap-2">{segments.map((segment, index) => <button key={`${segment.start}-${segment.end}`} onClick={() => selectSegment(segment)} className="studio-button studio-button-secondary !min-h-8 !px-3 text-xs">{t('Segment', 'Segment')} {index + 1} · {fmt(segment.end - segment.start)}</button>)}</div> : null}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-xs text-[var(--studio-text-muted)]">Selection start · {fmt(selectionStart)}
+        <label className="text-xs text-[var(--studio-text-muted)]">{t('Selection start', 'Selection start')} · {fmt(selectionStart)}
           <input type="range" min="0" max={duration} step="0.01" value={selectionStart} onChange={e => { const value = Math.min(Number(e.target.value), selectionEnd - 0.01); setSelectionStart(value); }} className="w-full accent-[var(--studio-accent)]" />
         </label>
-        <label className="text-xs text-[var(--studio-text-muted)]">Selection end · {fmt(selectionEnd)}
+        <label className="text-xs text-[var(--studio-text-muted)]">{t('Selection end', 'Selection end')} · {fmt(selectionEnd)}
           <input type="range" min="0" max={duration} step="0.01" value={selectionEnd} onChange={e => { const value = Math.max(Number(e.target.value), selectionStart + 0.01); setSelectionEnd(value); }} className="w-full accent-[var(--studio-accent)]" />
         </label>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button className="studio-button studio-button-secondary" onClick={trim}>Trim to selection</button>
-        <button className="studio-button studio-button-secondary" onClick={deleteSelection}><Trash2 size={15}/>Delete selection</button>
-        <button className="studio-button studio-button-secondary" onClick={loopSelection}><Repeat2 size={15}/>Loop selection ×2</button>
-        <button className="studio-button studio-button-secondary" onClick={normalize}>Normalize</button>
+        <button className="studio-button studio-button-secondary" onClick={trim}>{t("Trim to selection", "Trim to selection")}</button>
+        <button className="studio-button studio-button-secondary" onClick={deleteSelection}><Trash2 size={15}/>{t("Delete selection", "Delete selection")}</button>
+        <button className="studio-button studio-button-secondary" onClick={loopSelection}><Repeat2 size={15}/>{t("Loop selection ×2", "Loop selection ×2")}</button>
+        <button className="studio-button studio-button-secondary" onClick={normalize}>{t("Normalize", "Normalize")}</button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <label className="text-xs text-[var(--studio-text-muted)]">Volume · {volumeDb} dB</label>
-          <div className="flex gap-2 items-center"><input type="range" min="-18" max="12" step="1" value={volumeDb} onChange={e => setVolumeDb(Number(e.target.value))} className="flex-1 accent-[var(--studio-accent)]"/><button className="studio-button studio-button-secondary !min-h-9" onClick={applyVolume}>Apply</button></div>
+          <label className="text-xs text-[var(--studio-text-muted)]">{t('Volume', 'Volume')} · {volumeDb} dB</label>
+          <div className="flex gap-2 items-center"><input type="range" min="-18" max="12" step="1" value={volumeDb} onChange={e => setVolumeDb(Number(e.target.value))} className="flex-1 accent-[var(--studio-accent)]"/><button className="studio-button studio-button-secondary !min-h-9" onClick={applyVolume}>{t("Apply", "Apply")}</button></div>
         </div>
         <div className="space-y-2">
-          <label className="text-xs text-[var(--studio-text-muted)]">Fade · {fadeSeconds}s</label>
-          <div className="flex gap-2 items-center"><input type="number" min="0.1" max={Math.max(0.1, duration)} step="0.1" value={fadeSeconds} onChange={e => setFadeSeconds(e.target.value)} className="studio-input h-9 w-24 px-2"/><button className="studio-button studio-button-secondary !min-h-9" onClick={() => applyFade('in')}>Fade in</button><button className="studio-button studio-button-secondary !min-h-9" onClick={() => applyFade('out')}>Fade out</button></div>
+          <label className="text-xs text-[var(--studio-text-muted)]">{t('Fade', 'Fade')} · {fadeSeconds}s</label>
+          <div className="flex gap-2 items-center"><input type="number" min="0.1" max={Math.max(0.1, duration)} step="0.1" value={fadeSeconds} onChange={e => setFadeSeconds(e.target.value)} className="studio-input h-9 w-24 px-2"/><button className="studio-button studio-button-secondary !min-h-9" onClick={() => applyFade('in')}>{t("Fade in", "Fade in")}</button><button className="studio-button studio-button-secondary !min-h-9" onClick={() => applyFade('out')}>{t("Fade out", "Fade out")}</button></div>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--studio-border)]">
-        <button className="studio-button studio-button-primary" onClick={saveToVault} disabled={saving}><Save size={16}/>{saving ? 'Preparing…' : 'Save edited version to Vault'}</button>
-        <button className="studio-button studio-button-secondary" onClick={exportWav}><Download size={16}/>Export WAV</button>
-        <span className="text-xs self-center text-[var(--studio-text-faint)]">Original file stays untouched.</span>
+        <button className="studio-button studio-button-primary" onClick={saveToVault} disabled={saving}><Save size={16}/>{saving ? t('Preparing…', 'Preparing…') : t('Save edited version to Vault', 'Save edited version to Vault')}</button>
+        <button className="studio-button studio-button-secondary" onClick={exportWav}><Download size={16}/>{t("Export WAV", "Export WAV")}</button>
+        <span className="text-xs self-center text-[var(--studio-text-faint)]">{t("Original file stays untouched.", "Original file stays untouched.")}</span>
       </div>
     </section>
   );
