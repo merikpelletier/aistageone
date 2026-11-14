@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { ChevronLeft, ChevronRight, Film, Trash2, Mic, Save, Eye } from 'lucide-react';
 
 export default function SceneListView({
@@ -11,6 +12,7 @@ export default function SceneListView({
   production,
   onBlockTitleChange
 }) {
+  const tr = useStudioTranslation();
   const railRef = useRef(null);
   const scrollRail = (direction) => {
     railRef.current?.scrollBy({ left: direction * 760, behavior: 'smooth' });
@@ -20,15 +22,15 @@ export default function SceneListView({
     <div className="w-full">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#23c7be]">Story Blocks</p>
-          <p className="mt-1 text-xs text-white/35">Scenes run from left to right.</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#23c7be]">{tr("timeline.story_blocks","Story Blocks")}</p>
+          <p className="mt-1 text-xs text-white/35">{tr("timeline.scenes_run_from_left_to_right","Scenes run from left to right.")}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => scrollRail(-1)}
             className="flex h-9 w-9 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10 hover:text-white"
-            title="Previous scenes"
+            title={tr("timeline.previous_scenes","Previous scenes")}
           >
             <ChevronLeft size={17} />
           </button>
@@ -36,7 +38,7 @@ export default function SceneListView({
             type="button"
             onClick={() => scrollRail(1)}
             className="flex h-9 w-9 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10 hover:text-white"
-            title="Next scenes"
+            title={tr("timeline.next_scenes","Next scenes")}
           >
             <ChevronRight size={17} />
           </button>
@@ -52,7 +54,7 @@ export default function SceneListView({
             >
               <div className="border-b border-white/10 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-[0.18em] text-[#23c7be]">Scene {idx + 1}</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.18em] text-[#23c7be]">{tr('timeline.scene','Scene')} {idx + 1}</span>
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={(e) => {
@@ -60,7 +62,7 @@ export default function SceneListView({
                         handleViewBlock(block);
                       }}
                       className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/65 hover:bg-white/10 hover:text-white"
-                      title="View scene"
+                      title={tr("timeline.view_scene","View scene")}
                     >
                       <Eye size={14} />
                     </button>
@@ -79,7 +81,7 @@ export default function SceneListView({
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteBlock(block.id); }}
                       className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-red-400/20 bg-red-400/5 text-red-300 hover:bg-red-400/10"
-                      title="Delete scene"
+                      title={tr("timeline.delete_scene","Delete scene")}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -90,7 +92,7 @@ export default function SceneListView({
                   value={block.title || ''}
                   onChange={(e) => onBlockTitleChange?.(block.id, e.target.value)}
                   onClick={(e) => e.stopPropagation()}
-                  placeholder="Name this scene..."
+                  placeholder={tr("timeline.name_this_scene","Name this scene...")}
                   className="w-full rounded-[3px] border border-white/10 bg-black/20 px-3 py-2 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]/50"
                 />
               </div>
@@ -108,7 +110,7 @@ export default function SceneListView({
                       <div className="flex h-12 w-12 items-center justify-center rounded-[3px] border border-[#23c7be]/25 bg-[#23c7be]/10">
                         <Mic size={22} className="text-[#23c7be]" />
                       </div>
-                      <span className="text-xs font-bold">Audio block</span>
+                      <span className="text-xs font-bold">{tr("timeline.audio_block","Audio block")}</span>
                     </div>
                   ) : (
                     <img src={block.media_url} alt="" className="h-full w-full object-cover" />
@@ -118,7 +120,7 @@ export default function SceneListView({
                     <div className="flex h-12 w-12 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.03]">
                       <Film size={22} />
                     </div>
-                    <span className="text-xs font-bold">Click to edit scene</span>
+                    <span className="text-xs font-bold">{tr("timeline.click_to_edit_scene","Click to edit scene")}</span>
                   </div>
                 )}
               </button>
