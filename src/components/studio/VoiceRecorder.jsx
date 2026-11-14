@@ -5,10 +5,12 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import ProductionContextInfo from '@/components/ProductionContextInfo';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
 export default function VoiceRecorder({ onRecordingComplete, onClose, productionMethod = null, block = null, character = null, episodePageId, blockId, user, embedded = false }) {
+  const t = useStudioTranslation();
   const showContext = productionMethod && block;
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -42,7 +44,7 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
       timerRef.current = setInterval(() => setRecordingTime(v => v + 1), 1000);
     } catch (error) {
       console.error(error);
-      toast.error('Could not access microphone. Please check permissions.');
+      toast.error(t('Could not access microphone. Please check permissions.', 'Could not access microphone. Please check permissions.'));
     }
   };
 
@@ -72,7 +74,7 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
       setShowSaveVault(true);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to upload audio');
+      toast.error(t('Failed to upload audio', 'Failed to upload audio'));
     } finally {
       setIsUploading(false);
     }
@@ -92,10 +94,10 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
           const others = (timeline.block_overrides || []).filter(b => b.block_id !== blockId);
           await base44.entities.UserTimeline.update(timeline.id, { block_overrides: [...others, override] });
         }
-        toast.success('Audio saved to your Vault & episode!');
+        toast.success(t('Audio saved to your Vault & episode!', 'Audio saved to your Vault & episode!'));
       } catch (error) {
         console.error(error);
-        toast.error('Saved to Vault, but failed to attach to episode');
+        toast.error(t('Saved to Vault, but failed to attach to episode', 'Saved to Vault, but failed to attach to episode'));
       } finally {
         setIsSaving(false);
       }
@@ -118,7 +120,7 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
           <header className="mb-5 flex items-center justify-between border-b border-white/10 bg-[#17191d] px-4 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Mic size={19} /></div>
-              <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#23c7be]">Sound & Voice</p><h3 className="text-xl font-black">Voice Recorder</h3><p className="text-xs text-white/45">Record dialogue or voice directly in the Studio.</p></div>
+              <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#23c7be]">{t('Sound & Voice', 'Sound & Voice')}</p><h3 className="text-xl font-black">{t('Voice Recorder', 'Voice Recorder')}</h3><p className="text-xs text-white/45">{t('Record dialogue or voice directly in the Studio.', 'Record dialogue or voice directly in the Studio.')}</p></div>
             </div>
             {!embedded && <button onClick={onClose} className="rounded-[3px] border border-white/10 bg-white/[.04] p-2 hover:bg-white/10"><X size={20} /></button>}
           </header>
@@ -132,7 +134,7 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
                   {isRecording ? [...Array(20)].map((_, i) => <motion.div key={i} className="w-1 rounded-[1px] bg-[#23c7be]" animate={{ height: [8, 28 + Math.random() * 44, 8] }} transition={{ duration: .5, repeat: Infinity, delay: i * .04 }} />) : audioUrl ? <audio ref={audioPlayerRef} src={audioUrl} onEnded={() => setIsPlaying(false)} className="hidden" /> : <div className="flex h-20 w-20 items-center justify-center rounded-[3px] border border-[#23c7be]/25 bg-[#23c7be]/10"><Mic size={38} className="text-[#23c7be]" /></div>}
                 </div>
                 <div className="font-mono text-5xl font-black tracking-tight text-white">{fmt(recordingTime)}</div>
-                <div className="mt-2 text-sm font-bold text-white/45">{isRecording ? 'Recording…' : audioUrl ? 'Recording ready' : 'Tap the microphone to start'}</div>
+                <div className="mt-2 text-sm font-bold text-white/45">{isRecording ? t('Recording…', 'Recording…') : audioUrl ? t('Recording ready', 'Recording ready') : t('Tap the microphone to start', 'Tap the microphone to start')}</div>
                 <div className="mt-8 flex items-center gap-3">
                   {!audioUrl ? (!isRecording ? <button onClick={startRecording} className="flex h-16 w-16 items-center justify-center rounded-[3px] bg-[#23c7be] text-[#071211] hover:bg-[#35d8cf]"><Mic size={26} /></button> : <button onClick={stopRecording} className="flex h-16 w-16 items-center justify-center rounded-[3px] border border-red-400/40 bg-red-400/10 text-red-200"><Square size={24} /></button>) : <><button onClick={reset} className="flex h-11 w-11 items-center justify-center rounded-[3px] border border-white/10 bg-white/[.04] text-white/60 hover:bg-white/10"><X size={18} /></button><button onClick={togglePlayback} className="flex h-16 w-16 items-center justify-center rounded-[3px] border border-[#23c7be]/40 bg-[#23c7be]/10 text-[#23c7be]">{isPlaying ? <Pause size={24} /> : <Play size={24} />}</button><button onClick={handleUpload} disabled={isUploading} className="flex h-11 w-11 items-center justify-center rounded-[3px] border border-white/10 bg-white/[.04] disabled:opacity-40">{isUploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}</button></>}
                 </div>
@@ -141,14 +143,14 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
 
             <aside className="space-y-4">
               <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-                <p className="text-[10px] font-black uppercase tracking-[.12em] text-white/40">Recording status</p>
+                <p className="text-[10px] font-black uppercase tracking-[.12em] text-white/40">{t('Recording status', 'Recording status')}</p>
                 <div className="mt-3 space-y-2 text-xs">
-                  <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">State</span><strong className={isRecording ? 'text-red-300' : audioUrl ? 'text-[#8ee9e4]' : 'text-white'}>{isRecording ? 'Recording' : audioUrl ? 'Ready' : 'Waiting'}</strong></div>
-                  <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">Format</span><strong>WebM audio</strong></div>
-                  <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">Destination</span><strong>Vault</strong></div>
+                  <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">{t('State', 'State')}</span><strong className={isRecording ? 'text-red-300' : audioUrl ? 'text-[#8ee9e4]' : 'text-white'}>{isRecording ? t('Recording', 'Recording') : audioUrl ? t('Ready', 'Ready') : t('Waiting', 'Waiting')}</strong></div>
+                  <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">{t('Format', 'Format')}</span><strong>WebM audio</strong></div>
+                  <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">{t('Destination', 'Destination')}</span><strong>{t('Vault', 'Vault')}</strong></div>
                 </div>
               </section>
-              {audioUrl && <button onClick={handleUpload} disabled={isUploading || isSaving} className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[.05] disabled:text-white/30">{isSaving ? <><Loader2 size={17} className="animate-spin" /> Saving…</> : isUploading ? <><Loader2 size={17} className="animate-spin" /> Uploading…</> : <><Upload size={17} /> Save Recording</>}</button>}
+              {audioUrl && <button onClick={handleUpload} disabled={isUploading || isSaving} className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[.05] disabled:text-white/30">{isSaving ? <><Loader2 size={17} className="animate-spin" /> {t('Saving…', 'Saving…')}</> : isUploading ? <><Loader2 size={17} className="animate-spin" /> {t('Uploading…', 'Uploading…')}</> : <><Upload size={17} /> {t('Save Recording', 'Save Recording')}</>}</button>}
             </aside>
           </div>
         </div>
