@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, Loader2, Play, RotateCcw, Volume2 } from 'lucide-re
 import { base44 } from '@/api/base44Client';
 import { VOICE_LANGUAGES, VOICE_NAMES } from '@/lib/voiceCatalog';
 import { toast } from 'sonner';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const control = 'w-full border border-white/15 bg-[#20242a] px-2 py-2 text-xs font-semibold text-white focus:border-[#23c7be] focus:outline-none';
 const action = 'inline-flex items-center justify-center gap-2 border border-white/10 px-3 py-2 text-xs font-black disabled:cursor-not-allowed disabled:opacity-35';
@@ -121,6 +122,7 @@ async function combineToWav(lines) {
 }
 
 export default function FotoPlayAudioPanel({ boxes, characters = [], segment, project, pricing, busy, setBusy, onBoxesChange, onPersist }) {
+  const t = useStudioTranslation();
   const ordered = useMemo(() => orderBoxes(boxes), [boxes]);
   const [playing, setPlaying] = useState(false);
   const stopRef = useRef(false);
@@ -189,7 +191,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
       const uploaded = await base44.integrations.Core.UploadFile({ file });
       const signature = JSON.stringify(next.map((box) => ({ id: box.id, order: box.order, text: box.text, voice: resolveVoice(box), language: resolveLanguage(box), pause: box.pause_after ?? 0.35 })));
       await onPersist({ text_boxes: next, narration_url: uploaded.file_url, audio_sequence: timeline, audio_source_text: signature, audio_voice: 'multi', audio_stale: false, status: 'draft' });
-      toast.success(totalCharged > 0 ? `FotoPlay final audio generated · ${totalCharged} credits charged` : 'FotoPlay final audio assembled · no new credits charged');
+      toast.success(totalCharged > 0 ? `${t('fotoplay.audio.audio_generated', 'FotoPlay final audio generated')} · ${totalCharged} ${t('fotoplay.audio.credits', 'credits')} ${t('fotoplay.audio.charged', 'charged')}` : t('fotoplay.audio.audio_assembled', 'FotoPlay final audio assembled · no new credits charged'));
     } finally {
       setBusy?.('');
     }
@@ -223,8 +225,8 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
 
   return <div className="space-y-3">
     <div className="border border-white/10 bg-[#181c21] p-3">
-      <p className="text-xs font-black uppercase tracking-[.12em] text-[#23c7be]">Reading order</p>
-      <p className="mt-1 text-xs text-white/55">Audio follows this order, not the visual position of the boxes.</p>
+      <p className="text-xs font-black uppercase tracking-[.12em] text-[#23c7be]" >{t('fotoplay.audio.reading_order', 'Reading order')}</p>
+      <p className="mt-1 text-xs text-white/55">{t('fotoplay.audio.order_help', 'Audio follows this order, not the visual position of the boxes.')}</p>
     </div>
 
     {ordered.map((box, index) => {
@@ -236,68 +238,68 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
       return <div key={box.id} className="space-y-3 border border-white/10 bg-[#181c21] p-3">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center bg-[#23c7be] text-xs font-black text-black">{index + 1}</div>
-          <div className="min-w-0 flex-1"><p className="truncate text-xs font-black">{box.type === 'dialogue' ? (character?.name || 'Dialogue') : 'Narration'}</p><p className="truncate text-[10px] text-white/45">{box.text || 'Empty text block'}</p></div>
+          <div className="min-w-0 flex-1"><p className="truncate text-xs font-black">{box.type === 'dialogue' ? (character?.name || t('fotoplay.audio.dialogue', 'Dialogue')) : t('fotoplay.audio.narration', 'Narration')}</p><p className="truncate text-[10px] text-white/45">{box.text || t('fotoplay.audio.empty_text', 'Empty text block')}</p></div>
           <button type="button" disabled={index === 0} onClick={() => move(box.id, -1)} className="border border-white/10 p-1.5 disabled:opacity-25"><ArrowUp size={13} /></button>
           <button type="button" disabled={index === ordered.length - 1} onClick={() => move(box.id, 1)} className="border border-white/10 p-1.5 disabled:opacity-25"><ArrowDown size={13} /></button>
         </div>
 
-        {box.type === 'dialogue' && <label className="block text-[10px] font-black uppercase text-white/50">Speaker
+        {box.type === 'dialogue' && <label className="block text-[10px] font-black uppercase text-white/50">{t('fotoplay.audio.speaker', 'Speaker')}
           <select value={box.speaker_id || ''} onChange={(e) => patchBox(box.id, { speaker_id: e.target.value, voice: '' })} className={`${control} mt-1`}>
-            <option value="" className="text-black">Choose character</option>
+            <option value="" className="text-black">{t('fotoplay.audio.choose_character', 'Choose character')}</option>
             {characters.map((item) => <option key={item.id} value={item.id} className="text-black">{item.name}</option>)}
           </select>
         </label>}
 
         <div className="grid grid-cols-2 gap-2">
-          <label className="text-[10px] font-black uppercase text-white/50">Voice
+          <label className="text-[10px] font-black uppercase text-white/50">{t('fotoplay.audio.voice', 'Voice')}
             <select value={voice} onChange={(e) => patchBox(box.id, { voice: e.target.value })} className={`${control} mt-1`}>
               {VOICE_NAMES.map((name) => <option key={name} value={name} className="text-black">{name}</option>)}
             </select>
           </label>
-          <label className="text-[10px] font-black uppercase text-white/50">Language
+          <label className="text-[10px] font-black uppercase text-white/50">{t('fotoplay.audio.language', 'Language')}
             <select value={resolveLanguage(box)} onChange={(e) => patchBox(box.id, { language: e.target.value })} className={`${control} mt-1`}>
               {VOICE_LANGUAGES.map(([code, name]) => <option key={code} value={code} className="text-black">{name}</option>)}
             </select>
           </label>
         </div>
 
-        <label className="block text-[10px] font-black uppercase text-white/50">Pause after · {Number(box.pause_after ?? 0.35).toFixed(2)}s
+        <label className="block text-[10px] font-black uppercase text-white/50">{t('fotoplay.audio.pause_after', 'Pause after')} · {Number(box.pause_after ?? 0.35).toFixed(2)}s
           <input type="range" min="0" max="3" step="0.05" value={Number(box.pause_after ?? 0.35)} onChange={(e) => patchBox(box.id, { pause_after: Number(e.target.value) })} className="mt-2 w-full accent-[#23c7be]" />
         </label>
 
         {box.audio_url && !stale && <div className="flex items-center justify-between border border-[#23c7be]/35 bg-[#23c7be]/10 px-3 py-2">
-          <span className="text-[11px] font-black text-[#23c7be]">{hasRecordedLineCost ? `✓ Generated · ${lineCost} credit${lineCost === 1 ? '' : 's'}` : '✓ Generated · cost not recorded'}</span>
-          <button type="button" onClick={() => { dispatchActive(box.id); playUrl(box.audio_url).finally(() => dispatchActive('')); }} className="inline-flex items-center gap-1 text-[11px] font-black text-white"><Play size={12} /> Listen</button>
+          <span className="text-[11px] font-black text-[#23c7be]">{hasRecordedLineCost ? `✓ ${t('fotoplay.audio.generated', 'Generated')} · ${lineCost} ${t(lineCost === 1 ? 'fotoplay.audio.credit' : 'fotoplay.audio.credits', lineCost === 1 ? 'credit' : 'credits')}` : `✓ ${t('fotoplay.audio.generated', 'Generated')} · ${t('fotoplay.audio.cost_unknown', 'cost not recorded')}`}</span>
+          <button type="button" onClick={() => { dispatchActive(box.id); playUrl(box.audio_url).finally(() => dispatchActive('')); }} className="inline-flex items-center gap-1 text-[11px] font-black text-white"><Play size={12} /> {t('fotoplay.audio.listen', 'Listen')}</button>
         </div>}
-        {box.audio_url && stale && <div className="border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] font-black text-amber-200">Audio exists, but this line changed and needs regeneration.</div>}
+        {box.audio_url && stale && <div className="border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] font-black text-amber-200">{t('fotoplay.audio.stale', 'Audio exists, but this line changed and needs regeneration.')}</div>}
 
         <div className="flex gap-2">
-          {box.audio_url && <button type="button" onClick={() => { dispatchActive(box.id); playUrl(box.audio_url).finally(() => dispatchActive('')); }} className={`${action} flex-1 bg-[#242930]`}><Play size={13} /> Listen</button>}
+          {box.audio_url && <button type="button" onClick={() => { dispatchActive(box.id); playUrl(box.audio_url).finally(() => dispatchActive('')); }} className={`${action} flex-1 bg-[#242930]`}><Play size={13} /> {t('fotoplay.audio.listen', 'Listen')}</button>}
           <button type="button" disabled={busy === 'audio-sequence'} onClick={async () => {
             try {
               setBusy?.('audio-sequence');
               const generated = await generateLine(box, ordered);
               onBoxesChange(generated.boxes);
               await onPersist({ text_boxes: generated.boxes, audio_stale: true, status: 'draft' });
-              toast.success(`Line ${box.order} generated · ${generated.creditCost} credit${generated.creditCost === 1 ? '' : 's'} charged`);
+              toast.success(`${t('fotoplay.audio.line_generated', 'Line')} ${box.order} ${t('fotoplay.audio.generated', 'Generated').toLowerCase()} · ${generated.creditCost} ${t(generated.creditCost === 1 ? 'fotoplay.audio.credit' : 'fotoplay.audio.credits', generated.creditCost === 1 ? 'credit' : 'credits')} ${t('fotoplay.audio.charged', 'charged')}`);
             } catch (error) {
               toast.error(error.message || 'Line generation failed');
             } finally {
               setBusy?.('');
             }
-          }} className={`${action} flex-1 bg-[#242930]`}>{stale ? <Volume2 size={13} /> : <RotateCcw size={13} />} {stale ? 'Generate line' : 'Regenerate line'}</button>
+          }} className={`${action} flex-1 bg-[#242930]`}>{stale ? <Volume2 size={13} /> : <RotateCcw size={13} />} {stale ? t('fotoplay.audio.generate_line', 'Generate line') : t('fotoplay.audio.regenerate_line', 'Regenerate line')}</button>
         </div>
       </div>;
     })}
 
-    {!ordered.length && <div className="border border-white/10 bg-[#181c21] p-4 text-sm font-semibold text-white/50">Add narration or dialogue boxes first. Their order will appear here automatically.</div>}
+    {!ordered.length && <div className="border border-white/10 bg-[#181c21] p-4 text-sm font-semibold text-white/50">{t('fotoplay.audio.no_lines', 'Add narration or dialogue boxes first. Their order will appear here automatically.')}</div>}
 
     <div className="grid grid-cols-2 gap-2">
-      <button type="button" onClick={playSequence} disabled={!ordered.some((box) => box.audio_url)} className={`${action} bg-white text-black`}><Play size={14} /> {playing ? 'Stop playback' : 'Play sequence'}</button>
-      <button type="button" onClick={() => buildSegmentAudio(ordered, false).catch((error) => toast.error(error.message || 'Audio generation failed'))} disabled={busy === 'audio-sequence' || !ordered.length} className={`${action} bg-[#23c7be] text-black`}>{busy === 'audio-sequence' ? <Loader2 size={14} className="animate-spin" /> : <Volume2 size={14} />} Build final audio</button>
+      <button type="button" onClick={playSequence} disabled={!ordered.some((box) => box.audio_url)} className={`${action} bg-white text-black`}><Play size={14} /> {playing ? t('fotoplay.audio.stop', 'Stop playback') : t('fotoplay.audio.play', 'Play sequence')}</button>
+      <button type="button" onClick={() => buildSegmentAudio(ordered, false).catch((error) => toast.error(error.message || 'Audio generation failed'))} disabled={busy === 'audio-sequence' || !ordered.length} className={`${action} bg-[#23c7be] text-black`}>{busy === 'audio-sequence' ? <Loader2 size={14} className="animate-spin" /> : <Volume2 size={14} />} {t('fotoplay.audio.build', 'Build final audio')}</button>
     </div>
 
-    {segment.narration_url && !segment.audio_stale && <div className="border border-[#23c7be]/25 bg-[#23c7be]/10 px-3 py-2 text-[10px] font-black uppercase tracking-[.08em] text-[#23c7be]">✓ Final publication audio ready</div>}
-    <p className="text-[10px] text-white/40">Play sequence is the editing preview. Build final audio creates the combined publication track in the background.</p>
+    {segment.narration_url && !segment.audio_stale && <div className="border border-[#23c7be]/25 bg-[#23c7be]/10 px-3 py-2 text-[10px] font-black uppercase tracking-[.08em] text-[#23c7be]">{t('fotoplay.audio.ready', '✓ Final publication audio ready')}</div>}
+    <p className="text-[10px] text-white/40">{t('fotoplay.audio.explanation', 'Play sequence is the editing preview. Build final audio creates the combined publication track in the background.')}</p>
   </div>;
 }
