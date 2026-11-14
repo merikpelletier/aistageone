@@ -883,7 +883,7 @@ export default function Studio() {
 
       {activeToolPanel === 'set' && (
         <div className="absolute inset-0 z-20 bg-[#202328]">
-          <StudioWorkspaceTool title="Set Designer"><SetDesignerWorkspace userEmail={user?.email} /></StudioWorkspaceTool>
+          <StudioWorkspaceTool title={studioT('setdesigner.workspace.brand', 'Set Designer')}><SetDesignerWorkspace userEmail={user?.email} /></StudioWorkspaceTool>
         </div>
       )}
 
