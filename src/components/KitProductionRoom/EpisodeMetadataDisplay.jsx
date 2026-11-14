@@ -94,7 +94,7 @@ export default function EpisodeMetadataDisplay({
           <input
             value={episodeTitle}
             onChange={e => onTitleChange(e.target.value)}
-            placeholder="Episode title…"
+            placeholder={tr('timeline.placeholder_episode_title','Episode title…')}
             disabled={isLocked}
             className={fieldClass}
           />
@@ -120,7 +120,7 @@ export default function EpisodeMetadataDisplay({
           value={episodeDesc}
           onChange={e => onDescChange(e.target.value)}
           onBlur={onSave}
-          placeholder="Episode description…"
+          placeholder={tr('timeline.placeholder_episode_description','Episode description…')}
           rows={3}
           disabled={isLocked}
           className={`${fieldClass} resize-none`}
