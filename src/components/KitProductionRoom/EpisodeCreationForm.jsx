@@ -1,4 +1,5 @@
 import React from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Film, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -24,6 +25,7 @@ export default function EpisodeCreationForm({
   onCreate,
   isLocked 
 }) {
+  const tr = useStudioTranslation();
   const { data: categories = [] } = useQuery({
     queryKey: ['dossierCategories'],
     queryFn: () => base44.entities.DossierCategory.list('name'),
@@ -32,18 +34,18 @@ export default function EpisodeCreationForm({
 
   return (
     <div className="space-y-3">
-      <p className="text-white text-xs uppercase tracking-widest font-semibold">New Episode</p>
+      <p className="text-white text-xs uppercase tracking-widest font-semibold">{tr("timeline.new_episode","New Episode")}</p>
 
       {/* Category */}
       <div>
-        <p className="text-white text-xs uppercase tracking-widest font-semibold mb-1">Category</p>
+        <p className="text-white text-xs uppercase tracking-widest font-semibold mb-1">{tr("timeline.category","Category")}</p>
         <select
           value={category || ''}
           onChange={e => setCategory(e.target.value)}
           disabled={isLocked}
           className={`w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/20 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''} ${!category ? 'text-white/30' : ''}`}
         >
-          <option value="">Select a category…</option>
+          <option value="">{tr("timeline.select_a_category","Select a category…")}</option>
           {categories.map(cat => (
             <option key={cat.id} value={cat.name} className="text-white">{cat.name}</option>
           ))}
@@ -52,7 +54,7 @@ export default function EpisodeCreationForm({
       
       {/* Poster Image */}
       <div>
-        <p className="text-white text-xs uppercase tracking-widest font-semibold mb-2">Poster Image</p>
+        <p className="text-white text-xs uppercase tracking-widest font-semibold mb-2">{tr("timeline.poster_image","Poster Image")}</p>
         <div className="flex items-center gap-3">
           {posterImage ? (
             <div className="relative w-24 h-36 rounded-xl overflow-hidden">
@@ -64,7 +66,7 @@ export default function EpisodeCreationForm({
           ) : (
             <label className="w-24 h-36 border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-white/40 transition-colors">
               <Film size={24} className="text-white" />
-              <span className="text-white text-xs">Upload</span>
+              <span className="text-white text-xs">{tr("timeline.upload","Upload")}</span>
               <input type="file" accept="image/*" className="hidden" onChange={async e => {
                 const file = e.target.files[0];
                 if (file) {
@@ -79,11 +81,11 @@ export default function EpisodeCreationForm({
 
       {/* Series Description */}
       <div>
-        <p className="text-white text-xs uppercase tracking-widest font-semibold mb-1">Series Description</p>
+        <p className="text-white text-xs uppercase tracking-widest font-semibold mb-1">{tr("timeline.series_description","Series Description")}</p>
         <textarea
           value={seriesDesc}
           onChange={e => setSeriesDesc(e.target.value)}
-          placeholder="Describe the series…"
+          placeholder={tr("timeline.describe_the_series","Describe the series…")}
           rows={2}
           className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/20 resize-none"
         />
@@ -116,7 +118,7 @@ export default function EpisodeCreationForm({
       
       {/* Publication Date */}
       <div>
-        <p className="text-white text-xs uppercase tracking-widest font-semibold mb-1">Publication Date</p>
+        <p className="text-white text-xs uppercase tracking-widest font-semibold mb-1">{tr("timeline.publication_date","Publication Date")}</p>
         <input
           type="date"
           value={publicationDate}
@@ -132,7 +134,7 @@ export default function EpisodeCreationForm({
         disabled={isLocked}
       >
         <Plus size={16} className="inline mr-2" />
-        Create Episode
+        {tr('timeline.create_episode','Create Episode')}
       </button>
     </div>
   );
