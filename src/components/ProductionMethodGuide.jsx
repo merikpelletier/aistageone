@@ -1,6 +1,7 @@
 import React from 'react';
 import { Film, Mic, Video, Music, Upload, Users, Wand2, X, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const METHOD_GUIDES = {
   actor_replacement: {
@@ -66,6 +67,7 @@ const METHOD_GUIDES = {
 };
 
 export default function ProductionMethodGuide({ productionMethod, block, character, onClose, onContinue }) {
+  const tr = useStudioTranslation();
   const guide = METHOD_GUIDES[productionMethod];
   
   if (!guide) return null;
@@ -87,8 +89,8 @@ export default function ProductionMethodGuide({ productionMethod, block, charact
               <Icon size={24} className="text-white" />
             </div>
             <div>
-              <h2 className="text-white text-xl font-bold">{guide.title}</h2>
-              <p className="text-white text-sm">{guide.subtitle}</p>
+              <h2 className="text-white text-xl font-bold">{tr('timeline.support.'+guide.title.toLowerCase().replace(/[^a-z0-9]+/g,'_'),guide.title)}</h2>
+              <p className="text-white text-sm">{tr('timeline.support.'+guide.subtitle.toLowerCase().replace(/[^a-z0-9]+/g,'_'),guide.subtitle)}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-white hover:text-white">
@@ -99,33 +101,33 @@ export default function ProductionMethodGuide({ productionMethod, block, charact
         {/* Content */}
         <div className="p-6 space-y-6">
           {/* Description */}
-          <p className="text-white text-sm leading-relaxed">{guide.description}</p>
+          <p className="text-white text-sm leading-relaxed">{tr('timeline.support.'+guide.description.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,100),guide.description)}</p>
           
           {/* Scene Details */}
           {(block?.title || block?.description || character || hasDialogue) && (
             <div className="bg-white/5 rounded-2xl p-4 border border-white/10 space-y-3">
               <div className="flex items-center gap-2">
                 <Film size={16} className="text-white" />
-                <p className="text-white font-semibold text-sm">Scene Details</p>
+                <p className="text-white font-semibold text-sm">{tr("timeline.support.scene_details","Scene Details")}</p>
               </div>
               
               {block?.title && (
                 <div>
-                  <p className="text-white text-[10px] uppercase tracking-wider mb-1">Title</p>
+                  <p className="text-white text-[10px] uppercase tracking-wider mb-1">{tr("timeline.support.title","Title")}</p>
                   <p className="text-white text-sm font-medium">{block.title}</p>
                 </div>
               )}
               
               {block?.description && (
                 <div>
-                  <p className="text-white text-[10px] uppercase tracking-wider mb-1">Description</p>
+                  <p className="text-white text-[10px] uppercase tracking-wider mb-1">{tr("timeline.support.description","Description")}</p>
                   <p className="text-white text-sm">{block.description}</p>
                 </div>
               )}
               
               {character && (
                 <div>
-                  <p className="text-white text-[10px] uppercase tracking-wider mb-1">Character</p>
+                  <p className="text-white text-[10px] uppercase tracking-wider mb-1">{tr("timeline.support.character","Character")}</p>
                   <div className="flex items-center gap-2">
                     {character.photo_url && (
                       <img src={character.photo_url} alt="" className="w-8 h-8 rounded-lg object-cover" />
@@ -142,7 +144,7 @@ export default function ProductionMethodGuide({ productionMethod, block, charact
               
               {hasDialogue && (
                 <div>
-                  <p className="text-white text-[10px] uppercase tracking-wider mb-1">Dialogue</p>
+                  <p className="text-white text-[10px] uppercase tracking-wider mb-1">{tr("timeline.support.dialogue","Dialogue")}</p>
                   <div className="flex items-start gap-2 bg-black/30 rounded-lg p-3">
                     <MessageSquare size={14} className="text-white flex-shrink-0 mt-0.5" />
                     <p className="text-white text-sm italic">"{block.dialogue}"</p>
@@ -155,7 +157,7 @@ export default function ProductionMethodGuide({ productionMethod, block, charact
           {/* Reference Media */}
           {referenceMedia.length > 0 && (
             <div>
-              <p className="text-white text-[10px] uppercase tracking-wider mb-3">Reference Media</p>
+              <p className="text-white text-[10px] uppercase tracking-wider mb-3">{tr("timeline.support.reference_media","Reference Media")}</p>
               <div className="grid grid-cols-3 gap-2">
                 {referenceMedia.slice(0, 6).map((url, i) => (
                   <div key={i} className="aspect-square rounded-lg overflow-hidden bg-black/30">
@@ -174,19 +176,19 @@ export default function ProductionMethodGuide({ productionMethod, block, charact
           <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
             <div className="flex items-center gap-3 mb-3">
               <ToolIcon size={20} className="text-white" />
-              <p className="text-white font-semibold text-sm">Recommended Tool</p>
+              <p className="text-white font-semibold text-sm">{tr("timeline.support.recommended_tool","Recommended Tool")}</p>
             </div>
-            <p className="text-white text-sm">{guide.toolDescription}</p>
+            <p className="text-white text-sm">{tr('timeline.support.'+guide.toolDescription.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,100),guide.toolDescription)}</p>
           </div>
           
           {/* Required Media */}
           <div>
-            <p className="text-white text-xs uppercase tracking-wider mb-3">Required Media</p>
+            <p className="text-white text-xs uppercase tracking-wider mb-3">{tr("timeline.support.required_media","Required Media")}</p>
             <ul className="space-y-2">
               {guide.requiredMedia.map((media, i) => (
                 <li key={i} className="flex items-center gap-2 text-white text-sm">
                   <span className="w-1 h-1 bg-white/40 rounded-full" />
-                  {media}
+                  {tr('timeline.support.'+media.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,100),media)}
                 </li>
               ))}
             </ul>
@@ -194,14 +196,14 @@ export default function ProductionMethodGuide({ productionMethod, block, charact
           
           {/* Steps */}
           <div>
-            <p className="text-white text-xs uppercase tracking-wider mb-3">How to Use</p>
+            <p className="text-white text-xs uppercase tracking-wider mb-3">{tr("timeline.support.how_to_use","How to Use")}</p>
             <ol className="space-y-2">
               {guide.steps.map((step, i) => (
                 <li key={i} className="flex items-start gap-3 text-white text-sm">
                   <span className={`w-5 h-5 ${guide.color} rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-white`}>
                     {i + 1}
                   </span>
-                  {step}
+                  {tr('timeline.support.'+step.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,100),step)}
                 </li>
               ))}
             </ol>
@@ -214,7 +216,7 @@ export default function ProductionMethodGuide({ productionMethod, block, charact
             onClick={onContinue}
             className={`w-full ${guide.color} hover:opacity-90 text-white py-4 text-sm font-semibold`}
           >
-            Continue to Studio →
+            {tr('timeline.support.continue_to_studio','Continue to Studio')} →
           </Button>
         </div>
       </div>
