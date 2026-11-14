@@ -16,9 +16,20 @@ export const getPlatformLanguage = () => {
 };
 
 export const fetchTranslationDictionary = async () => {
-  const { data, error } = await supabase.from('translation_dictionary').select('namespace,source_key,translations,synonyms');
-  if (error) throw error;
-  return data || [];
+  const rows = [];
+  const pageSize = 500;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from('translation_dictionary')
+      .select('namespace,source_key,translations,synonyms')
+      .order('namespace', { ascending: true })
+      .order('source_key', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
 };
 
 export const translationLookup = rows => new Map((rows || []).map(row => [`${row.namespace}:${row.source_key}`, row]));
