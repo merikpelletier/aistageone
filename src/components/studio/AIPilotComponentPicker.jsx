@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Loader2, Sparkles, X } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { getAIPilotComponentLibrary } from '@/lib/aiPilotComponents';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const TYPE_LABELS = {
   action_prompt: 'Action Prompts',
@@ -11,6 +12,7 @@ const TYPE_LABELS = {
 const ALLOWED_TYPES = new Set(['action_prompt', 'blocking_prompt']);
 
 export default function AIPilotComponentPicker({ toolKey = 'compose_scene', value = [], onChange }) {
+  const t = useStudioTranslation();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [library, setLibrary] = useState([]);
@@ -30,7 +32,7 @@ export default function AIPilotComponentPicker({ toolKey = 'compose_scene', valu
         const items = await getAIPilotComponentLibrary({ userId: user.id, toolKey });
         if (!cancelled) setLibrary((items || []).filter((item) => ALLOWED_TYPES.has(item.component_type)));
       } catch (err) {
-        if (!cancelled) setError(err?.message || 'Unable to load AI Pilot prompts.');
+        if (!cancelled) setError(err?.message || t('pilot.error', 'Unable to load AI Pilot prompts.'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -62,12 +64,12 @@ export default function AIPilotComponentPicker({ toolKey = 'compose_scene', valu
         <div className="flex min-w-0 items-center gap-2">
           <Sparkles size={15} className="shrink-0 text-cyan-300" />
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-wider text-cyan-200">AI Pilot Direction</p>
-            <p className="mt-0.5 text-[11px] text-white/50">Choose Action or Blocking prompts from any AI Pilot in your library.</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-cyan-200">{t('pilot.title', 'AI Pilot Direction')}</p>
+            <p className="mt-0.5 text-[11px] text-white/50">{t('pilot.help', 'Choose Action or Blocking prompts from any AI Pilot in your library.')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 text-xs text-white/55">
-          {value?.length ? <span>{value.length} selected</span> : null}
+          {value?.length ? <span>{value.length} {t('pilot.selected', 'selected')}</span> : null}
           {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </div>
       </button>
@@ -86,19 +88,19 @@ export default function AIPilotComponentPicker({ toolKey = 'compose_scene', valu
 
       {open && (
         <div className="space-y-4 border-t border-white/10 p-3">
-          {loading && <div className="flex items-center gap-2 text-xs text-white/55"><Loader2 size={14} className="animate-spin" /> Loading AI Pilot prompts…</div>}
+          {loading && <div className="flex items-center gap-2 text-xs text-white/55"><Loader2 size={14} className="animate-spin" /> {t('pilot.loading', 'Loading AI Pilot prompts…')}</div>}
           {error && <p className="text-xs text-red-300">{error}</p>}
-          {!loading && !error && grouped.length === 0 && <p className="text-xs text-white/45">No Action or Blocking prompts found in your AI Pilots.</p>}
+          {!loading && !error && grouped.length === 0 && <p className="text-xs text-white/45">{t('pilot.empty', 'No Action or Blocking prompts found in your AI Pilots.')}</p>}
           {grouped.map(([type, items]) => (
             <div key={type} className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-white/45">{TYPE_LABELS[type] || type.replace(/_/g, ' ')}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-white/45">{type === 'action_prompt' ? t('pilot.action', TYPE_LABELS[type]) : type === 'blocking_prompt' ? t('pilot.blocking', TYPE_LABELS[type]) : (TYPE_LABELS[type] || type.replace(/_/g, ' '))}</p>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {items.map((component) => {
                   const selected = selectedKeys.has(component.key);
                   return (
                     <button key={component.key} type="button" onClick={() => toggle(component)} className={`border p-2.5 text-left ${selected ? 'border-cyan-300 bg-cyan-300/10' : 'border-white/10 bg-black/35 hover:border-white/25'}`}>
                       <p className="text-xs font-bold text-white">{component.label}</p>
-                      <p className="mt-1 truncate text-[10px] text-cyan-200/70">{component.pilot?.name || 'AI Pilot'}{component.personal ? ' · My addition' : ''}</p>
+                      <p className="mt-1 truncate text-[10px] text-cyan-200/70">{component.pilot?.name || 'AI Pilot'}{component.personal ? ' · ' + t('pilot.personal','My addition') : ''}</p>
                     </button>
                   );
                 })}
