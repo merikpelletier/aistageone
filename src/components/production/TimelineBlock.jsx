@@ -11,6 +11,7 @@ import LipSync from '@/components/studio/LipSync';
 import DubbingStudio from '@/components/studio/DubbingStudio';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const PHOTO_SLOTS = [
   { key: 'front',    label: 'Full Front',  placeholder: '/placeholders/silhouette-full.svg' },
@@ -33,6 +34,7 @@ const ALL_TOOLS = ['compose_scene', 'animate_image', 'animate_with_reference', '
 
 // ── Voice Panel (matches VoiceRecorder component exactly) ────────────────────
 function VoicePanel({ onPublish, onClose }) {
+  const tr = useStudioTranslation();
   const [recState, setRecState] = useState('idle'); // idle | recording | preview | uploading
   const [elapsed, setElapsed] = useState(0);
   const [audioBlob, setAudioBlob] = useState(null);
@@ -75,7 +77,7 @@ function VoicePanel({ onPublish, onClose }) {
   return (
     <div className="space-y-4 bg-yellow-400 rounded-3xl p-6">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-black text-lg font-bold">Voice Recorder</h3>
+        <h3 className="text-black text-lg font-bold">{tr("timeline.blockui.voice_recorder","Voice Recorder")}</h3>
         <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20"><X size={16} className="text-black" /></button>
       </div>
       <div className="bg-black rounded-2xl p-6 text-center">
@@ -118,7 +120,7 @@ function VoicePanel({ onPublish, onClose }) {
         {recState === 'uploading' && (
           <div className="flex items-center gap-3 py-4 justify-center">
             <Loader2 size={20} className="animate-spin text-black" />
-            <span className="text-black">Uploading…</span>
+            <span className="text-black">{tr("timeline.blockui.uploading","Uploading…")}</span>
           </div>
         )}
       </div>
@@ -128,6 +130,7 @@ function VoicePanel({ onPublish, onClose }) {
 
 // ── Lip Sync Panel (matches LipSync component exactly) ───────────────────────
 function LipSyncPanel({ onPublish, onClose, referenceMedia, userEmail }) {
+  const tr = useStudioTranslation();
   const firstRefVideo = referenceMedia?.find(url => url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)) || null;
   const firstRefImage = !firstRefVideo ? (referenceMedia?.find(url => !url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)) || null) : null;
   const preloadedVideo = firstRefVideo || firstRefImage;
@@ -221,15 +224,15 @@ function LipSyncPanel({ onPublish, onClose, referenceMedia, userEmail }) {
     <div className="space-y-5 bg-yellow-400 rounded-3xl p-6">
       <div className="flex items-center justify-between mb-2">
         <div>
-          <h3 className="text-black text-lg font-bold flex items-center gap-2"><Mic size={18} /> Lip Sync</h3>
-          <p className="text-black text-xs">Sync audio to a video automatically</p>
+          <h3 className="text-black text-lg font-bold flex items-center gap-2"><Mic size={18} /> {tr("timeline.blockui.lip_sync","Lip Sync")}</h3>
+          <p className="text-black text-xs">{tr("timeline.blockui.sync_audio_to_a_video_automatically","Sync audio to a video automatically")}</p>
         </div>
         <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20"><X size={16} className="text-black" /></button>
       </div>
 
       {/* Video */}
       <div>
-        <p className="text-black font-semibold mb-2 flex items-center gap-2"><Video size={16} /> Video</p>
+        <p className="text-black font-semibold mb-2 flex items-center gap-2"><Video size={16} /> {tr("timeline.blockui.video","Video")}</p>
         {videoUrl ? (
           <div className="space-y-2">
             {videoUrl.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)
@@ -252,7 +255,7 @@ function LipSyncPanel({ onPublish, onClose, referenceMedia, userEmail }) {
 
       {/* Audio */}
       <div>
-        <p className="text-black font-semibold mb-2 flex items-center gap-2"><Mic size={16} /> Audio</p>
+        <p className="text-black font-semibold mb-2 flex items-center gap-2"><Mic size={16} /> {tr("timeline.blockui.audio","Audio")}</p>
         {audioUrl ? (
           <div className="space-y-2">
             <audio src={audioUrl} controls className="w-full rounded-xl" />
@@ -265,7 +268,7 @@ function LipSyncPanel({ onPublish, onClose, referenceMedia, userEmail }) {
         ) : audioMode === 'record' ? (
           <div className="bg-black rounded-2xl p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-white text-sm font-bold">Record Audio</span>
+              <span className="text-white text-sm font-bold">{tr("timeline.blockui.record_audio","Record Audio")}</span>
               <button onClick={() => { setAudioMode(null); setRecState('idle'); setRecBlob(null); clearInterval(timerRef.current); }} className="text-white hover:text-white"><X size={14} /></button>
             </div>
             <div className="text-center">
@@ -308,11 +311,11 @@ function LipSyncPanel({ onPublish, onClose, referenceMedia, userEmail }) {
               </label>
               <button onClick={() => setAudioMode('record')} className="flex flex-col items-center gap-2 py-4 bg-black/10 border-2 border-dashed border-black/30 rounded-xl hover:border-black/60 transition-colors">
                 <Mic size={20} className="text-black" />
-                <span className="text-black text-xs font-semibold">Record</span>
+                <span className="text-black text-xs font-semibold">{tr("timeline.blockui.record","Record")}</span>
               </button>
               <button onClick={openVault} className="flex flex-col items-center gap-2 py-4 bg-black/10 border-2 border-dashed border-black/30 rounded-xl hover:border-black/60 transition-colors">
                 <Folder size={20} className="text-black" />
-                <span className="text-black text-xs font-semibold">Vault</span>
+                <span className="text-black text-xs font-semibold">{tr("timeline.blockui.vault","Vault")}</span>
               </button>
             </div>
           </div>
@@ -322,13 +325,13 @@ function LipSyncPanel({ onPublish, onClose, referenceMedia, userEmail }) {
         {showVaultAudio && !audioUrl && (
           <div className="mt-3 bg-black rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-white text-sm font-bold">Vault (audio files)</span>
+              <span className="text-white text-sm font-bold">{tr("timeline.blockui.vault_audio_files","Vault (audio files)")}</span>
               <button onClick={() => setShowVaultAudio(false)} className="text-white hover:text-white"><X size={14} /></button>
             </div>
-            <p className="text-white text-xs">Note: Vault stores images. Upload or record audio directly.</p>
+            <p className="text-white text-xs">{tr("timeline.blockui.note_vault_stores_images_upload_or_record_audio_directly","Note: Vault stores images. Upload or record audio directly.")}</p>
             {loadingVault ? <div className="flex justify-center py-3"><Loader2 size={16} className="animate-spin text-white" /></div> : (
               vaultFolders.length === 0
-                ? <p className="text-white text-xs italic text-center py-2">No vault folders</p>
+                ? <p className="text-white text-xs italic text-center py-2">{tr("timeline.blockui.no_vault_folders","No vault folders")}</p>
                 : <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
                     {vaultFolders.map(f => (
                       <button key={f.id} onClick={() => loadVaultFolder(f)}
@@ -347,7 +350,7 @@ function LipSyncPanel({ onPublish, onClose, referenceMedia, userEmail }) {
       {!result && (
         <button onClick={handleGenerate} disabled={!videoUrl || !audioUrl || isGenerating}
           className="w-full py-4 bg-black text-yellow-400 font-bold rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2">
-          {isGenerating ? <><Loader2 size={18} className="animate-spin" /> Syncing… (~1–3 min)</> : <><Mic size={18} /> Generate Lip Sync</>}
+          {isGenerating ? <><Loader2 size={18} className="animate-spin" /> {tr("timeline.blockui.syncing_1_3_min","Syncing… (~1–3 min)")}</> : <><Mic size={18} /> {tr("timeline.blockui.generate_lip_sync","Generate Lip Sync")}</>}
         </button>
       )}
       {result && (
@@ -365,6 +368,7 @@ function LipSyncPanel({ onPublish, onClose, referenceMedia, userEmail }) {
 
 // ── Dress Actor Panel (matches LabWorkspace InlineDressActor exactly) ─────────
 function DressActorPanel({ userEmail, onPublish, onClose }) {
+  const tr = useStudioTranslation();
   const [characters, setCharacters] = useState([]);
   const [vaultFolders, setVaultFolders] = useState([]);
   const [selectedFolder, setSelectedFolder] = useState(null);
@@ -449,7 +453,7 @@ function DressActorPanel({ userEmail, onPublish, onClose }) {
   if (status === 'generating') return (
     <div className="flex flex-col items-center gap-3 py-10">
       <Loader2 size={28} className="text-rose-400 animate-spin" />
-      <p className="text-white text-sm">Dressing actor… (1–3 min)</p>
+      <p className="text-white text-sm">{tr("timeline.blockui.dressing_actor_1_3_min","Dressing actor… (1–3 min)")}</p>
     </div>
   );
 
@@ -458,11 +462,11 @@ function DressActorPanel({ userEmail, onPublish, onClose }) {
       <img src={generatedImageUrl} alt="Dressed actor" className="w-full rounded-2xl" />
       <div className="flex items-center gap-2 px-3 py-2 bg-green-500/20 border border-green-500/40 rounded-xl">
         <CheckCircle2 size={14} className="text-green-400 flex-shrink-0" />
-        <p className="text-green-400 text-xs font-semibold">Saved to your Vault (character)</p>
+        <p className="text-green-400 text-xs font-semibold">{tr("timeline.blockui.saved_to_your_vault_character","Saved to your Vault (character)")}</p>
       </div>
       <div className="px-3 py-3 bg-violet-500/20 border border-violet-500/40 rounded-xl">
-        <p className="text-violet-300 text-xs font-bold mb-1">Next step</p>
-        <p className="text-white text-xs">Go to <span className="font-bold text-violet-300">Video → Animate Image</span> and pick this image from your Vault to create a video for the timeline.</p>
+        <p className="text-violet-300 text-xs font-bold mb-1">{tr("timeline.blockui.next_step","Next step")}</p>
+        <p className="text-white text-xs">Go to <span className="font-bold text-violet-300">{tr("timeline.blockui.video_animate_image","Video → Animate Image")}</span> {tr("timeline.blockui.and_pick_this_image_from_your_vault_to_create_a_video_for_the_timeline","and pick this image from your Vault to create a video for the timeline.")}</p>
       </div>
       <button onClick={() => { setStatus('idle'); setGeneratedImageUrl(null); setSavedToVault(false); }}
         className="w-full py-3 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-2xl transition-colors">
@@ -477,16 +481,16 @@ function DressActorPanel({ userEmail, onPublish, onClose }) {
         <label className="block text-white text-xs font-bold uppercase tracking-wider">AI Model
           <select className="mt-2 w-full rounded-xl border border-white/15 bg-black px-4 py-3 text-sm font-bold text-yellow-400"
             value={effectiveDressModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={dressModelsLoading || !dressModelOptions.length}>
-            {dressModelsLoading ? <option value="">Loading models…</option> : null}
-            {!dressModelsLoading && !dressModelOptions.length ? <option value="">No model available</option> : null}
+            {dressModelsLoading ? <option value="">{tr("timeline.blockui.loading_models","Loading models…")}</option> : null}
+            {!dressModelsLoading && !dressModelOptions.length ? <option value="">{tr("timeline.blockui.no_model_available","No model available")}</option> : null}
             {dressModelOptions.map(m => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}
           </select>
         </label>
-        <div className="flex items-center justify-between text-xs text-white/70"><span>AI cost</span><span>{dressPriceLoading ? 'Calculating…' : dressPriceQuote?.credits ? `${dressPriceQuote.credits} credits` : 'Calculated automatically'}</span></div>
+        <div className="flex items-center justify-between text-xs text-white/70"><span>{tr("timeline.blockui.ai_cost","AI cost")}</span><span>{dressPriceLoading ? 'Calculating…' : dressPriceQuote?.credits ? `${dressPriceQuote.credits} credits` : 'Calculated automatically'}</span></div>
       </div>
       {/* Actor Reference */}
       <div>
-        <p className="text-white text-xs font-bold uppercase tracking-wider mb-2">Actor Reference</p>
+        <p className="text-white text-xs font-bold uppercase tracking-wider mb-2">{tr("timeline.blockui.actor_reference","Actor Reference")}</p>
         {characters.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-2" style={{scrollbarWidth:'none'}}>
             {characters.map(c => {
@@ -506,7 +510,7 @@ function DressActorPanel({ userEmail, onPublish, onClose }) {
         )}
         {vaultFolders.length > 0 && (
           <div className="mt-2 space-y-2">
-            <p className="text-white text-[10px] uppercase tracking-widest font-semibold">Vault Folders</p>
+            <p className="text-white text-[10px] uppercase tracking-widest font-semibold">{tr("timeline.blockui.vault_folders","Vault Folders")}</p>
             <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
               {vaultFolders.map(f => (
                 <button key={f.id} onClick={() => handleSelectFolder(f)}
@@ -518,7 +522,7 @@ function DressActorPanel({ userEmail, onPublish, onClose }) {
             {selectedFolder && (
               <div className="mt-2">
                 {loadingAssets ? <div className="flex justify-center py-3"><Loader2 size={16} className="animate-spin text-white" /></div>
-                : folderAssets.length === 0 ? <p className="text-white text-xs italic">No images in this folder</p>
+                : folderAssets.length === 0 ? <p className="text-white text-xs italic">{tr("timeline.blockui.no_images_in_this_folder","No images in this folder")}</p>
                 : (
                   <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
                     {folderAssets.map(v => {
@@ -543,7 +547,7 @@ function DressActorPanel({ userEmail, onPublish, onClose }) {
 
       {/* Costume Reference */}
       <div>
-        <p className="text-white text-xs font-bold uppercase tracking-wider mb-2">Costume Reference</p>
+        <p className="text-white text-xs font-bold uppercase tracking-wider mb-2">{tr("timeline.blockui.costume_reference","Costume Reference")}</p>
         {vaultFolders.length > 0 && (
           <div className="space-y-2 mb-3">
             <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
@@ -557,7 +561,7 @@ function DressActorPanel({ userEmail, onPublish, onClose }) {
             {costumeFolder && (
               <div className="mt-1">
                 {loadingCostumeAssets ? <div className="flex justify-center py-3"><Loader2 size={16} className="animate-spin text-white" /></div>
-                : costumeFolderAssets.length === 0 ? <p className="text-white text-xs italic">No images in this folder</p>
+                : costumeFolderAssets.length === 0 ? <p className="text-white text-xs italic">{tr("timeline.blockui.no_images_in_this_folder","No images in this folder")}</p>
                 : (
                   <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
                     {costumeFolderAssets.map(v => {
@@ -579,7 +583,7 @@ function DressActorPanel({ userEmail, onPublish, onClose }) {
         <div className="flex items-center gap-2 flex-wrap">
           <label className="w-16 h-16 flex flex-col items-center justify-center gap-1 border-2 border-dashed border-rose-500/40 rounded-xl cursor-pointer hover:border-rose-500/70 transition-colors flex-shrink-0">
             <Upload size={16} className="text-rose-400" />
-            <span className="text-rose-400 text-[9px] font-bold">Upload</span>
+            <span className="text-rose-400 text-[9px] font-bold">{tr("timeline.blockui.upload","Upload")}</span>
             <input type="file" accept="image/*" multiple className="hidden" onChange={async e => {
               const files = Array.from(e.target.files); if (!files.length) return;
               const urls = await Promise.all(files.map(f => base44.integrations.Core.UploadFile({ file: f }).then(r => r.file_url)));
@@ -595,11 +599,11 @@ function DressActorPanel({ userEmail, onPublish, onClose }) {
               </button>
             </div>
           ))}
-          {costumeUrls.length === 0 && <p className="text-white text-xs">No costume selected yet</p>}
+          {costumeUrls.length === 0 && <p className="text-white text-xs">{tr("timeline.blockui.no_costume_selected_yet","No costume selected yet")}</p>}
         </div>
       </div>
 
-      <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Add styling details… (optional)" rows={2}
+      <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={tr("timeline.blockui.add_styling_details_optional","Add styling details… (optional)")} rows={2}
         className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/30 resize-none" />
 
       {error && <p className="text-red-400 text-xs">{error}</p>}
@@ -614,6 +618,7 @@ function DressActorPanel({ userEmail, onPublish, onClose }) {
 
 // ── Compose Scene (matches LabWorkspace InlineCompose exactly) ────────────────
 function ComposeScene({ userEmail, onClose }) {
+  const tr = useStudioTranslation();
   const [characters, setCharacters] = useState([]);
   const [sets, setSets] = useState([]);
   const [vaultFolders, setVaultFolders] = useState([]);
@@ -703,7 +708,7 @@ function ComposeScene({ userEmail, onClose }) {
   if (status === 'generating') return (
     <div className="flex flex-col items-center gap-3 py-10">
       <Loader2 size={28} className="text-red-400 animate-spin" />
-      <p className="text-white text-sm">Generating scene… (1–3 min)</p>
+      <p className="text-white text-sm">{tr("timeline.blockui.generating_scene_1_3_min","Generating scene… (1–3 min)")}</p>
     </div>
   );
 
@@ -712,11 +717,11 @@ function ComposeScene({ userEmail, onClose }) {
       <img src={generatedImageUrl} alt="Composed scene" className="w-full rounded-2xl" />
       <div className="flex items-center gap-2 px-3 py-2 bg-green-500/20 border border-green-500/40 rounded-xl">
         <CheckCircle2 size={14} className="text-green-400 flex-shrink-0" />
-        <p className="text-green-400 text-xs font-semibold">Saved to your Vault (set)</p>
+        <p className="text-green-400 text-xs font-semibold">{tr("timeline.blockui.saved_to_your_vault_set","Saved to your Vault (set)")}</p>
       </div>
       <div className="px-3 py-3 bg-violet-500/20 border border-violet-500/40 rounded-xl">
-        <p className="text-violet-300 text-xs font-bold mb-1">Next step</p>
-        <p className="text-white text-xs">Go to <span className="font-bold text-violet-300">Video → Animate Image</span> and pick this image from your Vault to create a video for the timeline.</p>
+        <p className="text-violet-300 text-xs font-bold mb-1">{tr("timeline.blockui.next_step","Next step")}</p>
+        <p className="text-white text-xs">Go to <span className="font-bold text-violet-300">{tr("timeline.blockui.video_animate_image","Video → Animate Image")}</span> {tr("timeline.blockui.and_pick_this_image_from_your_vault_to_create_a_video_for_the_timeline","and pick this image from your Vault to create a video for the timeline.")}</p>
       </div>
       <button onClick={() => { setStatus('idle'); setGeneratedImageUrl(null); }}
         className="w-full py-3 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-2xl transition-colors">
@@ -731,12 +736,12 @@ function ComposeScene({ userEmail, onClose }) {
         <label className="block text-white text-xs font-bold uppercase tracking-wider">AI Model
           <select className="mt-2 w-full rounded-xl border border-white/15 bg-black px-4 py-3 text-sm font-bold text-yellow-400"
             value={effectiveComposeModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={composeModelsLoading || !composeModelOptions.length}>
-            {composeModelsLoading ? <option value="">Loading models…</option> : null}
-            {!composeModelsLoading && !composeModelOptions.length ? <option value="">No model available</option> : null}
+            {composeModelsLoading ? <option value="">{tr("timeline.blockui.loading_models","Loading models…")}</option> : null}
+            {!composeModelsLoading && !composeModelOptions.length ? <option value="">{tr("timeline.blockui.no_model_available","No model available")}</option> : null}
             {composeModelOptions.map(m => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}
           </select>
         </label>
-        <div className="flex items-center justify-between text-xs text-white/70"><span>AI cost</span><span>{composePriceLoading ? 'Calculating…' : composePriceQuote?.credits ? `${composePriceQuote.credits} credits` : 'Calculated automatically'}</span></div>
+        <div className="flex items-center justify-between text-xs text-white/70"><span>{tr("timeline.blockui.ai_cost","AI cost")}</span><span>{composePriceLoading ? 'Calculating…' : composePriceQuote?.credits ? `${composePriceQuote.credits} credits` : 'Calculated automatically'}</span></div>
       </div>
       {/* Debug info */}
       <div className="bg-white/5 rounded-lg p-3 text-xs text-white">
@@ -747,9 +752,9 @@ function ComposeScene({ userEmail, onClose }) {
 
       {/* Pick Character from Vault */}
       <div className="space-y-2">
-        <p className="text-white text-xs font-bold uppercase tracking-wider">Pick Character from Vault</p>
+        <p className="text-white text-xs font-bold uppercase tracking-wider">{tr("timeline.blockui.pick_character_from_vault","Pick Character from Vault")}</p>
         {vaultFolders.length === 0 ? (
-          <p className="text-white text-xs italic">No vault folders yet</p>
+          <p className="text-white text-xs italic">{tr("timeline.blockui.no_vault_folders_yet","No vault folders yet")}</p>
         ) : (
           <>
             <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
@@ -766,7 +771,7 @@ function ComposeScene({ userEmail, onClose }) {
             {selectedCharFolder && (
               <div className="mt-2">
                 {loadingCharAssets ? <div className="flex justify-center py-3"><Loader2 size={16} className="animate-spin text-white" /></div>
-                : charFolderAssets.length === 0 ? <p className="text-white text-xs italic">No images in this folder</p>
+                : charFolderAssets.length === 0 ? <p className="text-white text-xs italic">{tr("timeline.blockui.no_images_in_this_folder","No images in this folder")}</p>
                 : (
                   <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
                     {charFolderAssets.map(v => {
@@ -791,13 +796,13 @@ function ComposeScene({ userEmail, onClose }) {
       {/* Character Library */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <p className="text-white/80 text-xs font-bold uppercase tracking-wider">Character (Library)</p>
-          <button onClick={() => base44.entities.CharacterSheet.filter({ user_email: userEmail }).then(setCharacters).catch(() => {})} className="text-white hover:text-white text-xs">↻ Refresh</button>
+          <p className="text-white/80 text-xs font-bold uppercase tracking-wider">{tr("timeline.blockui.character_library","Character (Library)")}</p>
+          <button onClick={() => base44.entities.CharacterSheet.filter({ user_email: userEmail }).then(setCharacters).catch(() => {})} className="text-white hover:text-white text-xs">{tr("timeline.blockui.refresh","↻ Refresh")}</button>
         </div>
         {characters.length === 0 ? (
           <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-xl p-4 text-center">
-            <p className="text-yellow-400 text-sm font-bold">⚠ No actors in your library</p>
-            <p className="text-white text-xs mt-1">Go to Library tab → New Actor to create one</p>
+            <p className="text-yellow-400 text-sm font-bold">{tr("timeline.blockui.no_actors_in_your_library","⚠ No actors in your library")}</p>
+            <p className="text-white text-xs mt-1">{tr("timeline.blockui.go_to_library_tab_new_actor_to_create_one","Go to Library tab → New Actor to create one")}</p>
           </div>
         ) : (
           <div className="flex gap-2 overflow-x-auto pb-2" style={{scrollbarWidth:'none'}}>
@@ -821,7 +826,7 @@ function ComposeScene({ userEmail, onClose }) {
       {/* Pick Set from Vault */}
       {vaultFolders.length > 0 && (
         <div className="space-y-2">
-          <p className="text-white text-xs font-bold uppercase tracking-wider">Pick Set from Vault Folders</p>
+          <p className="text-white text-xs font-bold uppercase tracking-wider">{tr("timeline.blockui.pick_set_from_vault_folders","Pick Set from Vault Folders")}</p>
           <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
             {vaultFolders.map(f => {
               const isOpen = selectedSetFolder?.id === f.id;
@@ -836,7 +841,7 @@ function ComposeScene({ userEmail, onClose }) {
           {selectedSetFolder && (
             <div className="mt-2">
               {loadingSetAssets ? <div className="flex justify-center py-3"><Loader2 size={16} className="animate-spin text-white" /></div>
-              : setFolderAssets.length === 0 ? <p className="text-white text-xs italic">No images in this folder</p>
+              : setFolderAssets.length === 0 ? <p className="text-white text-xs italic">{tr("timeline.blockui.no_images_in_this_folder","No images in this folder")}</p>
               : (
                 <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
                   {setFolderAssets.map(v => {
@@ -860,12 +865,12 @@ function ComposeScene({ userEmail, onClose }) {
       {/* Sets Library */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <p className="text-white/80 text-xs font-bold uppercase tracking-wider">Your Sets (Library)</p>
-          <button onClick={() => base44.entities.SetAsset.filter({ user_email: userEmail }).then(setSets).catch(() => {})} className="text-white hover:text-white text-xs">↻ Refresh</button>
+          <p className="text-white/80 text-xs font-bold uppercase tracking-wider">{tr("timeline.blockui.your_sets_library","Your Sets (Library)")}</p>
+          <button onClick={() => base44.entities.SetAsset.filter({ user_email: userEmail }).then(setSets).catch(() => {})} className="text-white hover:text-white text-xs">{tr("timeline.blockui.refresh","↻ Refresh")}</button>
         </div>
         {sets.length === 0 ? (
           <div className="bg-white/5 rounded-xl p-4 text-center">
-            <p className="text-white text-sm">No sets in your library yet</p>
+            <p className="text-white text-sm">{tr("timeline.blockui.no_sets_in_your_library_yet","No sets in your library yet")}</p>
           </div>
         ) : (
           <div className="flex gap-2 overflow-x-auto pb-2" style={{scrollbarWidth:'none'}}>
@@ -888,7 +893,7 @@ function ComposeScene({ userEmail, onClose }) {
 
       {/* Aspect Ratio */}
       <div className="space-y-2">
-        <p className="text-white/80 text-xs font-bold uppercase tracking-wider">Aspect Ratio</p>
+        <p className="text-white/80 text-xs font-bold uppercase tracking-wider">{tr("timeline.blockui.aspect_ratio","Aspect Ratio")}</p>
         <div className="flex gap-2">
           {['16:9', '4:3', '9:16'].map(r => (
             <button key={r} onClick={() => setAspectRatio(r)}
@@ -901,11 +906,11 @@ function ComposeScene({ userEmail, onClose }) {
 
       {/* Upload Photo */}
       <div className="bg-white/5 rounded-xl p-4">
-        <p className="text-white/80 text-xs font-bold uppercase tracking-wider mb-3">Or Upload Photo</p>
+        <p className="text-white/80 text-xs font-bold uppercase tracking-wider mb-3">{tr("timeline.blockui.or_upload_photo","Or Upload Photo")}</p>
         <div className="flex items-center gap-3 flex-wrap">
           <label className="flex items-center gap-2 px-4 py-3 bg-yellow-400 text-black rounded-xl cursor-pointer hover:bg-yellow-300 transition-colors font-semibold text-sm">
             <Upload size={16} />
-            <span>Upload Photo</span>
+            <span>{tr("timeline.blockui.upload_photo","Upload Photo")}</span>
             <input type="file" accept="image/*" className="hidden" onChange={async e => {
               const f = e.target.files[0]; if (!f) return;
               const { file_url } = await base44.integrations.Core.UploadFile({ file: f });
@@ -915,7 +920,7 @@ function ComposeScene({ userEmail, onClose }) {
           {uploadedPhoto && (
             <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
               <div className="w-8 h-8 rounded-lg overflow-hidden"><img src={uploadedPhoto} alt="" className="w-full h-full object-cover" /></div>
-              <span className="text-green-400 text-xs font-semibold">✓ Ready</span>
+              <span className="text-green-400 text-xs font-semibold">{tr("timeline.blockui.ready","✓ Ready")}</span>
               <button onClick={() => setUploadedPhoto(null)} className="text-white hover:text-white"><X size={14} /></button>
             </div>
           )}
@@ -925,7 +930,7 @@ function ComposeScene({ userEmail, onClose }) {
       {/* Prompt */}
       <div>
         <p className="text-white/80 text-xs font-bold uppercase tracking-wider mb-2">Prompt <span className="text-red-400">*</span></p>
-        <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Required: Describe mood, action, lighting…" rows={2}
+        <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={tr("timeline.blockui.required_describe_mood_action_lighting","Required: Describe mood, action, lighting…")} rows={2}
           className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-yellow-400 resize-none" />
       </div>
 
@@ -941,6 +946,7 @@ function ComposeScene({ userEmail, onClose }) {
 
 // ── New Actor Panel (full Character Sheet form) ──────────────────────────
 function NewActorPanel({ userEmail, onClose, onPublish }) {
+  const tr = useStudioTranslation();
   const [name, setName] = useState('');
   const [photos, setPhotos] = useState({});
   const [uploading, setUploading] = useState(null);
@@ -1004,17 +1010,17 @@ function NewActorPanel({ userEmail, onClose, onPublish }) {
         <label className="block text-white text-xs font-bold uppercase tracking-wider">AI Model
           <select className="mt-2 w-full rounded-xl border border-white/15 bg-black px-4 py-3 text-sm font-bold text-yellow-400"
             value={effectiveCharacterModel || ''} onChange={e => setSelectedModel(e.target.value || null)} disabled={characterModelsLoading || !characterModelOptions.length}>
-            {characterModelsLoading ? <option value="">Loading models…</option> : null}
-            {!characterModelsLoading && !characterModelOptions.length ? <option value="">No model available</option> : null}
+            {characterModelsLoading ? <option value="">{tr("timeline.blockui.loading_models","Loading models…")}</option> : null}
+            {!characterModelsLoading && !characterModelOptions.length ? <option value="">{tr("timeline.blockui.no_model_available","No model available")}</option> : null}
             {characterModelOptions.map(m => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — Recommended' : ''}{m.credits ? ` — ${m.credits} credits` : ''}</option>)}
           </select>
         </label>
-        <div className="flex items-center justify-between text-xs text-white/70"><span>AI cost</span><span>{characterPriceLoading ? 'Calculating…' : characterPriceQuote?.credits ? `${characterPriceQuote.credits} credits` : 'Calculated automatically'}</span></div>
+        <div className="flex items-center justify-between text-xs text-white/70"><span>{tr("timeline.blockui.ai_cost","AI cost")}</span><span>{characterPriceLoading ? 'Calculating…' : characterPriceQuote?.credits ? `${characterPriceQuote.credits} credits` : 'Calculated automatically'}</span></div>
       </div>
       {/* Character Name */}
       <div>
-        <label className="block text-white text-sm font-medium mb-2">Character Name</label>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Noir, Vesper, The Oracle..."
+        <label className="block text-white text-sm font-medium mb-2">{tr("timeline.blockui.character_name","Character Name")}</label>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder={tr("timeline.blockui.ex_noir_vesper_the_oracle","Ex: Noir, Vesper, The Oracle...")}
           className="w-full bg-white/8 border border-white/15 rounded-2xl px-4 py-4 text-white text-base placeholder-white/25 focus:outline-none focus:border-white/40" />
       </div>
 
@@ -1025,7 +1031,7 @@ function NewActorPanel({ userEmail, onClose, onPublish }) {
             {photoCount > 0 ? <Check size={16} /> : '1'}
           </div>
           <div>
-            <p className="text-white font-semibold text-base">Your Reference Photos</p>
+            <p className="text-white font-semibold text-base">{tr("timeline.blockui.your_reference_photos","Your Reference Photos")}</p>
             <p className="text-white text-sm">{photoCount > 0 ? `${photoCount} photo(s) added` : 'Minimum 1 photo — full body, neutral background'}</p>
           </div>
         </div>
@@ -1070,7 +1076,7 @@ function NewActorPanel({ userEmail, onClose, onPublish }) {
             {generatedSheet ? <Check size={16} /> : '2'}
           </div>
           <div>
-            <p className="text-white font-semibold text-base">Generate Character Sheet</p>
+            <p className="text-white font-semibold text-base">{tr("timeline.blockui.generate_character_sheet","Generate Character Sheet")}</p>
             <p className="text-white text-sm">{photoCount > 0 ? `${photoCount} photo(s) ready` : 'Add at least one photo first'}</p>
           </div>
         </div>
@@ -1081,7 +1087,7 @@ function NewActorPanel({ userEmail, onClose, onPublish }) {
         )}
         <button onClick={handleGenerate} disabled={photoCount === 0 || generating}
           className="w-full py-4 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 disabled:cursor-not-allowed text-black text-base font-bold rounded-2xl transition-colors flex items-center justify-center gap-3">
-          {generating ? <><div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />Generating...</> : <><Sparkles size={18} />{generatedSheet ? 'Regenerate' : 'Generate my Character Sheet'}{characterPriceQuote?.credits ? <span className="ml-2 px-3 py-1 bg-black/20 rounded-full text-xs font-black flex items-center gap-1"><Coins size={10} /> {characterPriceQuote.credits} credits</span> : null}</>}
+          {generating ? <><div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />{tr("timeline.blockui.generating","Generating...")}</> : <><Sparkles size={18} />{generatedSheet ? 'Regenerate' : 'Generate my Character Sheet'}{characterPriceQuote?.credits ? <span className="ml-2 px-3 py-1 bg-black/20 rounded-full text-xs font-black flex items-center gap-1"><Coins size={10} /> {characterPriceQuote.credits} credits</span> : null}</>}
         </button>
       </div>
 
@@ -1096,6 +1102,7 @@ function NewActorPanel({ userEmail, onClose, onPublish }) {
 
 // ── New Set Panel (mirrors SetAssetEditor, inline) ───────────────────────────
 function NewSetPanel({ userEmail, onClose }) {
+  const tr = useStudioTranslation();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState([]);
@@ -1151,25 +1158,25 @@ function NewSetPanel({ userEmail, onClose }) {
     <div className="space-y-5">
       {/* Name */}
       <div>
-        <label className="text-white text-xs uppercase tracking-widest mb-2 block">Set Name</label>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Gothic Manor, Tropical Beach..."
+        <label className="text-white text-xs uppercase tracking-widest mb-2 block">{tr("timeline.blockui.set_name","Set Name")}</label>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder={tr("timeline.blockui.ex_gothic_manor_tropical_beach","Ex: Gothic Manor, Tropical Beach...")}
           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-white/30" />
       </div>
 
       {/* Description */}
       <div>
-        <label className="text-white text-xs uppercase tracking-widest mb-2 block">Description</label>
-        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Atmosphere, style, lighting, era..." rows={3}
+        <label className="text-white text-xs uppercase tracking-widest mb-2 block">{tr("timeline.blockui.description","Description")}</label>
+        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={tr("timeline.blockui.atmosphere_style_lighting_era","Atmosphere, style, lighting, era...")} rows={3}
           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-white/30 resize-none" />
       </div>
 
       {/* Tags */}
       <div>
-        <label className="text-white text-xs uppercase tracking-widest mb-2 block">Tags</label>
+        <label className="text-white text-xs uppercase tracking-widest mb-2 block">{tr("timeline.blockui.tags","Tags")}</label>
         <form onSubmit={addTag} className="flex gap-2 mb-2">
-          <input value={tagInput} onChange={e => setTagInput(e.target.value)} placeholder="Add a tag..."
+          <input value={tagInput} onChange={e => setTagInput(e.target.value)} placeholder={tr("timeline.blockui.add_a_tag","Add a tag...")}
             className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-white/30" />
-          <button type="submit" disabled={!tagInput.trim()} className="px-4 py-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-sm rounded-xl transition-colors">Add</button>
+          <button type="submit" disabled={!tagInput.trim()} className="px-4 py-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-sm rounded-xl transition-colors">{tr("timeline.blockui.add","Add")}</button>
         </form>
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -1194,7 +1201,7 @@ function NewSetPanel({ userEmail, onClose }) {
             </button>
           )}
         </div>
-        <p className="text-white text-xs mb-3">Add up to 8 set/location images. Upload directly or pick from your Vault.</p>
+        <p className="text-white text-xs mb-3">{tr("timeline.blockui.add_up_to_8_set_location_images_upload_directly_or_pick_from_your_vault","Add up to 8 set/location images. Upload directly or pick from your Vault.")}</p>
         <div className="grid grid-cols-3 gap-2">
           {images.map((url, idx) => (
             <div key={idx} className="relative rounded-xl overflow-hidden bg-white/5">
@@ -1230,6 +1237,7 @@ function NewSetPanel({ userEmail, onClose }) {
 
 // ── Inline Tool Panel ───────────────────────────────────────────────────
 function InlineToolPanel({ block, kitPage, referenceMedia, onPublish, onClose, onSwitchTool, toolType, character, userEmail, animateWithRefImageUrl, setAnimateWithRefImageUrl, episodePageId, user }) {
+  const tr = useStudioTranslation();
   const [status, setStatus] = useState('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [generatedMedia, setGeneratedMedia] = useState(null); // { url, type }
@@ -1372,7 +1380,7 @@ function InlineToolPanel({ block, kitPage, referenceMedia, onPublish, onClose, o
     return (
       <div className="flex flex-col items-center gap-3 py-8">
         <Loader2 size={24} className="text-amber-400 animate-spin" />
-        <p className="text-white text-xs">Generating... (1–4 min)</p>
+        <p className="text-white text-xs">{tr("timeline.blockui.generating_1_4_min","Generating... (1–4 min)")}</p>
       </div>
     );
   }
@@ -1389,7 +1397,7 @@ function InlineToolPanel({ block, kitPage, referenceMedia, onPublish, onClose, o
           )}
         </div>
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2 border border-white/20 rounded-xl text-white text-xs hover:bg-white/5">Discard</button>
+          <button onClick={onClose} className="flex-1 py-2 border border-white/20 rounded-xl text-white text-xs hover:bg-white/5">{tr("timeline.blockui.discard","Discard")}</button>
           <button 
             onClick={() => onPublish(generatedMedia.url, generatedMedia.type, toolType, toolType === 'compose_scene')}
             className="flex-1 py-2 bg-green-600 hover:bg-green-500 rounded-xl text-white text-xs font-medium flex items-center justify-center gap-1"
@@ -1539,8 +1547,8 @@ function InlineToolPanel({ block, kitPage, referenceMedia, onPublish, onClose, o
       {/* My Own Video - Upload a video directly */}
       {isFreeTimelineMode && (
         <div className="space-y-4">
-          <p className="text-white text-xs font-bold uppercase tracking-widest mb-2">My Own Video</p>
-          <p className="text-white text-xs">Upload your own finished video directly to this block.</p>
+          <p className="text-white text-xs font-bold uppercase tracking-widest mb-2">{tr("timeline.blockui.my_own_video","My Own Video")}</p>
+          <p className="text-white text-xs">{tr("timeline.blockui.upload_your_own_finished_video_directly_to_this_block","Upload your own finished video directly to this block.")}</p>
           {uploadedPhoto ? (
             <div className="relative rounded-2xl overflow-hidden border border-white/20">
               <video src={uploadedPhoto} controls className="w-full" />
@@ -1556,7 +1564,7 @@ function InlineToolPanel({ block, kitPage, referenceMedia, onPublish, onClose, o
                 setUploadedPhoto(file_url);
               }} />
               <Upload size={28} className="text-white" />
-              <p className="text-white text-sm">Upload your video</p>
+              <p className="text-white text-sm">{tr("timeline.blockui.upload_your_video","Upload your video")}</p>
             </label>
           )}
           {errorMsg && <p className="text-red-400 text-xs">{errorMsg}</p>}
@@ -1577,6 +1585,7 @@ function InlineToolPanel({ block, kitPage, referenceMedia, onPublish, onClose, o
 }
 
 export default function TimelineBlock({ block, character, hasUserVersion, onProduce, onEdit, kitPage, referenceMedia = [], episodePageId, user }) {
+  const tr = useStudioTranslation();
   const config = blockTypeConfig[block.block_type] || { icon: Film, color: 'bg-gray-500', label: block.block_type, recommended_tools: [] };
   const Icon = config.icon;
   console.log('🎬 TimelineBlock - block.id:', block.id, 'referenceMedia prop:', referenceMedia?.length, 'items:', referenceMedia);
@@ -1671,7 +1680,7 @@ export default function TimelineBlock({ block, character, hasUserVersion, onProd
             <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
               <Play size={16} className="fill-white text-white" />
             </div>
-            <span className="text-base">Preview Block</span>
+            <span className="text-base">{tr("timeline.blockui.preview_block","Preview Block")}</span>
             <span className="text-white text-sm font-bold">({referenceMedia.filter(url => url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)).length})</span>
           </button>
         )}
@@ -1683,7 +1692,7 @@ export default function TimelineBlock({ block, character, hasUserVersion, onProd
               <Users size={18} className="text-black" />
             </div>
             <div className="flex-1">
-              <p className="text-red-300/60 text-sm font-black uppercase tracking-wider">Playing</p>
+              <p className="text-red-300/60 text-sm font-black uppercase tracking-wider">{tr("timeline.blockui.playing","Playing")}</p>
               <p className="text-red-300 text-sm font-bold">{character.name}</p>
             </div>
           </div>
@@ -1696,7 +1705,7 @@ export default function TimelineBlock({ block, character, hasUserVersion, onProd
               <div className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center">
                 <Mic size={12} className="text-red-400" />
               </div>
-              <span className="text-red-400 text-sm font-black uppercase tracking-wider">Dialogue</span>
+              <span className="text-red-400 text-sm font-black uppercase tracking-wider">{tr("timeline.blockui.dialogue","Dialogue")}</span>
             </div>
             <p className="text-white/80 text-sm italic font-medium">"{block.dialogue}"</p>
           </div>
@@ -1709,14 +1718,14 @@ export default function TimelineBlock({ block, character, hasUserVersion, onProd
               <div className="w-6 h-6 bg-yellow-500/20 rounded-full flex items-center justify-center">
                 <Clapperboard size={12} className="text-yellow-400" />
               </div>
-              <span className="text-yellow-400 text-sm font-black uppercase tracking-wider">Production Notes</span>
+              <span className="text-yellow-400 text-sm font-black uppercase tracking-wider">{tr("timeline.blockui.production_notes","Production Notes")}</span>
             </div>
             <p className="text-white text-sm leading-relaxed">{block.production_instructions}</p>
           </div>
         )}
 
         {/* Tool Selection - accordion categories, tool rows inside */}
-        <p className="text-white text-base font-black uppercase tracking-widest">🎬 Production Tools</p>
+        <p className="text-white text-base font-black uppercase tracking-widest">{tr("timeline.blockui.production_tools","🎬 Production Tools")}</p>
         {(() => {
           const toolConfigs = {
             'dress_actor':           { icon: Users,    label: 'Dress Actor',      color: 'bg-rose-600' },
