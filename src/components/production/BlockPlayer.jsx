@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, X, Play, Pause, Mic, Users, Film, MapPin, Zap, Clapperboard, CheckCircle2, SkipForward } from 'lucide-react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const blockTypeConfig = {
   character: { icon: Users, color: 'bg-red-500', label: 'Character' },
@@ -13,6 +14,7 @@ const blockTypeConfig = {
 const IMAGE_DISPLAY_DURATION = 5000;
 
 export default function BlockPlayer({ blocks = [], characters = [], userBlocks = [], onClose, onProduce }) {
+  const tr = useStudioTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
@@ -242,7 +244,7 @@ export default function BlockPlayer({ blocks = [], characters = [], userBlocks =
             <div className={`w-24 h-24 ${config.color} rounded-3xl flex items-center justify-center`}>
               <Icon size={44} className="text-black" />
             </div>
-            <p className="text-white text-sm font-light">No reference media</p>
+            <p className="text-white text-sm font-light" >{tr('timeline.support.no_reference_media','No reference media')}</p>
           </div>
         )}
 
@@ -280,12 +282,12 @@ export default function BlockPlayer({ blocks = [], characters = [], userBlocks =
               e.stopPropagation();
             }}
             className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/35 text-white pointer-events-auto"
-            aria-label="Start playback"
+            aria-label={tr('timeline.support.start_playback','Start playback')}
           >
             <span className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30">
               <Play size={34} fill="currentColor" />
             </span>
-            <span className="text-sm font-semibold tracking-wide">Tap to play</span>
+            <span className="text-sm font-semibold tracking-wide" >{tr('timeline.support.tap_to_play','Tap to play')}</span>
           </button>
         )}
       </div>
@@ -305,7 +307,7 @@ export default function BlockPlayer({ blocks = [], characters = [], userBlocks =
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-white text-xs font-bold uppercase tracking-widest">{config.label}</span>
+                  <span className="text-white text-xs font-bold uppercase tracking-widest">{tr('timeline.block_'+block?.block_type,config.label)}</span>
                   <span className="text-white text-xs">{currentIndex + 1} / {sortedBlocks.length}</span>
                   {hasUserVersion && (
                     <span className="flex items-center gap-1 text-green-400 text-xs font-semibold">
@@ -329,7 +331,7 @@ export default function BlockPlayer({ blocks = [], characters = [], userBlocks =
                     <Users size={14} className="text-black" />
                   </div>
                 )}
-                <span className="text-white text-xs">Character: <span className="text-white font-semibold">{character.name}</span></span>
+                <span className="text-white text-xs" >{tr('timeline.support.character','Character')}: <span className="text-white font-semibold">{character.name}</span></span>
               </div>
             )}
 
@@ -337,7 +339,7 @@ export default function BlockPlayer({ blocks = [], characters = [], userBlocks =
               <div className="mb-3 px-3 py-2 bg-black/50 rounded-xl border-l-2 border-red-500/70 backdrop-blur-sm">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Mic size={10} className="text-red-400" />
-                  <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider">Dialogue</span>
+                  <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider" >{tr('timeline.support.dialogue','Dialogue')}</span>
                 </div>
                 <p className="text-white/90 text-sm italic">"{block.dialogue}"</p>
               </div>
