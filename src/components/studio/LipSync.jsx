@@ -131,7 +131,7 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-4">
               <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-                <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Video size={14} className="text-[#23c7be]" /> Video</div>
+                <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Video size={14} className="text-[#23c7be]" /> {t("lip_sync.video","Video")}</div>
                 {videoUrl ? (
                   <div className="overflow-hidden rounded-[4px] border border-white/10 bg-black">
                     <video src={videoUrl} controls className="max-h-[420px] w-full object-contain" />
@@ -147,7 +147,7 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
               </section>
 
               <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-                <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Mic size={14} className="text-[#23c7be]" /> Audio</div>
+                <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Mic size={14} className="text-[#23c7be]" /> {t("lip_sync.audio","Audio")}</div>
                 {audioUrl ? (
                   <div className="flex items-center gap-3 rounded-[4px] border border-white/10 bg-black/20 px-3 py-3"><CheckCircle2 size={16} className="flex-shrink-0 text-[#23c7be]" /><span className="min-w-0 flex-1 truncate text-xs text-white/65">{audioName}</span><audio src={audioUrl} controls className="h-8 min-w-0 flex-1" /><button onClick={() => { setAudioUrl(null); setAudioName(''); }} className="flex-shrink-0 text-white/45 hover:text-white"><X size={14} /></button></div>
                 ) : (
