@@ -191,7 +191,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
     return <div key={shot.id} className="min-w-0 space-y-2 border border-white/20 bg-[#121518] p-3">
       <input aria-label={t('setdesigner.generator.zone.rename_aria', 'Rename Zone Shot')} value={shot.label || ''} onChange={event => setZoneShots(current => current.map(s => s.id === shot.id ? { ...s, label: event.target.value } : s))}
         className="w-full border-b border-white/20 bg-transparent py-1 text-sm font-bold text-white" />
-      <p className="text-[11px] text-white/50" >{t('setdesigner.generator.zone.shot','Zone Shot')} · {t('setdesigner.generator.zone.'+shot.type, shot.type)} · {t('setdesigner.generator.zone.from', 'from')} {shot.parent} ({shot.source_time})</p>
+      <p className="text-[11px] text-white/50" >{t('setdesigner.generator.zone.shot','Zone Shot')} · {t('setdesigner.generator.zone.'+shot.type, shot.type)} · {t('setdesigner.generator.zone.from', 'from')} {t('setdesigner.choice.option.'+shot.parent,shot.parent)} ({t('setdesigner.generator.'+shot.source_time,shot.source_time)})</p>
       {timeSwitcher(key)}
       <EditableImage t={t} label={key} url={url} box={editBox(key)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} />
       <details className="border-t border-white/10 pt-2">
@@ -589,7 +589,7 @@ export default function SetGeneratorPanel({ name, description, images, setImages
               const exists = Boolean(viewUrl(label, index));
               const busy = generating === label;
               return <div key={label} className={`border p-3 ${exists ? 'border-[#23c7be]/35 bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}>
-                <label htmlFor={`set-view-adjustment-${label}`} className="block text-xs font-black text-white">{label.toUpperCase()}</label>
+                <label htmlFor={`set-view-adjustment-${label}`} className="block text-xs font-black text-white">{t('setdesigner.choice.option.' + label, label).toUpperCase()}</label>
                 {timeSwitcher(label)}
                 <div className="mt-2"><EditableImage t={t} label={label} url={viewUrl(label, index)} box={editBox(label)} onStart={beginRegion} onMove={moveRegion} onEnd={finishRegion} onCancel={() => setDrawingRegion(null)} onClear={clearRegion} /></div>
                 <textarea id={`set-view-adjustment-${label}`} value={viewAdjustments[label] || ''} onChange={event => adjustView(label, event.target.value)} disabled={Boolean(generating)} rows={3} placeholder={t('setdesigner.generator.change_placeholder', 'Describe only the change you want')} className="mt-2 w-full border border-white/15 bg-black/25 px-2 py-2 text-xs text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
