@@ -3,10 +3,12 @@ import { base44 } from '@/api/base44Client';
 import { adjustmentFingerprint, adjustmentPrompt, adjustmentTarget } from './storyImageAdjustment.js';
 
 import StoryImageFileActions from './StoryImageFileActions.jsx';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const button = 'border border-white/10 px-3 py-2.5 text-xs font-black transition-colors disabled:opacity-40';
 
 export default function StoryImageAdjustment({ userEmail, imageName = 'FotoPlay', segment, ratio, panelRatio, price, busy, setBusy, onApply, referenceImages = [] }) {
+  const t = useStudioTranslation();
   const [targetIndex, setTargetIndex] = useState(undefined);
   const [instruction, setInstruction] = useState('');
   const [reference, setReference] = useState('');
@@ -38,10 +40,10 @@ export default function StoryImageAdjustment({ userEmail, imageName = 'FotoPlay'
         reference_image_urls: [target.url, ...(reference && reference !== target.url ? [reference] : [])],
         aspect_ratio: targetIndex === null ? ratio : panelRatio,
       });
-      if (!response?.file_url) throw new Error('No adjusted image was returned.');
+      if (!response?.file_url) throw new Error(t('fotoplay.adjust.error_no_image', 'No adjusted image was returned.'));
       if (!alive.current) return;
       setCandidate({ url: response.file_url, fingerprint, target, instruction: instruction.trim(), reference });
-    } catch (failure) { if (alive.current) setError(failure.message || 'Image adjustment failed.'); }
+    } catch (failure) { if (alive.current) setError(failure.message || t('fotoplay.adjust.error_generate', 'Image adjustment failed.')); }
     finally { pending.current = false; setBusy(''); }
   };
 
@@ -50,10 +52,10 @@ export default function StoryImageAdjustment({ userEmail, imageName = 'FotoPlay'
     pending.current = true; setError(''); setBusy(`${segment.id}-adjust-save`);
     try {
       const fingerprint = restore ? adjustmentFingerprint(segment, ratio) : candidate.fingerprint;
-      if (adjustmentFingerprint(latest.current.segment, latest.current.ratio) !== fingerprint) throw new Error('The image or its settings changed. Close this window and adjust the current image.');
+      if (adjustmentFingerprint(latest.current.segment, latest.current.ratio) !== fingerprint) throw new Error(t('fotoplay.adjust.error_changed', 'The image or its settings changed. Close this window and adjust the current image.'));
       await latest.current.onApply({ ...(candidate || {}), target, restore, fingerprint });
       if (alive.current) { setTargetIndex(undefined); setCandidate(null); }
-    } catch (failure) { if (alive.current) setError(failure.message || 'Unable to save the adjustment. Your candidate is still available here.'); }
+    } catch (failure) { if (alive.current) setError(failure.message || t('fotoplay.adjust.error_save', 'Unable to save the adjustment. Your candidate is still available here.')); }
     finally { pending.current = false; setBusy(''); }
   };
 
@@ -62,9 +64,9 @@ export default function StoryImageAdjustment({ userEmail, imageName = 'FotoPlay'
     pending.current = true; setError(''); setBusy(`${segment.id}-adjust-save`);
     try {
       const fingerprint = adjustmentFingerprint(latest.current.segment, latest.current.ratio);
-      if (adjustmentFingerprint(segment, ratio) !== fingerprint) throw new Error('The image or its settings changed. Close this window and adjust the current image.');
+      if (adjustmentFingerprint(segment, ratio) !== fingerprint) throw new Error(t('fotoplay.adjust.error_changed', 'The image or its settings changed. Close this window and adjust the current image.'));
       await latest.current.onApply({ url: uploadedUrl, target: uploadTarget, instruction: 'Manual upload replacement', reference: '', restore: false, fingerprint });
-    } catch (failure) { if (alive.current) setError(failure.message || 'Unable to save the uploaded image. The original image was kept.'); throw failure; }
+    } catch (failure) { if (alive.current) setError(failure.message || t('fotoplay.adjust.error_upload', 'Unable to save the uploaded image. The original image was kept.')); throw failure; }
     finally { pending.current = false; setBusy(''); }
   };
 
@@ -73,42 +75,42 @@ export default function StoryImageAdjustment({ userEmail, imageName = 'FotoPlay'
 
   if (target) return <section className="bg-[#111418] text-white" aria-labelledby="adjust-image-title">
     <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-white/10 bg-[#111418] px-4 py-3">
-      <div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#23c7be]">FotoPlay tool</p><h3 id="adjust-image-title" className="mt-1 truncate text-lg font-black">{targetIndex === null ? 'Adjust image' : `Adjust panel ${targetIndex + 1}`}</h3></div>
-      <button type="button" onClick={close} disabled={Boolean(busy)} className={`${button} shrink-0 bg-[#1c2025] text-white hover:border-[#23c7be]`}>Back</button>
+      <div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#23c7be]">{t('fotoplay.page.tool', 'FotoPlay tool')}</p><h3 id="adjust-image-title" className="mt-1 truncate text-lg font-black">{targetIndex === null ? t('fotoplay.adjust.image', 'Adjust image') : `${t('fotoplay.adjust.panel', 'Adjust panel')} ${targetIndex + 1}`}</h3></div>
+      <button type="button" onClick={close} disabled={Boolean(busy)} className={`${button} shrink-0 bg-[#1c2025] text-white hover:border-[#23c7be]`}>{t('fotoplay.adjust.back', 'Back')}</button>
     </div>
     <div className="space-y-4 p-4">
       <figure>
-        <figcaption className="mb-2 text-xs font-semibold text-white/65">Current image</figcaption>
-        <div className="flex max-h-[260px] min-h-[180px] w-full items-center justify-center overflow-hidden border border-white/10 bg-black"><img src={target.url} alt="Current image before adjustment" className="max-h-[260px] max-w-full object-contain" /></div>
+        <figcaption className="mb-2 text-xs font-semibold text-white/65">{t('fotoplay.adjust.current', 'Current image')}</figcaption>
+        <div className="flex max-h-[260px] min-h-[180px] w-full items-center justify-center overflow-hidden border border-white/10 bg-black"><img src={target.url} alt={t('fotoplay.adjust.current', 'Current image')} className="max-h-[260px] max-w-full object-contain" /></div>
         <StoryImageFileActions url={target.url} userEmail={userEmail} name={`${imageName} - Current image`} ratio={targetIndex === null ? ratio : panelRatio} onUploaded={(uploadedUrl) => applyManualUpload(uploadedUrl, target)} />
       </figure>
 
       {candidate && <figure>
-        <figcaption className="mb-2 text-xs font-black text-[#23c7be]">Adjusted candidate · not yet applied</figcaption>
-        <div className="flex max-h-[260px] min-h-[180px] w-full items-center justify-center overflow-hidden border border-[#23c7be]/45 bg-black"><img src={candidate.url} alt="Adjusted candidate" className="max-h-[260px] max-w-full object-contain" /></div>
+        <figcaption className="mb-2 text-xs font-black text-[#23c7be]">{t('fotoplay.adjust.candidate', 'Adjusted candidate · not yet applied')}</figcaption>
+        <div className="flex max-h-[260px] min-h-[180px] w-full items-center justify-center overflow-hidden border border-[#23c7be]/45 bg-black"><img src={candidate.url} alt={t('fotoplay.adjust.candidate', 'Adjusted candidate · not yet applied')} className="max-h-[260px] max-w-full object-contain" /></div>
         <StoryImageFileActions url={candidate.url} userEmail={userEmail} name={`${imageName} - Adjusted image`} ratio={targetIndex === null ? ratio : panelRatio} />
-        <a href={candidate.url} target="_blank" rel="noreferrer" className="text-xs font-bold text-[#23c7be] underline">Open candidate</a>
+        <a href={candidate.url} target="_blank" rel="noreferrer" className="text-xs font-bold text-[#23c7be] underline">{t('fotoplay.adjust.open_candidate', 'Open candidate')}</a>
       </figure>}
 
       <div>
-        <label htmlFor="image-adjustment-instruction" className="text-xs font-black uppercase tracking-[.08em] text-white/75">What should change?</label>
-        <textarea autoFocus id="image-adjustment-instruction" disabled={Boolean(busy)} value={instruction} onChange={(event) => setInstruction(event.target.value)} rows={4} maxLength={4000} placeholder="Add her black hat. Keep everything else exactly the same." className="mt-2 w-full resize-y border border-white/15 bg-[#20242a] p-3 text-sm text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
+        <label htmlFor="image-adjustment-instruction" className="text-xs font-black uppercase tracking-[.08em] text-white/75">{t('fotoplay.adjust.what_change', 'What should change?')}</label>
+        <textarea autoFocus id="image-adjustment-instruction" disabled={Boolean(busy)} value={instruction} onChange={(event) => setInstruction(event.target.value)} rows={4} maxLength={4000} placeholder={t('fotoplay.adjust.placeholder', 'Add her black hat. Keep everything else exactly the same.')} className="mt-2 w-full resize-y border border-white/15 bg-[#20242a] p-3 text-sm text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none" />
       </div>
 
-      {referenceImages.length > 0 && <div><p className="text-xs text-white/55">Optional detail reference</p><div className="mt-2 flex gap-2 overflow-x-auto pb-1"><button type="button" disabled={Boolean(busy)} onClick={() => setReference('')} className={`${button} shrink-0 ${!reference ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'bg-[#1c2025] text-white hover:border-[#23c7be]'}`}>None</button>{referenceImages.filter((url) => url !== target.url).map((url, index) => <button type="button" key={url} disabled={Boolean(busy)} aria-label={`Use detail reference ${index + 1}`} aria-pressed={reference === url} onClick={() => setReference(url)} className={`shrink-0 border-2 ${reference === url ? 'border-[#23c7be]' : 'border-white/10'}`}><img src={url} alt={`Detail reference ${index + 1}`} className="h-16 w-20 object-contain" /></button>)}</div></div>}
+      {referenceImages.length > 0 && <div><p className="text-xs text-white/55">{t('fotoplay.adjust.reference', 'Optional detail reference')}</p><div className="mt-2 flex gap-2 overflow-x-auto pb-1"><button type="button" disabled={Boolean(busy)} onClick={() => setReference('')} className={`${button} shrink-0 ${!reference ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'bg-[#1c2025] text-white hover:border-[#23c7be]'}`}>{t('fotoplay.adjust.none', 'None')}</button>{referenceImages.filter((url) => url !== target.url).map((url, index) => <button type="button" key={url} disabled={Boolean(busy)} aria-label={`${t('fotoplay.adjust.use_detail', 'Use detail reference')} ${index + 1}`} aria-pressed={reference === url} onClick={() => setReference(url)} className={`shrink-0 border-2 ${reference === url ? 'border-[#23c7be]' : 'border-white/10'}`}><img src={url} alt={`${t('fotoplay.adjust.detail', 'Detail reference')} ${index + 1}`} className="h-16 w-20 object-contain" /></button>)}</div></div>}
 
-      <p className="text-[11px] leading-relaxed text-white/45">Each generated candidate uses {price ?? 'the configured image-generation price'}{price != null ? ' credits' : ''}. Accepting or restoring does not generate another image.</p>
+      <p className="text-[11px] leading-relaxed text-white/45">{t('fotoplay.adjust.price_intro', 'Each generated candidate uses')} {price ?? t('fotoplay.adjust.price_fallback', 'the configured image-generation price')}{price != null ? ' ' + t('fotoplay.adjust.credits', 'credits') : ''}. {t('fotoplay.adjust.price_outro', 'Accepting or restoring does not generate another image.')}</p>
       {error && <p role="alert" className="text-xs text-red-300">{error}</p>}
-      <div className="grid gap-2"><button type="button" disabled={Boolean(busy) || !instruction.trim()} onClick={generate} className={`${button} w-full border-[#23c7be] bg-[#23c7be] text-black hover:bg-[#39d7ce]`}>{busy === `${segment.id}-adjust` ? 'Generating adjustment…' : 'Generate adjustment'}</button>{candidate && <><button type="button" disabled={Boolean(busy)} onClick={() => apply()} className={`${button} w-full border-white/15 bg-white text-black hover:bg-white/90`}>Accept this image</button><button type="button" disabled={Boolean(busy)} onClick={() => setCandidate(null)} className={`${button} w-full bg-[#1c2025] text-white hover:border-[#23c7be]`}>Discard candidate</button></>}{original && <button type="button" disabled={Boolean(busy)} onClick={() => apply(true)} className={`${button} w-full bg-[#1c2025] text-white hover:border-[#23c7be]`}>Restore original</button>}</div>
+      <div className="grid gap-2"><button type="button" disabled={Boolean(busy) || !instruction.trim()} onClick={generate} className={`${button} w-full border-[#23c7be] bg-[#23c7be] text-black hover:bg-[#39d7ce]`}>{busy === `${segment.id}-adjust` ? t('fotoplay.adjust.generating', 'Generating adjustment…') : t('fotoplay.adjust.generate', 'Generate adjustment')}</button>{candidate && <><button type="button" disabled={Boolean(busy)} onClick={() => apply()} className={`${button} w-full border-white/15 bg-white text-black hover:bg-white/90`}>{t('fotoplay.adjust.accept', 'Accept this image')}</button><button type="button" disabled={Boolean(busy)} onClick={() => setCandidate(null)} className={`${button} w-full bg-[#1c2025] text-white hover:border-[#23c7be]`}>{t('fotoplay.adjust.discard', 'Discard candidate')}</button></>}{original && <button type="button" disabled={Boolean(busy)} onClick={() => apply(true)} className={`${button} w-full bg-[#1c2025] text-white hover:border-[#23c7be]`}>{t('fotoplay.adjust.restore', 'Restore original')}</button>}</div>
     </div>
   </section>;
 
   return <section className="border border-white/10 bg-[#111418] p-4 text-white">
-    <h4 className="font-black text-[#23c7be]">Adjust an existing image</h4>
-    <p className="mt-1 text-xs text-white/55">Choose an image, describe a correction, then review it before replacing the original.</p>
+    <h4 className="font-black text-[#23c7be]">{t('fotoplay.adjust.title', 'Adjust an existing image')}</h4>
+    <p className="mt-1 text-xs text-white/55">{t('fotoplay.adjust.description', 'Choose an image, describe a correction, then review it before replacing the original.')}</p>
     <div className="mt-3 flex flex-wrap gap-3">
-      {segment.visual_format !== 'comic' && segment.image_url && <button type="button" disabled={Boolean(busy)} onClick={() => open(null)} className={`${button} border-[#23c7be] bg-[#23c7be] text-black hover:bg-[#39d7ce]`}>Adjust image</button>}
-      {panels.map((panel, index) => panel.image_url && <button key={panel.id || index} type="button" disabled={Boolean(busy)} onClick={() => open(index)} className={`${button} flex items-center gap-3 bg-[#1c2025] text-white hover:border-[#23c7be]`}><img src={panel.image_url} alt="" className="h-14 w-20 object-cover object-center" />Adjust panel {index + 1}</button>)}
+      {segment.visual_format !== 'comic' && segment.image_url && <button type="button" disabled={Boolean(busy)} onClick={() => open(null)} className={`${button} border-[#23c7be] bg-[#23c7be] text-black hover:bg-[#39d7ce]`}>{t('fotoplay.adjust.image', 'Adjust image')}</button>}
+      {panels.map((panel, index) => panel.image_url && <button key={panel.id || index} type="button" disabled={Boolean(busy)} onClick={() => open(index)} className={`${button} flex items-center gap-3 bg-[#1c2025] text-white hover:border-[#23c7be]`}><img src={panel.image_url} alt="" className="h-14 w-20 object-cover object-center" />{t('fotoplay.adjust.panel', 'Adjust panel')} {index + 1}</button>)}
     </div>
   </section>;
 }
