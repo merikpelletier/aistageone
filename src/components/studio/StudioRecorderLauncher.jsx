@@ -6,6 +6,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import { toast } from 'sonner';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const formatTime = (seconds) => {
   const mins = Math.floor(seconds / 60);
@@ -20,6 +21,7 @@ const pickMimeType = () => {
 
 export default function StudioRecorderLauncher() {
   const location = useLocation();
+  const t = useStudioTranslation();
   const { user } = useAuth();
   const visible = location.pathname.toLowerCase() === '/studio';
 
@@ -235,12 +237,12 @@ export default function StudioRecorderLauncher() {
     <button
       type="button"
       onClick={() => setOpen(true)}
-      title="Studio Recorder · Making Of"
-      aria-label="Open Studio Recorder"
+      title={t('studio.recorder.tooltip', 'Studio Recorder · Making Of')}
+      aria-label={t('studio.recorder.title', 'Studio Recorder')}
       className="w-full min-h-[46px] px-3 flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white border-t border-white/10 font-bold text-[11px]"
     >
       <Circle size={13} fill="currentColor" className="flex-shrink-0" />
-      <span className="truncate">Studio Recorder</span>
+      <span className="truncate">{t('studio.recorder.title', 'Studio Recorder')}</span>
     </button>
   );
 
@@ -259,7 +261,7 @@ export default function StudioRecorderLauncher() {
           <div className="sticky top-0 z-10 h-14 px-4 flex items-center justify-between bg-[#202328] border-b border-white/10">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-8 h-8 bg-red-600 flex items-center justify-center"><Circle size={12} fill="currentColor" /></div>
-              <div><div className="text-[9px] uppercase tracking-[0.2em] text-white/45">AISTAGE.ONE</div><div className="font-bold text-sm">Studio Recorder</div></div>
+              <div><div className="text-[9px] uppercase tracking-[0.2em] text-white/45">{t('studio.brand.name', 'AISTAGE.ONE')}</div><div className="font-bold text-sm">{t('studio.recorder.title', 'Studio Recorder')}</div></div>
             </div>
             <button onClick={() => setOpen(false)} className="w-9 h-9 flex items-center justify-center bg-white/10"><X size={18} /></button>
           </div>
