@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plus, Trash2, Users } from 'lucide-react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const DEFAULT_ROLES = [
   'Director',
@@ -49,6 +50,7 @@ export default function ProjectCreditsFields({
   dark = false,
   disabled = false,
 }) {
+  const tr = useStudioTranslation();
   const field = dark
     ? 'w-full rounded-xl border border-white/10 bg-[#1a1a1a] px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30'
     : 'w-full rounded-xl border border-white/10 bg-[#20242a] px-3 py-2.5 text-sm font-semibold text-white placeholder:text-white/30 focus:border-[#23c7be] focus:outline-none';
@@ -75,12 +77,12 @@ export default function ProjectCreditsFields({
       <style>{FOTO_PLAY_SETUP_THEME}</style>
       <div>
         <p className={dark ? 'mb-1 text-white text-[10px] uppercase tracking-widest' : 'mb-1.5 text-xs font-black uppercase tracking-wider text-white'}>
-          Author *
+          {tr('timeline.credits.author','Author *')}
         </p>
         <input
           value={authorName || ''}
           onChange={(e) => onAuthorChange(e.target.value)}
-          placeholder="Author name"
+          placeholder={tr('timeline.credits.author_name','Author name')}
           disabled={disabled}
           className={field}
         />
@@ -91,7 +93,7 @@ export default function ProjectCreditsFields({
           <div className="flex items-center gap-2">
             <Users size={15} className="text-[#23c7be]" />
             <p className={dark ? 'text-white text-[10px] uppercase tracking-widest' : 'text-xs font-black uppercase tracking-wider text-white'}>
-              Collaborators
+              {tr('timeline.credits.collaborators','Collaborators')}
             </p>
           </div>
           <button
@@ -100,7 +102,7 @@ export default function ProjectCreditsFields({
             disabled={disabled}
             className={dark ? 'flex items-center gap-1 border border-white/15 px-2.5 py-1.5 text-xs text-white hover:border-white/35 disabled:opacity-40' : 'flex items-center gap-1 border border-[#23c7be]/40 bg-[#23c7be] px-2.5 py-1.5 text-xs font-black text-black disabled:opacity-40'}
           >
-            <Plus size={13} /> Add
+            <Plus size={13} /> {tr('timeline.credits.add','Add')}
           </button>
         </div>
 
@@ -110,7 +112,7 @@ export default function ProjectCreditsFields({
               <input
                 value={contributor.name || ''}
                 onChange={(e) => updateContributor(index, { name: e.target.value })}
-                placeholder="Name"
+                placeholder={tr('timeline.credits.name','Name')}
                 disabled={disabled}
                 className={field}
               />
@@ -120,13 +122,13 @@ export default function ProjectCreditsFields({
                 disabled={disabled}
                 className={field}
               >
-                <option value="">Role</option>
-                {DEFAULT_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
+                <option value="">{tr('timeline.credits.role','Role')}</option>
+                {DEFAULT_ROLES.map((role) => <option key={role} value={role}>{tr('timeline.credits.'+role,role)}</option>)}
               </select>
               <input
                 value={contributor.user_email || ''}
                 onChange={(e) => updateContributor(index, { user_email: e.target.value })}
-                placeholder="Member email (optional)"
+                placeholder={tr('timeline.credits.email','Member email (optional)')}
                 disabled={disabled}
                 className={field}
               />
@@ -135,7 +137,7 @@ export default function ProjectCreditsFields({
                 onClick={() => removeContributor(index)}
                 disabled={disabled}
                 className="flex h-10 w-10 items-center justify-center text-white/45 hover:bg-red-600/20 hover:text-red-400 disabled:opacity-40"
-                aria-label="Remove collaborator"
+                aria-label={tr('timeline.credits.remove','Remove collaborator')}
               >
                 <Trash2 size={15} />
               </button>
@@ -143,7 +145,7 @@ export default function ProjectCreditsFields({
           ))}
           {contributors.length === 0 && (
             <p className={dark ? 'text-xs text-white/35' : 'text-xs font-semibold text-white/45'}>
-              No collaborators added yet.
+              {tr('timeline.credits.empty','No collaborators added yet.')}
             </p>
           )}
         </div>
