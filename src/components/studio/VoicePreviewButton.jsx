@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Volume2, Loader2, Square } from 'lucide-react';
 import { toast } from 'sonner';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 export default function VoicePreviewButton({ voiceId, modelKey, language = 'en', disabled = false }) {
+  const t = useStudioTranslation();
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef(null);
@@ -31,23 +33,23 @@ export default function VoicePreviewButton({ voiceId, modelKey, language = 'en',
         preview: true,
       });
       if (id !== requestId.current) return;
-      if (!data?.file_url) throw new Error('No voice preview returned.');
+      if (!data?.file_url) throw new Error(t('No voice preview returned.', 'No voice preview returned.'));
       const audio = new Audio(data.file_url);
       audioRef.current = audio;
       audio.onended = () => setPlaying(false);
-      audio.onerror = () => { setPlaying(false); toast.error('Voice preview could not be played.'); };
+      audio.onerror = () => { setPlaying(false); toast.error(t('Voice preview could not be played.', 'Voice preview could not be played.')); };
       await audio.play();
       if (id === requestId.current) setPlaying(true);
       else audio.pause();
     } catch (error) {
-      if (id === requestId.current) toast.error(error?.response?.data?.error || error?.message || 'Voice preview failed');
+      if (id === requestId.current) toast.error(error?.response?.data?.error || error?.message || t('Voice preview failed', 'Voice preview failed'));
     } finally {
       pending.current = false;
       setLoading(false);
     }
   };
 
-  return <button type="button" disabled={disabled || loading || !modelKey} onClick={event => { event.stopPropagation(); handlePreview(); }} className="mt-4 flex shrink-0 items-center gap-1 rounded-xl border border-neutral-500 bg-white px-2 py-2 text-xs font-bold text-black disabled:opacity-40" title="Preview selected voice" aria-label={`Preview ${voiceId}`}>
-    {loading ? <Loader2 size={14} className="animate-spin" /> : playing ? <Square size={14} /> : <Volume2 size={14} />} {playing ? 'Stop' : 'Preview'}
+  return <button type="button" disabled={disabled || loading || !modelKey} onClick={event => { event.stopPropagation(); handlePreview(); }} className="mt-4 flex shrink-0 items-center gap-1 rounded-xl border border-neutral-500 bg-white px-2 py-2 text-xs font-bold text-black disabled:opacity-40" title={t("Preview selected voice", "Preview selected voice")} aria-label={t("Preview {voice}", "Preview {voice}").replace("{voice}", voiceId)}>
+    {loading ? <Loader2 size={14} className="animate-spin" /> : playing ? <Square size={14} /> : <Volume2 size={14} />} {playing ? t('Stop', 'Stop') : t('Preview', 'Preview')}
   </button>;
 }
