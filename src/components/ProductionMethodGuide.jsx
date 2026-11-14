@@ -68,6 +68,7 @@ const METHOD_GUIDES = {
 
 export default function ProductionMethodGuide({ productionMethod, block, character, onClose, onContinue }) {
   const tr = useStudioTranslation();
+  const uiText = (value) => tr('timeline.support.' + String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 100), value);
   const guide = METHOD_GUIDES[productionMethod];
   
   if (!guide) return null;
@@ -89,8 +90,8 @@ export default function ProductionMethodGuide({ productionMethod, block, charact
               <Icon size={24} className="text-white" />
             </div>
             <div>
-              <h2 className="text-white text-xl font-bold">{tr('timeline.support.'+guide.title.toLowerCase().replace(/[^a-z0-9]+/g,'_'),guide.title)}</h2>
-              <p className="text-white text-sm">{tr('timeline.support.'+guide.subtitle.toLowerCase().replace(/[^a-z0-9]+/g,'_'),guide.subtitle)}</p>
+              <h2 className="text-white text-xl font-bold">{uiText(guide.title)}</h2>
+              <p className="text-white text-sm">{uiText(guide.subtitle)}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-white hover:text-white">
@@ -101,7 +102,7 @@ export default function ProductionMethodGuide({ productionMethod, block, charact
         {/* Content */}
         <div className="p-6 space-y-6">
           {/* Description */}
-          <p className="text-white text-sm leading-relaxed">{tr('timeline.support.'+guide.description.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,100),guide.description)}</p>
+          <p className="text-white text-sm leading-relaxed">{uiText(guide.description)}</p>
           
           {/* Scene Details */}
           {(block?.title || block?.description || character || hasDialogue) && (
@@ -178,7 +179,7 @@ export default function ProductionMethodGuide({ productionMethod, block, charact
               <ToolIcon size={20} className="text-white" />
               <p className="text-white font-semibold text-sm">{tr("timeline.support.recommended_tool","Recommended Tool")}</p>
             </div>
-            <p className="text-white text-sm">{tr('timeline.support.'+guide.toolDescription.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,100),guide.toolDescription)}</p>
+            <p className="text-white text-sm">{uiText(guide.toolDescription)}</p>
           </div>
           
           {/* Required Media */}
@@ -188,7 +189,7 @@ export default function ProductionMethodGuide({ productionMethod, block, charact
               {guide.requiredMedia.map((media, i) => (
                 <li key={i} className="flex items-center gap-2 text-white text-sm">
                   <span className="w-1 h-1 bg-white/40 rounded-full" />
-                  {tr('timeline.support.'+media.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,100),media)}
+                  {uiText(media)}
                 </li>
               ))}
             </ul>
@@ -203,7 +204,7 @@ export default function ProductionMethodGuide({ productionMethod, block, charact
                   <span className={`w-5 h-5 ${guide.color} rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-white`}>
                     {i + 1}
                   </span>
-                  {tr('timeline.support.'+step.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,100),step)}
+                  {uiText(step)}
                 </li>
               ))}
             </ol>
