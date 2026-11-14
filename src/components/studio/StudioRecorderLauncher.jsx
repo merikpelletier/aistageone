@@ -238,7 +238,7 @@ export default function StudioRecorderLauncher() {
       type="button"
       onClick={() => setOpen(true)}
       title={t('studio.recorder.tooltip', 'Studio Recorder · Making Of')}
-      aria-label={t('studio.recorder.title', 'Studio Recorder')}
+      aria-label="Open Studio Recorder"
       className="w-full min-h-[46px] px-3 flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white border-t border-white/10 font-bold text-[11px]"
     >
       <Circle size={13} fill="currentColor" className="flex-shrink-0" />
