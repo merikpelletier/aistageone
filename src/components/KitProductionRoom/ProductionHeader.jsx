@@ -26,7 +26,7 @@ export default function ProductionHeader({
             value={productionName}
             onChange={e => setProductionName(e.target.value)}
             onBlur={() => {}}
-            placeholder={kitPage?.title || tr('timeline.name_your_production', 'Name your production…')}
+            placeholder={kitPage?.id === 'free_timeline' ? tr('timeline.free_timeline', 'Free Timeline') : (kitPage?.title || tr('timeline.name_your_production', 'Name your production…'))}
             className="w-full min-w-0 bg-transparent text-lg font-black text-white outline-none placeholder:text-white/25 md:text-xl"
           />
         </div>
