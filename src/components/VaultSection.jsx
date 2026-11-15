@@ -7,6 +7,7 @@ import AssetInspector from '@/components/studio/AssetInspector';
 import CloudflareVideoUpload from '@/components/CloudflareVideoUpload';
 import CloudflareStreamVideo, { isCloudflareStreamUrl } from '@/components/CloudflareStreamVideo';
 import { toast } from 'sonner';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 function VisibleTags({ tags = [] }) {
   if (!Array.isArray(tags) || tags.length === 0) return null;
@@ -32,6 +33,7 @@ const folderAccent = {
 };
 
 export default function VaultSection({ userEmail, onUsePrompt }) {
+  const t = useStudioTranslation();
   const queryClient = useQueryClient();
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [showNewFolder, setShowNewFolder] = useState(false);
@@ -49,7 +51,7 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
     const input = event.currentTarget;
     const files = Array.from(input.files || []);
     if (!files.length || uploading) return;
-    if (!userEmail) { toast.error('Sign in to upload media'); input.value = ''; return; }
+    if (!userEmail) { toast.error(t('vault.signin_media', 'Sign in to upload media')); input.value = ''; return; }
     setUploading(true);
     try {
       let uploaded = 0;
@@ -69,10 +71,10 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
         uploaded += 1;
       }
       await queryClient.invalidateQueries({ queryKey: ['vaultAssets', userEmail] });
-      if (uploaded) toast.success(`${uploaded} media file${uploaded === 1 ? '' : 's'} uploaded to Vault`);
-      else toast.error('Select image or audio files');
+      if (uploaded) toast.success(`${uploaded} ${uploaded === 1 ? t('vault.media_file', 'media file') : t('vault.media_files', 'media files')} ${t('vault.uploaded_to_vault', 'uploaded to Vault')}`);
+      else toast.error(t('vault.select_files', 'Select image or audio files'));
     } catch (error) {
-      toast.error(error.message || 'Unable to upload media');
+      toast.error(error.message || t('vault.upload_failed', 'Unable to upload media'));
     } finally {
       setUploading(false);
       input.value = '';
@@ -80,8 +82,8 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
   };
 
   const saveStreamVideo = async (streamAsset) => {
-    if (!userEmail) { toast.error('Sign in to upload video'); return; }
-    if (!streamAsset?.playback_url) { toast.error('Cloudflare playback URL is unavailable'); return; }
+    if (!userEmail) { toast.error(t('vault.signin_video', 'Sign in to upload video')); return; }
+    if (!streamAsset?.playback_url) { toast.error(t('vault.playback_unavailable', 'Cloudflare playback URL is unavailable')); return; }
     try {
       await base44.entities.VaultAsset.create({
         user_email: userEmail,
@@ -94,9 +96,9 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
       });
       await queryClient.invalidateQueries({ queryKey: ['vaultAssets', userEmail] });
       await queryClient.invalidateQueries({ queryKey: ['vaultAssetsForPicker', userEmail] });
-      toast.success('Video uploaded to Cloudflare Stream and added to Vault');
+      toast.success(t('vault.video_uploaded', 'Video uploaded to Cloudflare Stream and added to Vault'));
     } catch (error) {
-      toast.error(error.message || 'Video is on Cloudflare but could not be added to Vault');
+      toast.error(error.message || t('vault.video_add_failed', 'Video is on Cloudflare but could not be added to Vault'));
     }
   };
 
@@ -141,7 +143,7 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
       for (const asset of folderAssets) await base44.entities.VaultAsset.update(asset.id, { folder_id: null });
       await base44.entities.VaultFolder.delete(folderId);
     } catch (error) {
-      toast.error(error.message || 'Unable to delete folder');
+      toast.error(error.message || t('vault.delete_folder_failed', 'Unable to delete folder'));
       return;
     } finally {
       queryClient.invalidateQueries({ queryKey: ['vaultFolders', userEmail] });
@@ -183,7 +185,7 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
       URL.revokeObjectURL(objectUrl);
     } catch (error) {
       window.open(asset.url, '_blank', 'noopener,noreferrer');
-      toast.error('Direct download was blocked. The file was opened in a new tab instead.');
+      toast.error(t('vault.download_blocked', 'Direct download was blocked. The file was opened in a new tab instead.'));
     }
   };
 
@@ -214,11 +216,11 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
           {asset.media_type === 'script' ? (
             <button onClick={() => setScriptAsset(asset)} className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#111317] p-4 text-center">
               <FileText size={34} className="text-[#23c7be]" />
-              <span className="line-clamp-2 text-[10px] font-black uppercase tracking-wider text-[#8ee9e4]">{asset.name || 'Script'}</span>
+              <span className="line-clamp-2 text-[10px] font-black uppercase tracking-wider text-[#8ee9e4]">{asset.name || t('vault.script', 'Script')}</span>
             </button>
           ) : asset.media_type === 'video' ? (
             <button onClick={() => setLightboxUrl(asset.url)} className="relative h-full w-full bg-black">
-              <CloudflareStreamVideo src={asset.url} title={asset.name || 'Vault video'} className="h-full w-full object-contain" muted previewOnly />
+              <CloudflareStreamVideo src={asset.url} title={asset.name || t('vault.video', 'Vault video')} className="h-full w-full object-contain" muted previewOnly />
               <span className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[3px] border border-white/15 bg-black/70">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z" /></svg>
               </span>
@@ -235,28 +237,28 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
           )}
 
           <div className="absolute right-2 top-2 flex gap-1.5">
-            <button onClick={() => setInspectorAsset(asset)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:border-[#23c7be]/40 hover:text-[#8ee9e4]" title="Asset details"><Info size={14} /></button>
-            {!streamVideo && <button onClick={() => downloadAsset(asset)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:border-[#23c7be]/40 hover:text-[#8ee9e4]" title="Download"><Download size={14} /></button>}
-            <button onClick={() => { setEditingName(asset.id); setNameDraft(asset.name || ''); }} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:text-white" title="Rename"><Pencil size={14} /></button>
-            <button onClick={() => deleteAsset(asset.id)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-red-400/25 bg-black/75 text-red-300 hover:bg-red-400/10" title="Delete"><Trash2 size={14} /></button>
+            <button onClick={() => setInspectorAsset(asset)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:border-[#23c7be]/40 hover:text-[#8ee9e4]" title={t("vault.asset_details", "Asset details")}><Info size={14} /></button>
+            {!streamVideo && <button onClick={() => downloadAsset(asset)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:border-[#23c7be]/40 hover:text-[#8ee9e4]" title={t("vault.download", "Download")}><Download size={14} /></button>}
+            <button onClick={() => { setEditingName(asset.id); setNameDraft(asset.name || ''); }} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-white/10 bg-black/75 text-white/75 hover:text-white" title={t("vault.rename", "Rename")}><Pencil size={14} /></button>
+            <button onClick={() => deleteAsset(asset.id)} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-red-400/25 bg-black/75 text-red-300 hover:bg-red-400/10" title={t("vault.delete", "Delete")}><Trash2 size={14} /></button>
           </div>
 
-          {asset.is_magazine_ready && <span className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-[3px] border border-[#23c7be]/35 bg-[#17191d]/90 text-[#23c7be]" title="Magazine ready"><Star size={13} fill="currentColor" /></span>}
+          {asset.is_magazine_ready && <span className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-[3px] border border-[#23c7be]/35 bg-[#17191d]/90 text-[#23c7be]" title={t("vault.magazine_ready", "Magazine ready")}><Star size={13} fill="currentColor" /></span>}
 
           {editingName === asset.id && (
             <div className="absolute inset-0 z-10 flex flex-col justify-center gap-3 bg-black/90 p-4" onClick={(e) => e.stopPropagation()}>
-              <input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') saveName(asset); if (e.key === 'Escape') setEditingName(null); }} placeholder="Name this file…" className="w-full rounded-[3px] border border-[#23c7be]/50 bg-[#17191d] px-3 py-2.5 text-sm font-semibold text-white outline-none focus:border-[#23c7be]" autoFocus />
-              <div className="flex justify-end gap-2"><button onClick={() => setEditingName(null)} className="rounded-[3px] border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-bold text-white">Cancel</button><button onClick={() => saveName(asset)} className="rounded-[3px] bg-[#23c7be] px-3 py-2 text-xs font-black text-[#071211]">Save</button></div>
+              <input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') saveName(asset); if (e.key === 'Escape') setEditingName(null); }} placeholder={t("vault.name_file", "Name this file…")} className="w-full rounded-[3px] border border-[#23c7be]/50 bg-[#17191d] px-3 py-2.5 text-sm font-semibold text-white outline-none focus:border-[#23c7be]" autoFocus />
+              <div className="flex justify-end gap-2"><button onClick={() => setEditingName(null)} className="rounded-[3px] border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-bold text-white">{t("vault.cancel", "Cancel")}</button><button onClick={() => saveName(asset)} className="rounded-[3px] bg-[#23c7be] px-3 py-2 text-xs font-black text-[#071211]">{t("vault.save", "Save")}</button></div>
             </div>
           )}
         </div>
 
         <div className="space-y-3 p-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-black text-white" title={asset.name || 'Untitled'}>{asset.name || 'Untitled'}</p>
+            <p className="truncate text-sm font-black text-white" title={asset.name || t('vault.untitled', 'Untitled')}>{asset.name || t('vault.untitled', 'Untitled')}</p>
             <div className="mt-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-white/35">
-              <span>{asset.media_type || 'asset'}</span>
-              {asset.asset_category && <><span>·</span><span className="text-[#8ee9e4]/75">{asset.asset_category}</span></>}
+              <span>{t('vault.media.' + (asset.media_type || 'asset'), asset.media_type || 'asset')}</span>
+              {asset.asset_category && <><span>·</span><span className="text-[#8ee9e4]/75">{t('vault.category.' + asset.asset_category, asset.asset_category)}</span></>}
             </div>
           </div>
           {moveOptions.length > 0 && (
@@ -265,10 +267,10 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
               onChange={(e) => { if (e.target.value) moveAssetToFolder(asset.id, e.target.value); }}
               className="h-10 w-full rounded-[3px] border border-white/15 bg-[#111317] px-3 text-xs font-bold text-white outline-none focus:border-[#23c7be]"
               style={{ colorScheme: 'dark' }}
-              aria-label={`Move ${asset.name || 'asset'} to folder`}
+              aria-label={`${t('vault.move', 'Move')} ${asset.name || t('vault.asset', 'asset')} ${t('vault.to_folder', 'to folder')}`}
             >
-              <option value="" className="bg-[#111317] text-white">Move to…</option>
-              {moveOptions.map(f => <option key={f.id} value={f.id} className="bg-[#111317] text-white">{f.name}</option>)}
+              <option value="" className="bg-[#111317] text-white">{t("vault.move_to", "Move to…")}</option>
+              {moveOptions.map(f => <option key={f.id} value={f.id} className="bg-[#111317] text-white">{f.id === 'unfiled' ? t('vault.unfiled', 'Unfiled') : f.name}</option>)}
             </select>
           )}
         </div>
@@ -287,26 +289,26 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
       <header className="flex flex-col gap-4 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Bookmark size={19} fill="currentColor" /></div>
-          <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">Library & Assets</p><div className="flex items-baseline gap-2"><h2 className="text-xl font-black text-white">My Vault</h2><span className="text-xs font-bold text-white/35">{assets.length} assets</span></div></div>
+          <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">{t("vault.library_assets", "Library & Assets")}</p><div className="flex items-baseline gap-2"><h2 className="text-xl font-black text-white">{t("vault.my_vault", "My Vault")}</h2><span className="text-xs font-bold text-white/35">{assets.length} {t('vault.assets', 'assets')}</span></div></div>
         </div>
         <div className="flex flex-wrap items-start gap-2">
           <label className={`flex cursor-pointer items-center gap-2 rounded-[3px] border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs font-black text-white transition hover:bg-white/[0.08] ${uploading ? 'pointer-events-none opacity-60' : ''}`}>
             {uploading ? <Loader2 size={15} className="animate-spin text-[#23c7be]" /> : <Upload size={15} className="text-[#23c7be]" />}
-            {uploading ? 'Uploading…' : 'Upload image/audio'}
+            {uploading ? t('vault.uploading', 'Uploading…') : t('vault.upload_image_audio', 'Upload image/audio')}
             <input type="file" accept="image/*,audio/*" multiple className="hidden" onChange={uploadMedia} disabled={uploading} />
           </label>
           <div className="min-w-[190px]">
-            <CloudflareVideoUpload label="Upload video" onReady={saveStreamVideo} />
+            <CloudflareVideoUpload label={t("vault.upload_video", "Upload video")} onReady={saveStreamVideo} />
           </div>
-          <button onClick={() => setShowNewFolder(true)} className="flex items-center gap-2 rounded-[3px] bg-[#23c7be] px-4 py-2.5 text-xs font-black text-[#071211] transition hover:bg-[#35d8cf]"><Plus size={15} /> New Folder</button>
+          <button onClick={() => setShowNewFolder(true)} className="flex items-center gap-2 rounded-[3px] bg-[#23c7be] px-4 py-2.5 text-xs font-black text-[#071211] transition hover:bg-[#35d8cf]"><Plus size={15} /> {t("vault.new_folder", "New Folder")}</button>
         </div>
       </header>
 
       {showNewFolder && (
         <div className="grid gap-2 rounded-[4px] border border-white/10 bg-[#202328] p-3 sm:grid-cols-[minmax(0,1fr)_150px_auto_auto]">
-          <input value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="Folder name…" className="h-10 rounded-[3px] border border-white/10 bg-black/25 px-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" autoFocus />
-          <select value={newFolderColor} onChange={(e) => setNewFolderColor(e.target.value)} className="h-10 rounded-[3px] border border-white/10 bg-black/25 px-3 text-xs font-bold text-white outline-none focus:border-[#23c7be]"><option value="red">Red</option><option value="orange">Orange</option><option value="yellow">Yellow</option><option value="green">Green</option><option value="blue">Blue</option><option value="purple">Purple</option><option value="pink">Pink</option></select>
-          <button onClick={createFolder} className="h-10 rounded-[3px] bg-[#23c7be] px-4 text-xs font-black text-[#071211]">Create</button>
+          <input value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder={t("vault.folder_name", "Folder name…")} className="h-10 rounded-[3px] border border-white/10 bg-black/25 px-3 text-sm font-semibold text-white outline-none placeholder:text-white/25 focus:border-[#23c7be]" autoFocus />
+          <select value={newFolderColor} onChange={(e) => setNewFolderColor(e.target.value)} className="h-10 rounded-[3px] border border-white/10 bg-black/25 px-3 text-xs font-bold text-white outline-none focus:border-[#23c7be]"><option value="red">{t("vault.red", "Red")}</option><option value="orange">{t("vault.orange", "Orange")}</option><option value="yellow">{t("vault.yellow", "Yellow")}</option><option value="green">{t("vault.green", "Green")}</option><option value="blue">{t("vault.blue", "Blue")}</option><option value="purple">{t("vault.purple", "Purple")}</option><option value="pink">{t("vault.pink", "Pink")}</option></select>
+          <button onClick={createFolder} className="h-10 rounded-[3px] bg-[#23c7be] px-4 text-xs font-black text-[#071211]">{t("vault.create", "Create")}</button>
           <button onClick={() => setShowNewFolder(false)} className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-white/10 bg-white/[0.04] text-white/60"><X size={16} /></button>
         </div>
       )}
@@ -315,7 +317,7 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
         <section className="space-y-3">
           <div className="flex items-center gap-2 border-b border-white/10 pb-2.5">
             <Folder size={16} className="text-[#23c7be]" />
-            <h3 className="text-xs font-black uppercase tracking-[0.14em] text-white">Unfiled</h3>
+            <h3 className="text-xs font-black uppercase tracking-[0.14em] text-white">{t("vault.unfiled", "Unfiled")}</h3>
             <span className="text-xs font-bold text-white/35">{unfiledAssets.length}</span>
           </div>
           <AssetGrid items={unfiledAssets} />
@@ -335,9 +337,9 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
                 <span className="truncate text-sm font-black text-white">{folder.name}</span>
                 <span className="text-xs font-bold text-white/30">{folderAssets.length}</span>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); deleteFolder(folder.id); }} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-transparent text-white/35 transition hover:border-red-400/20 hover:bg-red-400/10 hover:text-red-300" title="Delete folder"><Trash2 size={14} /></button>
+              <button onClick={(e) => { e.stopPropagation(); deleteFolder(folder.id); }} className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-transparent text-white/35 transition hover:border-red-400/20 hover:bg-red-400/10 hover:text-red-300" title={t("vault.delete_folder", "Delete folder")}><Trash2 size={14} /></button>
             </div>
-            {isExpanded && <div className="border-t border-white/10 p-3">{folderAssets.length ? <AssetGrid items={folderAssets} currentFolderId={folder.id} /> : <div className="py-8 text-center text-xs font-semibold text-white/30">This folder is empty.</div>}</div>}
+            {isExpanded && <div className="border-t border-white/10 p-3">{folderAssets.length ? <AssetGrid items={folderAssets} currentFolderId={folder.id} /> : <div className="py-8 text-center text-xs font-semibold text-white/30">{t("vault.this_folder_is_empty", "This folder is empty.")}</div>}</div>}
           </section>
         );
       })}
@@ -345,8 +347,8 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
       {assets.length === 0 && folders.length === 0 && (
         <div className="rounded-[4px] border border-dashed border-white/15 bg-[#202328] py-14 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[3px] border border-[#23c7be]/25 bg-[#23c7be]/10"><Bookmark size={22} className="text-[#23c7be]" /></div>
-          <p className="text-sm font-black text-white">No saved assets yet</p>
-          <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-white/35">Upload media or save production assets to organize them here.</p>
+          <p className="text-sm font-black text-white">{t("vault.no_saved_assets_yet", "No saved assets yet")}</p>
+          <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-white/35">{t("vault.upload_media_or_save_production_assets_to_organize_them_here", "Upload media or save production assets to organize them here.")}</p>
         </div>
       )}
 
