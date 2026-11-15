@@ -2,6 +2,7 @@ import { installModelControl } from '../_shared/modelControlRuntime.ts';
 installModelControl('generate-image');
 import { serveWithCors } from './_legacy/cors.ts';
 import { createCreditBillingContext, withCreditCharge } from './_legacy/credits.ts';
+import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 
 const REPLICATE_API = 'https://api.replicate.com/v1';
 
@@ -30,11 +31,17 @@ serveWithCors(async (request) => {
   const referenceUrls = Array.isArray(body.reference_image_urls)
     ? body.reference_image_urls.filter(Boolean).slice(0, 14)
     : [];
+  const imageQuote = await quoteAiService(
+    billing.service, 'generate-image',
+    { prompt: String(body.prompt || ''), resolution: '2K', aspect_ratio: body.aspect_ratio || '1:1' },
+    'google/nano-banana-2', 'image',
+  );
   const { result: output, charge } = await withCreditCharge({
     ...billing,
     toolId: 'compose_scene',
     provider: 'replicate',
     relatedEntity: 'generate_image',
+    explicitCost: imageQuote.credits,
   }, async () => {
     const referenceImages = await Promise.all(referenceUrls.map(toDataUri));
     const response = await fetch(`${REPLICATE_API}/models/google/nano-banana-2/predictions`, {
