@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { base44, supabase } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
@@ -6,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { Inbox, Send, MessageSquare, Loader2, FileText, ShieldAlert } from 'lucide-react';
 
 export default function MemberInboxSection({ userEmail }) {
+  const t = useStudioTranslation();
   const [tab, setTab] = useState('received');
 
   const { data, isLoading } = useQuery({
@@ -54,8 +56,8 @@ export default function MemberInboxSection({ userEmail }) {
             {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center lg:w-[45%] lg:aspect-square lg:h-auto lg:text-[0.55vw]">{unreadCount}</span>}
           </div>
           <div className="min-w-0">
-            <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-[1.15vw] truncate">Messages & Comments</p>
-            <p className="text-white/50 text-xs font-medium lg:text-[0.68vw]">Activity on your content and yours</p>
+            <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-[1.15vw] truncate">{t("Messages & Comments", "Messages & Comments")}</p>
+            <p className="text-white/50 text-xs font-medium lg:text-[0.68vw]">{t("Activity on your content and yours", "Activity on your content and yours")}</p>
           </div>
         </div>
 
@@ -94,7 +96,7 @@ export default function MemberInboxSection({ userEmail }) {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap lg:gap-[1%]">
                     <p className="text-white text-sm font-bold truncate lg:text-[0.74vw]">{authorName}</p>
-                    {item.is_system_message && <span className="text-[10px] uppercase tracking-wider text-red-300 border border-red-500/30 px-1.5 py-0.5 lg:text-[0.5vw] lg:px-[1%]">Administrative</span>}
+                    {item.is_system_message && <span className="text-[10px] uppercase tracking-wider text-red-300 border border-red-500/30 px-1.5 py-0.5 lg:text-[0.5vw] lg:px-[1%]">{t("Administrative", "Administrative")}</span>}
                     {isReceived && !item.read && item.status !== 'read' && <span className="w-2 h-2 bg-yellow-400 rounded-full flex-shrink-0 lg:w-[0.4vw] lg:h-[0.4vw]" />}
                   </div>
                   {authorEmail && authorEmail !== userEmail && <p className="text-white/30 text-xs truncate lg:text-[0.6vw]">{authorEmail}</p>}
