@@ -4,6 +4,7 @@ import { serveWithCors } from './_legacy/cors.ts';
 import { createCreditBillingContext, withCreditCharge } from './_legacy/credits.ts';
 import { generateText } from './_legacy/replicateAi.ts';
 import { agentPrompts } from './_legacy/generatedAgentPrompts.ts';
+import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 
 serveWithCors(async (request) => {
   const billing = await createCreditBillingContext(request);
@@ -74,14 +75,22 @@ serveWithCors(async (request) => {
       }
     }
 
+    const agentInstructions = [agentPrompts[conversation.agent_name] || agentPrompts.production_assistant, adminBehavior].filter(Boolean).join('\n\n');
+    const agentPrompt = `${recent}${knowledgeContext}`;
+    const agentQuote = await quoteAiService(
+      billing.service, 'agent-conversations',
+      { prompt: `${agentInstructions}\n${agentPrompt}`, max_tokens: 4000 },
+      'anthropic/claude-opus-4.6', 'text',
+    );
     const { result: answer, charge } = await withCreditCharge({
       ...billing,
       toolId: 'ai_agent',
       provider: 'replicate',
       relatedEntity: `agent_${conversation.agent_name}`,
+      explicitCost: agentQuote.credits,
     }, () => generateText({
-        instructions: [agentPrompts[conversation.agent_name] || agentPrompts.production_assistant, adminBehavior].filter(Boolean).join('\n\n'),
-        prompt: `${recent}${knowledgeContext}`,
+        instructions: agentInstructions,
+        prompt: agentPrompt,
         reasoningEffort: conversation.agent_name === 'story_orchestrator' ? 'medium' : 'low',
       }));
     messages.push({
