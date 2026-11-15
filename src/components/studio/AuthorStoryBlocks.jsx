@@ -116,6 +116,66 @@ const emptyProject = () => normalizeAuthorProject();
 const newSegment = (number) => ({ id: crypto.randomUUID(), number, narration_text: '', image_type: 'Wide shot', image_instruction: '', character_ids: [], location_ids: [], time_periods: [], transition_notes: '', image_url: '', narration_url: '', status: 'draft' });
 const newChapter = (count, mode, topicId) => ({ id: crypto.randomUUID(), number: count + 1, title: `Chapter ${count + 1}`, creation_mode: mode, topic_id: topicId || null, segments: Array.from({ length: 9 }, (_, index) => newSegment(index + 1)) });
 
+const duplicateForTranslation = (source, language = 'fr') => {
+  const original = normalizeAuthorProject(source);
+  const idMap = new Map();
+  const remapId = (id) => idMap.get(id) || id;
+  const copyItems = (items) => items.map((item) => {
+    const id = crypto.randomUUID();
+    if (item.id) idMap.set(item.id, id);
+    return { ...item, id };
+  });
+  const characters = copyItems(original.characters);
+  const locations = copyItems(original.locations);
+  const topics = copyItems(original.topics);
+  const remapKeys = (value) => Object.fromEntries(
+    Object.entries(value && typeof value === 'object' && !Array.isArray(value) ? value : {})
+      .map(([key, item]) => [remapId(key), item])
+  );
+  const chapters = original.chapters.map((chapter) => {
+    const id = crypto.randomUUID();
+    if (chapter.id) idMap.set(chapter.id, id);
+    return { ...chapter, id, segments: chapter.segments.map((segment) => {
+      const newId = crypto.randomUUID();
+      if (segment.id) idMap.set(segment.id, newId);
+      return { ...segment, id: newId };
+    }) };
+  }).map((chapter) => ({
+    ...chapter,
+    topic_id: chapter.topic_id ? remapId(chapter.topic_id) : null,
+    appearance_continuity: remapKeys(chapter.appearance_continuity),
+    segments: chapter.segments.map((segment) => ({
+      ...segment,
+      character_ids: (segment.character_ids || []).map(remapId),
+      location_ids: (segment.location_ids || []).map(remapId),
+      character_directions: remapKeys(segment.character_directions),
+      character_reference_images: remapKeys(segment.character_reference_images),
+      character_generated_reference_images: remapKeys(segment.character_generated_reference_images),
+      location_reference_images: remapKeys(segment.location_reference_images),
+      narrator_language: language,
+      audio_stale: Boolean(segment.narration_url),
+      status: 'draft',
+    })),
+  }));
+  const { id: _id, created_at: _createdAt, created_date: _createdDate,
+    updated_at: _updatedAt, updated_date: _updatedDate,
+    published_dossier_id: _publishedDossierId, ...fields } = original;
+  return {
+    ...fields,
+    title: `${original.title} — ${language.toUpperCase()}`,
+    characters, locations, topics, chapters,
+    status: 'draft',
+    production_settings: {
+      ...original.production_settings,
+      original_language: language,
+      narrator_language: language,
+      translation_source_project_id: source.id,
+      translation_language: language,
+    },
+  };
+};
+
+
 export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packCharacters = [], packSets = [], packTopics = [], packsLoading = false }) {
   const [view, setView] = useState('dashboard');
   const [projects, setProjects] = useState([]);
@@ -245,6 +305,28 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
     setView(complete ? 'workspace' : 'setup');
   };
 
+  const cloneTranslation = async (source, language = 'fr') => {
+    setSaving(true);
+    try {
+      const translated = duplicateForTranslation(source, language);
+      const { title, genre, story_description, tone_rules, story_rules, cover_image,
+        author_name, contributors, characters, locations, topics, chapters,
+        production_settings, status } = translated;
+      const copy = await base44.entities.AuthorStoryProject.create({
+        title, genre, story_description, tone_rules, story_rules, cover_image,
+        author_name, contributors, characters, locations, topics, chapters,
+        production_settings, status,
+      });
+      if (!copy?.id || copy.id === source.id) throw new Error('The translated copy was not created independently.');
+      setProjects((current) => [copy, ...current]);
+      toast.success(language === 'fr' ? 'Copie française créée' : 'Translation copy created');
+    } catch (error) {
+      toast.error(error.message || 'Unable to duplicate the series');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const saveProject = async (nextView = view, sourceProject = project, options = {}) => {
     if (!sourceProject?.title?.trim()) { toast.error('Add a story title'); return null; }
     setSaving(true);
@@ -266,7 +348,7 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
   };
 
   if (view === 'dashboard') return <AuthorDashboard
-    projects={projects} loading={loading} onBack={onBack}
+    projects={projects} loading={loading} duplicating={saving} onDuplicate={cloneTranslation} onBack={onBack}
     onNew={() => { setProject(emptyProject()); setView('setup'); }} onOpen={openProject}
     onDelete={async (id) => { if (!window.confirm('Delete this private author project?')) return; try { await base44.entities.AuthorStoryProject.delete(id); setProjects((rows) => rows.filter((row) => row.id !== id)); } catch (error) { toast.error(error.message); } }}
   />;
@@ -290,12 +372,12 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
   return null;
 }
 
-function AuthorDashboard({ projects, loading, onBack, onNew, onOpen, onDelete }) {
+function AuthorDashboard({ projects, loading, duplicating, onDuplicate, onBack, onNew, onOpen, onDelete }) {
   const t = useStudioTranslation();
   return <div className="mx-auto w-full max-w-[1500px] px-5 pb-24 lg:px-10">
     <div className="mb-8 flex items-center gap-3"><button onClick={onBack} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-black text-yellow-400"><ArrowLeft size={20} /></button><div className="min-w-0 flex-1"><p className="text-xs font-black uppercase tracking-[0.2em] text-black/60">{t('fotoplay.dashboard.workspace', 'Private author workspace')}</p><h2 className="truncate text-2xl font-black text-black lg:text-4xl">{t('fotoplay.dashboard.title', 'My FotoPlay')}</h2></div><button onClick={onNew} className="flex items-center gap-2 rounded-2xl bg-black px-4 py-3 text-sm font-black text-yellow-400 lg:px-6"><Plus size={18} /><span className="hidden sm:inline">{t('fotoplay.dashboard.new', 'New FotoPlay')}</span><span className="sm:hidden">{t('fotoplay.dashboard.new_short', 'New')}</span></button></div>
     <div className="mb-8 rounded-3xl bg-black p-6 text-white lg:flex lg:items-center lg:justify-between lg:p-8"><div><div className="mb-2 flex items-center gap-2 text-yellow-400"><Sparkles size={18} /><span className="text-xs font-black uppercase tracking-widest">{t('fotoplay.dashboard.tagline', 'Your stories, your production')}</span></div><p className="max-w-3xl text-sm font-semibold leading-relaxed text-white/80 lg:text-base">{t('fotoplay.dashboard.description', 'Create privately, direct nine narrative segments per chapter, and publish only when your production is ready.')}</p></div><div className="mt-5 rounded-2xl bg-yellow-400 px-4 py-3 text-xs font-black uppercase tracking-wider text-black lg:mt-0">{t('fotoplay.dashboard.private', 'Private until published')}</div></div>
-    {loading ? <div className="flex justify-center py-24"><Loader2 className="animate-spin text-black" size={30} /></div> : projects.length === 0 ? <button onClick={onNew} className="flex w-full flex-col items-center rounded-[2rem] border-2 border-dashed border-black/25 bg-black/5 px-6 py-20 text-center"><BookOpen size={42} className="mb-4" /><p className="text-xl font-black">{t('fotoplay.dashboard.first', 'Create your first FotoPlay')}</p><p className="mt-2 text-sm font-semibold text-black/60">{t('fotoplay.dashboard.first_description', 'Define the story, cast and locations before building its chapters.')}</p></button> : <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{projects.map((item) => <motion.article key={item.id} whileHover={{ y: -3 }} className="overflow-hidden rounded-[2rem] bg-black shadow-xl"><button onClick={() => onOpen(item)} className="block w-full text-left"><div className="aspect-video bg-yellow-400">{item.cover_image ? <img src={item.cover_image} alt="" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center"><BookOpen size={42} /></div>}</div><div className="p-5"><p className="truncate text-lg font-black text-yellow-400">{item.title}</p><p className="mt-1 line-clamp-2 text-sm font-semibold text-white/70">{item.story_description}</p><div className="mt-4 flex gap-4 text-xs font-bold text-white/55"><span>{item.characters?.length || 0} {t('fotoplay.dashboard.characters', 'characters')}</span><span>{item.locations?.length || 0} {t('fotoplay.dashboard.locations', 'locations')}</span><span>{item.chapters?.length || 0} {t('fotoplay.dashboard.chapters', 'chapters')}</span></div></div></button><div className="flex items-center justify-between border-t border-white/10 px-5 py-3"><span className="text-xs font-black uppercase tracking-wider text-yellow-400">{t('fotoplay.dashboard.draft', 'Private draft')}</span><button onClick={() => onDelete(item.id)} className="rounded-xl bg-red-500/15 p-2 text-red-400"><Trash2 size={15} /></button></div></motion.article>)}</div>}
+    {loading ? <div className="flex justify-center py-24"><Loader2 className="animate-spin text-black" size={30} /></div> : projects.length === 0 ? <button onClick={onNew} className="flex w-full flex-col items-center rounded-[2rem] border-2 border-dashed border-black/25 bg-black/5 px-6 py-20 text-center"><BookOpen size={42} className="mb-4" /><p className="text-xl font-black">{t('fotoplay.dashboard.first', 'Create your first FotoPlay')}</p><p className="mt-2 text-sm font-semibold text-black/60">{t('fotoplay.dashboard.first_description', 'Define the story, cast and locations before building its chapters.')}</p></button> : <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{projects.map((item) => <motion.article key={item.id} whileHover={{ y: -3 }} className="overflow-hidden rounded-[2rem] bg-black shadow-xl"><button onClick={() => onOpen(item)} className="block w-full text-left"><div className="aspect-video bg-yellow-400">{item.cover_image ? <img src={item.cover_image} alt="" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center"><BookOpen size={42} /></div>}</div><div className="p-5"><p className="truncate text-lg font-black text-yellow-400">{item.title}</p><p className="mt-1 line-clamp-2 text-sm font-semibold text-white/70">{item.story_description}</p><div className="mt-4 flex gap-4 text-xs font-bold text-white/55"><span>{item.characters?.length || 0} {t('fotoplay.dashboard.characters', 'characters')}</span><span>{item.locations?.length || 0} {t('fotoplay.dashboard.locations', 'locations')}</span><span>{item.chapters?.length || 0} {t('fotoplay.dashboard.chapters', 'chapters')}</span></div></div></button><div className="flex items-center justify-between border-t border-white/10 px-5 py-3"><span className="text-xs font-black uppercase tracking-wider text-yellow-400">{t('fotoplay.dashboard.draft', 'Private draft')}</span><div className="flex items-center gap-2"><button type="button" disabled={duplicating} onClick={() => onDuplicate(item, 'fr')} className="rounded-xl border border-yellow-400/40 px-3 py-2 text-xs font-black text-yellow-400 disabled:opacity-50">{t('fotoplay.dashboard.duplicate_fr', 'Duplicate in French')}</button><button onClick={() => onDelete(item.id)} className="rounded-xl bg-red-500/15 p-2 text-red-400"><Trash2 size={15} /></button></div></div></motion.article>)}</div>}
   </div>;
 }
 
