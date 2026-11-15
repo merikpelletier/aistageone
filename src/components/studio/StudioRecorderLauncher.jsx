@@ -116,7 +116,7 @@ export default function StudioRecorderLauncher() {
 
   const startRecording = async () => {
     if (!navigator.mediaDevices?.getDisplayMedia || !window.MediaRecorder) {
-      toast.error('Screen recording is not supported by this browser.');
+      toast.error(t('studio.recorder.unsupported', 'Screen recording is not supported by this browser.'));
       return;
     }
 
@@ -135,7 +135,7 @@ export default function StudioRecorderLauncher() {
           micStreamRef.current = micStream;
         } catch (error) {
           console.warn('Microphone unavailable, continuing without microphone.', error);
-          toast.warning('Microphone unavailable. Recording screen only.');
+          toast.warning(t('studio.recorder.micUnavailable', 'Microphone unavailable. Recording screen only.'));
         }
       }
 
@@ -176,7 +176,7 @@ export default function StudioRecorderLauncher() {
       stopTracks();
       if (error?.name !== 'NotAllowedError') {
         console.error('Screen recording error:', error);
-        toast.error('Could not start screen recording.');
+        toast.error(t('studio.recorder.startFailed', 'Could not start screen recording.'));
       }
     }
   };
@@ -225,7 +225,7 @@ export default function StudioRecorderLauncher() {
       setShowVaultModal(true);
     } catch (error) {
       console.error('Studio Recorder upload failed:', error);
-      toast.error('The recording could not be uploaded.');
+      toast.error(t('studio.recorder.uploadFailed', 'The recording could not be uploaded.'));
     } finally {
       setIsUploading(false);
     }
@@ -238,7 +238,7 @@ export default function StudioRecorderLauncher() {
       type="button"
       onClick={() => setOpen(true)}
       title={t('studio.recorder.tooltip', 'Studio Recorder · Making Of')}
-      aria-label="Open Studio Recorder"
+      aria-label={t("studio.recorder.open", "Open Studio Recorder")}
       className="w-full min-h-[46px] px-3 flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white border-t border-white/10 font-bold text-[11px]"
     >
       <Circle size={13} fill="currentColor" className="flex-shrink-0" />
@@ -252,7 +252,7 @@ export default function StudioRecorderLauncher() {
 
       {!toolbarHost && !isRecording && (
         <button onClick={() => setOpen(true)} className="lg:hidden fixed z-[6100] right-3 bottom-[74px] h-11 px-3 bg-red-600 text-white font-bold text-xs flex items-center gap-2 shadow-lg">
-          <Circle size={11} fill="currentColor" /> RECORDER
+          <Circle size={11} fill="currentColor" /> {t("studio.recorder.mobile", "RECORDER")}
         </button>
       )}
 
@@ -271,39 +271,39 @@ export default function StudioRecorderLauncher() {
               <>
                 <div className="bg-black border border-white/10 p-5 text-center">
                   <Camera size={34} className="mx-auto mb-3 text-white/70" />
-                  <h2 className="text-xl font-black">Record your process</h2>
-                  <p className="mt-2 text-xs leading-5 text-white/50">The panel closes automatically when recording starts so the Studio remains fully visible.</p>
+                  <h2 className="text-xl font-black">{t("studio.recorder.process", "Record your process")}</h2>
+                  <p className="mt-2 text-xs leading-5 text-white/50">{t("studio.recorder.panelHint", "The panel closes automatically when recording starts so the Studio remains fully visible.")}</p>
                 </div>
 
                 <button onClick={() => setIncludeMic((value) => !value)} className="w-full min-h-[54px] px-4 flex items-center gap-3 bg-white/5 hover:bg-white/10">
                   {includeMic ? <Mic size={19} /> : <MicOff size={19} />}
-                  <div className="text-left flex-1"><div className="font-bold text-sm">Microphone</div><div className="text-xs text-white/45">Narrate while you work.</div></div>
+                  <div className="text-left flex-1"><div className="font-bold text-sm">{t("studio.recorder.microphone", "Microphone")}</div><div className="text-xs text-white/45">{t("studio.recorder.narrate", "Narrate while you work.")}</div></div>
                   {includeMic && <Check size={17} />}
                 </button>
 
                 <button onClick={() => setIncludeSystemAudio((value) => !value)} className="w-full min-h-[54px] px-4 flex items-center gap-3 bg-white/5 hover:bg-white/10">
                   <Camera size={19} />
-                  <div className="text-left flex-1"><div className="font-bold text-sm">System / tab audio</div><div className="text-xs text-white/45">When supported by the browser.</div></div>
+                  <div className="text-left flex-1"><div className="font-bold text-sm">{t("studio.recorder.systemAudio", "System / tab audio")}</div><div className="text-xs text-white/45">{t("studio.recorder.browserSupport", "When supported by the browser.")}</div></div>
                   {includeSystemAudio && <Check size={17} />}
                 </button>
 
                 <button onClick={startRecording} className="w-full h-12 bg-red-600 hover:bg-red-500 font-bold flex items-center justify-center gap-2">
-                  <Circle size={14} fill="currentColor" /> Start recording
+                  <Circle size={14} fill="currentColor" /> {t("studio.recorder.start", "Start recording")}
                 </button>
               </>
             ) : (
               <>
-                <div className="text-xs uppercase tracking-[0.2em] text-white/45">Making Of preview</div>
+                <div className="text-xs uppercase tracking-[0.2em] text-white/45">{t("studio.recorder.preview", "Making Of preview")}</div>
                 <video src={previewUrl} controls playsInline className="w-full bg-black max-h-[52vh] object-contain" />
                 <div className="grid grid-cols-1 gap-2">
                   <button onClick={downloadRecording} className="h-11 bg-white/10 hover:bg-white/15 font-bold text-sm flex items-center justify-center gap-2">
-                    <Download size={16} /> Download
+                    <Download size={16} /> {t("studio.recorder.download", "Download")}
                   </button>
                   <div className="grid grid-cols-2 gap-2">
-                    <button onClick={resetRecording} disabled={isUploading} className="h-11 bg-white/10 font-bold text-sm">Record again</button>
+                    <button onClick={resetRecording} disabled={isUploading} className="h-11 bg-white/10 font-bold text-sm">{t("studio.recorder.again", "Record again")}</button>
                     <button onClick={uploadRecording} disabled={isUploading} className="h-11 bg-white text-black font-bold text-sm flex items-center justify-center gap-2">
                       {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                      {isUploading ? 'Uploading…' : 'Save to Vault'}
+                      {isUploading ? t("studio.recorder.uploading", "Uploading…") : t("studio.recorder.saveVault", "Save to Vault")}
                     </button>
                   </div>
                 </div>
@@ -317,8 +317,8 @@ export default function StudioRecorderLauncher() {
         <div className="fixed z-[9500] right-4 bottom-4 bg-[#17191d] text-white border border-white/15 shadow-2xl px-3 py-2 flex items-center gap-3">
           <Circle size={11} fill="currentColor" className="text-red-500" />
           <span className="font-mono font-bold text-sm tabular-nums">{formatTime(recordingTime)}</span>
-          <button onClick={togglePause} className="w-8 h-8 bg-white/10 flex items-center justify-center" title={isPaused ? 'Resume' : 'Pause'}>{isPaused ? <Play size={15} /> : <Pause size={15} />}</button>
-          <button onClick={stopRecording} className="w-8 h-8 bg-red-600 flex items-center justify-center" title="Stop"><Square size={14} fill="currentColor" /></button>
+          <button onClick={togglePause} className="w-8 h-8 bg-white/10 flex items-center justify-center" title={isPaused ? t("studio.recorder.resume", "Resume") : t("studio.recorder.pause", "Pause")}>{isPaused ? <Play size={15} /> : <Pause size={15} />}</button>
+          <button onClick={stopRecording} className="w-8 h-8 bg-red-600 flex items-center justify-center" title={t("studio.recorder.stop", "Stop")}><Square size={14} fill="currentColor" /></button>
         </div>
       )}
 
@@ -329,7 +329,7 @@ export default function StudioRecorderLauncher() {
           mediaType="video"
           onSaved={() => {
             setShowVaultModal(false);
-            toast.success('Making Of saved to your Vault.');
+            toast.success(t('studio.recorder.saved', 'Making Of saved to your Vault.'));
           }}
           onClose={() => setShowVaultModal(false)}
         />
