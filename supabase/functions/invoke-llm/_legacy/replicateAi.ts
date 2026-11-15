@@ -1,5 +1,4 @@
 const REPLICATE_API = 'https://api.replicate.com/v1';
-const TEXT_MODEL = 'openai/gpt-5.6-terra';
 const SPEECH_MODEL = 'minimax/speech-2.8-hd';
 const WHISPER_VERSION = '8099696689d249cf8b122d833c36ac3f75505c666a395ca40ef26f68e7d3d16e';
 
@@ -92,7 +91,7 @@ export async function generateText({
   imageUrls = [],
   schema,
   reasoningEffort = 'low',
-  modelKey = TEXT_MODEL,
+  modelKey,
 }: {
   prompt: string;
   instructions?: string;
@@ -117,7 +116,10 @@ export async function generateText({
     max_output_tokens: 4000,
     max_completion_tokens: 4000,
   };
-  const output = await runOfficialModel(TEXT_MODEL, input);
+  // A service marker is used only by older callers with no explicit model;
+  // the central model controller replaces it with the Admin-configured model.
+  const targetModel = modelKey?.trim() || 'aistage/text-service';
+  const output = await runOfficialModel(targetModel, input);
   const text = outputText(output);
   return schema ? parseJson(text) : text;
 }
