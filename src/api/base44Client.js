@@ -55,7 +55,8 @@ function createEntityClient(entityName) {
   const table = ENTITY_TABLE_OVERRIDES[entityName] || snakeCase(entityName);
 
   return {
-    async list(sort, limit = 100) {
+    async list(sort, limit) {
+      if (limit == null) return this.listAll(sort);
       let query = supabase.from(table).select('*');
       query = applyOrdering(query, sort);
       if (limit) query = query.limit(limit);
@@ -84,7 +85,8 @@ function createEntityClient(entityName) {
       return rows;
     },
 
-    async filter(filters = {}, sort, limit = 100) {
+    async filter(filters = {}, sort, limit) {
+      if (limit == null) return this.filterAll(filters, sort);
       let query = supabase.from(table).select('*');
       query = applyFilters(query, filters);
       query = applyOrdering(query, sort);
