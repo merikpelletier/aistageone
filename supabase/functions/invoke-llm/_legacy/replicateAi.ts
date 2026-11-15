@@ -104,25 +104,19 @@ export async function generateText({
   const structuredPrompt = schema
     ? `${prompt}\n\nReturn only valid JSON matching this schema exactly:\n${JSON.stringify(schema)}`
     : prompt;
-  // The runtime resolves modelKey against the enabled Admin route options and
-  // filters input fields using the selected model's imported schema.
-  // Keep the existing source route and legacy input for callers without a choice.
-  const chosenByStudio = Boolean(modelKey && modelKey !== TEXT_MODEL);
-  const input = chosenByStudio
-    ? {
-        prompt: instructions ? `Instructions:\n${instructions}\n\nUser request:\n${structuredPrompt}` : structuredPrompt,
-        system_prompt: instructions || '',
-        max_tokens: 4000,
-        max_completion_tokens: 4000,
-      }
-    : {
-        prompt: structuredPrompt,
-        system_prompt: instructions || '',
-        image_input: imageUrls.filter(Boolean),
-        reasoning_effort: reasoningEffort,
-        verbosity: 'low',
-        max_completion_tokens: 4000,
-      };
+  // Use one canonical text request. Admin's imported schema and route mappings
+  // determine which fields are forwarded to the selected model.
+  // Avoid embedding instructions twice (prompt + system instruction).
+  const input = {
+    prompt: structuredPrompt,
+    system_prompt: instructions || '',
+    image_input: imageUrls.filter(Boolean),
+    reasoning_effort: reasoningEffort,
+    verbosity: 'low',
+    max_tokens: 4000,
+    max_output_tokens: 4000,
+    max_completion_tokens: 4000,
+  };
   const output = await runOfficialModel(TEXT_MODEL, input);
   const text = outputText(output);
   return schema ? parseJson(text) : text;
