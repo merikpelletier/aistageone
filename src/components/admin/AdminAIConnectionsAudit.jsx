@@ -36,7 +36,7 @@ const reviewed = {
   'generatePitchSpeech': ['dynamic','Voix Pitch Deck : calcul du coût et réservation dynamique avant génération. Les fichiers en cache ne sont pas régénérés.'], 
   'generateMusic': ['dynamic','studioAudio.ts : devis central et réservation avant génération ; validation ou remboursement selon le résultat.'], 
   'generateSoundFx': ['dynamic','studioAudio.ts : devis central et réservation avant génération ; validation ou remboursement selon le résultat.'], 
-  'checkStoryBlockPlan': ['unverified','Fonction auxiliaire ; facturation annoncée en amont, non vérifiée de bout en bout.'],
+  'checkStoryBlockPlan': ['unverified','La planification initiale est facturée en amont, mais les corrections automatiques peuvent relancer un modèle depuis base44Compat.ts sans réservation additionnelle identifiée. À sécuriser.'],
   'regenerateSegment': ['unverified','Fonction auxiliaire ; aucun débit dans le point d’entrée.'],
 };
 
