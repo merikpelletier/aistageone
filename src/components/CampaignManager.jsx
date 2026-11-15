@@ -123,7 +123,7 @@ export default function CampaignManager({ userEmail }) {
         {showForm && (
           <motion.form initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} onSubmit={handleSubmit} className="space-y-4 bg-white/5 rounded-2xl p-5 border border-white/10 overflow-hidden lg:space-y-[2%] lg:rounded-[0.8vw] lg:p-[2%]">
             <div className="flex items-center justify-between">
-              <p className="text-white font-bold text-sm uppercase tracking-wide lg:text-[0.76vw]">{editingId ? 'Edit Campaign' : 'New Campaign'}</p>
+              <p className="text-white font-bold text-sm uppercase tracking-wide lg:text-[0.76vw]">{editingId ? t('Edit Campaign','Edit Campaign') : t('New Campaign','New Campaign')}</p>
               <button type="button" onClick={() => { setShowForm(false); setEditingId(null); setForm(EMPTY_FORM); }}><X className="text-white/50 hover:text-white w-[1vw] h-[1vw]" /></button>
             </div>
 
@@ -136,7 +136,7 @@ export default function CampaignManager({ userEmail }) {
                 <label className="text-white/50 text-xs font-bold uppercase tracking-wide mb-1 block lg:text-[0.62vw]">{t("Linked Story", "Linked Story")}</label>
                 <select value={form.linked_story_id} onChange={e => setForm(f => ({ ...f, linked_story_id: e.target.value }))} className="w-full bg-black/40 text-white text-sm rounded-xl px-4 py-2.5 border border-white/10 focus:border-yellow-400/50 outline-none lg:text-[0.72vw] lg:px-[3%] lg:py-[2%] lg:rounded-[0.5vw]">
                   <option value="">{t("Select a published story…", "Select a published story…")}</option>
-                  {stories.map(s => <option key={s.id} value={s.id}>{s.production_name || s.episode_title || 'Untitled'}</option>)}
+                  {stories.map(s => <option key={s.id} value={s.id}>{s.production_name || s.episode_title || t('Untitled','Untitled')}</option>)}
                 </select>
               </div>
             </div>
@@ -171,7 +171,7 @@ export default function CampaignManager({ userEmail }) {
                 ].map(({ key, label, icon: Icon }) => (
                   <button key={key} type="button" onClick={() => toggle(key)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors lg:gap-[4%] lg:px-[4%] lg:py-[3%] lg:rounded-[0.5vw] ${form[key] ? 'bg-yellow-400/15 border-yellow-400/40' : 'bg-black/30 border-white/10'}`}>
                     <Icon className={`${form[key] ? 'text-yellow-400' : 'text-white/30'} w-[0.8vw] h-[0.8vw]`} />
-                    <span className={`text-sm font-medium flex-1 text-left lg:text-[0.68vw] ${form[key] ? 'text-white' : 'text-white/40'}`}>{label}</span>
+                    <span className={`text-sm font-medium flex-1 text-left lg:text-[0.68vw] ${form[key] ? 'text-white' : 'text-white/40'}`}>{t(label,label)}</span>
                   </button>
                 ))}
               </div>
@@ -191,7 +191,7 @@ export default function CampaignManager({ userEmail }) {
                 <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="w-full bg-black/40 text-white text-sm rounded-xl px-4 py-2.5 border border-white/10 focus:border-yellow-400/50 outline-none lg:text-[0.72vw] lg:px-[3%] lg:py-[2%] lg:rounded-[0.5vw]"><option value="draft">{t("Draft (hidden)", "Draft (hidden)")}</option><option value="active">{t("Active (visible)", "Active (visible)")}</option><option value="ended">{t("Ended", "Ended")}</option></select>
               </div>
               <button type="submit" disabled={saveMutation.isPending || !form.title.trim()} className="w-full py-3 bg-yellow-400 text-black rounded-xl font-bold text-sm uppercase tracking-wide hover:bg-yellow-500 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 lg:py-[6%] lg:text-[0.7vw] lg:rounded-[0.5vw]">
-                {saveMutation.isPending ? <Loader2 className="w-[0.8vw] h-[0.8vw] animate-spin" /> : <Megaphone className="w-[0.8vw] h-[0.8vw]" />}{editingId ? 'Save Changes' : 'Create Campaign'}
+                {saveMutation.isPending ? <Loader2 className="w-[0.8vw] h-[0.8vw] animate-spin" /> : <Megaphone className="w-[0.8vw] h-[0.8vw]" />}{editingId ? t('Save Changes','Save Changes') : t('Create Campaign','Create Campaign')}
               </button>
             </div>
           </motion.form>
@@ -228,7 +228,7 @@ export default function CampaignManager({ userEmail }) {
                   </div>
                 </div>
                 <div className="flex gap-1.5 flex-shrink-0 lg:gap-[0.4vw]">
-                  <button onClick={() => toggleStatus(c)} className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center hover:bg-white/20 transition-colors lg:w-[2vw] lg:h-[2vw] lg:rounded-[20%]" title={c.status === 'active' ? 'End' : 'Activate'}><Power className={`${c.status === 'active' ? 'text-green-400' : 'text-white/50'} w-2/5 h-2/5`} /></button>
+                  <button onClick={() => toggleStatus(c)} className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center hover:bg-white/20 transition-colors lg:w-[2vw] lg:h-[2vw] lg:rounded-[20%]" title={c.status === 'active' ? t('End','End') : t('Activate','Activate')}><Power className={`${c.status === 'active' ? 'text-green-400' : 'text-white/50'} w-2/5 h-2/5`} /></button>
                   <button onClick={() => handleEdit(c)} className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center hover:bg-white/20 transition-colors text-white/50 text-xs lg:w-[2vw] lg:h-[2vw] lg:rounded-[20%] lg:text-[0.7vw]">✎</button>
                   <button onClick={() => deleteMutation.mutate(c.id)} className="w-7 h-7 bg-white/10 rounded-lg flex items-center justify-center hover:bg-red-400/20 transition-colors lg:w-[2vw] lg:h-[2vw] lg:rounded-[20%]"><Trash2 className="text-red-400 w-2/5 h-2/5" /></button>
                 </div>
