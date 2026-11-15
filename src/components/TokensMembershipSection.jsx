@@ -3,6 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Coins, BadgeCheck, ShoppingCart, Loader2, ArrowRight, History, TrendingUp, TrendingDown, Gift } from 'lucide-react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
+import { getPlatformLanguage } from '@/lib/translationDictionary';
 
 const MEMBERSHIP_LABELS = {
   publisher: 'Publisher',
@@ -18,6 +20,8 @@ const statusConfig = {
 };
 
 export default function TokensMembershipSection({ userEmail, variant = 'full', desktopStacked = false }) {
+  const t = useStudioTranslation();
+  const language = getPlatformLanguage();
   const [purchasingId, setPurchasingId] = useState(null);
 
   const { data: balanceData, isLoading: balanceLoading } = useQuery({
@@ -85,8 +89,8 @@ export default function TokensMembershipSection({ userEmail, variant = 'full', d
           <Coins size={20} className="text-black lg:w-4 lg:h-4" />
         </div>
         <div className="min-w-0">
-          <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-base">Tokens & Membership</p>
-          <p className="text-white/50 text-xs font-medium">Private — only you can see this</p>
+          <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-base">{t("profile.membershipHeading", "Tokens & Membership")}</p>
+          <p className="text-white/50 text-xs font-medium">{t("profile.private", "Private — only you can see this")}</p>
         </div>
       </div>
 
@@ -95,16 +99,16 @@ export default function TokensMembershipSection({ userEmail, variant = 'full', d
           <Coins size={22} className="text-yellow-400 mb-2 lg:mb-0 lg:w-4 lg:h-4 flex-shrink-0" />
           <div className="lg:flex lg:items-baseline lg:gap-2 min-w-0">
             <p className="text-yellow-400 text-3xl font-bold lg:text-xl">{balance}</p>
-            <p className="text-white/50 text-xs font-bold uppercase tracking-wide mt-1 lg:mt-0">Tokens</p>
+            <p className="text-white/50 text-xs font-bold uppercase tracking-wide mt-1 lg:mt-0">{t("profile.tokens", "Tokens")}</p>
           </div>
         </div>
 
         <div className="bg-white/5 rounded-2xl p-5 border border-white/10 flex flex-col items-center justify-center lg:rounded-lg lg:p-3 lg:flex-row lg:justify-start lg:gap-3 min-w-0">
           <BadgeCheck size={22} className="text-blue-400 mb-2 lg:mb-0 lg:w-4 lg:h-4 flex-shrink-0" />
           <div className="lg:flex lg:items-center lg:gap-2 min-w-0 lg:flex-wrap">
-            <p className="text-white text-lg font-bold text-center lg:text-sm lg:text-left">{membershipType ? MEMBERSHIP_LABELS[membershipType] || membershipType : 'None'}</p>
+            <p className="text-white text-lg font-bold text-center lg:text-sm lg:text-left">{membershipType ? t('profile.membershipType.' + membershipType, MEMBERSHIP_LABELS[membershipType] || membershipType) : t('profile.none', 'None')}</p>
             <span className={`text-xs px-2 py-0.5 rounded-md border font-bold uppercase mt-1 lg:mt-0 whitespace-nowrap ${statusInfo.bg} ${statusInfo.border}`} style={{ color: '#1a1a1a' }}>
-              {statusInfo.label}
+              {t('profile.status.' + membershipStatus, statusInfo.label)}
             </span>
           </div>
         </div>
@@ -112,7 +116,7 @@ export default function TokensMembershipSection({ userEmail, variant = 'full', d
         <Link to="/Membership" className={summaryLinkClass}>
           <span className="flex items-center gap-2 lg:gap-1.5">
             <BadgeCheck size={16} className="lg:w-3 lg:h-3" />
-            {membership ? 'Change Membership' : 'Apply for Membership'}
+            {membership ? t('profile.changeMembership', 'Change Membership') : t('profile.applyMembership', 'Apply for Membership')}
           </span>
           <ArrowRight size={16} className="lg:w-3 lg:h-3 lg:ml-1" />
         </Link>
@@ -126,7 +130,7 @@ export default function TokensMembershipSection({ userEmail, variant = 'full', d
         <div className="space-y-3 lg:space-y-2">
           <div className="flex items-center gap-2">
             <ShoppingCart size={16} className="text-white/60" />
-            <p className="text-white/60 text-xs font-bold uppercase tracking-wider">Buy Tokens</p>
+            <p className="text-white/60 text-xs font-bold uppercase tracking-wider">{t("profile.buyTokens", "Buy Tokens")}</p>
           </div>
           <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
             {packages.map((pkg) => {
@@ -139,11 +143,11 @@ export default function TokensMembershipSection({ userEmail, variant = 'full', d
                       <p className="text-white text-sm font-bold">{pkg.name}</p>
                       {pkg.bonus_percentage > 0 && <span className="text-xs px-1.5 py-0.5 bg-yellow-400/20 text-yellow-400 rounded-md font-bold">+{pkg.bonus_percentage}%</span>}
                     </div>
-                    <p className="text-white/50 text-xs mt-0.5">{totalTokens} tokens</p>
+                    <p className="text-white/50 text-xs mt-0.5">{totalTokens} {t('profile.tokensLower', 'tokens')}</p>
                   </div>
                   <p className="text-green-400 text-sm font-bold flex-shrink-0">${pkg.price}</p>
                   <button onClick={() => handlePurchase(pkg)} disabled={isPurchasing} className="px-4 py-2 bg-yellow-400 text-black text-xs font-bold rounded-xl hover:bg-yellow-500 disabled:opacity-50 transition-colors flex items-center gap-1.5 flex-shrink-0 lg:rounded-lg">
-                    {isPurchasing ? <Loader2 size={12} className="animate-spin" /> : <Coins size={12} />}Buy
+                    {isPurchasing ? <Loader2 size={12} className="animate-spin" /> : <Coins size={12} />} {t("profile.buy", "Buy")}
                   </button>
                 </div>
               );
@@ -156,7 +160,7 @@ export default function TokensMembershipSection({ userEmail, variant = 'full', d
         <div className="space-y-3 lg:space-y-2">
           <div className="flex items-center gap-2">
             <History size={16} className="text-white/60" />
-            <p className="text-white/60 text-xs font-bold uppercase tracking-wider">Credit History</p>
+            <p className="text-white/60 text-xs font-bold uppercase tracking-wider">{t("profile.creditHistory", "Credit History")}</p>
           </div>
           <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 lg:max-h-44 lg:grid lg:grid-cols-2 lg:gap-1.5 lg:space-y-0">
             {transactions.map((tx, idx) => {
@@ -172,13 +176,13 @@ export default function TokensMembershipSection({ userEmail, variant = 'full', d
                     <Icon size={14} className={isPositive ? 'text-green-400' : 'text-red-400'} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-semibold truncate">{typeLabel}</p>
+                    <p className="text-white text-sm font-semibold truncate">{t('profile.transaction.' + tx.transaction_type, typeLabel)}</p>
                     {tx.related_entity && <p className="text-white/40 text-xs truncate">{tx.related_entity}</p>}
-                    {txDate && <p className="text-white/30 text-xs">{new Date(txDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {new Date(txDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</p>}
+                    {txDate && <p className="text-white/30 text-xs">{new Date(txDate).toLocaleDateString(language === 'fr' ? 'fr-CA' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {new Date(txDate).toLocaleTimeString(language === 'fr' ? 'fr-CA' : 'en-US', { hour: 'numeric', minute: '2-digit' })}</p>}
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className={`text-sm font-bold font-mono ${isPositive ? 'text-green-400' : 'text-red-400'}`}>{isPositive ? '+' : ''}{tx.token_amount}</p>
-                    {tx.balance_after !== undefined && tx.balance_after !== null && <p className="text-white/30 text-xs">Bal: {tx.balance_after}</p>}
+                    {tx.balance_after !== undefined && tx.balance_after !== null && <p className="text-white/30 text-xs">{t('profile.balance', 'Bal:')} {tx.balance_after}</p>}
                   </div>
                 </div>
               );
@@ -187,7 +191,7 @@ export default function TokensMembershipSection({ userEmail, variant = 'full', d
         </div>
       )}
 
-      {packages.length === 0 && transactions.length === 0 && <p className="text-white/40 text-sm text-center py-2">No token packages or credit history available yet</p>}
+      {packages.length === 0 && transactions.length === 0 && <p className="text-white/40 text-sm text-center py-2">{t('profile.noHistory', 'No token packages or credit history available yet')}</p>}
     </>
   );
 
