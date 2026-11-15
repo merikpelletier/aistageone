@@ -86,7 +86,7 @@ export async function reserveCredits({
   explicitCost?: number | null;
 }): Promise<CreditCharge> {
   await assertServiceEnabled();
-  if (isAdmin(user)) {
+  if (isAdmin(user) && explicitCost == null) {
     return { id: null, cost: 0, balanceAfter: null, bypassed: true };
   }
 
