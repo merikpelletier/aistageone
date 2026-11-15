@@ -112,7 +112,7 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
       const result = await base44.integrations.Core.UploadFile({ file });
       setFormData(prev => ({ ...prev, avatar_url: result.file_url }));
     } catch {
-      alert('Error uploading avatar');
+      alert(t('Error uploading avatar','Error uploading avatar'));
     } finally {
       setUploading(false);
     }
@@ -122,7 +122,7 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     if (formData.images.length + files.length > 6) {
-      alert('Maximum 6 images');
+      alert(t('Maximum 6 images','Maximum 6 images'));
       return;
     }
     setUploading(true);
@@ -130,7 +130,7 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
       const uploadedUrls = await Promise.all(files.map(file => base44.integrations.Core.UploadFile({ file }).then(res => res.file_url)));
       setFormData(prev => ({ ...prev, images: [...prev.images, ...uploadedUrls] }));
     } catch {
-      alert('Error uploading images');
+      alert(t('Error uploading images','Error uploading images'));
     } finally {
       setUploading(false);
     }
@@ -151,7 +151,7 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
         <div className="border-b border-gray-200 bg-white p-3 flex gap-2 flex-shrink-0 rounded-t-2xl">
           <button onClick={onClose} className="flex-1 bg-gray-200 text-black py-3 rounded hover:bg-gray-300 transition-colors font-light text-sm">{t("Cancel", "Cancel")}</button>
           <button onClick={() => saveMutation.mutate(formData)} disabled={saveMutation.isPending} className="flex-1 bg-red-600 text-white py-3 rounded hover:bg-red-700 transition-colors disabled:opacity-50 font-semibold text-sm">
-            {saveMutation.isPending ? 'Saving...' : 'SAVE'}
+            {saveMutation.isPending ? t('Saving...','Saving...') : t('SAVE','SAVE')}
           </button>
         </div>
 
@@ -220,7 +220,7 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
           </div>
 
           <div>
-            <label className="text-black font-semibold text-sm block mb-3">Gallery Images ({formData.images.length}/6)</label>
+            <label className="text-black font-semibold text-sm block mb-3">{t('Gallery Images','Gallery Images')} ({formData.images.length}/6)</label>
             {formData.images.length > 0 && (
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {formData.images.map((img, idx) => (
@@ -234,7 +234,7 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
             {formData.images.length < 6 && (
               <label className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:bg-gray-50 transition-colors">
                 <input type="file" multiple accept="image/*" onChange={handleImagesUpload} disabled={uploading} className="hidden" />
-                <span className="text-black">{uploading ? 'Uploading...' : 'Add Images'}</span>
+                <span className="text-black">{uploading ? t('Uploading...','Uploading...') : t('Add Images','Add Images')}</span>
               </label>
             )}
           </div>
