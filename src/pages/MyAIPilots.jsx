@@ -296,7 +296,7 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 text-sm font-semibold text-white hover:bg-white/[0.04]">
         {block.title || humanize(block.block_key)}<ChevronDown size={16} className="text-[#23c7be] group-open:rotate-180" />
       </summary>
-      <div className="border-t border-white/10 p-4">{block.block_key === 'scenario' ? <ScenarioGuide content={block.content || {}} sets={sets} extensions={access.extensions || []} userSets={userSets} onSaveShotReferences={saveShotReferences} savingShot={savingShot} /> {t(": block.block_key === 'looks' ?", ": block.block_key === 'looks' ?")} <PilotLooks content={block.content || {}} /> : <ContentObject value={block.content || {}} />}</div>
+      <div className="border-t border-white/10 p-4">{block.block_key === 'scenario' ? <ScenarioGuide content={block.content || {}} sets={sets} extensions={access.extensions || []} userSets={userSets} onSaveShotReferences={saveShotReferences} savingShot={savingShot} /> : block.block_key === 'looks' ? <PilotLooks content={block.content || {}} /> : <ContentObject value={block.content || {}} />}</div>
     </details>
   )) : <p className="py-8 text-sm text-white/45">{t("No direction available in this section.", "No direction available in this section.")}</p>;
   return (
@@ -329,7 +329,7 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
                     <p className="text-xs text-[#23c7be]">{t('My Sets','My Sets')} · {linked.name} · {sheetItems.length} {t('reference elements','reference elements')}</p>
                     {!!(linked.images || []).filter(Boolean).length && <div className="space-y-2">
                       <p className="text-[11px] font-semibold text-white/60">{t("Camera Views", "Camera Views")}</p>
-                      <div className="grid grid-cols-2 gap-2">{linked.images.map((url, index) => {t("url ?", "url ?")} <div key={index} className="border border-white/10 bg-black p-2">
+                      <div className="grid grid-cols-2 gap-2">{linked.images.map((url, index) => url ? <div key={index} className="border border-white/10 bg-black p-2">
                         <img src={url} alt={t(['Hero','Wide','Reverse','Left','Right','Detail','Day','Night'][index] || 'Set view', ['Hero','Wide','Reverse','Left','Right','Detail','Day','Night'][index] || 'Set view')} className="h-24 w-full object-contain" />
                         <p className="mt-1 text-[11px] text-white/65">{t(['Hero','Wide','Reverse','Left','Right','Detail','Day','Night'][index] || 'View', ['Hero','Wide','Reverse','Left','Right','Detail','Day','Night'][index] || 'View')}</p>
                       </div> : null)}</div>
