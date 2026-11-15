@@ -6,12 +6,7 @@ import { useLocation } from 'react-router-dom';
 import { supabase } from '@/api/base44Client';
 import { useAppContext } from '@/lib/AppContext';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
-
-const assistantModels = [
-  { id: 'qwen/qwen3-235b-a22b-instruct-2507', label: 'Qwen3 235B Instruct' },
-  { id: 'meta/llama-4-maverick-instruct', label: 'Llama 4 Maverick' },
-  { id: 'anthropic/claude-opus-4.6', label: 'Claude Opus 4.6' },
-];
+import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 
 const assistantModes = [
   { value: 'hybrid', label: 'Hybrid' },
@@ -102,7 +97,14 @@ export default function StudioAIAssistant() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [model, setModel] = useState('');
-  const [selectedModel, setSelectedModel] = useState('qwen/qwen3-235b-a22b-instruct-2507');
+  const [selectedModel, setSelectedModel] = useState('');
+  const { options: assistantModels, loading: loadingModels } = useAiModelOptions({ service: 'invoke-llm', kind: 'text', input: { prompt: 'Assistant Studio', max_tokens: 4000 }, enabled: open && panel === 'chat' });
+  const availableModels = assistantModels.filter(option => option.credits != null && !option.unavailable_reason);
+  useEffect(() => {
+    if (availableModels.length && !availableModels.some(option => option.model_key === selectedModel)) {
+      setSelectedModel(availableModels[0].model_key);
+    }
+  }, [assistantModels, selectedModel]);
   const [mode, setMode] = useState('hybrid');
 
   const [journalEntries, setJournalEntries] = useState([]);
@@ -294,7 +296,7 @@ export default function StudioAIAssistant() {
 
   const send = async () => {
     const text = draft.trim();
-    if (!text || sending) return;
+    if (!text || sending || !availableModels.some(option => option.model_key === selectedModel)) return;
     const nextUser = { role: 'user', content: text };
     const history = messages.filter((m) => ['user', 'assistant'].includes(m.role)).slice(-16);
     setMessages((current) => [...current, nextUser]);
@@ -402,8 +404,8 @@ export default function StudioAIAssistant() {
                 </div>
                 <label className="mt-2 flex items-center gap-2 text-white/45">
                   <span>{t("studio.assistant.modelChoice", "Model")}</span>
-                  <select value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)} disabled={sending} className="h-7 min-w-0 flex-1 border border-white/15 bg-[#17191d] px-2 text-[11px] font-semibold text-white/85 outline-none focus:border-teal-400 disabled:opacity-50" aria-label={t("studio.assistant.modelChoice", "Model")}>
-                    {assistantModels.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                  <select value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)} disabled={sending || loadingModels || availableModels.length === 0} className="h-7 min-w-0 flex-1 border border-white/15 bg-[#17191d] px-2 text-[11px] font-semibold text-white/85 outline-none focus:border-teal-400 disabled:opacity-50" aria-label={t("studio.assistant.modelChoice", "Model")}>
+                    {availableModels.length === 0 ? <option value="">{loadingModels ? 'Chargement des modèles…' : 'Aucun modèle autorisé et tarifé'}</option> : availableModels.map((option) => <option key={option.model_key} value={option.model_key}>{option.name} · {option.credits} crédits estimés</option>)}
                   </select>
                 </label>
                 <div className="mt-1 text-white/35">{t("studio.assistant.permissions", "Read / advise / prepare only. Execution permissions are not enabled yet.")}</div>
