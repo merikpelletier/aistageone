@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { base44, supabase } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
@@ -13,6 +14,7 @@ const statusStyles = {
 };
 
 export default function SponsorsContributorsSection({ userEmail }) {
+  const t = useStudioTranslation();
   const [expandedSection, setExpandedSection] = useState('sponsors');
 
   const { data: sponsors = [], isLoading: sponsorsLoading } = useQuery({
@@ -82,8 +84,8 @@ export default function SponsorsContributorsSection({ userEmail }) {
           <HandCoins className="text-black w-1/2 h-1/2" />
         </div>
         <div>
-          <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-[1.15vw]">Sponsors & Contributors</p>
-          <p className="text-white/50 text-xs font-medium lg:text-[0.68vw]">Private — only you can see this</p>
+          <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-[1.15vw]">{t("Sponsors & Contributors", "Sponsors & Contributors")}</p>
+          <p className="text-white/50 text-xs font-medium lg:text-[0.68vw]">{t("Private — only you can see this", "Private — only you can see this")}</p>
         </div>
       </div>
 
@@ -112,7 +114,7 @@ export default function SponsorsContributorsSection({ userEmail }) {
         {expandedSection === 'sponsors' && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-2 pl-2 lg:space-y-[0.7%] lg:pl-[1%]">
             {sponsors.length === 0 ? (
-              <p className="text-white/40 text-sm font-medium py-4 text-center lg:text-[0.68vw] lg:py-[0.8%] lg:text-left lg:pl-[2%]">No sponsors yet</p>
+              <p className="text-white/40 text-sm font-medium py-4 text-center lg:text-[0.68vw] lg:py-[0.8%] lg:text-left lg:pl-[2%]">{t("No sponsors yet", "No sponsors yet")}</p>
             ) : (
               sponsors.map((sponsor) => (
                 <div key={sponsor.id} className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-2xl border border-white/10 lg:gap-[1%] lg:px-[2%] lg:py-[0.8%] lg:rounded-[0.5vw]">
@@ -195,7 +197,7 @@ export default function SponsorsContributorsSection({ userEmail }) {
         {expandedSection === 'fans' && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-2 pl-2 lg:space-y-[0.7%] lg:pl-[1%]">
             {fans.length === 0 ? (
-              <p className="text-white/40 text-sm font-medium py-4 text-center lg:text-[0.68vw] lg:py-[0.8%] lg:text-left lg:pl-[2%]">No fans yet</p>
+              <p className="text-white/40 text-sm font-medium py-4 text-center lg:text-[0.68vw] lg:py-[0.8%] lg:text-left lg:pl-[2%]">{t("No fans yet", "No fans yet")}</p>
             ) : (
               fans.map((fan) => (
                 <div key={fan.id} className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-2xl border border-white/10 lg:gap-[1%] lg:px-[2%] lg:py-[0.8%] lg:rounded-[0.5vw]">
@@ -212,7 +214,7 @@ export default function SponsorsContributorsSection({ userEmail }) {
       {sponsors.length === 0 && sales.length === 0 && fans.length === 0 && (
         <div className="py-8 text-center lg:py-[1%] lg:text-left lg:flex lg:items-center lg:gap-[2%]">
           <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4 lg:w-[5%] lg:aspect-square lg:h-auto lg:mx-0 lg:mb-0 lg:rounded-[15%]"><HandCoins className="text-white/30 w-2/5 h-2/5" /></div>
-          <div><p className="text-white/60 text-base font-medium lg:text-[0.72vw]">No sponsors or contributors yet</p><p className="text-white/40 text-sm mt-2 lg:text-[0.62vw] lg:mt-[0.3%]">When someone sponsors your profile or subscribes as a fan, they'll appear here with their contribution details</p></div>
+          <div><p className="text-white/60 text-base font-medium lg:text-[0.72vw]">{t("No sponsors or contributors yet", "No sponsors or contributors yet")}</p><p className="text-white/40 text-sm mt-2 lg:text-[0.62vw] lg:mt-[0.3%]">{t("When someone sponsors your profile or subscribes as a fan, they'll appear here with their contribution details", "When someone sponsors your profile or subscribes as a fan, they'll appear here with their contribution details")}</p></div>
         </div>
       )}
     </div>
