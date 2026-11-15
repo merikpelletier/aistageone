@@ -40,7 +40,7 @@ export default function MemberInboxSection({ userEmail }) {
     const d = new Date(dateStr);
     const now = new Date();
     const diff = now - d;
-    if (diff < 60000) return 'Just now';
+    if (diff < 60000) return t('Just now','Just now');
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
     if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
@@ -63,10 +63,10 @@ export default function MemberInboxSection({ userEmail }) {
 
         <div className="flex gap-2 lg:gap-[0.5vw] lg:w-[30%]">
           <button onClick={() => setTab('received')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wide transition-colors lg:gap-[4%] lg:py-[3%] lg:text-[0.64vw] lg:rounded-[0.5vw] ${tab === 'received' ? 'bg-white text-black' : 'bg-white/5 text-white/50 hover:text-white'}`}>
-            <Inbox className="w-[0.75vw] h-[0.75vw]" />Received
+            <Inbox className="w-[0.75vw] h-[0.75vw]" / >{t('Received','Received')}
           </button>
           <button onClick={() => setTab('sent')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wide transition-colors lg:gap-[4%] lg:py-[3%] lg:text-[0.64vw] lg:rounded-[0.5vw] ${tab === 'sent' ? 'bg-white text-black' : 'bg-white/5 text-white/50 hover:text-white'}`}>
-            <Send className="w-[0.75vw] h-[0.75vw]" />Sent
+            <Send className="w-[0.75vw] h-[0.75vw]" / >{t('Sent','Sent')}
           </button>
         </div>
       </div>
@@ -76,13 +76,13 @@ export default function MemberInboxSection({ userEmail }) {
       ) : list.length === 0 ? (
         <div className="flex items-center gap-3 border-t border-white/10 pt-4 lg:gap-[1.5%] lg:pt-[1.5%]">
           <MessageSquare className="text-white/20 w-[1vw] h-[1vw]" />
-          <p className="text-white/40 text-sm lg:text-[0.72vw]">{tab === 'received' ? 'No messages or comments received yet.' : 'You haven\'t commented on anything yet.'}</p>
+          <p className="text-white/40 text-sm lg:text-[0.72vw]">{tab === 'received' ? t('No messages or comments received yet.','No messages or comments received yet.') : t("You haven't commented on anything yet.","You haven't commented on anything yet.")}</p>
         </div>
       ) : (
         <div className="space-y-2 max-h-80 overflow-y-auto pr-1 lg:space-y-[0.7%] lg:max-h-[18vw] lg:pr-[0.5%]">
           {list.map((item, idx) => {
             const isReceived = tab === 'received';
-            const authorName = isReceived ? (item.user_name || item.author_name || 'Someone') : (item.user_name || item.author_name || 'You');
+            const authorName = isReceived ? (item.user_name || item.author_name || t('Someone','Someone')) : (item.user_name || item.author_name || 'You');
             const authorEmail = isReceived ? (item.user_email || item.author_email || '') : (item.user_email || item.author_email || userEmail);
             const content = item.content || item.message || '';
             const sourceLink = item.source_type === 'dossier' ? `/Magazine?dossier=${item.source_id}` : null;
