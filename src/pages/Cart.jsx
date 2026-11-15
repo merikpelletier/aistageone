@@ -6,8 +6,10 @@ import { Trash2, ExternalLink, ShoppingBag, FileText } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 export default function Cart() {
+  const t = useStudioTranslation();
   const [searchParams] = useSearchParams();
   const [cart, setCart] = useState([]);
   const paymentSucceeded = searchParams.get('payment') === 'success';
@@ -69,10 +71,10 @@ export default function Cart() {
       if (response.data.url) {
         window.location.href = response.data.url;
       } else {
-        alert('Error creating payment');
+        alert(t('gift.paymentError', 'Error creating payment'));
       }
     } catch (error) {
-      alert('Error: ' + error.message);
+      alert(t('gift.error', 'Error: ') + error.message);
     } finally {
       setIsProcessing(false);
     }
@@ -82,8 +84,8 @@ export default function Cart() {
     return (
       <div className="min-h-screen bg-black pb-20 pt-8 flex flex-col items-center justify-center">
         <ShoppingBag size={48} className="text-white mb-4" />
-        <h2 className="text-white text-xl font-light tracking-wide mb-2">Empty cart</h2>
-        <p className="text-white text-sm">Add products from the Magazine</p>
+        <h2 className="text-white text-xl font-light tracking-wide mb-2">{t('gift.emptyCart', 'Empty cart')}</h2>
+        <p className="text-white text-sm">{t('gift.emptyHint', 'Add products from the Magazine')}</p>
       </div>
     );
   }
@@ -92,15 +94,15 @@ export default function Cart() {
     <div className="min-h-screen bg-black pb-20 pt-8">
     {/* Header */}
     <div className="px-6 mb-8">
-      <h1 className="text-white text-3xl font-extralight tracking-widest">CART</h1>
+      <h1 className="text-white text-3xl font-extralight tracking-widest">{t('gift.cart', 'CART')}</h1>
       <div className="w-12 h-0.5 bg-red-600 mt-4" />
-      <p className="text-white text-sm mt-4">{getTotalItems()} item(s)</p>
+      <p className="text-white text-sm mt-4">{getTotalItems()} {getTotalItems() === 1 ? t('gift.item', 'item') : t('gift.items', 'items')}</p>
       {paymentSucceeded && (
         <div className="mt-5 border border-white/15 bg-neutral-950 p-4">
-          <p className="text-white text-sm mb-3">Payment completed.</p>
+          <p className="text-white text-sm mb-3">{t('gift.paymentComplete', 'Payment completed.')}</p>
           <Link to={createPageUrl('Downloads')}>
             <Button className="bg-white text-black hover:bg-white/90">
-              My downloads
+              {t('gift.downloads', 'My downloads')}
             </Button>
           </Link>
         </div>
@@ -129,7 +131,7 @@ export default function Cart() {
                 <h3 className="text-white font-light text-sm mb-1 truncate">{item.name}</h3>
                 {item.options && Object.keys(item.options).length > 0 && (
                   <p className="text-white text-xs mb-1">
-                    {Object.entries(item.options).map(([key, val]) => `${key}: ${val}`).join(' • ')}
+                    {Object.entries(item.options).map(([key, val]) => `${t('gift.option.' + key, key)}: ${t('gift.optionValue.' + val, val)}`).join(' • ')}
                   </p>
                 )}
                 <p className="text-white text-lg font-light mb-2">{item.price}</p>
@@ -167,20 +169,20 @@ export default function Cart() {
       <div className="px-6 pb-4 space-y-2">
         <div className="bg-neutral-950 border border-white/10 rounded-sm p-4 space-y-2">
           <div className="flex justify-between text-white text-sm">
-            <span>Subtotal</span>
+            <span>{t('gift.subtotal', 'Subtotal')}</span>
             <span>{calculateTotals().subtotal.toFixed(2)} $</span>
           </div>
           <div className="flex justify-between text-white text-sm">
-            <span>Taxes</span>
-            <span>Calculated at checkout</span>
+            <span>{t('gift.taxes', 'Taxes')}</span>
+            <span>{t('gift.taxCheckout', 'Calculated at checkout')}</span>
           </div>
           <div className="border-t border-white/10 pt-2 mt-2">
             <div className="flex justify-between text-white text-lg font-light">
-              <span>Subtotal</span>
+              <span>{t('gift.subtotal', 'Subtotal')}</span>
               <span>${calculateTotals().subtotal.toFixed(2)}</span>
             </div>
             <p className="text-white/45 text-xs mt-2">
-              Final tax and total are calculated from the customer destination.
+              {t('gift.taxNotice', 'Final tax and total are calculated from the customer destination.')}
             </p>
           </div>
         </div>
@@ -194,7 +196,7 @@ export default function Cart() {
             className="w-full border-white/20 text-white font-light tracking-wide py-6 text-base"
           >
             <FileText size={18} className="mr-2" />
-            View order details
+            {t('gift.orderDetails', 'View order details')}
           </Button>
         </Link>
         <Button
@@ -202,7 +204,7 @@ export default function Cart() {
           disabled={isProcessing}
           className="w-full bg-white text-black hover:bg-white/90 font-light tracking-wide py-6 text-base disabled:opacity-50"
         >
-          {isProcessing ? 'Processing...' : 'Continue to secure checkout'}
+          {isProcessing ? t('gift.processing', 'Processing...') : t('gift.secureCheckout', 'Continue to secure checkout')}
         </Button>
       </div>
     </div>
