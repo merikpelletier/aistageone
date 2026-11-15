@@ -7,6 +7,12 @@ import { supabase } from '@/api/base44Client';
 import { useAppContext } from '@/lib/AppContext';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
+const assistantModels = [
+  { id: 'qwen/qwen3-235b-a22b-instruct-2507', label: 'Qwen3 235B Instruct' },
+  { id: 'meta/llama-4-maverick-instruct', label: 'Llama 4 Maverick' },
+  { id: 'anthropic/claude-opus-4.6', label: 'Claude Opus 4.6' },
+];
+
 const assistantModes = [
   { value: 'hybrid', label: 'Hybrid' },
   { value: 'guide', label: 'Guide' },
@@ -96,6 +102,7 @@ export default function StudioAIAssistant() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [model, setModel] = useState('');
+  const [selectedModel, setSelectedModel] = useState('qwen/qwen3-235b-a22b-instruct-2507');
   const [mode, setMode] = useState('hybrid');
 
   const [journalEntries, setJournalEntries] = useState([]);
@@ -296,7 +303,7 @@ export default function StudioAIAssistant() {
     setError('');
     try {
       const { data, error: invokeError } = await supabase.functions.invoke('studio-ai-assistant', {
-        body: { message: text, history, context, mode },
+        body: { message: text, history, context, mode, model_key: selectedModel },
       });
       if (invokeError) throw new Error(await readInvokeError(invokeError));
       if (data?.error || data?.ok === false) throw new Error(data?.error || 'Assistant request failed.');
@@ -393,6 +400,12 @@ export default function StudioAIAssistant() {
                     </select>
                   </label>
                 </div>
+                <label className="mt-2 flex items-center gap-2 text-white/45">
+                  <span>{t("studio.assistant.modelChoice", "Model")}</span>
+                  <select value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)} disabled={sending} className="h-7 min-w-0 flex-1 border border-white/15 bg-[#17191d] px-2 text-[11px] font-semibold text-white/85 outline-none focus:border-teal-400 disabled:opacity-50" aria-label={t("studio.assistant.modelChoice", "Model")}>
+                    {assistantModels.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                  </select>
+                </label>
                 <div className="mt-1 text-white/35">{t("studio.assistant.permissions", "Read / advise / prepare only. Execution permissions are not enabled yet.")}</div>
               </div>
 
