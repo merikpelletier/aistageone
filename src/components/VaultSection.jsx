@@ -119,7 +119,7 @@ export default function VaultSection({ userEmail, onUsePrompt }) {
 
   const { data: assets = [], isLoading: assetsLoading } = useQuery({
     queryKey: ['vaultAssets', userEmail],
-    queryFn: () => base44.entities.VaultAsset.filter({ user_email: userEmail }, '-created_date'),
+    queryFn: () => base44.entities.VaultAsset.filterAll({ user_email: userEmail }, '-created_date'),
     enabled: !!userEmail,
   });
 
