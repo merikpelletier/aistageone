@@ -41,9 +41,9 @@ export default function MemberInboxSection({ userEmail }) {
     const now = new Date();
     const diff = now - d;
     if (diff < 60000) return t('Just now','Just now');
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-    if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} ${t('minutes ago','minutes ago')}`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} ${t('hours ago','hours ago')}`;
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)} ${t('days ago','days ago')}`;
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
