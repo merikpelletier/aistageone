@@ -65,7 +65,7 @@ export default function MemberEconomicsSection({ ownerId, dossiers = [] }) {
           <div key={label} className="bg-white/5 rounded-2xl p-5 border border-white/10 lg:bg-transparent lg:border-0 lg:rounded-none lg:p-[1%] lg:flex lg:items-center lg:gap-[6%] lg:[&:not(:last-child)]:border-r lg:[&:not(:last-child)]:border-white/10">
             <Icon className={`${iconClass} w-5 h-5 mb-3 lg:mb-0 lg:w-[9%] lg:h-auto`} />
             <div>
-              <p className="text-white/50 text-xs font-bold uppercase tracking-wide lg:text-[0.66vw]">{label}</p>
+              <p className="text-white/50 text-xs font-bold uppercase tracking-wide lg:text-[0.66vw]">{t(label,label)}</p>
               <p className="mt-1 text-white text-2xl font-bold lg:mt-0 lg:text-[1.2vw]">{value}</p>
             </div>
           </div>
@@ -84,19 +84,19 @@ export default function MemberEconomicsSection({ ownerId, dossiers = [] }) {
               <details key={dossierId} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden lg:rounded-[0.6vw]">
                 <summary className="cursor-pointer list-none px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 lg:px-[2%] lg:py-[1.2%] lg:gap-[2%]">
                   <span className="text-white text-sm font-semibold lg:text-[0.74vw]">
-                    {dossierId === 'unallocated' ? 'Not yet assigned to a publication' : (dossierTitles[dossierId] || 'Publication')}
+                    {dossierId === 'unallocated' ? t('Not yet assigned to a publication','Not yet assigned to a publication') : (dossierTitles[dossierId] || t('Publication','Publication'))}
                   </span>
                   <span className="flex gap-4 text-xs text-white/55 lg:gap-[1.5vw] lg:text-[0.66vw]">
-                    <span>Costs <strong className="text-white">{credits(row.costs)} cr</strong></span>
-                    <span>Revenue <strong className="text-white">{credits(row.revenue)} cr</strong></span>
-                    <span>Net <strong className="text-white">{rowNet > 0 ? '+' : ''}{credits(rowNet)} cr</strong></span>
+                    <span>{t('Costs','Costs')} <strong className="text-white">{credits(row.costs)} cr</strong></span>
+                    <span>{t('Revenue','Revenue')} <strong className="text-white">{credits(row.revenue)} cr</strong></span>
+                    <span>{t('Net','Net')} <strong className="text-white">{rowNet > 0 ? '+' : ''}{credits(rowNet)} cr</strong></span>
                   </span>
                 </summary>
                 <div className="border-t border-white/10 px-4 py-3 space-y-2 lg:px-[2%] lg:py-[1%] lg:space-y-[0.5%]">
                   {row.events.map(event => (
                     <div key={event.id} className="flex items-center justify-between gap-3 text-sm lg:gap-[2%] lg:text-[0.72vw]">
                       <div className="min-w-0">
-                        <p className="text-white/80 truncate">{event.category || event.asset_type || event.source_type || 'Activity'}</p>
+                        <p className="text-white/80 truncate">{event.category || event.asset_type || event.source_type || t('Activity','Activity')}</p>
                         {event.occurred_at && <p className="text-white/30 text-xs lg:text-[0.62vw]">{new Date(event.occurred_at).toLocaleDateString()}</p>}
                       </div>
                       <p className="text-white font-semibold flex-shrink-0">{event.direction === 'revenue' ? '+' : '-'}{credits(event.credits)} cr</p>
