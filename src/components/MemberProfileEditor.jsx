@@ -169,7 +169,7 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
           <div>
             <label className="text-black font-semibold text-sm block mb-2">{t("What best describes you?", "What best describes you?")}</label>
             <select value={formData.member_type} onChange={e => setFormData(prev => ({ ...prev, member_type: e.target.value }))} className="w-full bg-gray-50 border-2 border-gray-300 text-black text-base py-3 px-3">
-              {MEMBER_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              {MEMBER_TYPES.map(([value, label]) => <option key={value} value={value}>{t(label,label)}</option>)}
             </select>
             {formData.member_type === 'merchant' && <p className="text-xs text-gray-500 mt-1">{t("Merchant profiles can display Gift Shop products and visual promotions.", "Merchant profiles can display Gift Shop products and visual promotions.")}</p>}
           </div>
@@ -193,7 +193,7 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
                     onClick={() => toggleInterest(value)}
                     className={`border px-2.5 py-1.5 text-xs font-medium transition-colors ${selected ? 'border-black bg-black text-white' : 'border-gray-300 bg-white text-black hover:border-black'}`}
                   >
-                    {label}
+                    {t(label,label)}
                   </button>
                 );
               })}
@@ -205,7 +205,7 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
             {formData.avatar_url && <img src={formData.avatar_url} alt="avatar" className="w-20 h-20 rounded-full mb-3 object-cover border-2 border-gray-300" />}
             <label className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:bg-gray-50 transition-colors">
               <input type="file" accept="image/*" onChange={handleAvatarUpload} disabled={uploading} className="hidden" />
-              <span className="text-black">{uploading ? 'Uploading...' : '+ Upload Avatar'}</span>
+              <span className="text-black">{uploading ? t('Uploading...','Uploading...') : t('+ Upload Avatar','+ Upload Avatar')}</span>
             </label>
           </div>
 
