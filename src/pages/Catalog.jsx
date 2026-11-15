@@ -6,6 +6,7 @@ import { supabase } from '@/api/supabaseClient';
 import AssetCard from '@/components/catalog/AssetCard';
 import CatalogFilters from '@/components/catalog/CatalogFilters';
 import QuickViewModal from '@/components/catalog/QuickViewModal';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const PAGE_SIZE = 20;
 
@@ -26,6 +27,7 @@ const shuffle = (items) => {
 };
 
 export default function Catalog({ embedded = false, onOpenAsset = null }) {
+  const t = useStudioTranslation();
   const initialCategory = new URLSearchParams(window.location.search).get('category') || 'all';
   const [filters, setFilters] = useState({ category: initialCategory, subcategory: 'all', creator: 'all', search: '', sort: 'random' });
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -136,8 +138,8 @@ export default function Catalog({ embedded = false, onOpenAsset = null }) {
 
         {showGrid && <div className="mt-5">
           {isLoading ? <div className="flex items-center justify-center py-24"><Loader2 className="animate-spin text-cyan-400" size={36} /></div>
-          : error ? <div className="rounded-[4px] border border-rose-500/30 bg-rose-500/10 p-8 text-center text-rose-200">The shop could not load its assets.</div>
-          : visibleAssets.length === 0 ? <div className="flex flex-col items-center py-24 text-center"><div className="flex h-20 w-20 items-center justify-center rounded-[4px] bg-zinc-900"><Package className="text-zinc-600" size={40} /></div><h2 className="mt-5 text-xl font-black">NO MATCHING ASSETS</h2><p className="mt-2 text-zinc-500">Try clearing one or more filters.</p></div>
+          : error ? <div className="rounded-[4px] border border-rose-500/30 bg-rose-500/10 p-8 text-center text-rose-200">{t('catalog.loadError', 'The shop could not load its assets.')}</div>
+          : visibleAssets.length === 0 ? <div className="flex flex-col items-center py-24 text-center"><div className="flex h-20 w-20 items-center justify-center rounded-[4px] bg-zinc-900"><Package className="text-zinc-600" size={40} /></div><h2 className="mt-5 text-xl font-black">{t('catalog.noMatches', 'NO MATCHING ASSETS')}</h2><p className="mt-2 text-zinc-500">{t('catalog.clearHint', 'Try clearing one or more filters.')}</p></div>
           : <>
               <motion.div layout className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                 <AnimatePresence>
@@ -152,7 +154,7 @@ export default function Catalog({ embedded = false, onOpenAsset = null }) {
                   ))}
                 </AnimatePresence>
               </motion.div>
-              {showLoadMore && visibleCount < filteredAssets.length && <div className="mt-8 flex justify-center"><button onClick={() => setVisibleCount((count) => count + PAGE_SIZE)} className="rounded-[3px] bg-cyan-500 px-8 py-3 font-black text-black transition hover:bg-cyan-400">LOAD MORE ({visibleAssets.length} / {filteredAssets.length})</button></div>}
+              {showLoadMore && visibleCount < filteredAssets.length && <div className="mt-8 flex justify-center"><button onClick={() => setVisibleCount((count) => count + PAGE_SIZE)} className="rounded-[3px] bg-cyan-500 px-8 py-3 font-black text-black transition hover:bg-cyan-400">{t('catalog.loadMore', 'LOAD MORE')} ({visibleAssets.length} / {filteredAssets.length})</button></div>}
             </>}
         </div>}
       </main>
