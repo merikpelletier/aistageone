@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -8,6 +9,7 @@ import MemberDossierEditor from '@/components/MemberDossierEditor';
 import MemberDossierPages from '@/components/MemberDossierPages';
 
 export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
+  const t = useStudioTranslation();
   const qc = useQueryClient();
   const [publishingId, setPublishingId] = useState(null);
   const [deletingDossierId, setDeletingDossierId] = useState(null);
@@ -120,8 +122,8 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
     <section className="mt-6 border-t border-white/15 pt-5">
       <div className="mb-4 flex items-end justify-between gap-5">
         <div>
-          <h2 className="text-lg font-bold text-white">Dossiers</h2>
-          <p className="mt-1 text-sm text-white/45">Create, edit and manage dossier pages.</p>
+          <h2 className="text-lg font-bold text-white">{t("Dossiers", "Dossiers")}</h2>
+          <p className="mt-1 text-sm text-white/45">{t("Create, edit and manage dossier pages.", "Create, edit and manage dossier pages.")}</p>
         </div>
         <button
           type="button"
@@ -169,8 +171,8 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
                   </div>
 
                   <div className="mt-3 flex items-center gap-2">
-                    <button onClick={() => setAccessByStory(prev => ({ ...prev, [story.id]: 'public' }))} className={`px-3 py-1.5 text-xs font-semibold border ${audience === 'public' ? 'border-white bg-white text-black' : 'border-white/15 text-white/65'}`}>Public</button>
-                    <button onClick={() => setAccessByStory(prev => ({ ...prev, [story.id]: 'subscribers' }))} className={`px-3 py-1.5 text-xs font-semibold border ${audience === 'subscribers' ? 'border-red-600 bg-red-600 text-white' : 'border-white/15 text-white/65'}`}>Subscribers only</button>
+                    <button onClick={() => setAccessByStory(prev => ({ ...prev, [story.id]: 'public' }))} className={`px-3 py-1.5 text-xs font-semibold border ${audience === 'public' ? 'border-white bg-white text-black' : 'border-white/15 text-white/65'}`}>{t("Public", "Public")}</button>
+                    <button onClick={() => setAccessByStory(prev => ({ ...prev, [story.id]: 'subscribers' }))} className={`px-3 py-1.5 text-xs font-semibold border ${audience === 'subscribers' ? 'border-red-600 bg-red-600 text-white' : 'border-white/15 text-white/65'}`}>{t("Subscribers only", "Subscribers only")}</button>
                   </div>
 
                   <button onClick={() => publish(story)} disabled={publishingId === story.id} className="mt-3 flex w-full items-center justify-center gap-2 bg-white px-4 py-2 text-sm font-bold text-black disabled:opacity-50">
@@ -219,8 +221,8 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
 
           {publishableStories.length === 0 && standaloneDossiers.length === 0 && (
             <div className="col-span-full flex items-center justify-between border border-white/10 bg-neutral-950 px-4 py-3">
-              <p className="text-sm text-white/50">No dossier yet.</p>
-              <button onClick={() => setEditingDossier(null)} className="bg-white px-4 py-2 text-sm font-semibold text-black">Create new</button>
+              <p className="text-sm text-white/50">{t("No dossier yet.", "No dossier yet.")}</p>
+              <button onClick={() => setEditingDossier(null)} className="bg-white px-4 py-2 text-sm font-semibold text-black">{t("Create new", "Create new")}</button>
             </div>
           )}
         </div>
