@@ -40,7 +40,7 @@ export function installModelControl(slug:string){
   const body=await request.clone().json();
   const source=url.pathname.match(/\/models\/(.+)\/predictions$/)?.[1] || `version:${body.version}`;
   const original=await context.requestBody;
-  const service=serviceKey(slug,original);
+  const service=slug==='invoke-llm'&&original?.assistant_billing===true?'studio-ai-assistant':serviceKey(slug,original);
   const client=db();
 
   const {data:assignments,error:ae}=await client.from('ai_model_assignment').select('*').eq('service',service).eq('enabled',true).limit(50);
