@@ -5,8 +5,10 @@ import { motion } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ArrowLeft, ShoppingCart, Check } from 'lucide-react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 export default function ProductDetail() {
+  const t = useStudioTranslation();
   const [searchParams] = useSearchParams();
   const productId = searchParams.get('id');
 
@@ -74,9 +76,9 @@ export default function ProductDetail() {
             className="inline-flex items-center gap-2 text-white mb-8 transition-colors"
           >
             <ArrowLeft size={18} />
-            <span className="text-sm tracking-wide">Retour</span>
+            <span className="text-sm tracking-wide">{t("gift.back", "Retour")}</span>
           </Link>
-          <p className="text-white text-center mt-20">Produit non trouvé</p>
+          <p className="text-white text-center mt-20">{t("gift.notFound", "Produit non trouvé")}</p>
         </div>
       </div>
     );
@@ -90,7 +92,7 @@ export default function ProductDetail() {
           className="inline-flex items-center gap-2 text-white mb-8 transition-colors"
         >
           <ArrowLeft size={18} />
-          <span className="text-sm tracking-wide">Retour</span>
+          <span className="text-sm tracking-wide">{t("gift.back", "Retour")}</span>
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)] gap-10 lg:gap-14 items-start">
@@ -121,7 +123,7 @@ export default function ProductDetail() {
                       className={`border bg-neutral-950 p-1 aspect-square transition-colors ${
                         selected ? 'border-white' : 'border-white/20 hover:border-white/60'
                       }`}
-                      aria-label={`Afficher l'image ${idx + 1}`}
+                      aria-label={`${t('gift.showImage', 'Afficher l’image')} ${idx + 1}`}
                     >
                       <img
                         src={img}
@@ -142,7 +144,7 @@ export default function ProductDetail() {
           >
             {product.dossier_id && (
               <span className="inline-block text-white text-[10px] tracking-widest uppercase bg-neutral-900 border border-white/10 px-3 py-1 mb-3">
-                Collection: {product.dossier_id}
+                {t('gift.collection', 'Collection')}: {product.dossier_id}
               </span>
             )}
 
@@ -155,12 +157,12 @@ export default function ProductDetail() {
               <div className="flex flex-wrap items-center gap-3 mb-4">
                 {product.product_type && (
                   <span className="text-white text-xs tracking-wide">
-                    {product.product_type}
+                    {t('gift.type.' + product.product_type, product.product_type)}
                   </span>
                 )}
                 {product.stock !== undefined && product.stock !== null && (
                   <span className="text-white text-xs tracking-wide uppercase border border-white/20 px-2 py-0.5">
-                    {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+                    {product.stock > 0 ? `${product.stock} ${t('gift.inStock', 'in stock')}` : t('gift.outStock', 'Out of stock')}
                   </span>
                 )}
               </div>
@@ -188,7 +190,7 @@ export default function ProductDetail() {
               <div className="space-y-6 mb-8">
                 {productOptions.map((option) => (
                   <div key={option.name}>
-                    <p className="text-white text-xs uppercase tracking-widest mb-3">{option.name}</p>
+                    <p className="text-white text-xs uppercase tracking-widest mb-3">{t('gift.option.' + option.name, option.name)}</p>
                     <div className="flex flex-wrap gap-2">
                       {(option.values || []).map((value) => {
                         const selected = selectedOptions[option.name] === value;
@@ -205,7 +207,7 @@ export default function ProductDetail() {
                                 : 'bg-neutral-900 text-white border-white/20 hover:border-white/50'
                             }`}
                           >
-                            {value}
+                            {t('gift.optionValue.' + value, value)}
                           </button>
                         );
                       })}
@@ -217,7 +219,7 @@ export default function ProductDetail() {
 
             {product.is_digital && (
               <p className="text-white/60 text-xs uppercase tracking-widest mb-6">
-                Digital / downloadable product
+                {t('gift.digital', 'Digital / downloadable product')}
               </p>
             )}
 
@@ -230,12 +232,12 @@ export default function ProductDetail() {
               {added ? (
                 <>
                   <Check size={18} />
-                  Ajouté au panier
+                  {t('gift.addedCart', 'Ajouté au panier')}
                 </>
               ) : (
                 <>
                   <ShoppingCart size={18} />
-                  {allOptionsSelected ? 'Ajouter au panier' : 'Sélectionnez les options'}
+                  {allOptionsSelected ? t('gift.addCart', 'Ajouter au panier') : t('gift.selectOptions', 'Sélectionnez les options')}
                 </>
               )}
             </button>
@@ -244,7 +246,7 @@ export default function ProductDetail() {
               to={createPageUrl('Cart')}
               className="w-full mt-4 h-12 border border-white/30 bg-black text-white font-light tracking-widest inline-flex items-center justify-center hover:bg-neutral-900"
             >
-              Voir le panier
+              {t('gift.viewCart', 'Voir le panier')}
             </Link>
           </motion.div>
         </div>
