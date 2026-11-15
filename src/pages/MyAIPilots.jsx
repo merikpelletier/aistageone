@@ -51,7 +51,7 @@ function PilotLooks({ content }) {
       const images = Array.isArray(look.result_images) ? look.result_images.map((entry) => typeof entry === 'string' ? entry : entry?.url).filter(Boolean) : [];
       const details = Object.fromEntries(Object.entries(look).filter(([key, value]) => !['id', 'name', 'result_images'].includes(key) && !isEmpty(value)));
       return <div key={look.id || index} className="overflow-hidden border border-white/10 bg-[#111418]">
-        <div className="border-b border-white/10 p-3"><p className="text-base font-semibold text-white">{look.name || t('Unnamed Look', 'Unnamed Look')}</p>{look.type && <p className="mt-1 text-xs capitalize text-[#23c7be]">{String(look.type).replaceAll('_', ' ')}</p>}</div>
+        <div className="border-b border-white/10 p-3"><p className="text-base font-semibold text-white">{look.name || t('Unnamed Look', 'Unnamed Look')}</p>{look.type && <p className="mt-1 text-xs capitalize text-[#23c7be]">{t(String(look.type).replaceAll('_', ' '), String(look.type).replaceAll('_', ' '))}</p>}</div>
         {images.length > 0 && <div className="grid grid-cols-2 gap-2 p-3">{images.map((url, i) => <a key={i} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden bg-black/50" title={t("Open look result", "Open look result")}><img src={url} alt={`${look.name || 'Look'} result ${i + 1}`} className="aspect-[3/4] w-full object-contain" loading="lazy" /></a>)}</div>}
         <details className="group border-t border-white/10" open={!images.length}>
           <summary className="flex cursor-pointer list-none items-center justify-between p-3 text-sm font-semibold text-[#23c7be]">{t("Look details", "Look details")} <ChevronDown size={16} className="group-open:rotate-180" /></summary>
@@ -133,7 +133,7 @@ function ScenarioGuide({ content, sets = [], extensions = [], userSets = [], onS
                 {VIDEO_PART_LABELS.map(([key, label]) => (
                   <div key={key} className="border-l-2 border-cyan-400/30 pl-3">
                     <div className="text-xs font-semibold text-white/70">{t(label, label)}</div>
-                    <p className="mt-1 whitespace-pre-wrap text-xs text-white/60">{episode.parts?.[key] || 'Develop this part from the episode premise and story direction.'}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-xs text-white/60">{episode.parts?.[key] || t('Develop this part from the episode premise and story direction.', 'Develop this part from the episode premise and story direction.')}</p>
                   </div>
                 ))}
               </div>
@@ -142,10 +142,10 @@ function ScenarioGuide({ content, sets = [], extensions = [], userSets = [], onS
                 if (!scene) return null;
                 const location = sets.find(item => item.id === scene.set_id);
                 return <div key={partKey} className="space-y-2 border border-white/10 bg-white/[0.02] p-3">
-                  <p className="text-sm font-semibold text-cyan-200">{label} · Composed scene</p>
+                  <p className="text-sm font-semibold text-cyan-200">{t(label, label)} · {t('Composed scene', 'Composed scene')}</p>
                   {scene.generated_image && <img src={scene.generated_image} alt={label + ' composed production scene'} className="aspect-video w-full max-w-lg bg-black object-contain" />}
                   {location && <p className="text-xs text-white/65">{t('Set','Set')}: {location.name}</p>}
-                  {scene.set_view_url && <img src={scene.set_view_url} alt="Selected set camera view" className="h-28 max-w-xs object-contain bg-black" />}
+                  {scene.set_view_url && <img src={scene.set_view_url} alt={t('Selected set camera view', 'Selected set camera view')} className="h-28 max-w-xs object-contain bg-black" />}
                   {scene.background_placement && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>{t("Background:", "Background:")}</strong> {scene.background_placement}</p>}
                   {scene.blocking && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>{t("Blocking:", "Blocking:")}</strong> {scene.blocking}</p>}
                   {scene.props && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>{t("Props:", "Props:")}</strong> {scene.props}</p>}
@@ -316,7 +316,7 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
                 return <details key={set.id} className="border border-white/10 bg-[#171b20] p-3">
                   <summary className="cursor-pointer text-sm font-semibold text-white">{set.name}</summary>
                   {set.description && <p className="mt-2 whitespace-pre-wrap text-sm text-white/65">{set.description}</p>}
-                  <label className="mt-3 block text-xs text-white/65">My Set for this AI Pilot
+                  <label className="mt-3 block text-xs text-white/65">{t('My Set for this AI Pilot', 'My Set for this AI Pilot')}
                     <select value={linkedId && userSets.some(item => item.id === linkedId) ? linkedId : ''}
                       disabled={savingSet === set.id}
                       onChange={event => saveSetLink(set.id, event.target.value)}
@@ -338,7 +338,7 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
                       <div key={item.id || index} className="border border-white/10 bg-black p-2"><img src={item.image_url} alt={item.name} className="h-24 w-full object-contain" /><p className="mt-1 truncate text-[11px] text-white/65">{item.name}</p></div>)}</div>}
                   </div> : <p className="mt-2 text-[11px] text-white/45">{t("Connect a Set from My Sets to use your personal Reference Sheet. The published AI Pilot remains unchanged.", "Connect a Set from My Sets to use your personal Reference Sheet. The published AI Pilot remains unchanged.")}</p>}
                   {Array.isArray(set.reference_images) && set.reference_images.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{set.reference_images.map((image,index) =>
-                    <img key={index} src={typeof image === 'string' ? image : image?.url} alt="Original AI Pilot set" className="h-20 w-28 object-contain bg-black" />)}</div>}
+                    <img key={index} src={typeof image === 'string' ? image : image?.url} alt={t('Original AI Pilot set', 'Original AI Pilot set')} className="h-20 w-28 object-contain bg-black" />)}</div>}
                 </details>;
               })}{!sets.length && <p className="text-sm text-white/45">{t("No sets added.", "No sets added.")}</p>}</div></div></div>}
         {activeSection === 'direction' && <div className="space-y-3">{renderBlocks(directionBlocks)}</div>}
@@ -351,7 +351,7 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
               return <div key={extension.id} className="border border-white/10 bg-[#171b20] p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0"><p className="text-xs uppercase tracking-wider text-[#23c7be]">{t(humanize(extension.extension_type), humanize(extension.extension_type))}</p><h4 className="mt-1 font-semibold text-white">{extension.name}</h4></div>
-                  <button type="button" onClick={() => { if (window.confirm(t('Remove this personal addition?', 'Remove this personal addition?'))) deleteMutation.mutate(extension.id); }} disabled={deleteMutation.isPending} className="text-red-300 hover:text-red-200" aria-label={'Remove ' + extension.name}><Trash2 size={16} /></button>
+                  <button type="button" onClick={() => { if (window.confirm(t('Remove this personal addition?', 'Remove this personal addition?'))) deleteMutation.mutate(extension.id); }} disabled={deleteMutation.isPending} className="text-red-300 hover:text-red-200" aria-label={t('Remove', 'Remove') + ' ' + extension.name}><Trash2 size={16} /></button>
                 </div>
                 <AdditionMedia items={media} />
                 <div className="mt-3 space-y-2 text-sm text-white/70">
@@ -386,7 +386,7 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
                   <input type="file" className="hidden" accept={ACCEPTED_PILOT_MEDIA} multiple disabled={uploading || addMutation.isPending} onChange={(event) => { const incoming = Array.from(event.target.files || []); event.target.value = ''; if (incoming.some((file) => !/^(image|video|audio)\//.test(file.type) || file.size > PILOT_FILE_LIMIT)) { onMessage(t('Use image, video or audio files, maximum 50 MB each.', 'Use image, video or audio files, maximum 50 MB each.')); return; } setFiles((current) => [...current, ...incoming]); }} />
                 </label>
               </div>
-              {files.length > 0 && <div className="mt-3 space-y-2">{files.map((file, index) => <div key={index} className="flex items-center justify-between gap-2 border border-white/10 bg-black/30 px-3 py-2 text-xs"><span className="min-w-0 truncate text-white/70">{file.name} · {(file.size / (1024 * 1024)).toFixed(1)} MB</span><button type="button" aria-label={'Remove ' + file.name} onClick={() => setFiles((current) => current.filter((_, i) => i !== index))} className="shrink-0 text-white/55 hover:text-white"><X size={15} /></button></div>)}</div>}
+              {files.length > 0 && <div className="mt-3 space-y-2">{files.map((file, index) => <div key={index} className="flex items-center justify-between gap-2 border border-white/10 bg-black/30 px-3 py-2 text-xs"><span className="min-w-0 truncate text-white/70">{file.name} · {(file.size / (1024 * 1024)).toFixed(1)} MB</span><button type="button" aria-label={t('Remove', 'Remove') + ' ' + file.name} onClick={() => setFiles((current) => current.filter((_, i) => i !== index))} className="shrink-0 text-white/55 hover:text-white"><X size={15} /></button></div>)}</div>}
             </div>
             <Button type="button" onClick={() => addMutation.mutate()} disabled={addMutation.isPending || uploading || !draft.name.trim()} className="w-full bg-[#23c7be] text-black hover:bg-[#23c7be]/85"><Plus size={16} className="mr-2"/>{addMutation.isPending ? t('Saving addition…','Saving addition…') : t('Add to My AI Pilot','Add to My AI Pilot')}</Button>
           </div>
