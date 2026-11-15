@@ -2,6 +2,7 @@ import React,{useState} from 'react';
 import {useQuery,useMutation,useQueryClient} from '@tanstack/react-query';
 import {supabase} from '@/api/base44Client';
 import ModelPricingFields from './ModelPricingFields';
+import AdminAIConnectionsAudit from './AdminAIConnectionsAudit';
 import {billingUnits} from '../../../supabase/functions/_shared/modelPricing.ts';
 const box='rounded border border-white/15 bg-neutral-950 p-5 space-y-4';
 const input='w-full rounded border border-white/20 bg-neutral-900 p-2 text-white';
@@ -58,6 +59,7 @@ export default function AdminModels(){
   <p role="status" className={data.connection?.connected?'text-green-300':'text-amber-200'}>{data.connection?.connected?`Replicate connecté${data.connection.account_username?` : ${data.connection.account_username}`:''}`:data.connection?.message||'Connexion Replicate non vérifiée.'}</p>
   <p className="rounded border border-amber-400/30 p-4 text-sm text-amber-100">Chaque étape peut offrir plusieurs modèles. Un seul peut être marqué Recommandé; les autres restent au choix de l’utilisateur.</p>
   {notice&&<p role="status" className="text-green-300">{notice}</p>}{mutation.error&&<p role="alert" className="text-red-300">{mutation.error.message}</p>}
+  <AdminAIConnectionsAudit data={data} serviceLabel={serviceLabel} />
   <section className={box}><h3 className="text-xl">Ton catalogue</h3>
    <label className="block">Modifier un modèle<select className={input} value={model.revision?model.model_key:''} onChange={e=>setModel(data.models.find(m=>m.model_key===e.target.value)||emptyModel)}><option value="">Ajouter un modèle</option>{data.models.map(m=><option value={m.model_key} key={m.model_key}>{m.name} · {kinds[m.kind]}</option>)}</select></label>
    <div className="grid gap-3 md:grid-cols-[1fr_auto]"><Field label="Identifiant ou lien Replicate du modèle" placeholder="éditeur/nom-du-modèle ou lien Replicate" value={model.model_key} disabled={Boolean(model.revision)||mutation.isPending} onChange={e=>{setModel({...emptyModel,model_key:e.target.value});setNotice('');mutation.reset();}}/><button type="button" className={`${button} self-end`} disabled={mutation.isPending||!model.model_key.trim()} onClick={()=>save({action:'import_model',model_key:model.model_key})}>{mutation.isPending&&mutation.variables?.action==='import_model'?'Importation…':'Importer / actualiser depuis Replicate'}</button></div>
