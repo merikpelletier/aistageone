@@ -91,8 +91,11 @@ export function installModelControl(slug:string){
   try{validateChoice(choice,model);providerInput=adaptInput(body.input,choice,model);}catch(e){context.failed=true;throw e;}
   const {data:call,error:callError}=await client.from('ai_model_call').insert({route_key:assignment.route_key,request_id:context.id,model_key:model.model_key,assignment_revision:assignment?.revision??null,rate_snapshot:{billing_type:model.billing_type,unit_price_usd:model.unit_price_usd,output_unit_price_usd:model.output_unit_price_usd,source_url:model.cost_source_url},status:'starting'}).select('id').single();
   if(callError)fail('Journal des appels indisponible; aucun appel envoyé',503);
-  const target=model.version_id?'https://api.replicate.com/v1/predictions':`https://api.replicate.com/v1/models/${model.model_key}/predictions`;
-  const payload={...body,input:providerInput};delete payload.version;if(model.version_id)payload.version=model.version_id;
+  // The text assistant selects official Replicate models by their stable owner/name route.
+  // Other tools keep their existing version-based routing unchanged.
+  const useNamedRoute = slug==='invoke-llm';
+  const target=!useNamedRoute&&model.version_id?'https://api.replicate.com/v1/predictions':`https://api.replicate.com/v1/models/${model.model_key}/predictions`;
+  const payload={...body,input:providerInput};delete payload.version;if(!useNamedRoute&&model.version_id)payload.version=model.version_id;
   try{
    const response=await nativeFetch(target,{method:'POST',headers:request.headers,body:JSON.stringify(payload),signal:request.signal});
    const prediction=await response.clone().json().catch(()=>({}));
