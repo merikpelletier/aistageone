@@ -3,9 +3,11 @@ import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { X, Loader2, Save, Download, FileText, Sparkles, MessageSquare, Clapperboard, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { parseScript } from '@/lib/parseScript';
 
 export default function ScriptEditor({ asset, userEmail, onClose, onUsePrompt }) {
+  const t = useStudioTranslation();
   const queryClient = useQueryClient();
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
@@ -21,7 +23,7 @@ export default function ScriptEditor({ asset, userEmail, onClose, onUsePrompt })
         const body = await res.text();
         if (active) { setText(body); setDirty(false); }
       } catch (e) {
-        toast.error('Failed to load script');
+        toast.error(t('vault.script_editor.load_failed', 'Failed to load script'));
       } finally {
         if (active) setLoading(false);
       }
@@ -51,9 +53,9 @@ export default function ScriptEditor({ asset, userEmail, onClose, onUsePrompt })
       await base44.entities.VaultAsset.update(asset.id, { url: file_url });
       queryClient.invalidateQueries({ queryKey: ['vaultAssets', userEmail] });
       setDirty(false);
-      toast.success('Script saved');
+      toast.success(t('vault.script_editor.saved', 'Script saved'));
     } catch (e) {
-      toast.error('Failed to save script');
+      toast.error(t('vault.script_editor.save_failed', 'Failed to save script'));
     } finally {
       setSaving(false);
     }
@@ -81,7 +83,7 @@ export default function ScriptEditor({ asset, userEmail, onClose, onUsePrompt })
     if (onUsePrompt) {
       onUsePrompt(itemText);
     } else {
-      navigator.clipboard?.writeText(itemText).then(() => toast.success('Copied to clipboard'));
+      navigator.clipboard?.writeText(itemText).then(() => toast.success(t('vault.script_editor.copied', 'Copied to clipboard')));
     }
   };
 
@@ -92,12 +94,12 @@ export default function ScriptEditor({ asset, userEmail, onClose, onUsePrompt })
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-black">
           <span className="text-white font-bold flex items-center gap-2">
             <FileText size={16} className="text-yellow-400" />
-            {asset.name || 'Script'}
-            {dirty && <span className="text-yellow-400 text-xs font-bold ml-1">• unsaved</span>}
+            {asset.name || t('vault.script', 'Script')}
+            {dirty && <span className="text-yellow-400 text-xs font-bold ml-1">{t('vault.script_editor.unsaved', '• unsaved')}</span>}
           </span>
           <div className="flex items-center gap-2">
             <a href={asset.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">
-              <Download size={12} /> Download
+              <Download size={12} /> {t('vault.download', 'Download')}
             </a>
             <button
               onClick={handleSave}
@@ -105,7 +107,7 @@ export default function ScriptEditor({ asset, userEmail, onClose, onUsePrompt })
               className="flex items-center gap-1.5 bg-yellow-400 text-black text-xs font-bold px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors"
             >
               {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-              Save
+              {t('vault.save', 'Save')}
             </button>
             <button onClick={onClose} className="p-1.5 text-white hover:text-yellow-400 transition-colors">
               <X size={18} />
@@ -126,7 +128,7 @@ export default function ScriptEditor({ asset, userEmail, onClose, onUsePrompt })
                 value={text}
                 onChange={(e) => { setText(e.target.value); setDirty(true); }}
                 className="w-full min-h-[40vh] bg-neutral-950 text-white text-sm font-mono leading-relaxed p-5 focus:outline-none resize-none border-b border-white/10"
-                placeholder="Write your script…"
+                placeholder={t("vault.script_editor.write", "Write your script…")}
               />
 
               {/* Found prompts & dialogs */}
@@ -135,7 +137,7 @@ export default function ScriptEditor({ asset, userEmail, onClose, onUsePrompt })
                   <div className="flex items-center gap-2">
                     <Sparkles size={14} className="text-yellow-400" />
                     <p className="text-yellow-400 text-xs uppercase tracking-wider font-bold">
-                      Found Prompts & Dialogs ({items.length})
+                      {t('vault.script_editor.found', 'Found Prompts & Dialogs')} ({items.length})
                     </p>
                   </div>
                   {items.map((item, i) => {
@@ -150,7 +152,7 @@ export default function ScriptEditor({ asset, userEmail, onClose, onUsePrompt })
                         <div className="flex items-center justify-between mb-1.5">
                           <span className={`text-[10px] uppercase tracking-wider font-bold flex items-center gap-1.5 ${isDialog ? 'text-blue-400' : 'text-yellow-400'}`}>
                             {isDialog ? <MessageSquare size={11} /> : <Clapperboard size={11} />}
-                            Seg {item.seg.index} • {item.label}
+                            {t('vault.script_editor.segment', 'Seg')} {item.seg.index} • {t('vault.script_editor.' + item.label.toLowerCase(), item.label)}
                           </span>
                           <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${isSelected ? 'bg-yellow-400 border-yellow-400' : 'border-white/30'}`}>
                             {isSelected && <Check size={12} className="text-black" />}
@@ -172,7 +174,7 @@ export default function ScriptEditor({ asset, userEmail, onClose, onUsePrompt })
         {items.length > 0 && (
           <div className="border-t border-white/10 bg-black px-5 py-3 flex items-center justify-between">
             <span className="text-white/70 text-xs font-semibold">
-              {selected.size > 0 ? `${selected.size} selected` : 'Tap items to select'}
+              {selected.size > 0 ? `${selected.size} ${t('vault.script_editor.selected', 'selected')}` : t('vault.script_editor.tap', 'Tap items to select')}
             </span>
             <div className="flex items-center gap-2">
               {selected.size > 0 && (
@@ -180,7 +182,7 @@ export default function ScriptEditor({ asset, userEmail, onClose, onUsePrompt })
                   onClick={() => setSelected(new Set())}
                   className="text-white/60 hover:text-white text-xs font-bold px-3 py-2 transition-colors"
                 >
-                  Clear
+                  {t('vault.script_editor.clear', 'Clear')}
                 </button>
               )}
               <button
@@ -189,7 +191,7 @@ export default function ScriptEditor({ asset, userEmail, onClose, onUsePrompt })
                 className="flex items-center gap-1.5 bg-yellow-400 text-black text-xs font-bold px-4 py-2 rounded-lg disabled:opacity-40 active:scale-95 transition-transform"
               >
                 <Sparkles size={13} />
-                Use {selected.size > 0 ? `${selected.size} ` : ''}in Animate Image
+                {t('vault.script_editor.use', 'Use')} {selected.size > 0 ? `${selected.size} ` : ''}{t('vault.script_editor.animate', 'in Animate Image')}
               </button>
             </div>
           </div>
