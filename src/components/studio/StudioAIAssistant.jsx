@@ -471,11 +471,11 @@ export default function StudioAIAssistant() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <select value={journalTypeFilter} onChange={(event) => setJournalTypeFilter(event.target.value)} className="h-8 border border-white/15 bg-[#17191d] px-2 text-xs text-white/80 outline-none">
-                    <option>{t("studio.assistant.all", "All")}</option>
+                    <option value="All">{t("studio.assistant.all", "All")}</option>
                     {journalTypes.map((type) => <option key={type} value={type}>{t("studio.assistant.type."+type, type)}</option>)}
                   </select>
                   <select value={journalProjectFilter} onChange={(event) => setJournalProjectFilter(event.target.value)} className="h-8 border border-white/15 bg-[#17191d] px-2 text-xs text-white/80 outline-none">
-                    <option>{t("studio.assistant.all", "All")}</option>
+                    <option value="All">{t("studio.assistant.all", "All")}</option>
                     {projectOptions.map((project) => <option key={project}>{project}</option>)}
                   </select>
                 </div>
@@ -566,7 +566,7 @@ export default function StudioAIAssistant() {
             <div className="p-3 border-t border-white/10 flex justify-end gap-2">
               <button onClick={() => setJournalEditor(null)} disabled={journalSaving} className="h-10 px-4 bg-white/8 text-sm text-white/70 disabled:opacity-40">{t("studio.assistant.cancel", "Cancel")}</button>
               <button onClick={saveJournalEditor} disabled={journalSaving || !journalEditor.content.trim()} className="h-10 px-4 bg-teal-500 hover:bg-teal-400 text-black text-sm font-bold flex items-center gap-2 disabled:opacity-40">
-                {journalSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Save
+                {journalSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} {t("studio.assistant.save", "Save")}
               </button>
             </div>
           </div>
