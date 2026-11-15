@@ -217,7 +217,7 @@ export default function CampaignManager({ userEmail }) {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap lg:gap-[1.5%]">
                     <p className="text-white font-bold text-sm lg:text-[0.78vw]">{c.title}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-md border font-bold uppercase lg:text-[0.58vw] lg:px-[1.5%] ${statusCfg.bg} ${statusCfg.color} ${statusCfg.border}`}>{statusCfg.label}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-md border font-bold uppercase lg:text-[0.58vw] lg:px-[1.5%] ${statusCfg.bg} ${statusCfg.color} ${statusCfg.border}`}>{t(statusCfg.label,statusCfg.label)}</span>
                   </div>
                   {c.description && <p className="text-white/40 text-xs mt-1 line-clamp-1 lg:text-[0.64vw]">{c.description}</p>}
                   <div className="flex items-center gap-3 mt-2 text-xs text-white/40 lg:gap-[2%] lg:mt-[1%] lg:text-[0.62vw]">
