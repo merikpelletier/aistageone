@@ -5,8 +5,10 @@ import { Download, Loader2, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 export default function Downloads() {
+  const t = useStudioTranslation();
   const [downloadingId, setDownloadingId] = useState(null);
 
   const { data, isLoading, error } = useQuery({
@@ -24,10 +26,10 @@ export default function Downloads() {
         product_id: productId,
       });
       const url = response.data?.url;
-      if (!url) throw new Error('Download link unavailable');
+      if (!url) throw new Error(t('gift.linkUnavailable', 'Download link unavailable'));
       window.location.assign(url);
     } catch (downloadError) {
-      alert(downloadError?.message || 'Unable to download this file');
+      alert(downloadError?.message || t('gift.downloadFailed', 'Unable to download this file'));
     } finally {
       setDownloadingId(null);
     }
@@ -37,8 +39,8 @@ export default function Downloads() {
     <div className="min-h-screen bg-black text-white pb-24 pt-8">
       <div className="px-6 max-w-4xl mx-auto">
         <div className="mb-10">
-          <p className="text-white/50 text-xs uppercase tracking-[0.25em] mb-2">AISTAGE ONE Gift Shop</p>
-          <h1 className="text-3xl font-extralight tracking-widest">MY DOWNLOADS</h1>
+          <p className="text-white/50 text-xs uppercase tracking-[0.25em] mb-2">{t('gift.shopBrand', 'AISTAGE ONE Gift Shop')}</p>
+          <h1 className="text-3xl font-extralight tracking-widest">{t('gift.downloadsUpper', 'MY DOWNLOADS')}</h1>
           <div className="w-12 h-0.5 bg-red-600 mt-4" />
         </div>
 
@@ -50,16 +52,16 @@ export default function Downloads() {
 
         {error && (
           <div className="border border-red-500/30 bg-red-500/10 p-4 text-sm">
-            {error.message || 'Unable to load your downloads.'}
+            {error.message || t('gift.downloadsLoadFailed', 'Unable to load your downloads.')}
           </div>
         )}
 
         {!isLoading && !error && data?.length === 0 && (
           <div className="border border-white/10 bg-neutral-950 p-8 text-center">
             <ShoppingBag size={32} className="mx-auto mb-4 text-white/50" />
-            <p className="text-white/70 mb-5">No downloadable purchases yet.</p>
+            <p className="text-white/70 mb-5">{t('gift.noDownloads', 'No downloadable purchases yet.')}</p>
             <Link to={createPageUrl('Boutique')}>
-              <Button className="bg-white text-black hover:bg-white/90">Open Gift Shop</Button>
+              <Button className="bg-white text-black hover:bg-white/90">{t('gift.openShop', 'Open Gift Shop')}</Button>
             </Link>
           </div>
         )}
@@ -84,7 +86,7 @@ export default function Downloads() {
                 )}
                 {item.payment_date && (
                   <p className="text-white/40 text-xs mt-2">
-                    Purchased {new Date(item.payment_date).toLocaleDateString()}
+                    {t('gift.purchased', 'Purchased')} {new Date(item.payment_date).toLocaleDateString()}
                   </p>
                 )}
               </div>
@@ -99,7 +101,7 @@ export default function Downloads() {
                 ) : (
                   <Download size={16} className="mr-2" />
                 )}
-                Download
+                {t('gift.download', 'Download')}
               </Button>
             </div>
           ))}
