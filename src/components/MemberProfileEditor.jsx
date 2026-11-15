@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Plus, Trash2 } from 'lucide-react';
@@ -45,6 +46,7 @@ const INTEREST_OPTIONS = [
 ];
 
 export default function MemberProfileEditor({ profile, user, onClose }) {
+  const t = useStudioTranslation();
   const [formData, setFormData] = useState({
     display_name: profile?.display_name || '',
     bio: profile?.bio || '',
@@ -147,40 +149,40 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden mb-24">
         <div className="border-b border-gray-200 bg-white p-3 flex gap-2 flex-shrink-0 rounded-t-2xl">
-          <button onClick={onClose} className="flex-1 bg-gray-200 text-black py-3 rounded hover:bg-gray-300 transition-colors font-light text-sm">Cancel</button>
+          <button onClick={onClose} className="flex-1 bg-gray-200 text-black py-3 rounded hover:bg-gray-300 transition-colors font-light text-sm">{t("Cancel", "Cancel")}</button>
           <button onClick={() => saveMutation.mutate(formData)} disabled={saveMutation.isPending} className="flex-1 bg-red-600 text-white py-3 rounded hover:bg-red-700 transition-colors disabled:opacity-50 font-semibold text-sm">
             {saveMutation.isPending ? 'Saving...' : 'SAVE'}
           </button>
         </div>
 
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
-          <h2 className="text-black text-lg font-semibold">Edit Profile</h2>
+          <h2 className="text-black text-lg font-semibold">{t("Edit Profile", "Edit Profile")}</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-black transition-colors"><X size={20} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           <div>
-            <label className="text-black font-semibold text-sm block mb-2">Display Name</label>
-            <Input placeholder="Your display name" value={formData.display_name} onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))} className="bg-gray-50 border-2 border-gray-300 text-black text-base py-3" />
+            <label className="text-black font-semibold text-sm block mb-2">{t("Display Name", "Display Name")}</label>
+            <Input placeholder={t("Your display name", "Your display name")} value={formData.display_name} onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))} className="bg-gray-50 border-2 border-gray-300 text-black text-base py-3" />
           </div>
 
           <div>
-            <label className="text-black font-semibold text-sm block mb-2">What best describes you?</label>
+            <label className="text-black font-semibold text-sm block mb-2">{t("What best describes you?", "What best describes you?")}</label>
             <select value={formData.member_type} onChange={e => setFormData(prev => ({ ...prev, member_type: e.target.value }))} className="w-full bg-gray-50 border-2 border-gray-300 text-black text-base py-3 px-3">
               {MEMBER_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
-            {formData.member_type === 'merchant' && <p className="text-xs text-gray-500 mt-1">Merchant profiles can display Gift Shop products and visual promotions.</p>}
+            {formData.member_type === 'merchant' && <p className="text-xs text-gray-500 mt-1">{t("Merchant profiles can display Gift Shop products and visual promotions.", "Merchant profiles can display Gift Shop products and visual promotions.")}</p>}
           </div>
 
           <div>
-            <label className="text-black font-semibold text-sm block mb-2">Where are you based?</label>
-            <Input placeholder="City, region or country" value={formData.location_label} onChange={(e) => setFormData(prev => ({ ...prev, location_label: e.target.value }))} className="bg-gray-50 border-2 border-gray-300 text-black text-base py-3" />
-            <p className="text-xs text-gray-500 mt-1">Used to help members find collaborators by location.</p>
+            <label className="text-black font-semibold text-sm block mb-2">{t("Where are you based?", "Where are you based?")}</label>
+            <Input placeholder={t("City, region or country", "City, region or country")} value={formData.location_label} onChange={(e) => setFormData(prev => ({ ...prev, location_label: e.target.value }))} className="bg-gray-50 border-2 border-gray-300 text-black text-base py-3" />
+            <p className="text-xs text-gray-500 mt-1">{t("Used to help members find collaborators by location.", "Used to help members find collaborators by location.")}</p>
           </div>
 
           <div>
-            <label className="text-black font-semibold text-sm block mb-2">What are you interested in?</label>
-            <p className="text-xs text-gray-500 mb-2">Choose all that apply. These interests can be combined in the Members search.</p>
+            <label className="text-black font-semibold text-sm block mb-2">{t("What are you interested in?", "What are you interested in?")}</label>
+            <p className="text-xs text-gray-500 mb-2">{t("Choose all that apply. These interests can be combined in the Members search.", "Choose all that apply. These interests can be combined in the Members search.")}</p>
             <div className="flex flex-wrap gap-2">
               {INTEREST_OPTIONS.map(([value, label]) => {
                 const selected = formData.interests.includes(value);
@@ -199,7 +201,7 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
           </div>
 
           <div>
-            <label className="text-black font-semibold text-sm block mb-3">Avatar</label>
+            <label className="text-black font-semibold text-sm block mb-3">{t("Avatar", "Avatar")}</label>
             {formData.avatar_url && <img src={formData.avatar_url} alt="avatar" className="w-20 h-20 rounded-full mb-3 object-cover border-2 border-gray-300" />}
             <label className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:bg-gray-50 transition-colors">
               <input type="file" accept="image/*" onChange={handleAvatarUpload} disabled={uploading} className="hidden" />
@@ -208,13 +210,13 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
           </div>
 
           <div>
-            <label className="text-black font-semibold text-sm block mb-2">Title/Role</label>
-            <Input placeholder="e.g., Designer, Photographer" value={formData.title} onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))} className="bg-gray-50 border-2 border-gray-300 text-black text-base py-3" />
+            <label className="text-black font-semibold text-sm block mb-2">{t("Title/Role", "Title/Role")}</label>
+            <Input placeholder={t("e.g., Designer, Photographer", "e.g., Designer, Photographer")} value={formData.title} onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))} className="bg-gray-50 border-2 border-gray-300 text-black text-base py-3" />
           </div>
 
           <div>
-            <label className="text-black font-semibold text-sm block mb-2">Bio</label>
-            <Textarea placeholder="Tell us about yourself..." value={formData.bio} onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))} className="bg-gray-50 border-2 border-gray-300 text-black text-base py-3" rows={4} />
+            <label className="text-black font-semibold text-sm block mb-2">{t("Bio", "Bio")}</label>
+            <Textarea placeholder={t("Tell us about yourself...", "Tell us about yourself...")} value={formData.bio} onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))} className="bg-gray-50 border-2 border-gray-300 text-black text-base py-3" rows={4} />
           </div>
 
           <div>
@@ -239,28 +241,28 @@ export default function MemberProfileEditor({ profile, user, onClose }) {
 
           {isAdmin && (
             <div className="border-2 border-red-200 rounded-lg p-3 bg-red-50">
-              <label className="text-red-700 font-semibold text-sm block mb-2">Admin — Custom Banner</label>
+              <label className="text-red-700 font-semibold text-sm block mb-2">{t("Admin — Custom Banner", "Admin — Custom Banner")}</label>
               {formData.custom_banner_url && <img src={formData.custom_banner_url} alt="banner preview" className="w-full h-16 object-cover rounded mb-2" />}
               <label className="flex items-center justify-center border-2 border-dashed border-red-300 rounded-lg p-3 cursor-pointer hover:bg-red-100 transition-colors mb-2">
                 <input type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; setUploading(true); const result = await base44.integrations.Core.UploadFile({ file }); setFormData(prev => ({ ...prev, custom_banner_url: result.file_url })); setUploading(false); }} disabled={uploading} className="hidden" />
                 <span className="text-red-600 text-sm">{uploading ? 'Uploading...' : '+ Upload Banner Image'}</span>
               </label>
-              <Input placeholder="Or paste banner image URL" value={formData.custom_banner_url} onChange={(e) => setFormData(prev => ({ ...prev, custom_banner_url: e.target.value }))} className="bg-white border border-red-300 text-black text-sm mb-2" />
-              <Input placeholder="Banner click URL (optional)" value={formData.custom_banner_link} onChange={(e) => setFormData(prev => ({ ...prev, custom_banner_link: e.target.value }))} className="bg-white border border-red-300 text-black text-sm" />
-              {formData.custom_banner_url && <button type="button" onClick={() => setFormData(prev => ({ ...prev, custom_banner_url: '', custom_banner_link: '' }))} className="mt-2 text-xs text-red-500 hover:text-red-700">Remove custom banner</button>}
+              <Input placeholder={t("Or paste banner image URL", "Or paste banner image URL")} value={formData.custom_banner_url} onChange={(e) => setFormData(prev => ({ ...prev, custom_banner_url: e.target.value }))} className="bg-white border border-red-300 text-black text-sm mb-2" />
+              <Input placeholder={t("Banner click URL (optional)", "Banner click URL (optional)")} value={formData.custom_banner_link} onChange={(e) => setFormData(prev => ({ ...prev, custom_banner_link: e.target.value }))} className="bg-white border border-red-300 text-black text-sm" />
+              {formData.custom_banner_url && <button type="button" onClick={() => setFormData(prev => ({ ...prev, custom_banner_url: '', custom_banner_link: '' }))} className="mt-2 text-xs text-red-500 hover:text-red-700">{t("Remove custom banner", "Remove custom banner")}</button>}
             </div>
           )}
 
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-black font-semibold text-sm">Links</label>
-              <button type="button" onClick={() => setFormData(prev => ({ ...prev, links: [...prev.links, { url: '', label: '' }] }))} className="flex items-center gap-1 text-gray-600 hover:text-black text-xs transition-colors"><Plus size={14} />Add Link</button>
+              <label className="text-black font-semibold text-sm">{t("Links", "Links")}</label>
+              <button type="button" onClick={() => setFormData(prev => ({ ...prev, links: [...prev.links, { url: '', label: '' }] }))} className="flex items-center gap-1 text-gray-600 hover:text-black text-xs transition-colors"><Plus size={14} />{t("Add Link", "Add Link")}</button>
             </div>
             <div className="space-y-2">
               {formData.links.map((link, idx) => (
                 <div key={idx} className="flex gap-2">
-                  <Input placeholder="Link label" value={link.label} onChange={(e) => setFormData(prev => ({ ...prev, links: prev.links.map((l, i) => i === idx ? { ...l, label: e.target.value } : l) }))} className="flex-1 bg-gray-50 border border-gray-300 text-black text-sm" />
-                  <Input placeholder="URL" value={link.url} onChange={(e) => setFormData(prev => ({ ...prev, links: prev.links.map((l, i) => i === idx ? { ...l, url: e.target.value } : l) }))} className="flex-1 bg-gray-50 border border-gray-300 text-black text-sm" />
+                  <Input placeholder={t("Link label", "Link label")} value={link.label} onChange={(e) => setFormData(prev => ({ ...prev, links: prev.links.map((l, i) => i === idx ? { ...l, label: e.target.value } : l) }))} className="flex-1 bg-gray-50 border border-gray-300 text-black text-sm" />
+                  <Input placeholder={t("URL", "URL")} value={link.url} onChange={(e) => setFormData(prev => ({ ...prev, links: prev.links.map((l, i) => i === idx ? { ...l, url: e.target.value } : l) }))} className="flex-1 bg-gray-50 border border-gray-300 text-black text-sm" />
                   <button type="button" onClick={() => setFormData(prev => ({ ...prev, links: prev.links.filter((_, i) => i !== idx) }))} className="text-red-600 hover:text-red-700 transition-colors"><Trash2 size={16} /></button>
                 </div>
               ))}
