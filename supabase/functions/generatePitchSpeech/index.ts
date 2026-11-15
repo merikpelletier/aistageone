@@ -4,6 +4,8 @@ installModelControl('generatePitchSpeech');
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { serveWithCors } from '../_shared/cors.ts';
 import { generateSpeech } from '../_shared/replicateAi.ts';
+import { createCreditBillingContext, withCreditCharge } from '../_shared/credits.ts';
+import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 
 const ELEVENLABS_VOICES = new Set(VOICE_NAMES);
 
@@ -79,13 +81,27 @@ serveWithCors(async (request) => {
   const { data: existing, error: listError } = await service.storage.from('media').list(folder, { search: fileName, limit: 1 });
   if (listError) throw listError;
   if (!existing?.some((item) => item.name === fileName)) {
-    const audio = await generateSpeech({ text, voice, languageCode });
-    const { error: uploadError } = await service.storage.from('media').upload(objectPath, audio, {
-      contentType: 'audio/mpeg',
-      cacheControl: '31536000',
-      upsert: false,
+    // Le devis et la réservation précèdent toujours l'appel payant.
+    const billing = await createCreditBillingContext(request);
+    const quote = await quoteAiService(
+      billing.service, 'generatePitchSpeech', { text }, 'elevenlabs/v3', 'speech',
+    );
+    await withCreditCharge({
+      ...billing,
+      toolId: 'tts',
+      provider: 'replicate',
+      relatedEntity: 'generatePitchSpeech',
+      explicitCost: quote.credits,
+    }, async () => {
+      const audio = await generateSpeech({ text, voice, languageCode });
+      const { error: uploadError } = await service.storage.from('media').upload(objectPath, audio, {
+        contentType: 'audio/mpeg',
+        cacheControl: '31536000',
+        upsert: false,
+      });
+      if (uploadError && !/already exists/i.test(uploadError.message)) throw uploadError;
+      return true;
     });
-    if (uploadError && !/already exists/i.test(uploadError.message)) throw uploadError;
   }
 
   const { data: publicUrl } = service.storage.from('media').getPublicUrl(objectPath);
