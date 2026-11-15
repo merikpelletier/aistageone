@@ -104,22 +104,25 @@ export async function generateText({
   const structuredPrompt = schema
     ? `${prompt}\n\nReturn only valid JSON matching this schema exactly:\n${JSON.stringify(schema)}`
     : prompt;
-  const selectedModel = ['qwen/qwen3-235b-a22b-instruct-2507', 'meta/llama-4-maverick-instruct', 'anthropic/claude-opus-4.6'].includes(modelKey)
-    ? modelKey : TEXT_MODEL;
-  const isQwen = selectedModel.startsWith('qwen/');
-  const input = selectedModel === TEXT_MODEL
+  // The runtime resolves modelKey against the enabled Admin route options and
+  // filters input fields using the selected model's imported schema.
+  // Keep the existing source route and legacy input for callers without a choice.
+  const chosenByStudio = Boolean(modelKey && modelKey !== TEXT_MODEL);
+  const input = chosenByStudio
     ? {
+        prompt: instructions ? `Instructions:\n${instructions}\n\nUser request:\n${structuredPrompt}` : structuredPrompt,
+        system_prompt: instructions || '',
+        max_tokens: 4000,
+        max_completion_tokens: 4000,
+      }
+    : {
         prompt: structuredPrompt,
         system_prompt: instructions || '',
         image_input: imageUrls.filter(Boolean),
         reasoning_effort: reasoningEffort,
         verbosity: 'low',
         max_completion_tokens: 4000,
-      }
-    : isQwen
-      ? { prompt: instructions ? `Instructions:\n${instructions}\n\nUser request:\n${structuredPrompt}` : structuredPrompt, max_tokens: 4000, temperature: 0.1 }
-      : { prompt: structuredPrompt, system_prompt: instructions || '', max_tokens: 4000 };
-  // Keep the approved invoke-llm route; modelControlRuntime selects the requested catalog model.
+      };
   const output = await runOfficialModel(TEXT_MODEL, input);
   const text = outputText(output);
   return schema ? parseJson(text) : text;
