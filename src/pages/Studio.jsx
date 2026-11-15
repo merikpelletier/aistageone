@@ -889,7 +889,7 @@ export default function Studio() {
 
       {activeToolPanel === 'vault' && (
         <div className="absolute inset-0 z-20 bg-[#202328]">
-          <StudioWorkspaceTool title="Vault"><div className="p-4 md:p-6"><VaultSection userEmail={user?.email} onUsePrompt={(text) => { setPendingPrompt(text); setVideoInitialMode('image'); setShowVideoTools(true); }} /></div></StudioWorkspaceTool>
+          <StudioWorkspaceTool title={studioT('Vault', 'Vault')}><div className="p-4 md:p-6"><VaultSection userEmail={user?.email} onUsePrompt={(text) => { setPendingPrompt(text); setVideoInitialMode('image'); setShowVideoTools(true); }} /></div></StudioWorkspaceTool>
         </div>
       )}
 
