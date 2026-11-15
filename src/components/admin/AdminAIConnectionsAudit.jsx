@@ -26,7 +26,8 @@ const reviewed = {
   'regenerateNarration': ['dynamic','Réservation dynamique dans regenerateNarration, selon le parcours.'],
   'proposeStoryArc': ['dynamic','Réservation dynamique dans proposeStoryArc.'],
   'generateSpeech': ['dynamic','Réservation dynamique dans generateSpeech.'],
-  'generate3d': ['dynamic','Réservation dynamique locale, sans contrôle central de modèles dans le point d’entrée.'],
+  'generate3d': ['dynamic','Cinq modèles 3D actifs, tarifs enregistrés et réservation dynamique locale. Le fonctionnement réel n’est pas testé ici.'],
+  'rig3d': ['unverified','Modèle et tarif présents. La connexion d’exécution et le débit de crédits du rigging restent à vérifier.'],
   'agent-conversations': ['fixed','Réservation au tarif fixe dans agent-conversations.'],
   'transcribe-audio': ['fixed','Réservation au tarif fixe dans transcribe-audio.'],
   'mixAudioVideo': ['fixed','Réservation au tarif fixe dans mixAudioVideo.'],
@@ -53,7 +54,14 @@ function statusFor(service, assignments, models, options) {
   const eligible=routes.some(a=>{
     const configured=activeModels.get(a.model_key);
     const optionModels=options.filter(o=>o.route_key===a.route_key&&o.enabled).map(o=>activeModels.get(o.model_key));
-    return [configured,...optionModels].some(m=>m&&m.schema?.components?.schemas?.Input&&m.billing_type&&m.unit_price_usd!=null&&m.cost_source_url&&(!(['tokens'].includes(m.billing_type))||m.output_unit_price_usd!=null));
+    return [configured,...optionModels].some(m=>{
+      // Les outils 3D utilisent des adaptateurs d'entrée propres au service,
+      // et non le schéma Cog/Input exigé par le routeur texte/image.
+      const supportedSchema = ['generate3d', 'rig3d'].includes(service)
+        ? Boolean(m?.schema)
+        : Boolean(m?.schema?.components?.schemas?.Input);
+      return m&&supportedSchema&&m.billing_type&&m.unit_price_usd!=null&&m.cost_source_url&&(m.billing_type!=='tokens'||m.output_unit_price_usd!=null);
+    });
   });
   if(!eligible)return {status:'problem',reason:'Aucun modèle actif avec schéma et tarif fournisseur complets.'};
   const [status, reason] = reviewed[service]||['unknown','Aucune vérification de code enregistrée.'];
