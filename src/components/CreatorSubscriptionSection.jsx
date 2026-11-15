@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { base44 } from '@/api/base44Client';
 import { CreditCard, ExternalLink, Loader2, LockKeyhole, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function CreatorSubscriptionSection({ creatorEmail, isOwnProfile }) {
+  const t = useStudioTranslation();
   const [plan, setPlan] = useState(null);
   const [activeSubscription, setActiveSubscription] = useState(false);
   const [annualPrice, setAnnualPrice] = useState('');
@@ -149,9 +151,9 @@ export default function CreatorSubscriptionSection({ creatorEmail, isOwnProfile 
             <LockKeyhole size={19} className="text-red-500" />
           </div>
           <div className="flex-1">
-            <p className="text-white text-lg font-semibold">Annual subscription</p>
-            <p className="text-white/55 text-sm mt-1">Access this creator's subscriber-only publications for one year.</p>
-            {formattedPrice && <p className="text-white text-2xl font-light mt-3">{formattedPrice}<span className="text-white/45 text-sm"> / year</span></p>}
+            <p className="text-white text-lg font-semibold">{t("Annual subscription", "Annual subscription")}</p>
+            <p className="text-white/55 text-sm mt-1">{t("Access this creator's subscriber-only publications for one year.", "Access this creator's subscriber-only publications for one year.")}</p>
+            {formattedPrice && <p className="text-white text-2xl font-light mt-3">{formattedPrice}<span className="text-white/45 text-sm">{t(" / year", " / year")}</span></p>}
           </div>
         </div>
         <button onClick={subscribe} disabled={busy || activeSubscription} className="mt-4 w-full py-3 bg-white text-black font-semibold disabled:opacity-60">
@@ -167,37 +169,37 @@ export default function CreatorSubscriptionSection({ creatorEmail, isOwnProfile 
     <div className="mx-4 my-5 border border-white/10 bg-neutral-950 p-5 lg:p-4">
       <div className="flex items-start justify-between gap-4 mb-5 lg:mb-3">
         <div>
-          <p className="text-white text-lg font-semibold lg:text-base">Public subscriptions</p>
-          <p className="text-white/50 text-sm mt-1 lg:text-xs">One annual subscription gives your audience access to your subscriber-only content.</p>
+          <p className="text-white text-lg font-semibold lg:text-base">{t("Public subscriptions", "Public subscriptions")}</p>
+          <p className="text-white/50 text-sm mt-1 lg:text-xs">{t("One annual subscription gives your audience access to your subscriber-only content.", "One annual subscription gives your audience access to your subscriber-only content.")}</p>
         </div>
         <CreditCard size={20} className="text-white/60 lg:w-4 lg:h-4" />
       </div>
 
       <div className="grid sm:grid-cols-[1fr_180px_auto] lg:grid-cols-[220px_180px_auto_1fr] gap-3 lg:items-end">
         <div>
-          <label className="text-white/60 text-xs uppercase tracking-wider">Annual price (CAD)</label>
+          <label className="text-white/60 text-xs uppercase tracking-wider">{t("Annual price (CAD)", "Annual price (CAD)")}</label>
           <input type="number" min="1" step="0.01" value={annualPrice} onChange={e => setAnnualPrice(e.target.value)} className="mt-1 w-full bg-black border border-white/15 px-3 py-2.5 text-white lg:py-2" placeholder="49.00" />
         </div>
         <div>
-          <label className="text-white/60 text-xs uppercase tracking-wider">Country</label>
+          <label className="text-white/60 text-xs uppercase tracking-wider">{t("Country", "Country")}</label>
           <select value={country} onChange={e => setCountry(e.target.value)} className="mt-1 w-full bg-black border border-white/15 px-3 py-2.5 text-white lg:py-2">
-            <option value="CA">Canada</option><option value="US">United States</option><option value="GB">United Kingdom</option><option value="FR">France</option><option value="BE">Belgium</option><option value="CH">Switzerland</option><option value="DE">Germany</option><option value="ES">Spain</option><option value="IT">Italy</option><option value="AU">Australia</option>
+            <option value="CA">{t("Canada", "Canada")}</option><option value="US">{t("United States", "United States")}</option><option value="GB">{t("United Kingdom", "United Kingdom")}</option><option value="FR">{t("France", "France")}</option><option value="BE">{t("Belgium", "Belgium")}</option><option value="CH">{t("Switzerland", "Switzerland")}</option><option value="DE">{t("Germany", "Germany")}</option><option value="ES">{t("Spain", "Spain")}</option><option value="IT">{t("Italy", "Italy")}</option><option value="AU">{t("Australia", "Australia")}</option>
           </select>
         </div>
-        <button onClick={savePlan} disabled={busy} className="sm:self-end px-5 py-2.5 lg:py-2 bg-white text-black font-semibold disabled:opacity-50">Save</button>
+        <button onClick={savePlan} disabled={busy} className="sm:self-end px-5 py-2.5 lg:py-2 bg-white text-black font-semibold disabled:opacity-50">{t("Save", "Save")}</button>
 
         <div className="hidden lg:flex items-center justify-end gap-2 min-w-0">
           <span className={`text-xs px-2 py-1 border whitespace-nowrap ${stripeReady ? 'border-green-500/40 text-green-400' : 'border-white/15 text-white/55'}`}>
             {stripeReady ? 'Stripe ready' : plan?.stripe_account_id ? 'Stripe setup incomplete' : 'Stripe not connected'}
           </span>
-          {plan?.active && <span className="text-xs px-2 py-1 border border-red-500/40 text-red-400 whitespace-nowrap">Subscriptions active</span>}
+          {plan?.active && <span className="text-xs px-2 py-1 border border-red-500/40 text-red-400 whitespace-nowrap">{t("Subscriptions active", "Subscriptions active")}</span>}
         </div>
       </div>
 
       <div className="mt-5 border-t border-white/10 pt-4 lg:mt-3 lg:pt-3 lg:flex lg:items-center lg:justify-between lg:gap-3">
         <div className="flex flex-wrap items-center gap-2 mb-3 lg:hidden">
           <span className={`text-xs px-2 py-1 border ${stripeReady ? 'border-green-500/40 text-green-400' : 'border-white/15 text-white/55'}`}>{stripeReady ? 'Stripe ready' : plan?.stripe_account_id ? 'Stripe setup incomplete' : 'Stripe not connected'}</span>
-          {plan?.active && <span className="text-xs px-2 py-1 border border-red-500/40 text-red-400">Subscriptions active</span>}
+          {plan?.active && <span className="text-xs px-2 py-1 border border-red-500/40 text-red-400">{t("Subscriptions active", "Subscriptions active")}</span>}
         </div>
 
         <div className="flex flex-wrap gap-2 lg:ml-auto">
