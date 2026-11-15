@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,6 +27,7 @@ const EMPTY_FORM = {
 };
 
 export default function CampaignManager({ userEmail }) {
+  const t = useStudioTranslation();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -106,8 +108,8 @@ export default function CampaignManager({ userEmail }) {
             <Megaphone className="text-black w-1/2 h-1/2" />
           </div>
           <div>
-            <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-[1.15vw]">Campaigns</p>
-            <p className="text-white/50 text-xs font-medium lg:text-[0.68vw]">Create campaigns linked to your stories</p>
+            <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-[1.15vw]">{t("Campaigns", "Campaigns")}</p>
+            <p className="text-white/50 text-xs font-medium lg:text-[0.68vw]">{t("Create campaigns linked to your stories", "Create campaigns linked to your stories")}</p>
           </div>
         </div>
         {!showForm && (
@@ -127,21 +129,21 @@ export default function CampaignManager({ userEmail }) {
 
             <div className="lg:grid lg:grid-cols-2 lg:gap-[2%]">
               <div>
-                <label className="text-white/50 text-xs font-bold uppercase tracking-wide mb-1 block lg:text-[0.62vw]">Campaign Title</label>
-                <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Season 1 Pass" className="w-full bg-black/40 text-white text-sm rounded-xl px-4 py-2.5 border border-white/10 focus:border-yellow-400/50 outline-none lg:text-[0.72vw] lg:px-[3%] lg:py-[2%] lg:rounded-[0.5vw]" required />
+                <label className="text-white/50 text-xs font-bold uppercase tracking-wide mb-1 block lg:text-[0.62vw]">{t("Campaign Title", "Campaign Title")}</label>
+                <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder={t("e.g. Season 1 Pass", "e.g. Season 1 Pass")} className="w-full bg-black/40 text-white text-sm rounded-xl px-4 py-2.5 border border-white/10 focus:border-yellow-400/50 outline-none lg:text-[0.72vw] lg:px-[3%] lg:py-[2%] lg:rounded-[0.5vw]" required />
               </div>
               <div>
-                <label className="text-white/50 text-xs font-bold uppercase tracking-wide mb-1 block lg:text-[0.62vw]">Linked Story</label>
+                <label className="text-white/50 text-xs font-bold uppercase tracking-wide mb-1 block lg:text-[0.62vw]">{t("Linked Story", "Linked Story")}</label>
                 <select value={form.linked_story_id} onChange={e => setForm(f => ({ ...f, linked_story_id: e.target.value }))} className="w-full bg-black/40 text-white text-sm rounded-xl px-4 py-2.5 border border-white/10 focus:border-yellow-400/50 outline-none lg:text-[0.72vw] lg:px-[3%] lg:py-[2%] lg:rounded-[0.5vw]">
-                  <option value="">Select a published story…</option>
+                  <option value="">{t("Select a published story…", "Select a published story…")}</option>
                   {stories.map(s => <option key={s.id} value={s.id}>{s.production_name || s.episode_title || 'Untitled'}</option>)}
                 </select>
               </div>
             </div>
 
             <div>
-              <label className="text-white/50 text-xs font-bold uppercase tracking-wide mb-1 block lg:text-[0.62vw]">Description</label>
-              <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What are subscribers getting?" rows={2} className="w-full bg-black/40 text-white text-sm rounded-xl px-4 py-2.5 border border-white/10 focus:border-yellow-400/50 outline-none resize-none lg:text-[0.72vw] lg:px-[3%] lg:py-[2%] lg:rounded-[0.5vw]" />
+              <label className="text-white/50 text-xs font-bold uppercase tracking-wide mb-1 block lg:text-[0.62vw]">{t("Description", "Description")}</label>
+              <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder={t("What are subscribers getting?", "What are subscribers getting?")} rows={2} className="w-full bg-black/40 text-white text-sm rounded-xl px-4 py-2.5 border border-white/10 focus:border-yellow-400/50 outline-none resize-none lg:text-[0.72vw] lg:px-[3%] lg:py-[2%] lg:rounded-[0.5vw]" />
             </div>
 
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-[2%]">
@@ -154,13 +156,13 @@ export default function CampaignManager({ userEmail }) {
                 <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} className="w-full bg-black/40 text-white text-sm rounded-xl px-3 py-2.5 border border-white/10 focus:border-yellow-400/50 outline-none lg:text-[0.72vw] lg:px-[3%] lg:py-[2%] lg:rounded-[0.5vw]" />
               </div>
               <div className="col-span-2 lg:col-span-1">
-                <label className="text-white/50 text-xs font-bold uppercase tracking-wide mb-1 block lg:text-[0.62vw]">Subscription Fee ($)</label>
-                <input type="number" min="0" step="0.01" value={form.subscription_fee} onChange={e => setForm(f => ({ ...f, subscription_fee: e.target.value }))} placeholder="0 for free" className="w-full bg-black/40 text-white text-sm rounded-xl px-4 py-2.5 border border-white/10 focus:border-yellow-400/50 outline-none lg:text-[0.72vw] lg:px-[3%] lg:py-[2%] lg:rounded-[0.5vw]" />
+                <label className="text-white/50 text-xs font-bold uppercase tracking-wide mb-1 block lg:text-[0.62vw]">{t("Subscription Fee ($)", "Subscription Fee ($)")}</label>
+                <input type="number" min="0" step="0.01" value={form.subscription_fee} onChange={e => setForm(f => ({ ...f, subscription_fee: e.target.value }))} placeholder={t("0 for free", "0 for free")} className="w-full bg-black/40 text-white text-sm rounded-xl px-4 py-2.5 border border-white/10 focus:border-yellow-400/50 outline-none lg:text-[0.72vw] lg:px-[3%] lg:py-[2%] lg:rounded-[0.5vw]" />
               </div>
             </div>
 
             <div>
-              <p className="text-white/50 text-xs font-bold uppercase tracking-wide mb-2 lg:text-[0.62vw]">Subscriber Notifications</p>
+              <p className="text-white/50 text-xs font-bold uppercase tracking-wide mb-2 lg:text-[0.62vw]">{t("Subscriber Notifications", "Subscriber Notifications")}</p>
               <div className="space-y-2 lg:grid lg:grid-cols-3 lg:gap-[1%] lg:space-y-0">
                 {[
                   { key: 'notify_new_episodes', label: 'New Episode Published', icon: Bell },
@@ -177,7 +179,7 @@ export default function CampaignManager({ userEmail }) {
 
             <div className="lg:grid lg:grid-cols-[2fr_1fr_1fr] lg:gap-[2%] lg:items-end">
               <div>
-                <p className="text-white/50 text-xs font-bold uppercase tracking-wide mb-2 lg:text-[0.62vw]">Banner Color</p>
+                <p className="text-white/50 text-xs font-bold uppercase tracking-wide mb-2 lg:text-[0.62vw]">{t("Banner Color", "Banner Color")}</p>
                 <div className="flex gap-2 lg:gap-[2%]">
                   {Object.entries(BANNER_COLORS).map(([key, cfg]) => (
                     <button key={key} type="button" onClick={() => setForm(f => ({ ...f, banner_color: key }))} className={`w-8 h-8 rounded-lg lg:w-[8%] lg:aspect-square lg:h-auto lg:rounded-[15%] ${cfg.bg} ${form.banner_color === key ? 'ring-2 ring-white ring-offset-2 ring-offset-black' : ''}`} />
@@ -185,8 +187,8 @@ export default function CampaignManager({ userEmail }) {
                 </div>
               </div>
               <div>
-                <label className="text-white/50 text-xs font-bold uppercase tracking-wide mb-1 block lg:text-[0.62vw]">Status</label>
-                <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="w-full bg-black/40 text-white text-sm rounded-xl px-4 py-2.5 border border-white/10 focus:border-yellow-400/50 outline-none lg:text-[0.72vw] lg:px-[3%] lg:py-[2%] lg:rounded-[0.5vw]"><option value="draft">Draft (hidden)</option><option value="active">Active (visible)</option><option value="ended">Ended</option></select>
+                <label className="text-white/50 text-xs font-bold uppercase tracking-wide mb-1 block lg:text-[0.62vw]">{t("Status", "Status")}</label>
+                <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="w-full bg-black/40 text-white text-sm rounded-xl px-4 py-2.5 border border-white/10 focus:border-yellow-400/50 outline-none lg:text-[0.72vw] lg:px-[3%] lg:py-[2%] lg:rounded-[0.5vw]"><option value="draft">{t("Draft (hidden)", "Draft (hidden)")}</option><option value="active">{t("Active (visible)", "Active (visible)")}</option><option value="ended">{t("Ended", "Ended")}</option></select>
               </div>
               <button type="submit" disabled={saveMutation.isPending || !form.title.trim()} className="w-full py-3 bg-yellow-400 text-black rounded-xl font-bold text-sm uppercase tracking-wide hover:bg-yellow-500 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 lg:py-[6%] lg:text-[0.7vw] lg:rounded-[0.5vw]">
                 {saveMutation.isPending ? <Loader2 className="w-[0.8vw] h-[0.8vw] animate-spin" /> : <Megaphone className="w-[0.8vw] h-[0.8vw]" />}{editingId ? 'Save Changes' : 'Create Campaign'}
@@ -200,8 +202,8 @@ export default function CampaignManager({ userEmail }) {
         <div className="flex justify-center py-6 lg:py-[2%]"><Loader2 className="animate-spin text-white/30 w-[1vw] h-[1vw]" /></div>
       ) : campaigns.length === 0 && !showForm ? (
         <div className="flex items-center justify-between gap-4 border-t border-white/10 pt-4 lg:gap-[2%] lg:pt-[1.5%]">
-          <p className="text-white/40 text-sm lg:text-[0.72vw]">No campaigns yet. Create one to engage your audience.</p>
-          <button onClick={() => { setForm(EMPTY_FORM); setEditingId(null); setShowForm(true); }} className="text-yellow-400 text-sm font-bold lg:text-[0.72vw]">Create campaign</button>
+          <p className="text-white/40 text-sm lg:text-[0.72vw]">{t("No campaigns yet. Create one to engage your audience.", "No campaigns yet. Create one to engage your audience.")}</p>
+          <button onClick={() => { setForm(EMPTY_FORM); setEditingId(null); setShowForm(true); }} className="text-yellow-400 text-sm font-bold lg:text-[0.72vw]">{t("Create campaign", "Create campaign")}</button>
         </div>
       ) : (
         <div className="space-y-2 lg:space-y-[1%]">
