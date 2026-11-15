@@ -4,16 +4,23 @@ installModelControl('generate-speech');
 import { serveWithCors } from './_legacy/cors.ts';
 import { createCreditBillingContext, withCreditCharge } from './_legacy/credits.ts';
 import { generateSpeech } from './_legacy/replicateAi.ts';
+import { quoteAiService } from '../_shared/dynamicAiPrice.ts';
 
 serveWithCors(async (request) => {
   const billing = await createCreditBillingContext(request);
   const body = await request.json();
   try { validateVoice(body.voice || 'Rachel'); validateVoiceLanguage(body.language_code || 'en'); } catch (error) { return Response.json({ error: error.message }, { status: 400 }); }
+  const speechQuote = await quoteAiService(
+    billing.service, 'generate-speech',
+    { text: String(body.text || '') },
+    'elevenlabs/v3', 'speech',
+  );
   const { result, charge } = await withCreditCharge({
     ...billing,
     toolId: 'tts',
     provider: 'replicate',
     relatedEntity: 'generate_speech',
+    explicitCost: speechQuote.credits,
   }, async () => {
     const blob = await generateSpeech({ text: body.text, voice: body.voice || 'Rachel', languageCode: body.language_code || 'en' });
     const path = `${billing.user.id}/${crypto.randomUUID()}.mp3`;
