@@ -157,7 +157,7 @@ export default function CreatorSubscriptionSection({ creatorEmail, isOwnProfile 
           </div>
         </div>
         <button onClick={subscribe} disabled={busy || activeSubscription} className="mt-4 w-full py-3 bg-white text-black font-semibold disabled:opacity-60">
-          {busy ? 'Opening…' : activeSubscription ? 'Subscribed' : 'Subscribe for one year'}
+          {busy ? t('Opening…','Opening…') : activeSubscription ? t('Subscribed','Subscribed') : t('Subscribe for one year','Subscribe for one year')}
         </button>
       </div>
     );
@@ -190,7 +190,7 @@ export default function CreatorSubscriptionSection({ creatorEmail, isOwnProfile 
 
         <div className="hidden lg:flex items-center justify-end gap-2 min-w-0">
           <span className={`text-xs px-2 py-1 border whitespace-nowrap ${stripeReady ? 'border-green-500/40 text-green-400' : 'border-white/15 text-white/55'}`}>
-            {stripeReady ? 'Stripe ready' : plan?.stripe_account_id ? 'Stripe setup incomplete' : 'Stripe not connected'}
+            {stripeReady ? t('Stripe ready','Stripe ready') : plan?.stripe_account_id ? t('Stripe setup incomplete','Stripe setup incomplete') : t('Stripe not connected','Stripe not connected')}
           </span>
           {plan?.active && <span className="text-xs px-2 py-1 border border-red-500/40 text-red-400 whitespace-nowrap">{t("Subscriptions active", "Subscriptions active")}</span>}
         </div>
@@ -198,31 +198,31 @@ export default function CreatorSubscriptionSection({ creatorEmail, isOwnProfile 
 
       <div className="mt-5 border-t border-white/10 pt-4 lg:mt-3 lg:pt-3 lg:flex lg:items-center lg:justify-between lg:gap-3">
         <div className="flex flex-wrap items-center gap-2 mb-3 lg:hidden">
-          <span className={`text-xs px-2 py-1 border ${stripeReady ? 'border-green-500/40 text-green-400' : 'border-white/15 text-white/55'}`}>{stripeReady ? 'Stripe ready' : plan?.stripe_account_id ? 'Stripe setup incomplete' : 'Stripe not connected'}</span>
+          <span className={`text-xs px-2 py-1 border ${stripeReady ? 'border-green-500/40 text-green-400' : 'border-white/15 text-white/55'}`}>{stripeReady ? t('Stripe ready','Stripe ready') : plan?.stripe_account_id ? t('Stripe setup incomplete','Stripe setup incomplete') : t('Stripe not connected','Stripe not connected')}</span>
           {plan?.active && <span className="text-xs px-2 py-1 border border-red-500/40 text-red-400">{t("Subscriptions active", "Subscriptions active")}</span>}
         </div>
 
         <div className="flex flex-wrap gap-2 lg:ml-auto">
           {!plan?.stripe_account_id ? (
             <button onClick={startOnboarding} disabled={busy} className="px-4 py-2.5 lg:py-2 bg-red-600 text-white font-semibold flex items-center gap-2">
-              {busy ? <Loader2 size={15} className="animate-spin" /> : <ExternalLink size={15} />}Connect Stripe
+              {busy ? <Loader2 size={15} className="animate-spin" /> : <ExternalLink size={15} />} {t('Connect Stripe','Connect Stripe')}
             </button>
           ) : (
             <>
               {!stripeReady && (
                 <button onClick={startOnboarding} disabled={busy} className="px-4 py-2.5 lg:py-2 bg-red-600 text-white font-semibold flex items-center gap-2">
-                  {busy ? <Loader2 size={15} className="animate-spin" /> : <ExternalLink size={15} />}Continue Stripe setup
+                  {busy ? <Loader2 size={15} className="animate-spin" /> : <ExternalLink size={15} />} {t('Continue Stripe setup','Continue Stripe setup')}
                 </button>
               )}
               <button onClick={refreshStripe} disabled={busy} className="px-4 py-2.5 lg:py-2 border border-white/20 text-white flex items-center gap-2">
-                <RefreshCcw size={15} className={busy ? 'animate-spin' : ''} />Refresh Stripe status
+                <RefreshCcw size={15} className={busy ? 'animate-spin' : ''} /> {t('Refresh Stripe status','Refresh Stripe status')}
               </button>
             </>
           )}
 
           {stripeReady && plan?.annual_price_cents > 0 && (
             <button onClick={toggleActive} disabled={busy} className={`px-4 py-2.5 lg:py-2 font-semibold ${plan?.active ? 'bg-neutral-800 text-white' : 'bg-white text-black'}`}>
-              {plan?.active ? 'Pause subscriptions' : 'Activate subscriptions'}
+              {plan?.active ? t('Pause subscriptions','Pause subscriptions') : t('Activate subscriptions','Activate subscriptions')}
             </button>
           )}
         </div>
