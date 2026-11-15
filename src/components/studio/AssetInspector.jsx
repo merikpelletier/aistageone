@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { X, Save, Loader2, Star, Tag, Palette, User, Crop, Folder, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const CATEGORIES = ['character', 'set', 'costume', 'reference', 'script'];
 const RATIOS = ['9:16', '16:9', '4:3', '1:1', '3:4'];
@@ -46,6 +47,7 @@ function ChipsInput({ label, icon: Icon, values, onChange, placeholder }) {
 }
 
 export default function AssetInspector({ asset, userEmail, folders = [], onClose }) {
+  const t = useStudioTranslation();
   const queryClient = useQueryClient();
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -84,10 +86,10 @@ export default function AssetInspector({ asset, userEmail, folders = [], onClose
         folder_id: form.folder_id || null,
       });
       queryClient.invalidateQueries({ queryKey: ['vaultAssets', userEmail] });
-      toast.success('Asset updated');
+      toast.success(t('vault.inspector.updated', 'Asset updated'));
       onClose();
     } catch {
-      toast.error('Failed to save');
+      toast.error(t('vault.inspector.save_failed', 'Failed to save'));
     }
     setSaving(false);
   };
@@ -122,7 +124,7 @@ export default function AssetInspector({ asset, userEmail, folders = [], onClose
             }`}
           >
             <Star size={12} fill={form.is_magazine_ready ? 'currentColor' : 'none'} />
-            {form.is_magazine_ready ? 'Magazine ready' : 'Mark ready'}
+            {form.is_magazine_ready ? t('vault.magazine_ready', 'Magazine ready') : t('vault.inspector.mark_ready', 'Mark ready')}
           </button>
         </div>
 
@@ -132,27 +134,27 @@ export default function AssetInspector({ asset, userEmail, folders = [], onClose
             <input
               value={form.name}
               onChange={e => set('name', e.target.value)}
-              placeholder="Name this asset…"
+              placeholder={t("vault.inspector.name_asset", "Name this asset…")}
               className="w-full bg-transparent text-white text-lg font-bold tracking-wide focus:outline-none placeholder-white/30"
             />
             <div className="mt-1 space-y-0.5 text-xs text-white/40">
-              <p>{asset.media_type} · added {asset.created_date ? new Date(asset.created_date).toLocaleDateString() : 'date unavailable'}</p>
-              <p>Author: {asset.author_name || asset.created_by || asset.user_email || 'Unknown'}</p>
+              <p>{t('vault.media.' + asset.media_type, asset.media_type)} · {t('vault.inspector.added', 'added')} {asset.created_date ? new Date(asset.created_date).toLocaleDateString() : t('vault.inspector.date_unavailable', 'date unavailable')}</p>
+              <p>{t('vault.inspector.author', 'Author:')} {asset.author_name || asset.created_by || asset.user_email || t('vault.inspector.unknown', 'Unknown')}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-white/60 text-xs uppercase tracking-wider font-medium mb-1.5 flex items-center gap-1.5"><User size={12}/> Actor</label>
+              <label className="text-white/60 text-xs uppercase tracking-wider font-medium mb-1.5 flex items-center gap-1.5"><User size={12}/> {t('vault.inspector.actor', 'Actor')}</label>
               <input
                 value={form.actor_name}
                 onChange={e => set('actor_name', e.target.value)}
-                placeholder="e.g. Cassia"
+                placeholder={t("vault.inspector.actor_example", "e.g. Cassia")}
                 className="w-full bg-black/60 border border-white/15 rounded-lg px-3 py-2 text-white text-sm placeholder-white/30 focus:outline-none focus:border-yellow-400"
               />
             </div>
             <div>
-              <label className="text-white/60 text-xs uppercase tracking-wider font-medium mb-1.5 flex items-center gap-1.5"><Crop size={12}/> Ratio</label>
+              <label className="text-white/60 text-xs uppercase tracking-wider font-medium mb-1.5 flex items-center gap-1.5"><Crop size={12}/> {t('vault.inspector.ratio', 'Ratio')}</label>
               <select
                 value={form.aspect_ratio}
                 onChange={e => set('aspect_ratio', e.target.value)}
@@ -165,7 +167,7 @@ export default function AssetInspector({ asset, userEmail, folders = [], onClose
           </div>
 
           <div>
-            <label className="text-white/60 text-xs uppercase tracking-wider font-medium mb-1.5 block">Category</label>
+            <label className="text-white/60 text-xs uppercase tracking-wider font-medium mb-1.5 block">{t('vault.inspector.category', 'Category')}</label>
             <div className="flex flex-wrap gap-1.5">
               {CATEGORIES.map(c => (
                 <button
@@ -177,27 +179,27 @@ export default function AssetInspector({ asset, userEmail, folders = [], onClose
                       : 'bg-white/5 text-white/70 border border-white/10 hover:border-white/30'
                   }`}
                 >
-                  {c}
+                  {t('vault.category.' + c, c)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-white/60 text-xs uppercase tracking-wider font-medium mb-1.5 flex items-center gap-1.5"><Folder size={12}/> Folder</label>
+            <label className="text-white/60 text-xs uppercase tracking-wider font-medium mb-1.5 flex items-center gap-1.5"><Folder size={12}/> {t('vault.inspector.folder', 'Folder')}</label>
             <select
               value={form.folder_id}
               onChange={e => set('folder_id', e.target.value)}
               className="w-full bg-black/60 border border-white/15 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-yellow-400"
             >
-              <option value="">Unfiled</option>
+              <option value="">{t("vault.unfiled", "Unfiled")}</option>
               {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
           </div>
 
-          <ChipsInput label="Tags" icon={Tag} values={form.tags} onChange={v => set('tags', v)} placeholder="noir, 1940, dramatic (Enter to add)" />
-          <ChipsInput label="Style" icon={Tag} values={form.style_tags} onChange={v => set('style_tags', v)} placeholder="cinematic, editorial (Enter to add)" />
-          <ChipsInput label="Color palette" icon={Palette} values={form.color_palette} onChange={v => set('color_palette', v)} placeholder="midnight blue, gold (Enter to add)" />
+          <ChipsInput label={t("vault.inspector.tags", "Tags")} icon={Tag} values={form.tags} onChange={v => set('tags', v)} placeholder={t("vault.inspector.tags_example", "noir, 1940, dramatic (Enter to add)")} />
+          <ChipsInput label={t("vault.inspector.style", "Style")} icon={Tag} values={form.style_tags} onChange={v => set('style_tags', v)} placeholder={t("vault.inspector.style_example", "cinematic, editorial (Enter to add)")} />
+          <ChipsInput label={t("vault.inspector.palette", "Color palette")} icon={Palette} values={form.color_palette} onChange={v => set('color_palette', v)} placeholder={t("vault.inspector.palette_example", "midnight blue, gold (Enter to add)")} />
         </div>
 
         {/* Footer */}
@@ -208,13 +210,13 @@ export default function AssetInspector({ asset, userEmail, folders = [], onClose
             className="flex-1 flex items-center justify-center gap-2 py-3 bg-yellow-400 hover:bg-yellow-300 text-black rounded-xl font-bold text-sm transition-colors disabled:opacity-50"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            Save
+            {t('vault.save', 'Save')}
           </button>
           <button
             onClick={onClose}
             className="px-5 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-semibold text-sm transition-colors"
           >
-            Cancel
+            {t('vault.cancel', 'Cancel')}
           </button>
         </div>
       </div>
