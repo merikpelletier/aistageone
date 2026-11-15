@@ -58,7 +58,7 @@ export default function ProfileLinksSection({ profile, isOwnProfile, userEmail }
             onClick={() => setEditing(v => !v)}
             className={`px-4 py-2 text-xs font-bold uppercase tracking-wide rounded-xl transition-colors lg:px-[2.5%] lg:py-[1%] lg:text-[0.66vw] lg:rounded-[0.5vw] ${editing ? 'bg-white/10 text-white' : 'bg-white text-black hover:bg-white/90'}`}
           >
-            {editing ? 'Done' : 'Manage'}
+            {editing ? t('Done','Done') : t('Manage','Manage')}
           </button>
         )}
       </div>
@@ -102,7 +102,7 @@ export default function ProfileLinksSection({ profile, isOwnProfile, userEmail }
 
       {links.length === 0 && !editing && (
         <p className="text-white/40 text-sm py-2 lg:text-[0.72vw] lg:py-[0.5%]">
-          {isOwnProfile ? 'No links yet — click "Manage" to add your links.' : 'No links yet.'}
+          {isOwnProfile ? t('No links yet — click "Manage" to add your links.','No links yet — click "Manage" to add your links.') : t('No links yet.','No links yet.')}
         </p>
       )}
     </div>
