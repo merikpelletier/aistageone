@@ -1,4 +1,5 @@
 import React from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart3, TrendingDown, TrendingUp, Scale } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
@@ -8,6 +9,7 @@ function credits(value) {
 }
 
 export default function MemberEconomicsSection({ ownerId, dossiers = [] }) {
+  const t = useStudioTranslation();
   const { data: events = [], isLoading, error } = useQuery({
     queryKey: ['member-economics', ownerId],
     queryFn: async () => {
@@ -53,8 +55,8 @@ export default function MemberEconomicsSection({ ownerId, dossiers = [] }) {
           <BarChart3 className="text-black w-1/2 h-1/2" />
         </div>
         <div>
-          <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-[1.15vw]">Economics</p>
-          <p className="text-white/50 text-xs font-medium lg:text-[0.68vw]">Private — only you can see this</p>
+          <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-[1.15vw]">{t("Economics", "Economics")}</p>
+          <p className="text-white/50 text-xs font-medium lg:text-[0.68vw]">{t("Private — only you can see this", "Private — only you can see this")}</p>
         </div>
       </div>
 
@@ -70,12 +72,12 @@ export default function MemberEconomicsSection({ ownerId, dossiers = [] }) {
         ))}
       </div>
 
-      {isLoading && <p className="text-white/40 text-sm py-2 lg:text-[0.72vw] lg:py-[0.5%]">Loading economics…</p>}
-      {error && <p className="text-red-300 text-sm py-2 lg:text-[0.72vw] lg:py-[0.5%]">Economics are temporarily unavailable.</p>}
+      {isLoading && <p className="text-white/40 text-sm py-2 lg:text-[0.72vw] lg:py-[0.5%]">{t("Loading economics…", "Loading economics…")}</p>}
+      {error && <p className="text-red-300 text-sm py-2 lg:text-[0.72vw] lg:py-[0.5%]">{t("Economics are temporarily unavailable.", "Economics are temporarily unavailable.")}</p>}
 
       {!isLoading && !error && byDossier.size > 0 && (
         <div className="space-y-2 lg:space-y-[1%]">
-          <p className="text-white/50 text-xs font-bold uppercase tracking-wider lg:text-[0.66vw]">By publication</p>
+          <p className="text-white/50 text-xs font-bold uppercase tracking-wider lg:text-[0.66vw]">{t("By publication", "By publication")}</p>
           {[...byDossier.entries()].map(([dossierId, row]) => {
             const rowNet = row.revenue - row.costs;
             return (
@@ -108,7 +110,7 @@ export default function MemberEconomicsSection({ ownerId, dossiers = [] }) {
       )}
 
       {!isLoading && !error && events.length === 0 && (
-        <p className="text-white/40 text-sm text-center py-2 lg:text-[0.72vw] lg:py-[0.6%] lg:text-left">No economics activity yet.</p>
+        <p className="text-white/40 text-sm text-center py-2 lg:text-[0.72vw] lg:py-[0.6%] lg:text-left">{t("No economics activity yet.", "No economics activity yet.")}</p>
       )}
     </div>
   );
