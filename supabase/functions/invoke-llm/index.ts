@@ -17,6 +17,7 @@ serveWithCors(async (request) => {
       instructions: body.instructions,
       imageUrls: body.file_urls || body.image_urls || [],
       schema: body.response_json_schema,
+      modelKey: body.model_key,
     }));
   return Response.json(result);
 });
