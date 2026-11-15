@@ -5,6 +5,7 @@ import { Bot, ChevronDown, ChevronLeft, ChevronUp, Loader2, Plus, Trash2, Users,
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const EXTENSION_TYPES = [
   ['character_style', 'Character / Character Style'],
@@ -32,26 +33,28 @@ function ContentValue({ value }) {
 }
 
 function ContentObject({ value }) {
+  const t = useStudioTranslation();
   return <div className="space-y-3">{Object.entries(value || {}).filter(([, entry]) => !isEmpty(entry)).map(([key, entry]) => (
     <div key={key}>
-      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/35">{humanize(key)}</p>
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/35">{t(humanize(key), humanize(key))}</p>
       <ContentValue value={entry} />
     </div>
   ))}</div>;
 }
 
 function PilotLooks({ content }) {
+  const t = useStudioTranslation();
   const looks = Array.isArray(content?.looks) ? content.looks : [];
-  if (!looks.length) return <p className="text-sm text-white/45">No looks available.</p>;
+  if (!looks.length) return <p className="text-sm text-white/45">{t("No looks available.", "No looks available.")}</p>;
   return <div className="grid gap-4 md:grid-cols-2">
     {looks.map((look, index) => {
       const images = Array.isArray(look.result_images) ? look.result_images.map((entry) => typeof entry === 'string' ? entry : entry?.url).filter(Boolean) : [];
       const details = Object.fromEntries(Object.entries(look).filter(([key, value]) => !['id', 'name', 'result_images'].includes(key) && !isEmpty(value)));
       return <div key={look.id || index} className="overflow-hidden border border-white/10 bg-[#111418]">
-        <div className="border-b border-white/10 p-3"><p className="text-base font-semibold text-white">{look.name || 'Unnamed Look'}</p>{look.type && <p className="mt-1 text-xs capitalize text-[#23c7be]">{String(look.type).replaceAll('_', ' ')}</p>}</div>
-        {images.length > 0 && <div className="grid grid-cols-2 gap-2 p-3">{images.map((url, i) => <a key={i} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden bg-black/50" title="Open look result"><img src={url} alt={`${look.name || 'Look'} result ${i + 1}`} className="aspect-[3/4] w-full object-contain" loading="lazy" /></a>)}</div>}
+        <div className="border-b border-white/10 p-3"><p className="text-base font-semibold text-white">{look.name || t('Unnamed Look', 'Unnamed Look')}</p>{look.type && <p className="mt-1 text-xs capitalize text-[#23c7be]">{String(look.type).replaceAll('_', ' ')}</p>}</div>
+        {images.length > 0 && <div className="grid grid-cols-2 gap-2 p-3">{images.map((url, i) => <a key={i} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden bg-black/50" title={t("Open look result", "Open look result")}><img src={url} alt={`${look.name || 'Look'} result ${i + 1}`} className="aspect-[3/4] w-full object-contain" loading="lazy" /></a>)}</div>}
         <details className="group border-t border-white/10" open={!images.length}>
-          <summary className="flex cursor-pointer list-none items-center justify-between p-3 text-sm font-semibold text-[#23c7be]">Look details <ChevronDown size={16} className="group-open:rotate-180" /></summary>
+          <summary className="flex cursor-pointer list-none items-center justify-between p-3 text-sm font-semibold text-[#23c7be]">{t("Look details", "Look details")} <ChevronDown size={16} className="group-open:rotate-180" /></summary>
           <div className="border-t border-white/10 p-3"><ContentObject value={details} /></div>
         </details>
       </div>;
@@ -71,6 +74,7 @@ const EXTENSION_FIELDS = {
 const ACCEPTED_PILOT_MEDIA = 'image/*,video/*,audio/*';
 const PILOT_FILE_LIMIT = 50 * 1024 * 1024;
 function AdditionMedia({ items = [] }) {
+  const t = useStudioTranslation();
   if (!Array.isArray(items) || !items.length) return null;
   return <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
     {items.map((item, index) => {
@@ -80,8 +84,8 @@ function AdditionMedia({ items = [] }) {
       return <div key={index} className="min-w-0 overflow-hidden border border-white/10 bg-black/30">
         {kind === 'video' ? <video src={url} controls preload="metadata" className="aspect-video w-full object-contain" /> :
           kind === 'audio' ? <div className="p-3"><Music2 size={20} className="mb-2 text-[#23c7be]" /><audio src={url} controls className="w-full" /></div> :
-          <a href={url} target="_blank" rel="noreferrer" title="Open full image"><img src={url} alt={item?.name || 'AI Pilot reference'} loading="lazy" className="aspect-[3/4] w-full object-cover" /></a>}
-        <p className="truncate px-2 py-1.5 text-xs text-white/55">{item?.name || 'Reference media'}</p>
+          <a href={url} target="_blank" rel="noreferrer" title={t("Open full image", "Open full image")}><img src={url} alt={item?.name || t('AI Pilot reference', 'AI Pilot reference')} loading="lazy" className="aspect-[3/4] w-full object-cover" /></a>}
+        <p className="truncate px-2 py-1.5 text-xs text-white/55">{item?.name || t('Reference media', 'Reference media')}</p>
       </div>;
     })}
   </div>;
@@ -96,38 +100,39 @@ const FORMAT_GUIDANCE = {
 const VIDEO_PART_LABELS = [['setup','Scene 1 · Setup'], ['development','Scene 2 · Development'], ['turn','Scene 3 · Turning point'], ['hook','Scene 4 · Hook']];
 
 function ScenarioGuide({ content, sets = [], extensions = [], userSets = [], onSaveShotReferences, savingShot = '' }) {
+  const t = useStudioTranslation();
   const [format, setFormat] = useState('fotoplay');
   const episodes = Array.from({ length: 9 }, (_, index) => (Array.isArray(content?.scenarios) ? content.scenarios[index] : null) || {});
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">9</div><div className="text-[11px] text-white/45">Episodes / chapters</div></div>
-        <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">4</div><div className="text-[11px] text-white/45">Scenes / episode</div></div>
-        <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">Set + Cast</div><div className="text-[11px] text-white/45">Production references</div></div>
+        <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">9</div><div className="text-[11px] text-white/45">{t("Episodes / chapters", "Episodes / chapters")}</div></div>
+        <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">4</div><div className="text-[11px] text-white/45">{t("Scenes / episode", "Scenes / episode")}</div></div>
+        <div className="rounded-lg border border-white/10 p-2"><div className="text-xl font-bold text-white">{t("Set + Cast", "Set + Cast")}</div><div className="text-[11px] text-white/45">{t("Production references", "Production references")}</div></div>
       </div>
-      {content?.creative_brief && <div><div className="text-xs font-bold text-cyan-300">Season theme / Creative brief</div><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-white/75">{content.creative_brief}</p></div>}
+      {content?.creative_brief && <div><div className="text-xs font-bold text-cyan-300">{t("Season theme / Creative brief", "Season theme / Creative brief")}</div><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-white/75">{content.creative_brief}</p></div>}
       <label className="block space-y-2">
-        <span className="text-xs font-bold text-white/70">Choose a production format to view guidance</span>
+        <span className="text-xs font-bold text-white/70">{t("Choose a production format to view guidance", "Choose a production format to view guidance")}</span>
         <select className="w-full rounded-lg border border-white/15 bg-zinc-950 px-3 py-2 text-sm text-white" value={format} onChange={(event) => setFormat(event.target.value)}>
           <option value="fotoplay">FotoPlay</option>
-          <option value="audio">Audio drama</option>
-          <option value="ebook">E-book</option>
-          <option value="video">Video (Shoot / Timeline)</option>
+          <option value="audio">{t("Audio drama", "Audio drama")}</option>
+          <option value="ebook">{t("E-book", "E-book")}</option>
+          <option value="video">{t("Video (Shoot / Timeline)", "Video (Shoot / Timeline)")}</option>
         </select>
       </label>
-      <p className="rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm leading-relaxed text-white/70">{FORMAT_GUIDANCE[format]}</p>
+      <p className="rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3 text-sm leading-relaxed text-white/70">{t(FORMAT_GUIDANCE[format], FORMAT_GUIDANCE[format])}</p>
       <div className="space-y-2">
         {episodes.map((episode,index) => (
           <details key={episode.id || index} className="rounded-lg border border-white/10 bg-black/30 p-3">
-            <summary className="cursor-pointer text-sm font-semibold text-white">Episode {index + 1}{episode.title ? ` · ${episode.title}` : ''}</summary>
+            <summary className="cursor-pointer text-sm font-semibold text-white">{t('Episode','Episode')} {index + 1}{episode.title ? ` · ${episode.title}` : ''}</summary>
             <div className="mt-3 space-y-3">
-              {episode.premise && <div><p className="text-xs font-bold text-white/50">Premise / conflict</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/75">{episode.premise}</p></div>}
-              {episode.outline && <div><p className="text-xs font-bold text-white/50">Story development</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/75">{episode.outline}</p></div>}
+              {episode.premise && <div><p className="text-xs font-bold text-white/50">{t("Premise / conflict", "Premise / conflict")}</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/75">{episode.premise}</p></div>}
+              {episode.outline && <div><p className="text-xs font-bold text-white/50">{t("Story development", "Story development")}</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/75">{episode.outline}</p></div>}
               <div className="space-y-2">
-                <p className="text-xs font-bold text-cyan-300">Episode structure</p>
+                <p className="text-xs font-bold text-cyan-300">{t("Episode structure", "Episode structure")}</p>
                 {VIDEO_PART_LABELS.map(([key, label]) => (
                   <div key={key} className="border-l-2 border-cyan-400/30 pl-3">
-                    <div className="text-xs font-semibold text-white/70">{label}</div>
+                    <div className="text-xs font-semibold text-white/70">{t(label, label)}</div>
                     <p className="mt-1 whitespace-pre-wrap text-xs text-white/60">{episode.parts?.[key] || 'Develop this part from the episode premise and story direction.'}</p>
                   </div>
                 ))}
@@ -139,29 +144,30 @@ function ScenarioGuide({ content, sets = [], extensions = [], userSets = [], onS
                 return <div key={partKey} className="space-y-2 border border-white/10 bg-white/[0.02] p-3">
                   <p className="text-sm font-semibold text-cyan-200">{label} · Composed scene</p>
                   {scene.generated_image && <img src={scene.generated_image} alt={label + ' composed production scene'} className="aspect-video w-full max-w-lg bg-black object-contain" />}
-                  {location && <p className="text-xs text-white/65">Set: {location.name}</p>}
+                  {location && <p className="text-xs text-white/65">{t('Set','Set')}: {location.name}</p>}
                   {scene.set_view_url && <img src={scene.set_view_url} alt="Selected set camera view" className="h-28 max-w-xs object-contain bg-black" />}
-                  {scene.background_placement && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>Background:</strong> {scene.background_placement}</p>}
-                  {scene.blocking && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>Blocking:</strong> {scene.blocking}</p>}
-                  {scene.props && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>Props:</strong> {scene.props}</p>}
-                  {scene.action && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>Action:</strong> {scene.action}</p>}
+                  {scene.background_placement && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>{t("Background:", "Background:")}</strong> {scene.background_placement}</p>}
+                  {scene.blocking && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>{t("Blocking:", "Blocking:")}</strong> {scene.blocking}</p>}
+                  {scene.props && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>{t("Props:", "Props:")}</strong> {scene.props}</p>}
+                  {scene.action && <p className="whitespace-pre-wrap text-xs text-white/65"><strong>{t("Action:", "Action:")}</strong> {scene.action}</p>}
                 </div>;
               })}
-              {format === 'fotoplay' && <p className="text-xs text-white/50">Develop this chapter across nine FotoPlay segments, following the episode direction above.</p>}
-              {episode.scene_ideas && <div><p className="text-xs font-bold text-white/50">Scene inspirations</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/70">{episode.scene_ideas}</p></div>}
-              {episode.creative_options && <div><p className="text-xs font-bold text-white/50">Creative variations</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/70">{episode.creative_options}</p></div>}
-              {!episode.title && !episode.premise && !episode.outline && <p className="text-xs text-white/35">No specific story direction has been provided for this episode yet.</p>}
+              {format === 'fotoplay' && <p className="text-xs text-white/50">{t("Develop this chapter across nine FotoPlay segments, following the episode direction above.", "Develop this chapter across nine FotoPlay segments, following the episode direction above.")}</p>}
+              {episode.scene_ideas && <div><p className="text-xs font-bold text-white/50">{t("Scene inspirations", "Scene inspirations")}</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/70">{episode.scene_ideas}</p></div>}
+              {episode.creative_options && <div><p className="text-xs font-bold text-white/50">{t("Creative variations", "Creative variations")}</p><p className="mt-1 whitespace-pre-wrap text-sm text-white/70">{episode.creative_options}</p></div>}
+              {!episode.title && !episode.premise && !episode.outline && <p className="text-xs text-white/35">{t("No specific story direction has been provided for this episode yet.", "No specific story direction has been provided for this episode yet.")}</p>}
             </div>
           </details>
         ))}
       </div>
-      {content?.creative_freedom && <div><div className="text-xs font-bold text-cyan-300">Freedom to create</div><p className="mt-2 whitespace-pre-wrap text-sm text-white/70">{content.creative_freedom}</p></div>}
-      <p className="text-xs text-white/35">This format choice changes the guidance displayed here; it does not generate content or charge credits.</p>
+      {content?.creative_freedom && <div><div className="text-xs font-bold text-cyan-300">{t("Freedom to create", "Freedom to create")}</div><p className="mt-2 whitespace-pre-wrap text-sm text-white/70">{content.creative_freedom}</p></div>}
+      <p className="text-xs text-white/35">{t("This format choice changes the guidance displayed here; it does not generate content or charge credits.", "This format choice changes the guidance displayed here; it does not generate content or charge credits.")}</p>
     </div>
   );
 }
 
 function PilotDetails({ access, user, onMessage, userSets = [] }) {
+  const t = useStudioTranslation();
   const queryClient = useQueryClient();
   const emptyDraft = () => ({ extension_type: 'character_style', name: '', description: '', notes: '', details: {} });
   const [draft, setDraft] = useState(emptyDraft);
@@ -189,8 +195,8 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
         if (error) throw error;
       }
       await queryClient.invalidateQueries({ queryKey: ['my-ai-pilots', user.id] });
-      onMessage('Personal Set link saved.');
-    } catch (error) { onMessage(error.message || 'Could not link My Set.'); }
+      onMessage(t('Personal Set link saved.', 'Personal Set link saved.'));
+    } catch (error) { onMessage(error.message || t('Could not link My Set.', 'Could not link My Set.')); }
     finally { setSavingSet(''); }
   };
 
@@ -212,27 +218,27 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
         if (error) throw error;
       }
       await queryClient.invalidateQueries({ queryKey: ['my-ai-pilots', user.id] });
-    } catch (error) { onMessage(error.message || 'Could not save shot references.'); }
+    } catch (error) { onMessage(error.message || t('Could not save shot references.', 'Could not save shot references.')); }
     finally { setSavingShot(''); }
   };
 
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      if (!draft.name.trim()) throw new Error('Add a name first.');
+      if (!draft.name.trim()) throw new Error(t('Add a name first.', 'Add a name first.'));
       setUploading(Boolean(files.length));
       try {
         const media = [];
         for (const file of files) {
-          if (!/^(image|video|audio)\//.test(file.type)) throw new Error('Only images, video and audio files are supported.');
-          if (file.size > PILOT_FILE_LIMIT) throw new Error('Each media file must be 50 MB or smaller.');
+          if (!/^(image|video|audio)\//.test(file.type)) throw new Error(t('Only images, video and audio files are supported.', 'Only images, video and audio files are supported.'));
+          if (file.size > PILOT_FILE_LIMIT) throw new Error(t('Each media file must be 50 MB or smaller.', 'Each media file must be 50 MB or smaller.'));
           const base = file.name.replace(/\.[^.]+$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0,70) || 'media';
           const extension = file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
           const path = user.id + '/ai-pilots/member-additions/' + access.id + '/' + Date.now() + '-' + crypto.randomUUID() + '-' + base + '.' + extension;
           const { error: uploadError } = await supabase.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type });
           if (uploadError) throw uploadError;
           const { data } = supabase.storage.from('media').getPublicUrl(path);
-          if (!data?.publicUrl) throw new Error('Unable to obtain media URL.');
+          if (!data?.publicUrl) throw new Error(t('Unable to obtain media URL.', 'Unable to obtain media URL.'));
           media.push({ name: file.name, url: data.publicUrl, type: file.type.split('/')[0], mime_type: file.type });
         }
         const { error } = await supabase.from('member_ai_pilot_extensions').insert({
@@ -251,10 +257,10 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
     onSuccess: async () => {
       setDraft(emptyDraft());
       setFiles([]);
-      onMessage('Personal addition saved.');
+      onMessage(t('Personal addition saved.', 'Personal addition saved.'));
       await queryClient.invalidateQueries({ queryKey: ['my-ai-pilots', user.id] });
     },
-    onError: (error) => onMessage(error?.message || 'Unable to save this addition.'),
+    onError: (error) => onMessage(error?.message || t('Unable to save this addition.', 'Unable to save this addition.')),
   });
 
   const deleteMutation = useMutation({
@@ -263,10 +269,10 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
       if (error) throw error;
     },
     onSuccess: async () => {
-      onMessage('Personal addition removed.');
+      onMessage(t('Personal addition removed.', 'Personal addition removed.'));
       await queryClient.invalidateQueries({ queryKey: ['my-ai-pilots', user.id] });
     },
-    onError: (error) => onMessage(error?.message || 'Unable to remove this addition.'),
+    onError: (error) => onMessage(error?.message || t('Unable to remove this addition.', 'Unable to remove this addition.')),
   });
 
 
@@ -290,19 +296,19 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 text-sm font-semibold text-white hover:bg-white/[0.04]">
         {block.title || humanize(block.block_key)}<ChevronDown size={16} className="text-[#23c7be] group-open:rotate-180" />
       </summary>
-      <div className="border-t border-white/10 p-4">{block.block_key === 'scenario' ? <ScenarioGuide content={block.content || {}} sets={sets} extensions={access.extensions || []} userSets={userSets} onSaveShotReferences={saveShotReferences} savingShot={savingShot} /> : block.block_key === 'looks' ? <PilotLooks content={block.content || {}} /> : <ContentObject value={block.content || {}} />}</div>
+      <div className="border-t border-white/10 p-4">{block.block_key === 'scenario' ? <ScenarioGuide content={block.content || {}} sets={sets} extensions={access.extensions || []} userSets={userSets} onSaveShotReferences={saveShotReferences} savingShot={savingShot} /> {t(": block.block_key === 'looks' ?", ": block.block_key === 'looks' ?")} <PilotLooks content={block.content || {}} /> : <ContentObject value={block.content || {}} />}</div>
     </details>
-  )) : <p className="py-8 text-sm text-white/45">No direction available in this section.</p>;
+  )) : <p className="py-8 text-sm text-white/45">{t("No direction available in this section.", "No direction available in this section.")}</p>;
   return (
     <div className="mt-5 border-t border-white/10 pt-5">
       <div className="mb-5 flex flex-wrap gap-2">
-        {tabs.map(([id, label, Icon]) => <button key={id} type="button" onClick={() => setActiveSection(id)} className={`inline-flex items-center gap-2 border px-3 py-2.5 text-xs font-semibold transition-colors ${activeSection === id ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#23c7be]' : 'border-white/10 bg-white/[0.03] text-white/65 hover:border-white/25 hover:text-white'}`}><Icon size={15} />{label}</button>)}
+        {tabs.map(([id, label, Icon]) => <button key={id} type="button" onClick={() => setActiveSection(id)} className={`inline-flex items-center gap-2 border px-3 py-2.5 text-xs font-semibold transition-colors ${activeSection === id ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#23c7be]' : 'border-white/10 bg-white/[0.03] text-white/65 hover:border-white/25 hover:text-white'}`}><Icon size={15} />{t(label,label)}</button>)}
       </div>
       <div className="min-h-[160px] max-w-5xl">
-        {activeSection === 'overview' && <div className="space-y-3">{access.pilot?.description && <div className="border border-white/10 bg-[#171b20] p-4"><p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#23c7be]">Series Overview</p><p className="whitespace-pre-wrap text-sm leading-relaxed text-white/75">{access.pilot.description}</p></div>}</div>}
+        {activeSection === 'overview' && <div className="space-y-3">{access.pilot?.description && <div className="border border-white/10 bg-[#171b20] p-4"><p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#23c7be]">{t("Series Overview", "Series Overview")}</p><p className="whitespace-pre-wrap text-sm leading-relaxed text-white/75">{access.pilot.description}</p></div>}</div>}
         {activeSection === 'scenario' && <div className="space-y-3">{renderBlocks(scenarioBlocks)}</div>}
-        {activeSection === 'characters' && <div className="grid gap-3 md:grid-cols-2">{characters.length ? characters.map((character) => <details key={character.id} className="group border border-white/10 bg-[#171b20] p-4"><summary className="flex cursor-pointer list-none items-center gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden bg-black/40">{(character.reference_images || []).length ? <img src={typeof character.reference_images[0] === 'string' ? character.reference_images[0] : character.reference_images[0]?.url} alt="" className="h-full w-full object-cover" /> : <Users size={20} className="text-white/30" />}</div><div className="min-w-0 flex-1"><p className="font-semibold text-white">{character.role_name}</p><p className="line-clamp-1 text-xs text-white/45">{character.narrative_function || character.description}</p></div><ChevronDown size={15} className="text-[#23c7be] group-open:rotate-180" /></summary><div className="mt-3 border-t border-white/10 pt-3"><ContentObject value={{ description: character.description, narrative_function: character.narrative_function, personality: character.personality, behavior: character.behavior, visual_identity: character.visual_identity, wardrobe_look: character.wardrobe_look, continuity_locks: character.continuity_locks, production_notes: character.production_notes }} /></div></details>) : <p className="text-sm text-white/45">No characters in this Pilot.</p>}</div>}
-        {activeSection === 'sets' && <div className="grid gap-4 lg:grid-cols-2"><div><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#23c7be]">Locations · {locations.length}</p><div className="space-y-2">{locations.map((location) => <details key={location.id} className="border border-white/10 bg-[#171b20] p-3"><summary className="cursor-pointer text-sm font-semibold text-white">{location.name}</summary><p className="mt-2 whitespace-pre-wrap text-sm text-white/65">{location.description}</p></details>)}{!locations.length && <p className="text-sm text-white/45">No locations added.</p>}</div></div><div><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#23c7be]">Sets · {sets.length}</p><div className="space-y-2">{sets.map((set) => {
+        {activeSection === 'characters' && <div className="grid gap-3 md:grid-cols-2">{characters.length ? characters.map((character) => <details key={character.id} className="group border border-white/10 bg-[#171b20] p-4"><summary className="flex cursor-pointer list-none items-center gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden bg-black/40">{(character.reference_images || []).length ? <img src={typeof character.reference_images[0] === 'string' ? character.reference_images[0] : character.reference_images[0]?.url} alt="" className="h-full w-full object-cover" /> : <Users size={20} className="text-white/30" />}</div><div className="min-w-0 flex-1"><p className="font-semibold text-white">{character.role_name}</p><p className="line-clamp-1 text-xs text-white/45">{character.narrative_function || character.description}</p></div><ChevronDown size={15} className="text-[#23c7be] group-open:rotate-180" /></summary><div className="mt-3 border-t border-white/10 pt-3"><ContentObject value={{ description: character.description, narrative_function: character.narrative_function, personality: character.personality, behavior: character.behavior, visual_identity: character.visual_identity, wardrobe_look: character.wardrobe_look, continuity_locks: character.continuity_locks, production_notes: character.production_notes }} /></div></details>) : <p className="text-sm text-white/45">{t("No characters in this Pilot.", "No characters in this Pilot.")}</p>}</div>}
+        {activeSection === 'sets' && <div className="grid gap-4 lg:grid-cols-2"><div><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#23c7be]">{t('Locations','Locations')} · {locations.length}</p><div className="space-y-2">{locations.map((location) => <details key={location.id} className="border border-white/10 bg-[#171b20] p-3"><summary className="cursor-pointer text-sm font-semibold text-white">{location.name}</summary><p className="mt-2 whitespace-pre-wrap text-sm text-white/65">{location.description}</p></details>)}{!locations.length && <p className="text-sm text-white/45">{t("No locations added.", "No locations added.")}</p>}</div></div><div><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#23c7be]">{t('Sets','Sets')} · {sets.length}</p><div className="space-y-2">{sets.map((set) => {
                 const override = (access.extensions || []).find(entry => entry.extension_type === 'set' && entry.operation === 'replace' && entry.target_item_id === set.id);
                 const linkedId = override?.content?.my_set_id ?? set.my_set_id ?? '';
                 const linked = userSets.find(item => item.id === linkedId);
@@ -315,74 +321,74 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
                       disabled={savingSet === set.id}
                       onChange={event => saveSetLink(set.id, event.target.value)}
                       className="mt-2 w-full border border-white/20 bg-[#151719] p-2 text-sm text-white">
-                      <option value="">No personal Set linked</option>
-                      {userSets.map(item => <option key={item.id} value={item.id}>{item.name || 'Unnamed Set'}</option>)}
+                      <option value="">{t("No personal Set linked", "No personal Set linked")}</option>
+                      {userSets.map(item => <option key={item.id} value={item.id}>{item.name || t('Unnamed Set', 'Unnamed Set')}</option>)}
                     </select>
                   </label>
                   {linked ? <div className="mt-3 space-y-2">
-                    <p className="text-xs text-[#23c7be]">My Sets · {linked.name} · {sheetItems.length} reference elements</p>
+                    <p className="text-xs text-[#23c7be]">{t('My Sets','My Sets')} · {linked.name} · {sheetItems.length} {t('reference elements','reference elements')}</p>
                     {!!(linked.images || []).filter(Boolean).length && <div className="space-y-2">
-                      <p className="text-[11px] font-semibold text-white/60">Camera Views</p>
-                      <div className="grid grid-cols-2 gap-2">{linked.images.map((url, index) => url ? <div key={index} className="border border-white/10 bg-black p-2">
-                        <img src={url} alt={['Hero','Wide','Reverse','Left','Right','Detail','Day','Night'][index] || 'Set view'} className="h-24 w-full object-contain" />
-                        <p className="mt-1 text-[11px] text-white/65">{['Hero','Wide','Reverse','Left','Right','Detail','Day','Night'][index] || `View ${index+1}`}</p>
+                      <p className="text-[11px] font-semibold text-white/60">{t("Camera Views", "Camera Views")}</p>
+                      <div className="grid grid-cols-2 gap-2">{linked.images.map((url, index) => {t("url ?", "url ?")} <div key={index} className="border border-white/10 bg-black p-2">
+                        <img src={url} alt={t(['Hero','Wide','Reverse','Left','Right','Detail','Day','Night'][index] || 'Set view', ['Hero','Wide','Reverse','Left','Right','Detail','Day','Night'][index] || 'Set view')} className="h-24 w-full object-contain" />
+                        <p className="mt-1 text-[11px] text-white/65">{t(['Hero','Wide','Reverse','Left','Right','Detail','Day','Night'][index] || 'View', ['Hero','Wide','Reverse','Left','Right','Detail','Day','Night'][index] || 'View')}</p>
                       </div> : null)}</div>
                     </div>}
                     {!!sheetItems.length && <div className="grid grid-cols-2 gap-2">{sheetItems.map((item,index) =>
                       <div key={item.id || index} className="border border-white/10 bg-black p-2"><img src={item.image_url} alt={item.name} className="h-24 w-full object-contain" /><p className="mt-1 truncate text-[11px] text-white/65">{item.name}</p></div>)}</div>}
-                  </div> : <p className="mt-2 text-[11px] text-white/45">Connect a Set from My Sets to use your personal Reference Sheet. The published AI Pilot remains unchanged.</p>}
+                  </div> : <p className="mt-2 text-[11px] text-white/45">{t("Connect a Set from My Sets to use your personal Reference Sheet. The published AI Pilot remains unchanged.", "Connect a Set from My Sets to use your personal Reference Sheet. The published AI Pilot remains unchanged.")}</p>}
                   {Array.isArray(set.reference_images) && set.reference_images.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{set.reference_images.map((image,index) =>
                     <img key={index} src={typeof image === 'string' ? image : image?.url} alt="Original AI Pilot set" className="h-20 w-28 object-contain bg-black" />)}</div>}
                 </details>;
-              })}{!sets.length && <p className="text-sm text-white/45">No sets added.</p>}</div></div></div>}
+              })}{!sets.length && <p className="text-sm text-white/45">{t("No sets added.", "No sets added.")}</p>}</div></div></div>}
         {activeSection === 'direction' && <div className="space-y-3">{renderBlocks(directionBlocks)}</div>}
         {activeSection === 'additions' && <div className="max-w-5xl space-y-5">
-          <div><h3 className="text-lg font-semibold text-white">My Additions</h3><p className="mt-1 text-sm text-white/50">Your personal characters, sets and directions do not change the published AI Pilot.</p></div>
+          <div><h3 className="text-lg font-semibold text-white">{t("My Additions", "My Additions")}</h3><p className="mt-1 text-sm text-white/50">{t("Your personal characters, sets and directions do not change the published AI Pilot.", "Your personal characters, sets and directions do not change the published AI Pilot.")}</p></div>
           <div className="grid gap-3 lg:grid-cols-2">
             {(access.extensions || []).map((extension) => {
               const content = extension.content || {};
               const { media, description, notes, ...details } = content;
               return <div key={extension.id} className="border border-white/10 bg-[#171b20] p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0"><p className="text-xs uppercase tracking-wider text-[#23c7be]">{humanize(extension.extension_type)}</p><h4 className="mt-1 font-semibold text-white">{extension.name}</h4></div>
-                  <button type="button" onClick={() => { if (window.confirm('Remove this personal addition?')) deleteMutation.mutate(extension.id); }} disabled={deleteMutation.isPending} className="text-red-300 hover:text-red-200" aria-label={'Remove ' + extension.name}><Trash2 size={16} /></button>
+                  <div className="min-w-0"><p className="text-xs uppercase tracking-wider text-[#23c7be]">{t(humanize(extension.extension_type), humanize(extension.extension_type))}</p><h4 className="mt-1 font-semibold text-white">{extension.name}</h4></div>
+                  <button type="button" onClick={() => { if (window.confirm(t('Remove this personal addition?', 'Remove this personal addition?'))) deleteMutation.mutate(extension.id); }} disabled={deleteMutation.isPending} className="text-red-300 hover:text-red-200" aria-label={'Remove ' + extension.name}><Trash2 size={16} /></button>
                 </div>
                 <AdditionMedia items={media} />
                 <div className="mt-3 space-y-2 text-sm text-white/70">
                   {description && <p className="whitespace-pre-wrap">{description}</p>}
-                  {(notes || Object.values(details).some(Boolean)) && <details className="border-t border-white/10 pt-3"><summary className="cursor-pointer text-xs font-semibold text-[#23c7be]">View production details</summary><div className="mt-3"><ContentObject value={{ ...details, notes }} /></div></details>}
+                  {(notes || Object.values(details).some(Boolean)) && <details className="border-t border-white/10 pt-3"><summary className="cursor-pointer text-xs font-semibold text-[#23c7be]">{t("View production details", "View production details")}</summary><div className="mt-3"><ContentObject value={{ ...details, notes }} /></div></details>}
                 </div>
               </div>;
             })}
           </div>
-          {!(access.extensions || []).length && <p className="text-sm text-white/45">No personal additions yet.</p>}
+          {!(access.extensions || []).length && <p className="text-sm text-white/45">{t("No personal additions yet.", "No personal additions yet.")}</p>}
           <div className="space-y-4 border border-[#23c7be]/25 bg-[#111b1e] p-4 sm:p-5">
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-[#23c7be]">Add to My AI Pilot</h4>
+            <h4 className="text-sm font-semibold uppercase tracking-wider text-[#23c7be]">{t("Add to My AI Pilot", "Add to My AI Pilot")}</h4>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block space-y-2"><span className="text-xs font-semibold text-white/65">Addition type</span>
+              <label className="block space-y-2"><span className="text-xs font-semibold text-white/65">{t("Addition type", "Addition type")}</span>
                 <select value={draft.extension_type} onChange={(event) => setDraft((current) => ({ ...current, extension_type: event.target.value, details: {} }))} className="w-full border border-white/20 bg-[#15191e] px-3 py-3 text-sm text-white">
-                  {EXTENSION_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  {EXTENSION_TYPES.map(([value, label]) => <option key={value} value={value}>{t(label, label)}</option>)}
                 </select>
               </label>
-              <label className="block space-y-2"><span className="text-xs font-semibold text-white/65">Name *</span>
-                <input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Name your addition" className="w-full border border-white/20 bg-[#15191e] px-3 py-3 text-sm text-white placeholder:text-white/35" />
+              <label className="block space-y-2"><span className="text-xs font-semibold text-white/65">{t("Name *", "Name *")}</span>
+                <input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder={t('Name your addition', 'Name your addition')} className="w-full border border-white/20 bg-[#15191e] px-3 py-3 text-sm text-white placeholder:text-white/35" />
               </label>
             </div>
-            <label className="block space-y-2"><span className="text-xs font-semibold text-white/65">Description</span><textarea value={draft.description} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} rows={3} placeholder="Describe this character, set or production element" className="w-full border border-white/20 bg-[#15191e] px-3 py-3 text-sm text-white" /></label>
+            <label className="block space-y-2"><span className="text-xs font-semibold text-white/65">{t("Description", "Description")}</span><textarea value={draft.description} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} rows={3} placeholder={t('Describe this character, set or production element', 'Describe this character, set or production element')} className="w-full border border-white/20 bg-[#15191e] px-3 py-3 text-sm text-white" /></label>
             <div className="grid gap-4 sm:grid-cols-2">
-              {(EXTENSION_FIELDS[draft.extension_type] || []).map(([key, label]) => <label key={key} className="block space-y-2"><span className="text-xs font-semibold text-white/65">{label}</span><textarea value={draft.details[key] || ''} onChange={(event) => setDraft((current) => ({ ...current, details: { ...current.details, [key]: event.target.value } }))} rows={2} className="w-full border border-white/20 bg-[#15191e] px-3 py-3 text-sm text-white" /></label>)}
+              {(EXTENSION_FIELDS[draft.extension_type] || []).map(([key, label]) => <label key={key} className="block space-y-2"><span className="text-xs font-semibold text-white/65">{t(label, label)}</span><textarea value={draft.details[key] || ''} onChange={(event) => setDraft((current) => ({ ...current, details: { ...current.details, [key]: event.target.value } }))} rows={2} className="w-full border border-white/20 bg-[#15191e] px-3 py-3 text-sm text-white" /></label>)}
             </div>
-            <label className="block space-y-2"><span className="text-xs font-semibold text-white/65">Direction / notes for AI tools</span><textarea value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} rows={3} placeholder="How should the AI use this addition?" className="w-full border border-white/20 bg-[#15191e] px-3 py-3 text-sm text-white" /></label>
+            <label className="block space-y-2"><span className="text-xs font-semibold text-white/65">{t("Direction / notes for AI tools", "Direction / notes for AI tools")}</span><textarea value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} rows={3} placeholder={t('How should the AI use this addition?', 'How should the AI use this addition?')} className="w-full border border-white/20 bg-[#15191e] px-3 py-3 text-sm text-white" /></label>
             <div className="border border-white/10 bg-black/20 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div><p className="text-sm font-semibold text-white">Reference media</p><p className="mt-1 text-xs text-white/50">Images, video or audio — especially for characters and sets. Maximum 50 MB per file.</p></div>
+                <div><p className="text-sm font-semibold text-white">{t("Reference media", "Reference media")}</p><p className="mt-1 text-xs text-white/50">{t("Images, video or audio — especially for characters and sets. Maximum 50 MB per file.", "Images, video or audio — especially for characters and sets. Maximum 50 MB per file.")}</p></div>
                 <label className="inline-flex cursor-pointer items-center gap-2 border border-white/20 bg-white/[0.05] px-3 py-2 text-sm font-semibold text-white hover:bg-white/10"><Upload size={16}/> Add media
-                  <input type="file" className="hidden" accept={ACCEPTED_PILOT_MEDIA} multiple disabled={uploading || addMutation.isPending} onChange={(event) => { const incoming = Array.from(event.target.files || []); event.target.value = ''; if (incoming.some((file) => !/^(image|video|audio)\//.test(file.type) || file.size > PILOT_FILE_LIMIT)) { onMessage('Use image, video or audio files, maximum 50 MB each.'); return; } setFiles((current) => [...current, ...incoming]); }} />
+                  <input type="file" className="hidden" accept={ACCEPTED_PILOT_MEDIA} multiple disabled={uploading || addMutation.isPending} onChange={(event) => { const incoming = Array.from(event.target.files || []); event.target.value = ''; if (incoming.some((file) => !/^(image|video|audio)\//.test(file.type) || file.size > PILOT_FILE_LIMIT)) { onMessage(t('Use image, video or audio files, maximum 50 MB each.', 'Use image, video or audio files, maximum 50 MB each.')); return; } setFiles((current) => [...current, ...incoming]); }} />
                 </label>
               </div>
               {files.length > 0 && <div className="mt-3 space-y-2">{files.map((file, index) => <div key={index} className="flex items-center justify-between gap-2 border border-white/10 bg-black/30 px-3 py-2 text-xs"><span className="min-w-0 truncate text-white/70">{file.name} · {(file.size / (1024 * 1024)).toFixed(1)} MB</span><button type="button" aria-label={'Remove ' + file.name} onClick={() => setFiles((current) => current.filter((_, i) => i !== index))} className="shrink-0 text-white/55 hover:text-white"><X size={15} /></button></div>)}</div>}
             </div>
-            <Button type="button" onClick={() => addMutation.mutate()} disabled={addMutation.isPending || uploading || !draft.name.trim()} className="w-full bg-[#23c7be] text-black hover:bg-[#23c7be]/85"><Plus size={16} className="mr-2"/>{addMutation.isPending ? 'Saving addition…' : 'Add to My AI Pilot'}</Button>
+            <Button type="button" onClick={() => addMutation.mutate()} disabled={addMutation.isPending || uploading || !draft.name.trim()} className="w-full bg-[#23c7be] text-black hover:bg-[#23c7be]/85"><Plus size={16} className="mr-2"/>{addMutation.isPending ? t('Saving addition…','Saving addition…') : t('Add to My AI Pilot','Add to My AI Pilot')}</Button>
           </div>
         </div>}
       </div>
@@ -391,6 +397,7 @@ function PilotDetails({ access, user, onMessage, userSets = [] }) {
 }
 
 export default function MyAIPilots({ embedded = false }) {
+  const t = useStudioTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isLoadingAuth } = useAuth();
@@ -477,13 +484,13 @@ export default function MyAIPilots({ embedded = false }) {
   return (
     <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} bg-black pb-20 text-white`}>
       <main className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6">
-        {!embedded && <button type="button" onClick={() => navigate('/MemberDashboard')} className="mb-8 inline-flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white"><ChevronLeft size={18} /> Account</button>}
+        {!embedded && <button type="button" onClick={() => navigate('/MemberDashboard')} className="mb-8 inline-flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white"><ChevronLeft size={18} /> {t("Account", "Account")}</button>}
         <div className="mb-8 flex flex-col gap-3 border-b border-white/10 pb-6 sm:flex-row sm:items-end sm:justify-between">
-          <div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-400">AISTAGE.ONE Direction System</p><h1 className="mt-2 text-4xl font-light tracking-tight">My AI Pilots</h1><p className="mt-2 max-w-2xl text-sm text-white/50">View the published Pilot and add your own production elements.</p></div>
-          <Button type="button" variant="outline" onClick={() => navigate('/Catalog')} className="border-white/20 bg-white/[0.03] text-white hover:bg-white/10">Browse Assets Shop</Button>
+          <div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-400">{t("AISTAGE.ONE Direction System", "AISTAGE.ONE Direction System")}</p><h1 className="mt-2 text-4xl font-light tracking-tight">{t("My AI Pilots", "My AI Pilots")}</h1><p className="mt-2 max-w-2xl text-sm text-white/50">{t("View the published Pilot and add your own production elements.", "View the published Pilot and add your own production elements.")}</p></div>
+          <Button type="button" variant="outline" onClick={() => navigate('/Catalog')} className="border-white/20 bg-white/[0.03] text-white hover:bg-white/10">{t("Browse Assets Shop", "Browse Assets Shop")}</Button>
         </div>
         {(libraryError || message) && <div className={`mb-5 border p-4 text-sm ${libraryError ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-cyan-400/20 bg-cyan-400/10 text-cyan-100'}`}>{libraryError?.message || message}</div>}
-        {library.length === 0 ? <div className="border border-dashed border-white/15 px-6 py-16 text-center"><Bot className="mx-auto text-white/25" size={46} /><h2 className="mt-4 text-xl font-light">No AI Pilot in your library</h2><p className="mt-2 text-sm text-white/40">AI Pilots acquired or granted to your account will appear here.</p><Button type="button" onClick={() => navigate('/Catalog')} className="mt-6">Browse Assets Shop</Button></div> : (
+        {library.length === 0 ? <div className="border border-dashed border-white/15 px-6 py-16 text-center"><Bot className="mx-auto text-white/25" size={46} /><h2 className="mt-4 text-xl font-light">{t("No AI Pilot in your library", "No AI Pilot in your library")}</h2><p className="mt-2 text-sm text-white/40">{t("AI Pilots acquired or granted to your account will appear here.", "AI Pilots acquired or granted to your account will appear here.")}</p><Button type="button" onClick={() => navigate('/Catalog')} className="mt-6">{t("Browse Assets Shop", "Browse Assets Shop")}</Button></div> : (
           <div className="space-y-4">{library.map((access) => {
             const title = access.presentation?.title || access.pilot?.name || 'AI Pilot';
             const description = access.presentation?.description || access.pilot?.description || '';
@@ -494,11 +501,11 @@ export default function MyAIPilots({ embedded = false }) {
               <div className="grid gap-5 p-4 sm:grid-cols-[120px_minmax(0,1fr)] sm:p-5 lg:grid-cols-[140px_minmax(0,1fr)]">
                 <div className="aspect-[3/4] overflow-hidden bg-[#20242a]">{image ? <img src={image} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Bot size={38} className="text-white/25" /></div>}</div>
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-white/45"><span>Version {access.version?.version_number || '?'}</span><span>·</span><span>{humanize(access.access_source)}</span>{access.presentation?.creator_name && <><span>·</span><span>{access.presentation.creator_name}</span></>}</div>
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-white/45"><span>{t('Version','Version')} {access.version?.version_number || '?'}</span><span>·</span><span>{t(humanize(access.access_source), humanize(access.access_source))}</span>{access.presentation?.creator_name && <><span>·</span><span>{access.presentation.creator_name}</span></>}</div>
                   <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">{title}</h2>
                   {description && <p className="mt-2 line-clamp-3 max-w-2xl text-sm leading-relaxed text-white/60">{description}</p>}
-                  <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/55"><span className="border border-white/10 bg-white/[0.04] px-2.5 py-1.5">{(access.characters || []).length} Characters</span><span className="border border-white/10 bg-white/[0.04] px-2.5 py-1.5">{locationCount} Sets & Locations</span><span className="border border-white/10 bg-white/[0.04] px-2.5 py-1.5">{(access.blocks || []).length} Direction Sections</span></div>
-                  <button type="button" onClick={() => setExpanded((current) => ({ ...current, [access.id]: !current[access.id] }))} className="mt-4 inline-flex items-center gap-2 border border-[#23c7be]/50 bg-[#23c7be]/10 px-3 py-2 text-sm font-semibold text-[#23c7be]">{expanded[access.id] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{expanded[access.id] ? 'Close Pilot' : 'Open Pilot'}</button>
+                  <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/55"><span className="border border-white/10 bg-white/[0.04] px-2.5 py-1.5">{(access.characters || []).length} {t('Characters','Characters')}</span><span className="border border-white/10 bg-white/[0.04] px-2.5 py-1.5">{locationCount} {t('Sets & Locations','Sets & Locations')}</span><span className="border border-white/10 bg-white/[0.04] px-2.5 py-1.5">{(access.blocks || []).length} {t('Direction Sections','Direction Sections')}</span></div>
+                  <button type="button" onClick={() => setExpanded((current) => ({ ...current, [access.id]: !current[access.id] }))} className="mt-4 inline-flex items-center gap-2 border border-[#23c7be]/50 bg-[#23c7be]/10 px-3 py-2 text-sm font-semibold text-[#23c7be]">{expanded[access.id] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{expanded[access.id] ? t('Close Pilot','Close Pilot') : t('Open Pilot','Open Pilot')}</button>
                 </div>
 
               </div>
