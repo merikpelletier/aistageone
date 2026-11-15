@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link2, Plus, Trash2, ExternalLink, Loader2 } from 'lucide-react';
 
 export default function ProfileLinksSection({ profile, isOwnProfile, userEmail }) {
+  const t = useStudioTranslation();
   const queryClient = useQueryClient();
   const [links, setLinks] = useState(profile?.links || []);
   const [editing, setEditing] = useState(false);
@@ -49,7 +51,7 @@ export default function ProfileLinksSection({ profile, isOwnProfile, userEmail }
           <div className="w-10 h-10 bg-blue-400/20 rounded-xl flex items-center justify-center lg:w-[8%] lg:aspect-square lg:h-auto lg:rounded-[20%]">
             <Link2 className="text-blue-400 w-1/2 h-1/2" />
           </div>
-          <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-[1.15vw]">Links</p>
+          <p className="text-white text-xl font-bold uppercase tracking-wider lg:text-[1.15vw]">{t("Links", "Links")}</p>
         </div>
         {isOwnProfile && (
           <button
@@ -88,7 +90,7 @@ export default function ProfileLinksSection({ profile, isOwnProfile, userEmail }
       {editing && (
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-col gap-2 pt-2 border-t border-white/10 lg:gap-[1%] lg:pt-[1%]">
           <div className="flex gap-2 lg:gap-[1%]">
-            <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="Label (e.g. Instagram)" className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/40 lg:rounded-[0.5vw] lg:px-[2%] lg:py-[1%] lg:text-[0.72vw]" />
+            <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder={t("Label (e.g. Instagram)", "Label (e.g. Instagram)")} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/40 lg:rounded-[0.5vw] lg:px-[2%] lg:py-[1%] lg:text-[0.72vw]" />
             <input value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://..." className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/40 lg:rounded-[0.5vw] lg:px-[2%] lg:py-[1%] lg:text-[0.72vw]" />
           </div>
           <button onClick={handleAdd} disabled={!newUrl.trim() || saving} className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-xl disabled:opacity-40 transition-colors lg:gap-[1%] lg:py-[1%] lg:text-[0.72vw] lg:rounded-[0.5vw]">
