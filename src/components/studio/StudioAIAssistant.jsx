@@ -98,7 +98,7 @@ export default function StudioAIAssistant() {
   const [error, setError] = useState('');
   const [model, setModel] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
-  const { options: assistantModels, loading: loadingModels } = useAiModelOptions({ service: 'invoke-llm', kind: 'text', input: { prompt: 'Assistant Studio', max_tokens: 4000, max_output_tokens: 4000 }, enabled: open && panel === 'chat' });
+  const { options: assistantModels, loading: loadingModels } = useAiModelOptions({ service: 'studio-ai-assistant', kind: 'text', input: { prompt: 'Assistant Studio', max_tokens: 4000, max_output_tokens: 4000 }, enabled: open && panel === 'chat' });
   const availableModels = assistantModels.filter(option => option.credits != null && !option.unavailable_reason);
   useEffect(() => {
     if (availableModels.length && !availableModels.some(option => option.model_key === selectedModel)) {
