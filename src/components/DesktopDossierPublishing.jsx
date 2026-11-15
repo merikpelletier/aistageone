@@ -75,7 +75,7 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
         toast.error(res.data.error);
         return;
       }
-      toast.success(story.is_published ? 'Dossier updated.' : 'Dossier published.');
+      toast.success(story.is_published ? t('Dossier updated.','Dossier updated.') : t('Dossier published.','Dossier published.'));
       qc.invalidateQueries({ queryKey: ['userTimelineStories', userEmail] });
       qc.invalidateQueries({ queryKey: ['desktopMemberDossiers', userEmail] });
       qc.invalidateQueries({ queryKey: ['desktopMemberDirectDossiers', userEmail] });
@@ -107,7 +107,7 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
         qc.invalidateQueries({ queryKey: ['desktopMemberDossiers', userEmail] }),
         qc.invalidateQueries({ queryKey: ['memberDossiers'] }),
       ]);
-      toast.success('Dossier deleted.');
+      toast.success(t('Dossier deleted.','Dossier deleted.'));
     } catch (error) {
       console.error('Dossier delete failed', error);
       toast.error(error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Unable to delete dossier.');
@@ -157,8 +157,8 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
                 <div className="min-w-0 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-base font-semibold text-white">{story.production_name || story.episode_title || 'Untitled project'}</p>
-                      <p className="mt-1 text-xs text-white/45">{scenes} scene{scenes === 1 ? '' : 's'} · Timeline / FotoPlay</p>
+                      <p className="truncate text-base font-semibold text-white">{story.production_name || story.episode_title || t('Untitled project','Untitled project')}</p>
+                      <p className="mt-1 text-xs text-white/45">{scenes} {scenes === 1 ? t('scene','scene') : t('scenes','scenes')} · Timeline / FotoPlay</p>
                     </div>
                     {linkedDossier ? (
                       <div className="flex shrink-0 gap-2">
@@ -177,7 +177,7 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
 
                   <button onClick={() => publish(story)} disabled={publishingId === story.id} className="mt-3 flex w-full items-center justify-center gap-2 bg-white px-4 py-2 text-sm font-bold text-black disabled:opacity-50">
                     {publishingId === story.id ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                    {isPublished ? 'Republish dossier' : 'Publish dossier'}
+                    {isPublished ? t('Republish dossier','Republish dossier') : t('Publish dossier','Publish dossier')}
                   </button>
                 </div>
               </div>
@@ -188,14 +188,14 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
             <div key={`dossier-${dossier.id}`} className="grid min-w-0 grid-cols-[110px_minmax(0,1fr)] overflow-hidden border border-white/10 bg-neutral-950">
               <div className="relative min-h-[138px] bg-neutral-900">
                 {dossier.cover_image ? <img src={dossier.cover_image} alt="" className="absolute inset-0 h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Film size={28} className="text-white/25" /></div>}
-                <div className="absolute left-2 top-2 flex items-center gap-1 bg-black/85 px-2 py-1 text-[10px] font-bold uppercase text-white">{dossier.status === 'published' ? <><CheckCircle2 size={11} /> Published</> : dossier.status || 'Draft'}</div>
+                <div className="absolute left-2 top-2 flex items-center gap-1 bg-black/85 px-2 py-1 text-[10px] font-bold uppercase text-white">{dossier.status === 'published' ? <><CheckCircle2 size={11} /> {t('Published','Published')}</> : t(dossier.status || 'Draft',dossier.status || 'Draft')}</div>
               </div>
 
               <div className="min-w-0 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-base font-semibold text-white">{dossier.title || 'Untitled dossier'}</p>
-                    <p className="mt-1 text-xs text-white/45">Direct dossier{dossier.category ? ` · ${dossier.category}` : ''}</p>
+                    <p className="truncate text-base font-semibold text-white">{dossier.title || t('Untitled dossier','Untitled dossier')}</p>
+                    <p className="mt-1 text-xs text-white/45">{t('Direct dossier','Direct dossier')}{dossier.category ? ` · ${dossier.category}` : ''}</p>
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <button onClick={() => setManagingDossier(dossier)} className="flex items-center gap-1.5 border border-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:border-white/50"><Layers size={12} /> Pages</button>
@@ -211,7 +211,7 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
                 </div>
 
                 <div className="mt-3 flex gap-2 text-xs text-white/55">
-                  <span className="border border-white/10 px-2 py-1">{dossier.access_level === 'subscribers' ? 'Subscribers only' : 'Public'}</span>
+                  <span className="border border-white/10 px-2 py-1">{dossier.access_level === 'subscribers' ? t('Subscribers only','Subscribers only') : t('Public','Public')}</span>
                   {dossier.content_rating && <span className="border border-white/10 px-2 py-1">{dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}</span>}
                   {(dossier.default_language || dossier.original_language) && <span className="border border-white/10 px-2 py-1 uppercase">{dossier.default_language || dossier.original_language}</span>}
                 </div>
