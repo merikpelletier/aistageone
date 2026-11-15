@@ -16,7 +16,7 @@ serveWithCors(async (request) => {
     const prompt = String(body.prompt || '');
     const quote = await quoteAiService(
       billing.service,
-      'invoke-llm',
+      'studio-ai-assistant',
       { prompt: `${instructions}\n${prompt}`, max_tokens: 4000, max_output_tokens: 4000 },
       body.model_key || null,
       'text',
