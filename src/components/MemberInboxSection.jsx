@@ -63,10 +63,10 @@ export default function MemberInboxSection({ userEmail }) {
 
         <div className="flex gap-2 lg:gap-[0.5vw] lg:w-[30%]">
           <button onClick={() => setTab('received')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wide transition-colors lg:gap-[4%] lg:py-[3%] lg:text-[0.64vw] lg:rounded-[0.5vw] ${tab === 'received' ? 'bg-white text-black' : 'bg-white/5 text-white/50 hover:text-white'}`}>
-            <Inbox className="w-[0.75vw] h-[0.75vw]" / >{t('Received','Received')}
+            <Inbox className="w-[0.75vw] h-[0.75vw]" />{t('Received','Received')}
           </button>
           <button onClick={() => setTab('sent')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wide transition-colors lg:gap-[4%] lg:py-[3%] lg:text-[0.64vw] lg:rounded-[0.5vw] ${tab === 'sent' ? 'bg-white text-black' : 'bg-white/5 text-white/50 hover:text-white'}`}>
-            <Send className="w-[0.75vw] h-[0.75vw]" / >{t('Sent','Sent')}
+            <Send className="w-[0.75vw] h-[0.75vw]" />{t('Sent','Sent')}
           </button>
         </div>
       </div>
