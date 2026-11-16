@@ -1,8 +1,8 @@
 const CACHE_PREFIX = 'aistage-pwa-';
-const CACHE_NAME = `${CACHE_PREFIX}v4`;
+const CACHE_NAME = `${CACHE_PREFIX}v5`;
 const APP_SHELL = [
   '/',
-  '/manifest.json?v=9',
+  '/manifest.json?v=10',
   '/icons/favicon-32x32.png?v=6',
   '/icons/favicon-48x48.png?v=6',
   '/icons/apple-touch-icon.png?v=6',
