@@ -508,11 +508,22 @@ export default function Index() {
       try { window.localStorage.setItem('aistage-landing-language', explicitLanguage); } catch { /* Optional storage */ }
     }
   }, []);
-  // Browser/PWA window caption only; installed PWA manifest and other pages stay unchanged.
+  // Keep the visible title and the installable app identity aligned with the selected language.
   useEffect(() => {
     const previousTitle = document.title;
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    const previousManifest = manifestLink?.getAttribute('href');
     document.title = language === 'fr' ? 'LE PLATEAU IA' : 'AISTAGE.ONE';
-    return () => { document.title = previousTitle; };
+    if (manifestLink) {
+      manifestLink.setAttribute('href', language === 'fr' ? '/manifest-leplateau.json?v=9' : '/manifest.json?v=8');
+    }
+    return () => {
+      document.title = previousTitle;
+      if (manifestLink) {
+        if (previousManifest === null) manifestLink.removeAttribute('href');
+        else manifestLink.setAttribute('href', previousManifest);
+      }
+    };
   }, [language]);
   const changeLanguage = locale => {
     setLanguage(locale);
