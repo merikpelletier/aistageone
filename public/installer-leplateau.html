@@ -30,6 +30,11 @@
     <install id="native-install" manifest="/manifest-leplateau.json?v=9" manifestid="/leplateau-pwa"></install>
     <button id="install" type="button">Installer LE PLATEAU IA</button>
     <p id="status" role="status">Cette page demande l’installation de LE PLATEAU IA, et non celle d’AISTAGE.ONE.</p>
+    <div id="edge-steps" hidden style="text-align:left;line-height:1.7;font-size:14px;color:#e4e7eb">
+      <p>Dans <strong>Microsoft Edge</strong>, ouvrez le menu <strong>…</strong> en haut à droite, puis <strong>Plus d’outils → Applications → Installer ce site en tant qu’application</strong>.</p>
+      <p>Vérifiez que le nom est <strong>LE PLATEAU IA</strong> et confirmez l’installation.</p>
+      <p>Pour créer l’icône sur le bureau : ouvrez <strong>edge://apps</strong>, choisissez <strong>LE PLATEAU IA → Détails → Créer un raccourci sur le bureau</strong>.</p>
+    </div>
     <a class="action" href="/Index?lang=fr">Ouvrir la version française</a>
   </main>
   <script>
@@ -38,6 +43,7 @@
     const button = document.getElementById('install');
     const status = document.getElementById('status');
     const nativeInstall = document.getElementById('native-install');
+    const edgeSteps = document.getElementById('edge-steps');
     if ('HTMLInstallElement' in window) {
       nativeInstall.classList.add('is-supported');
       button.hidden = true;
@@ -45,7 +51,9 @@
     } else if (typeof navigator.install === 'function') {
       status.textContent = 'Le navigateur permet de demander explicitement l’installation de LE PLATEAU IA.';
     } else {
-      status.textContent = 'Installation distincte non prise en charge par ce navigateur. N’utilisez pas « Installer ce site » : cela peut réinstaller AISTAGE.ONE.';
+      button.textContent = 'Comment installer LE PLATEAU IA dans Edge';
+      status.textContent = 'L’installation automatique n’est pas disponible dans ce navigateur. Consultez les étapes ci-dessous.';
+      edgeSteps.hidden = false;
     }
     window.addEventListener('beforeinstallprompt', event => {
       event.preventDefault();
@@ -76,7 +84,8 @@
           : 'Installation annulée.';
         return;
       }
-      status.textContent = 'L’installation distincte n’est pas prise en charge ici. Le menu « Installer ce site » risquerait d’utiliser l’identité AISTAGE.ONE.';
+      edgeSteps.hidden = false;
+      status.textContent = 'Utilisez les commandes d’installation de Microsoft Edge, puis créez le raccourci depuis edge://apps.';
     });
     window.addEventListener('appinstalled', () => {
       button.disabled = true;
