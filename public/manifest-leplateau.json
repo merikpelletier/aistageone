@@ -6,10 +6,10 @@
   "id": "/leplateau-pwa",
   "start_url": "/Index?lang=fr&source=leplateau-pwa",
   "scope": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "display_override": [
-    "standalone",
-    "minimal-ui"
+    "fullscreen",
+    "standalone"
   ],
   "background_color": "#080a0c",
   "theme_color": "#080a0c",
