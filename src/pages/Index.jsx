@@ -511,30 +511,8 @@ export default function Index() {
   // Browser/PWA window caption only; installed PWA manifest and other pages stay unchanged.
   useEffect(() => {
     const previousTitle = document.title;
-    const currentIcons = Array.from(document.querySelectorAll('link[rel~="icon"]'));
-    const previousIcons = currentIcons.map(icon => ({icon, href:icon.getAttribute('href'), type:icon.getAttribute('type'), sizes:icon.getAttribute('sizes')}));
-    const addedIcon = currentIcons.length ? null : document.createElement('link');
-    if (addedIcon) { addedIcon.rel = 'icon'; document.head.appendChild(addedIcon); }
-    if (language === 'fr') {
-      document.title = 'LE PLATEAU IA';
-      // Update every favicon candidate; otherwise browsers may retain the English 48px icon.
-      for (const icon of (currentIcons.length ? currentIcons : [addedIcon])) {
-        icon.setAttribute('type', 'image/svg+xml');
-        icon.setAttribute('href', '/icons/leplateau.svg');
-        icon.removeAttribute('sizes');
-      }
-    } else {
-      document.title = 'AISTAGE.ONE';
-    }
-    return () => {
-      document.title = previousTitle;
-      previousIcons.forEach(({icon:target,href,type,sizes}) => {
-        if (href === null) target.removeAttribute('href'); else target.setAttribute('href',href);
-        if (type === null) target.removeAttribute('type'); else target.setAttribute('type',type);
-        if (sizes === null) target.removeAttribute('sizes'); else target.setAttribute('sizes',sizes);
-      });
-      addedIcon?.remove();
-    };
+    document.title = language === 'fr' ? 'LE PLATEAU IA' : 'AISTAGE.ONE';
+    return () => { document.title = previousTitle; };
   }, [language]);
   const changeLanguage = locale => {
     setLanguage(locale);
