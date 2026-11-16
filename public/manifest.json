@@ -7,7 +7,6 @@
   "scope": "/",
   "display": "fullscreen",
   "display_override": [
-    "window-controls-overlay",
     "fullscreen",
     "standalone"
   ],
