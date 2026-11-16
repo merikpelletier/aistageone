@@ -517,6 +517,10 @@ export default function Index() {
   const changeLanguage = locale => {
     setLanguage(locale);
     try { window.localStorage.setItem('aistage-landing-language', locale); } catch { /* Optional storage */ }
+    // Keep the URL consistent with the selected language so a PWA reload cannot revert to ?lang=en.
+    const url = new URL(window.location.href);
+    url.searchParams.set('lang', locale);
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
     window.dispatchEvent(new Event('aistage-language-change'));
   };
   const { data: translationRows = [] } = useQuery({
