@@ -162,7 +162,7 @@ function CollapsibleCategory({ label, dossiers, accentClass, defaultOpen = true 
   );
 }
 
-function ClassSection({ classLabel, dossiers, categories }) {
+function ClassSection({ classLabel, dossiers, categories, dictionary, language }) {
   if (dossiers.length === 0) return null;
   const accentClass = CLASS_ACCENTS[classLabel] || 'bg-black';
   const categorized = categories.map(cat => ({ label: cat.name, dossiers: dossiers.filter(d => d.category === cat.name) })).filter(row => row.dossiers.length > 0);
@@ -170,7 +170,7 @@ function ClassSection({ classLabel, dossiers, categories }) {
   const uncategorized = dossiers.filter(d => !d.category || !knownCategoryNames.includes(d.category));
   return (
     <div className="break-inside-avoid mb-6">
-      <div className="flex items-center gap-2 mb-2"><h2 className="text-white text-lg font-extrabold tracking-wide uppercase">{classLabel}</h2><span className={`px-2 py-0.5 ${accentClass} text-white text-[10px] font-bold rounded-full`}>{dossiers.length}</span><div className="flex-1 h-px bg-white/20" /></div>
+      <div className="flex items-center gap-2 mb-2"><h2 className="text-white text-lg font-extrabold tracking-wide uppercase">{translatedLabel(dictionary, 'class', classLabel, language)}</h2><span className={`px-2 py-0.5 ${accentClass} text-white text-[10px] font-bold rounded-full`}>{dossiers.length}</span><div className="flex-1 h-px bg-white/20" /></div>
       <div className="px-1">
         {categorized.map(row => <CollapsibleCategory key={row.label} label={row.label} dossiers={row.dossiers} accentClass={accentClass} defaultOpen />)}
         {uncategorized.length > 0 && <CollapsibleCategory label="Others" dossiers={uncategorized} accentClass={accentClass} defaultOpen={categorized.length === 0} />}
@@ -198,7 +198,7 @@ function DesktopMasonryItem({ size, children, className = '', real = false }) {
   return <article ref={ref} data-real-tile={real ? 'true' : undefined} style={{ gridColumnEnd: `span ${columnSpan}` }} className={`relative min-w-0 overflow-hidden rounded-2xl bg-neutral-950 ${className}`}>{children}</article>;
 }
 
-function DesktopDossierTile({ dossier, size }) {
+function DesktopDossierTile({ dossier, size, dictionary, language }) {
   const videoRef = useRef(null);
   const media = dossier.cover_video || null;
   const image = dossier.cover_image || dossier.cover_template_image || null;
@@ -218,7 +218,7 @@ function DesktopDossierTile({ dossier, size }) {
           </div>
         )}
         <div className="absolute inset-x-0 bottom-0 p-3 md:p-4">
-          <div className="mb-2 flex items-center gap-2"><span className={`h-1.5 w-1.5 rounded-full ${accent}`} /><span className="text-[9px] font-black uppercase tracking-[.18em] text-white/60">{dossier.class || dossier.category || 'AISTAGE.ONE'}</span></div>
+          <div className="mb-2 flex items-center gap-2"><span className={`h-1.5 w-1.5 rounded-full ${accent}`} /><span className="text-[9px] font-black uppercase tracking-[.18em] text-white/60">{dossier.class ? translatedLabel(dictionary, 'class', dossier.class, language) : dossier.category ? translatedLabel(dictionary, 'category', dossier.category, language) : 'AISTAGE.ONE'}</span></div>
           {!dossier.hide_text_on_cover && <h2 className={`${size === 'small' ? 'text-sm' : size === 'medium' ? 'text-xl' : 'text-3xl'} font-black leading-tight text-white drop-shadow-lg`}>{dossier.title}</h2>}
           {size !== 'small' && dossier.subtitle && <p className="mt-1 line-clamp-2 text-xs text-white/65">{dossier.subtitle}</p>}
           {media && <span className="mt-3 inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-white/70"><Play size={10} fill="currentColor" /> Preview</span>}
@@ -241,7 +241,7 @@ function DesktopFillerTile({ filler }) {
   return <DesktopMasonryItem size={filler.size || 'small'} className="home-filler opacity-80">{filler.link_url ? <a href={filler.link_url} className="absolute inset-0 block">{content}</a> : content}</DesktopMasonryItem>;
 }
 
-function DesktopMasonry({ dossiers, fillers }) {
+function DesktopMasonry({ dossiers, fillers, dictionary, language }) {
   const containerRef = useRef(null);
   const [realContentHeight, setRealContentHeight] = useState(null);
 
@@ -280,7 +280,7 @@ function DesktopMasonry({ dossiers, fillers }) {
   return (
     <section className="hidden lg:block px-5 pb-8 pt-5 xl:px-7">
       <div ref={containerRef} className="grid grid-cols-8 auto-rows-[1px] grid-flow-dense gap-3 overflow-hidden" style={realContentHeight ? { height: `${realContentHeight}px` } : undefined}>
-        {dossiers.map((dossier, index) => <DesktopDossierTile key={dossier.id} dossier={dossier} size={dossier.homepage_size || DESKTOP_SIZE_PATTERN[index % DESKTOP_SIZE_PATTERN.length]} />)}
+        {dossiers.map((dossier, index) => <DesktopDossierTile key={dossier.id} dossier={dossier} size={dossier.homepage_size || DESKTOP_SIZE_PATTERN[index % DESKTOP_SIZE_PATTERN.length]} dictionary={dictionary} language={language} />)}
         {realContentHeight && fillers.map(filler => <DesktopFillerTile key={filler.id} filler={filler} />)}
       </div>
     </section>
@@ -583,12 +583,12 @@ export default function Index() {
       <div className="lg:hidden">
         <TopBanner dossiers={dossiers} />
         <div className="pt-4 px-4 columns-1 sm:columns-2 gap-4">
-          {classSections.map(section => <ClassSection key={section.classLabel} classLabel={section.classLabel} dossiers={section.dossiers} categories={categories} />)}
-          {noClass.length > 0 && <ClassSection classLabel="Others" dossiers={noClass} categories={categories} />}
+          {classSections.map(section => <ClassSection key={section.classLabel} classLabel={section.classLabel} dossiers={section.dossiers} categories={categories} dictionary={dictionary} language={language} />)}
+          {noClass.length > 0 && <ClassSection classLabel="Others" dossiers={noClass} categories={categories} dictionary={dictionary} language={language} />}
         </div>
       </div>
 
-      <DesktopMasonry dossiers={desktopMasonryDossiers} fillers={fillers} />
+      <DesktopMasonry dossiers={desktopMasonryDossiers} fillers={fillers} dictionary={dictionary} language={language} />
       <DesktopClassicBrowser dossiers={dossiers} categories={categories} dossierClasses={dossierClasses} popularityMap={popularityMap} dayKey={dayKey} frenchFirst={frenchFirst} language={language} onLanguageChange={changeLanguage} dictionary={dictionary} />
 
       {dossiers.length === 0 && <div className="flex items-center justify-center py-20"><p className="text-white/50 text-sm">Aucun contenu disponible</p></div>}
