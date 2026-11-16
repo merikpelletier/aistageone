@@ -126,7 +126,11 @@ const HomeRoute = () => {
 
   if (isAuthenticated && ['admin', 'guest'].includes(user?.role)) {
     const englishPwaLaunch = new URLSearchParams(location.search).get('source') === 'pwa';
-    return <Navigate to={englishPwaLaunch ? '/Index?lang=en' : '/Index'} replace />;
+    const savedFrenchLanguage = (() => {
+      try { return window.localStorage.getItem('aistage-landing-language') === 'fr'; }
+      catch { return false; }
+    })();
+    return <Navigate to={englishPwaLaunch ? (savedFrenchLanguage ? '/Index?lang=fr' : '/Index?lang=en') : '/Index'} replace />;
   }
 
   return <PrelaunchLanding />;
