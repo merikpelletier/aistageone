@@ -46,6 +46,7 @@ import PitchDeckDetail from '@/pages/PitchDeckDetail';
 import AiConnections from '@/pages/AiConnections';
 import MyAIPilots from '@/pages/MyAIPilots';
 import ThreeDStudio from '@/components/studio/ThreeDStudio';
+import DesktopDossierPublishing from '@/components/DesktopDossierPublishing';
 import { Bookmark } from 'lucide-react';
 HOME_ICON_MAP.Bookmark = Bookmark;
 
@@ -55,6 +56,7 @@ const STUDIO_TOOL_SECTIONS = [
     label: 'Create',
     tools: [
       { key: 'fotoplay', label: 'FotoPlay', icon: BookOpen, action: 'fotoplay' },
+      { key: 'dossiers', label: 'Dossiers', icon: FolderOpen, action: 'workspace' },
       { key: 'actor', label: 'Actor', icon: Users, action: 'actor' },
       { key: 'set', label: 'Set', icon: Layers, action: 'set' },
       { key: 'compose', label: 'Compose Scene', icon: Wand2, action: 'lab', labTool: 'compose' },
@@ -922,6 +924,8 @@ export default function Studio() {
       )}
 
       {['generate_3d', 'three_d_shop', 'my_3d_assets'].includes(activeToolPanel) && <div className="absolute inset-0 z-20 bg-[#d8d8d3]"><ThreeDStudio mode={activeToolPanel} /></div>}
+
+      {activeToolPanel === 'dossiers' && <div className="absolute inset-0 z-20 bg-black px-4 md:px-6 pb-6"><DesktopDossierPublishing userEmail={user?.email} /></div>}
 
       {activeToolPanel === 'ai_pilots' && <div className="absolute inset-0 z-20 bg-black"><MyAIPilots embedded /></div>}
 
