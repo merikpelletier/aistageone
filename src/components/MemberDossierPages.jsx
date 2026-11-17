@@ -20,7 +20,6 @@ export default function MemberDossierPages({ dossier, onClose }) {
   const [editingPage, setEditingPage] = useState(null);
   const [uploading, setUploading] = useState('');
   const [detailsTab, setDetailsTab] = useState('media');
-  const [jsonDrafts, setJsonDrafts] = useState({});
 
   const { data: pages = [], isLoading } = useQuery({
     queryKey: ['memberDossierPages', dossier.id],
@@ -138,8 +137,8 @@ export default function MemberDossierPages({ dossier, onClose }) {
                   <select value={editingPage.page_type || 'text'} onChange={e => update('page_type', e.target.value)} className="h-8 w-full border border-white/10 bg-neutral-900 px-2 text-xs text-white outline-none">
                     {PAGE_TYPES.map(([value, label]) => <option key={value} value={value}>{t(label,label)}</option>)}
                   </select>
-                  <Input value={editingPage.title || ''} onChange={e => update('title', e.target.value)} placeholder={t("Page title","Page title")} className="bg-neutral-900 border-white/10 text-white" />
-                  <Input type="number" value={editingPage.order ?? 1} onChange={e => update('order', Number(e.target.value))} placeholder={t("Order","Order")} className="bg-neutral-900 border-white/10 text-white" />
+                  <Input value={editingPage.title || ''} onChange={e => update('title', e.target.value)} placeholder={t("Page title","Page title")} className="h-8 bg-neutral-900 border-white/10 text-white text-xs" />
+                  <Input type="number" value={editingPage.order ?? 1} onChange={e => update('order', Number(e.target.value))} placeholder={t("Order","Order")} className="h-8 bg-neutral-900 border-white/10 text-white text-xs" />
                 </div>
 
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border border-white/10 bg-black/30 px-2 py-1.5 text-xs">
@@ -155,7 +154,7 @@ export default function MemberDossierPages({ dossier, onClose }) {
                     ['episode', 'Episode details'],
                     ['series', 'Series details'],
                     ['kit', 'Production kit'],
-                    ['contest', 'Contest details'],
+                    ...(editingPage?.page_type === 'contest' ? [['contest', 'Contest details']] : []),
                   ].map(([value, label]) => <button key={value} type="button" onClick={() => setDetailsTab(value)} className={`border px-2 py-1 text-[11px] ${detailsTab === value ? 'border-teal-400 text-teal-300' : 'border-white/10 text-white/60 hover:text-white'}`}>{t(label,label)}</button>)}
                 </div>
                 {detailsTab === 'display' && (
@@ -191,21 +190,21 @@ export default function MemberDossierPages({ dossier, onClose }) {
 
                 {detailsTab === 'contest' && editingPage.page_type === 'contest' && (
                   <div className="grid grid-cols-1 gap-3 border border-white/10 bg-black/30 p-3 sm:grid-cols-2 lg:p-4">
-                    <Input value={editingPage.contest_category || ''} onChange={e => update('contest_category', e.target.value)} placeholder={t("Contest category","Contest category")} className="bg-neutral-900 border-white/10 text-white" />
-                    <Input type="datetime-local" value={editingPage.contest_deadline ? String(editingPage.contest_deadline).slice(0,16) : ''} onChange={e => update('contest_deadline', e.target.value ? new Date(e.target.value).toISOString() : null)} className="bg-neutral-900 border-white/10 text-white" />
+                    <Input value={editingPage.contest_category || ''} onChange={e => update('contest_category', e.target.value)} placeholder={t("Contest category","Contest category")} className="h-8 bg-neutral-900 border-white/10 text-white text-xs" />
+                    <Input type="datetime-local" value={editingPage.contest_deadline ? String(editingPage.contest_deadline).slice(0,16) : ''} onChange={e => update('contest_deadline', e.target.value ? new Date(e.target.value).toISOString() : null)} className="h-8 bg-neutral-900 border-white/10 text-white text-xs" />
                     <Textarea value={editingPage.contest_reward || ''} onChange={e => update('contest_reward', e.target.value)} placeholder={t("Opportunity / prize","Opportunity / prize")} rows={2} className="bg-neutral-900 border-white/10 text-white sm:col-span-2" />
                     <Textarea value={editingPage.contest_rules || ''} onChange={e => update('contest_rules', e.target.value)} placeholder={t("Rules / eligibility","Rules / eligibility")} rows={3} className="bg-neutral-900 border-white/10 text-white sm:col-span-2" />
                   </div>
                 )}
 
-                {editingPage.page_type === 'credits' ? (
+                {detailsTab === 'media' && (editingPage.page_type === 'credits' ? (
                   <div className="border border-white/10 bg-black/30 p-3 lg:p-4">
                     <p className="mb-3 text-sm text-white/60">{t('Credits page content','Credits page content')}</p>
-                    <Textarea value={editingPage.content || ''} onChange={e => update('content', e.target.value)} placeholder={t("Credits text or notes","Credits text or notes")} rows={4} className="bg-neutral-900 border-white/10 text-white" />
+                    <Textarea value={editingPage.content || ''} onChange={e => update('content', e.target.value)} placeholder={t("Credits text or notes","Credits text or notes")} rows={4} className="h-8 bg-neutral-900 border-white/10 text-white text-xs" />
                   </div>
                 ) : (
-                  <Textarea value={editingPage.content || ''} onChange={e => update('content', e.target.value)} placeholder={t("Page text content","Page text content")} rows={3} className="bg-neutral-900 border-white/10 text-white" />
-                )}
+                  <Textarea value={editingPage.content || ''} onChange={e => update('content', e.target.value)} placeholder={t("Page text content","Page text content")} rows={3} className="h-8 bg-neutral-900 border-white/10 text-white text-xs" />
+                ))}
 
                 {detailsTab === 'media' && <>
                 <div className="grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
@@ -213,22 +212,22 @@ export default function MemberDossierPages({ dossier, onClose }) {
                     <p className="text-sm text-white/65">{t('Portrait media','Portrait media')}</p>
                     {editingPage.media_url && <img src={editingPage.media_url} alt="" className="h-24 w-full border border-white/10 object-contain" />}
                     <input id="member-page-portrait" type="file" accept="image/*,video/*" className="hidden" onChange={e => upload(e.target.files?.[0], 'media_url')} />
-                    <label htmlFor="member-page-portrait" className="flex cursor-pointer items-center justify-center gap-2 border border-white/20 px-3 py-2 text-sm"><Upload size={14} />{uploading === 'media_url' ? t('Uploading…','Uploading…') : t('Upload portrait','Upload portrait')}</label>
-                    <Input value={editingPage.media_url || ''} onChange={e => update('media_url', e.target.value)} placeholder={t("Or paste media URL","Or paste media URL")} className="bg-neutral-900 border-white/10 text-white" />
+                    <label htmlFor="member-page-portrait" className="flex cursor-pointer items-center justify-center gap-1.5 border border-white/20 px-2 py-1.5 text-xs"><Upload size={14} />{uploading === 'media_url' ? t('Uploading…','Uploading…') : t('Upload portrait','Upload portrait')}</label>
+                    <Input value={editingPage.media_url || ''} onChange={e => update('media_url', e.target.value)} placeholder={t("Or paste media URL","Or paste media URL")} className="h-8 bg-neutral-900 border-white/10 text-white text-xs" />
                   </div>
                   <div className="space-y-2">
                     <p className="text-sm text-white/65">{t('Landscape media','Landscape media')}</p>
                     {editingPage.media_url_landscape && <img src={editingPage.media_url_landscape} alt="" className="h-24 w-full border border-white/10 object-contain" />}
                     <input id="member-page-landscape" type="file" accept="image/*,video/*" className="hidden" onChange={e => upload(e.target.files?.[0], 'media_url_landscape')} />
                     <label htmlFor="member-page-landscape" className="flex cursor-pointer items-center justify-center gap-2 border border-white/20 px-3 py-2 text-sm"><Upload size={14} />{uploading === 'media_url_landscape' ? t('Uploading…','Uploading…') : t('Upload landscape','Upload landscape')}</label>
-                    <Input value={editingPage.media_url_landscape || ''} onChange={e => update('media_url_landscape', e.target.value)} placeholder={t("Or paste media URL","Or paste media URL")} className="bg-neutral-900 border-white/10 text-white" />
+                    <Input value={editingPage.media_url_landscape || ''} onChange={e => update('media_url_landscape', e.target.value)} placeholder={t("Or paste media URL","Or paste media URL")} className="h-8 bg-neutral-900 border-white/10 text-white text-xs" />
                   </div>
                 </div>
 
                 <div className="border-t border-white/10 pt-4 lg:pt-5">
                   <p className="mb-2 text-sm text-white/65">{t('Audio','Audio')}</p>
                   <div className="flex flex-col gap-3 sm:flex-row">
-                    <Input value={editingPage.audio_url || ''} onChange={e => update('audio_url', e.target.value)} placeholder={t("Audio URL","Audio URL")} className="bg-neutral-900 border-white/10 text-white" />
+                    <Input value={editingPage.audio_url || ''} onChange={e => update('audio_url', e.target.value)} placeholder={t("Audio URL","Audio URL")} className="h-8 bg-neutral-900 border-white/10 text-white text-xs" />
                     <input id="member-page-audio" type="file" accept="audio/*" className="hidden" onChange={e => upload(e.target.files?.[0], 'audio_url')} />
                     <label htmlFor="member-page-audio" className="flex cursor-pointer items-center justify-center gap-2 border border-white/20 px-4 py-2 text-sm"><Upload size={14} />{uploading === 'audio_url' ? t('Uploading…','Uploading…') : t('Upload audio','Upload audio')}</label>
                   </div>
