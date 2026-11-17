@@ -80,7 +80,7 @@ export default function MemberDossierPages({ dossier, onClose }) {
   const update = (key, value) => setEditingPage(prev => ({ ...prev, [key]: value }));
 
   return (
-    <div className="fixed inset-0 z-40 flex h-[100dvh] flex-col overflow-hidden bg-black text-white">
+    <div className="flex h-[calc(100dvh-9rem)] min-h-[480px] w-full min-w-0 flex-col overflow-hidden border border-white/10 bg-black text-white">
       <div className="z-30 flex h-14 flex-none items-center justify-between border-b border-white/10 bg-black px-4 lg:px-5">
         <div className="min-w-0">
           <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">{t('Manage dossier','Manage dossier')}</p>
@@ -114,7 +114,7 @@ export default function MemberDossierPages({ dossier, onClose }) {
           </div>
         </aside>
 
-        <main className="min-h-0 min-w-0 overflow-y-auto overscroll-contain">
+        <main className="min-h-0 min-w-0 overflow-y-auto overscroll-contain bg-neutral-950/30">
           {!editingPage ? (
             <div className="flex min-h-[260px] items-center justify-center border border-dashed border-white/10 bg-neutral-950 text-center lg:min-h-[360px]">
               <div><p className="text-base font-light lg:text-lg">{t('Select a page','Select a page')}</p><p className="mt-1 text-sm text-white/40">{t('or add a new one.','or add a new one.')}</p><Button onClick={newPage} className="mt-4 bg-white text-black hover:bg-white/90"><Plus size={14} className="mr-2" />{t('Add page','Add page')}</Button></div>
