@@ -143,7 +143,7 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
           <Loader2 size={20} className="animate-spin text-white/60" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
           {publishableStories.map(story => {
             const isPublished = Boolean(story.is_published);
             const audience = accessByStory[story.id] || 'public';
@@ -152,16 +152,16 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
             const linkedDossier = dossierByStory.get(String(story.id));
 
             return (
-              <div key={`story-${story.id}`} className="grid h-[210px] min-w-0 grid-cols-[112px_minmax(0,1fr)] overflow-hidden border border-white/10 bg-neutral-950">
-                <div className="relative h-full min-h-0 bg-neutral-900">
+              <div key={`story-${story.id}`} className="grid min-h-[196px] min-w-0 grid-cols-[108px_minmax(0,1fr)] border border-white/10 bg-neutral-950 sm:grid-cols-[120px_minmax(0,1fr)]">
+                <div className="relative min-h-[196px] bg-neutral-900">
                   {cover ? <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Film size={28} className="text-white/25" /></div>}
                   {isPublished && <div className="absolute left-2 top-2 flex items-center gap-1 bg-black/85 px-2 py-1 text-[10px] font-bold uppercase text-white"><CheckCircle2 size={11} /> {t("Published","Published")}</div>}
                 </div>
 
-                <div className="flex min-w-0 flex-col justify-between gap-2 p-3">
-                  <div className="flex min-w-0 items-start justify-between gap-2">
+                <div className="flex min-w-0 flex-col gap-3 p-3">
+                  <div className="flex min-w-0 items-start gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-white">{story.production_name || story.episode_title || t('Untitled project','Untitled project')}</p>
+                      <p className="break-words text-sm font-semibold leading-snug text-white">{story.production_name || story.episode_title || t('Untitled project','Untitled project')}</p>
                       <p className="mt-1 text-[11px] text-white/45">{scenes} {scenes === 1 ? t('scene','scene') : t('scenes','scenes')} · Timeline / FotoPlay</p>
                     </div>
 
@@ -178,9 +178,9 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
                     {isPublished ? t('Republish dossier','Republish dossier') : t('Publish dossier','Publish dossier')}
                   </button>
                     {linkedDossier ? (
-                      <div className="flex shrink-0 items-center gap-1">
-                        <button onClick={() => setManagingDossier(linkedDossier)} className="flex items-center gap-1 border border-white/20 px-2 py-1 text-[11px] font-semibold text-white hover:border-white/50"><Layers size={12} /> {t("Pages","Pages")}</button>
-                        <button onClick={() => setEditingDossier(linkedDossier)} className="flex items-center gap-1 border border-white/20 px-2 py-1 text-[11px] font-semibold text-white hover:border-white/50"><Edit3 size={12} /> {t("Edit","Edit")}</button>
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        <button onClick={() => setManagingDossier(linkedDossier)} className="inline-flex min-h-8 items-center gap-1 whitespace-nowrap border border-white/20 px-2 py-1 text-[11px] font-semibold text-white hover:border-white/50"><Layers size={12} /> {t("Pages","Pages")}</button>
+                        <button onClick={() => setEditingDossier(linkedDossier)} className="inline-flex min-h-8 items-center gap-1 whitespace-nowrap border border-white/20 px-2 py-1 text-[11px] font-semibold text-white hover:border-white/50"><Edit3 size={12} /> {t("Edit","Edit")}</button>
                       </div>
                     ) : (
                       <Link to={`/MyProjects?project=${story.id}`} className="flex shrink-0 items-center gap-1.5 border border-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:border-white/50"><Edit3 size={12} /> {t("Edit production","Edit production")}</Link>
@@ -192,33 +192,33 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
           })}
 
           {standaloneDossiers.map(dossier => (
-            <div key={`dossier-${dossier.id}`} className="grid h-[210px] min-w-0 grid-cols-[112px_minmax(0,1fr)] overflow-hidden border border-white/10 bg-neutral-950">
-              <div className="relative h-full min-h-0 bg-neutral-900">
+            <div key={`dossier-${dossier.id}`} className="grid min-h-[196px] min-w-0 grid-cols-[108px_minmax(0,1fr)] border border-white/10 bg-neutral-950 sm:grid-cols-[120px_minmax(0,1fr)]">
+              <div className="relative min-h-[196px] bg-neutral-900">
                 {dossier.cover_image ? <img src={dossier.cover_image} alt="" className="absolute inset-0 h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Film size={28} className="text-white/25" /></div>}
                 <div className="absolute left-2 top-2 flex items-center gap-1 bg-black/85 px-2 py-1 text-[10px] font-bold uppercase text-white">{dossier.status === 'published' ? <><CheckCircle2 size={11} /> {t('Published','Published')}</> : t(dossier.status || 'Draft',dossier.status || 'Draft')}</div>
               </div>
 
-              <div className="flex min-w-0 flex-col justify-between gap-2 p-3">
-                <div className="flex min-w-0 items-start justify-between gap-2">
+              <div className="flex min-w-0 flex-col gap-3 p-3">
+                <div className="flex min-w-0 items-start gap-2">
                   <div className="min-w-0">
-                    <p className="truncate text-base font-semibold text-white">{dossier.title || t('Untitled dossier','Untitled dossier')}</p>
+                    <p className="break-words text-sm font-semibold leading-snug text-white">{dossier.title || t('Untitled dossier','Untitled dossier')}</p>
                     <p className="mt-1 text-[11px] text-white/45">{t('Direct dossier','Direct dossier')}{dossier.category ? ` · ${dossier.category}` : ''}</p>
                   </div>
 
                 </div>
 
-                <div className="flex flex-wrap gap-1.5 text-xs text-white/55">
+                <div className="flex flex-wrap gap-1.5 text-[11px] text-white/55">
                   <span className="border border-white/10 px-2 py-1">{dossier.access_level === 'subscribers' ? t('Subscribers only','Subscribers only') : t('Public','Public')}</span>
                   {dossier.content_rating && <span className="border border-white/10 px-2 py-1">{dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}</span>}
                   {(dossier.default_language || dossier.original_language) && <span className="border border-white/10 px-2 py-1 uppercase">{dossier.default_language || dossier.original_language}</span>}
                 </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <button onClick={() => setManagingDossier(dossier)} className="flex items-center gap-1 border border-white/20 px-2 py-1 text-[11px] font-semibold text-white hover:border-white/50"><Layers size={12} /> {t("Pages","Pages")}</button>
-                    <button onClick={() => setEditingDossier(dossier)} className="flex items-center gap-1 border border-white/20 px-2 py-1 text-[11px] font-semibold text-white hover:border-white/50"><Edit3 size={12} /> {t("Edit","Edit")}</button>
+                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                    <button onClick={() => setManagingDossier(dossier)} className="inline-flex min-h-8 items-center gap-1 whitespace-nowrap border border-white/20 px-2 py-1 text-[11px] font-semibold text-white hover:border-white/50"><Layers size={12} /> {t("Pages","Pages")}</button>
+                    <button onClick={() => setEditingDossier(dossier)} className="inline-flex min-h-8 items-center gap-1 whitespace-nowrap border border-white/20 px-2 py-1 text-[11px] font-semibold text-white hover:border-white/50"><Edit3 size={12} /> {t("Edit","Edit")}</button>
                     <button
                       onClick={() => deleteDirectDossier(dossier)}
                       disabled={deletingDossierId === dossier.id}
-                      className="flex items-center gap-1.5 border border-red-500/40 px-3 py-1.5 text-xs font-semibold text-red-400 hover:border-red-400 hover:text-red-300 disabled:opacity-50"
+                      className="inline-flex min-h-8 items-center gap-1 whitespace-nowrap border border-red-500/40 px-2 py-1 text-[11px] font-semibold text-red-400 hover:border-red-400 hover:text-red-300 disabled:opacity-50"
                     >
                       {deletingDossierId === dossier.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} {t("Delete","Delete")}
                     </button>
