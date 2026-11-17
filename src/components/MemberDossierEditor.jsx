@@ -16,6 +16,7 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
   const t = useStudioTranslation();
   const [uploading, setUploading] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [form, setForm] = useState(() => ({
     title: dossier?.title || '',
     subtitle: dossier?.subtitle || '',
@@ -26,6 +27,14 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
     access_level: dossier?.access_level || 'public',
     status: dossier?.status || 'draft',
     cover_image: dossier?.cover_image || '',
+    cover_image_landscape: dossier?.cover_image_landscape || '',
+    cover_video: dossier?.cover_video || '',
+    cover_video_landscape: dossier?.cover_video_landscape || '',
+    audio_languages: dossier?.audio_languages || [],
+    subtitle_languages: dossier?.subtitle_languages || [],
+    first_publication_date: dossier?.first_publication_date || '',
+    official_registration_reference: dossier?.official_registration_reference || '',
+    rating_reasons: dossier?.rating_reasons || [],
     content_rating: dossier?.content_rating || null,
     access_model: dossier?.access_model || 'free',
     original_language: dossier?.original_language || '',
@@ -94,13 +103,13 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
 
   const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
 
-  const handleCoverUpload = async (e) => {
+  const handleCoverUpload = async (e, field = 'cover_image') => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      set('cover_image', file_url);
+      set(field, file_url);
     } catch (error) {
       toast.error(error?.message || t('Unable to upload cover.','Unable to upload cover.'));
     } finally {
@@ -111,75 +120,158 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
 
   const isPublishing = form.status === 'published';
 
+  const fieldStyle = "h-10 border-white/15 bg-[#181a1e] text-white placeholder:text-white/35 focus-visible:ring-1 focus-visible:ring-teal-400";
+  const selectStyle = "h-10 border-white/15 bg-[#181a1e] text-white";
+  const sectionTitle = "mb-3 text-[11px] font-bold uppercase tracking-[0.13em] text-teal-300";
+  const fieldLabel = "mb-1.5 block text-[11px] font-semibold text-white/65";
+  const languageText = (languages) => Array.isArray(languages) ? languages.join(', ') : '';
+  const languageList = (text) => text.split(',').map(value => value.trim()).filter(Boolean);
+
   return (
     <>
       <Dialog open onOpenChange={(open) => { if (!open && !vaultOpen) onClose?.(); }} modal={!vaultOpen}>
-        <DialogContent className="bg-neutral-950 border-white/10 text-white max-w-xl max-h-[86vh] overflow-y-auto p-0">
-          <DialogHeader className="px-5 pt-5 pb-3 border-b border-white/10">
-            <DialogTitle className="font-light tracking-wide">{dossier?.id ? t('Edit dossier','Edit dossier') : t('Create new dossier','Create new dossier')}</DialogTitle>
+        <DialogContent className="flex h-[min(90dvh,860px)] w-[min(96vw,1080px)] max-w-none flex-col gap-0 overflow-hidden border-white/15 bg-[#101214] p-0 text-white sm:max-w-none">
+          <DialogHeader className="shrink-0 border-b border-white/10 px-5 py-4 pr-12 md:px-7">
+            <DialogTitle className="text-lg font-semibold tracking-normal">
+              {dossier?.id ? t('Edit dossier','Edit dossier') : t('Create new dossier','Create new dossier')}
+            </DialogTitle>
+            <p className="mt-1 text-xs text-white/50">{t('Dossier form introduction','Complete your dossier information before publishing.')}</p>
           </DialogHeader>
 
-          <div className="space-y-3 px-5 py-4">
-            <div className="grid grid-cols-2 gap-3">
-              <Input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder={t("Title *","Title *")} className="bg-neutral-900 border-white/10 text-white" />
-              <Input value={form.subtitle} onChange={(e) => set('subtitle', e.target.value)} placeholder={t("Subtitle","Subtitle")} className="bg-neutral-900 border-white/10 text-white" />
-              <Input value={form.author_name} onChange={(e) => set('author_name', e.target.value)} placeholder={t("Author","Author")} className="bg-neutral-900 border-white/10 text-white" />
-              <Select value={form.category || '__none__'} onValueChange={(value) => set('category', value === '__none__' ? '' : value)}>
-                <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue placeholder={t("Category","Category")} /></SelectTrigger>
-                <SelectContent><SelectItem value="__none__">{t('— No category —','— No category —')}</SelectItem>{categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select value={form.class || 'Videos'} onValueChange={(value) => set('class', value)}>
-                <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
-                <SelectContent>{classOptions.map(name => <SelectItem key={name} value={name}>{t(name,name)}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select value={form.access_level} onValueChange={(value) => set('access_level', value)}>
-                <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="public">{t('Public','Public')}</SelectItem><SelectItem value="subscribers">{t('Subscribers only','Subscribers only')}</SelectItem></SelectContent>
-              </Select>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 md:px-7">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)]">
+              <section className="min-w-0 space-y-3">
+                <h3 className={sectionTitle}>{t('Dossier identity','Identity and description')}</h3>
+                <div>
+                  <label className={fieldLabel} htmlFor="dossier-title">{t('Title *','Title *')}</label>
+                  <Input id="dossier-title" value={form.title} onChange={e => set('title', e.target.value)} className={fieldStyle} />
+                </div>
+                <div>
+                  <label className={fieldLabel} htmlFor="dossier-subtitle">{t('Subtitle','Subtitle')}</label>
+                  <Input id="dossier-subtitle" value={form.subtitle} onChange={e => set('subtitle', e.target.value)} className={fieldStyle} />
+                </div>
+                <div>
+                  <label className={fieldLabel} htmlFor="dossier-author">{t('Author','Author')}</label>
+                  <Input id="dossier-author" value={form.author_name} onChange={e => set('author_name', e.target.value)} className={fieldStyle} />
+                </div>
+                <div>
+                  <label className={fieldLabel} htmlFor="dossier-description">{t('Description / pitch','Description / pitch')}</label>
+                  <Textarea id="dossier-description" value={form.description} onChange={e => set('description', e.target.value)} rows={4} className="min-h-[112px] resize-y border-white/15 bg-[#181a1e] text-white" />
+                </div>
+              </section>
+
+              <section className="min-w-0 space-y-3">
+                <h3 className={sectionTitle}>{t('Dossier cover media','Cover and presentation')}</h3>
+                <div className="flex items-start gap-4">
+                  <div className="flex h-44 w-30 shrink-0 items-center justify-center overflow-hidden border border-white/15 bg-[#181a1e] text-xs text-white/35" style={{ width: 118 }}>
+                    {form.cover_image ? <img src={form.cover_image} alt="" className="h-full w-full object-cover" /> : t('COVER','COVER')}
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <p className={fieldLabel}>{t('Portrait cover','Portrait cover')} *</p>
+                    <input id="member-dossier-cover" type="file" accept="image/*" onChange={e => handleCoverUpload(e)} className="hidden" />
+                    <label htmlFor="member-dossier-cover" className="inline-flex min-h-9 cursor-pointer items-center gap-2 border border-white/25 px-3 text-xs font-semibold hover:bg-white/10">
+                      {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                      {form.cover_image ? t('Replace cover','Replace cover') : t('Upload cover','Upload cover')}
+                    </label>
+                    <button type="button" onClick={() => setVaultOpen(true)} className="block min-h-9 border border-white/25 px-3 text-xs font-semibold hover:bg-white/10">
+                      {t('Choose from Vault','Choose from Vault')}
+                    </button>
+                    <label className="flex items-center gap-2 text-xs text-white/65">
+                      <input type="checkbox" checked={form.hide_text_on_cover} onChange={e => set('hide_text_on_cover', e.target.checked)} className="h-4 w-4 accent-teal-400" />
+                      {t('Hide title','Hide title')}
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label className={fieldLabel} htmlFor="dossier-landscape-cover">{t('Landscape cover','Landscape cover')}</label>
+                  <div className="flex gap-2">
+                    <Input id="dossier-landscape-cover" value={form.cover_image_landscape} onChange={e => set('cover_image_landscape', e.target.value)} placeholder={t('Media URL','Media URL')} className={fieldStyle} />
+                    <input id="member-dossier-landscape" type="file" accept="image/*" onChange={e => handleCoverUpload(e, 'cover_image_landscape')} className="hidden" />
+                    <label htmlFor="member-dossier-landscape" className="flex shrink-0 cursor-pointer items-center justify-center gap-1 border border-white/25 px-3 text-xs hover:bg-white/10"><Upload size={13} />{t('Upload','Upload')}</label>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div><label className={fieldLabel} htmlFor="dossier-video-cover">{t('Portrait cover video','Portrait cover video')}</label><Input id="dossier-video-cover" value={form.cover_video} onChange={e => set('cover_video', e.target.value)} placeholder="URL" className={fieldStyle} /></div>
+                  <div><label className={fieldLabel} htmlFor="dossier-video-landscape">{t('Landscape cover video','Landscape cover video')}</label><Input id="dossier-video-landscape" value={form.cover_video_landscape} onChange={e => set('cover_video_landscape', e.target.value)} placeholder="URL" className={fieldStyle} /></div>
+                </div>
+              </section>
             </div>
 
-            <Textarea value={form.description} onChange={(e) => set('description', e.target.value)} placeholder={t("Description / pitch","Description / pitch")} rows={3} className="bg-neutral-900 border-white/10 text-white resize-none" />
+            <section className="mt-6 border-t border-white/10 pt-5">
+              <h3 className={sectionTitle}>{t('Dossier classification','Classification and languages')}</h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <label className={fieldLabel}>{t('Category','Category')}</label>
+                  <Select value={form.category || '__none__'} onValueChange={value => set('category', value === '__none__' ? '' : value)}>
+                    <SelectTrigger className={selectStyle}><SelectValue placeholder={t('Category','Category')} /></SelectTrigger>
+                    <SelectContent><SelectItem value="__none__">{t('— No category —','— No category —')}</SelectItem>{categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className={fieldLabel}>{t('Content type','Content type')}</label>
+                  <Select value={form.class || 'Videos'} onValueChange={value => set('class', value)}>
+                    <SelectTrigger className={selectStyle}><SelectValue /></SelectTrigger>
+                    <SelectContent>{classOptions.map(name => <SelectItem key={name} value={name}>{t(name,name)}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className={fieldLabel}>{t('Rating','Rating')}</label>
+                  <Select value={form.content_rating || '__none__'} onValueChange={value => set('content_rating', value === '__none__' ? null : value)}>
+                    <SelectTrigger className={selectStyle}><SelectValue placeholder={t('Rating','Rating')} /></SelectTrigger>
+                    <SelectContent><SelectItem value="__none__">{t('— Rating —','— Rating —')}</SelectItem><SelectItem value="all">{t('All audiences','All audiences')}</SelectItem><SelectItem value="13+">13+</SelectItem><SelectItem value="18+">18+</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className={fieldLabel} htmlFor="dossier-reasons">{t('Rating reasons','Rating reasons')}</label>
+                  <Input id="dossier-reasons" value={languageText(form.rating_reasons)} onChange={e => set('rating_reasons', languageList(e.target.value))} placeholder={t('Comma-separated values','Comma-separated values')} className={fieldStyle} />
+                </div>
+                <div><label className={fieldLabel} htmlFor="dossier-original-language">{t('Original language *','Original language *')}</label><Input id="dossier-original-language" value={form.original_language} onChange={e => set('original_language', e.target.value)} placeholder="fr" className={fieldStyle} /></div>
+                <div><label className={fieldLabel} htmlFor="dossier-default-language">{t('Default language','Default language')}</label><Input id="dossier-default-language" value={form.default_language} onChange={e => set('default_language', e.target.value)} placeholder="fr" className={fieldStyle} /></div>
+                <div><label className={fieldLabel} htmlFor="dossier-audio-languages">{t('Audio languages','Audio languages')}</label><Input id="dossier-audio-languages" value={languageText(form.audio_languages)} onChange={e => set('audio_languages', languageList(e.target.value))} placeholder="fr, en" className={fieldStyle} /></div>
+                <div><label className={fieldLabel} htmlFor="dossier-subtitle-languages">{t('Subtitle languages','Subtitle languages')}</label><Input id="dossier-subtitle-languages" value={languageText(form.subtitle_languages)} onChange={e => set('subtitle_languages', languageList(e.target.value))} placeholder="fr, en" className={fieldStyle} /></div>
+              </div>
+            </section>
 
-            <div className="flex items-center gap-3 border-t border-white/10 pt-3">
-              {form.cover_image ? <img src={form.cover_image} alt="" className="h-20 w-14 object-cover border border-white/10" /> : <div className="flex h-20 w-14 items-center justify-center border border-dashed border-white/15 text-[9px] text-white/30">{t('COVER','COVER')}</div>}
-              <input id="member-dossier-cover" type="file" accept="image/*" onChange={handleCoverUpload} className="hidden" />
-              <label htmlFor="member-dossier-cover" className="inline-flex cursor-pointer items-center gap-2 border border-white/20 px-3 py-2 text-sm text-white hover:border-white/50">
-                {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} {form.cover_image ? t('Replace cover','Replace cover') : t('Upload cover','Upload cover')}
-              </label>
-              <button type="button" onClick={() => setVaultOpen(true)} className="inline-flex items-center gap-2 border border-white/20 px-3 py-2 text-sm text-white hover:border-white/50">
-                {t('Vault','Vault')}
+            <section className="mt-6 border-t border-white/10 pt-5">
+              <h3 className={sectionTitle}>{t('Dossier publication','Access and publication')}</h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <label className={fieldLabel}>{t('Visibility','Visibility')}</label>
+                  <Select value={form.access_level} onValueChange={value => set('access_level', value)}>
+                    <SelectTrigger className={selectStyle}><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="public">{t('Public','Public')}</SelectItem><SelectItem value="subscribers">{t('Subscribers only','Subscribers only')}</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className={fieldLabel}>{t('Access model','Access model')}</label>
+                  <Select value={form.access_model || 'free'} onValueChange={value => set('access_model', value)}>
+                    <SelectTrigger className={selectStyle}><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="free">{t('Free','Free')}</SelectItem><SelectItem value="paid">{t('Paid','Paid')}</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className={fieldLabel}>{t('Publication status','Publication status')}</label>
+                  <Select value={form.status} onValueChange={value => set('status', value)}>
+                    <SelectTrigger className={selectStyle}><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="draft">{t('Draft','Draft')}</SelectItem><SelectItem value="published">{t('Published','Published')}</SelectItem><SelectItem value="unpublished">{t('Unpublished','Unpublished')}</SelectItem></SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <button type="button" onClick={() => setShowAdvanced(value => !value)} className="mt-4 text-xs font-semibold text-teal-300 hover:text-teal-200" aria-expanded={showAdvanced}>
+                {showAdvanced ? '−' : '+'} {t('Publication details','Additional publication details')}
               </button>
-              <label className="ml-auto flex items-center gap-2 text-sm text-white/70">
-                <input type="checkbox" checked={form.hide_text_on_cover} onChange={(e) => set('hide_text_on_cover', e.target.checked)} className="h-4 w-4 accent-white" />
-                {t('Hide title','Hide title')}
-              </label>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 border-t border-white/10 pt-3">
-              <Select value={form.status} onValueChange={(value) => set('status', value)}>
-                <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="draft">{t('Draft','Draft')}</SelectItem><SelectItem value="published">{t('Published','Published')}</SelectItem><SelectItem value="unpublished">{t('Unpublished','Unpublished')}</SelectItem></SelectContent>
-              </Select>
-              {isPublishing && (
-                <Select value={form.content_rating || '__none__'} onValueChange={(value) => set('content_rating', value === '__none__' ? null : value)}>
-                  <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue placeholder={t("Rating","Rating")} /></SelectTrigger>
-                  <SelectContent><SelectItem value="__none__">{t('— Rating —','— Rating —')}</SelectItem><SelectItem value="all">{t('All audiences','All audiences')}</SelectItem><SelectItem value="13+">13+</SelectItem><SelectItem value="18+">18+</SelectItem></SelectContent>
-                </Select>
+              {showAdvanced && (
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div><label className={fieldLabel} htmlFor="dossier-first-publication">{t('First publication date','First publication date')}</label><Input id="dossier-first-publication" type="date" value={form.first_publication_date ? String(form.first_publication_date).slice(0,10) : ''} onChange={e => set('first_publication_date', e.target.value || null)} className={fieldStyle} /></div>
+                  <div><label className={fieldLabel} htmlFor="dossier-registration">{t('Official registration reference','Official registration reference')}</label><Input id="dossier-registration" value={form.official_registration_reference} onChange={e => set('official_registration_reference', e.target.value)} className={fieldStyle} /></div>
+                </div>
               )}
-              {isPublishing && <Input value={form.original_language} onChange={(e) => set('original_language', e.target.value)} placeholder={t("Original language *","Original language *")} className="bg-neutral-900 border-white/10 text-white" />}
-              {isPublishing && <Input value={form.default_language} onChange={(e) => set('default_language', e.target.value)} placeholder={t("Default language","Default language")} className="bg-neutral-900 border-white/10 text-white" />}
-              {isPublishing && (
-                <Select value={form.access_model || 'free'} onValueChange={(value) => set('access_model', value)}>
-                  <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="free">{t('Free','Free')}</SelectItem><SelectItem value="paid">{t('Paid','Paid')}</SelectItem></SelectContent>
-                </Select>
-              )}
-            </div>
+            </section>
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-white/10 px-5 py-3">
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/15 bg-[#101214] px-5 py-3 md:px-7">
             <Button type="button" variant="ghost" onClick={onClose} className="text-white hover:bg-white/10">{t('Cancel','Cancel')}</Button>
-            <Button type="button" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || uploading} className="bg-white text-black hover:bg-white/90">
+            <Button type="button" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || uploading} className="bg-white px-5 text-black hover:bg-white/90">
               {saveMutation.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
               {isPublishing ? t('Save & publish','Save & publish') : t('Save','Save')}
             </Button>
