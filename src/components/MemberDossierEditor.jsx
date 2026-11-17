@@ -130,7 +130,7 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
               </Select>
               <Select value={form.class || 'Videos'} onValueChange={(value) => set('class', value)}>
                 <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
-                <SelectContent>{classOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent>
+                <SelectContent>{classOptions.map(name => <SelectItem key={name} value={name}>{t(name,name)}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={form.access_level} onValueChange={(value) => set('access_level', value)}>
                 <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
