@@ -211,3 +211,8 @@ aside + main[class~="bg-yellow-400"] { background: var(--studio-bg) !important; 
   .studio-shell main .max-w-\[1800px\] > header > div:first-of-type { flex-basis: calc(100% - 60px); }
   .studio-shell main .max-w-\[1800px\] section[class*="bg-black"] .grid.grid-cols-9 { grid-template-columns: repeat(5,minmax(0,1fr)) !important; }
 }
+
+/* Reserve the installed app's native window-control strip in page layout. */
+@media (display-mode: window-controls-overlay) {
+  body { padding-top: env(titlebar-area-height, 0px); }
+}
