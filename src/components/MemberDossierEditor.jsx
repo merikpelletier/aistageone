@@ -136,7 +136,7 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
   return (
     <>
       <Dialog open onOpenChange={(open) => { if (!open && !vaultOpen) onClose?.(); }} modal={!vaultOpen}>
-        <DialogContent className="flex h-[min(90dvh,860px)] w-[min(96vw,1080px)] max-w-none flex-col gap-0 overflow-hidden border-white/15 bg-[#101214] p-0 text-white sm:max-w-none">
+        <DialogContent overlayClassName="z-[7999]" className="z-[8000] flex h-[min(90dvh,860px)] w-[min(96vw,1080px)] max-w-none flex-col gap-0 overflow-hidden border-white/15 bg-[#101214] p-0 text-white sm:max-w-none">
           <DialogHeader className="shrink-0 border-b border-white/10 px-5 py-4 pr-12 md:px-7">
             <DialogTitle className="text-lg font-semibold tracking-normal">
               {dossier?.id ? t('Edit dossier','Edit dossier') : t('Create new dossier','Create new dossier')}
