@@ -17,6 +17,9 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
   const [uploading, setUploading] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [ratingReasonsInput, setRatingReasonsInput] = useState((dossier?.rating_reasons || []).join(', '));
+  const [audioLanguagesInput, setAudioLanguagesInput] = useState((dossier?.audio_languages || []).join(', '));
+  const [subtitleLanguagesInput, setSubtitleLanguagesInput] = useState((dossier?.subtitle_languages || []).join(', '));
   const [form, setForm] = useState(() => ({
     title: dossier?.title || '',
     subtitle: dossier?.subtitle || '',
@@ -60,6 +63,10 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
       const now = new Date();
       const data = {
         ...form,
+        rating_reasons: languageList(ratingReasonsInput),
+        audio_languages: languageList(audioLanguagesInput),
+        subtitle_languages: languageList(subtitleLanguagesInput),
+        first_publication_date: form.first_publication_date || null,
         title: form.title.trim(),
         subtitle: form.subtitle.trim(),
         description: form.description.trim(),
@@ -124,7 +131,6 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
   const selectStyle = "h-10 border-white/15 bg-[#181a1e] text-white";
   const sectionTitle = "mb-3 text-[11px] font-bold uppercase tracking-[0.13em] text-teal-300";
   const fieldLabel = "mb-1.5 block text-[11px] font-semibold text-white/65";
-  const languageText = (languages) => Array.isArray(languages) ? languages.join(', ') : '';
   const languageList = (text) => text.split(',').map(value => value.trim()).filter(Boolean);
 
   return (
@@ -223,12 +229,12 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
                 </div>
                 <div>
                   <label className={fieldLabel} htmlFor="dossier-reasons">{t('Rating reasons','Rating reasons')}</label>
-                  <Input id="dossier-reasons" value={languageText(form.rating_reasons)} onChange={e => set('rating_reasons', languageList(e.target.value))} placeholder={t('Comma-separated values','Comma-separated values')} className={fieldStyle} />
+                  <Input id="dossier-reasons" value={ratingReasonsInput} onChange={e => setRatingReasonsInput(e.target.value)} placeholder={t('Comma-separated values','Comma-separated values')} className={fieldStyle} />
                 </div>
                 <div><label className={fieldLabel} htmlFor="dossier-original-language">{t('Original language *','Original language *')}</label><Input id="dossier-original-language" value={form.original_language} onChange={e => set('original_language', e.target.value)} placeholder="fr" className={fieldStyle} /></div>
                 <div><label className={fieldLabel} htmlFor="dossier-default-language">{t('Default language','Default language')}</label><Input id="dossier-default-language" value={form.default_language} onChange={e => set('default_language', e.target.value)} placeholder="fr" className={fieldStyle} /></div>
-                <div><label className={fieldLabel} htmlFor="dossier-audio-languages">{t('Audio languages','Audio languages')}</label><Input id="dossier-audio-languages" value={languageText(form.audio_languages)} onChange={e => set('audio_languages', languageList(e.target.value))} placeholder="fr, en" className={fieldStyle} /></div>
-                <div><label className={fieldLabel} htmlFor="dossier-subtitle-languages">{t('Subtitle languages','Subtitle languages')}</label><Input id="dossier-subtitle-languages" value={languageText(form.subtitle_languages)} onChange={e => set('subtitle_languages', languageList(e.target.value))} placeholder="fr, en" className={fieldStyle} /></div>
+                <div><label className={fieldLabel} htmlFor="dossier-audio-languages">{t('Audio languages','Audio languages')}</label><Input id="dossier-audio-languages" value={audioLanguagesInput} onChange={e => setAudioLanguagesInput(e.target.value)} placeholder="fr, en" className={fieldStyle} /></div>
+                <div><label className={fieldLabel} htmlFor="dossier-subtitle-languages">{t('Subtitle languages','Subtitle languages')}</label><Input id="dossier-subtitle-languages" value={subtitleLanguagesInput} onChange={e => setSubtitleLanguagesInput(e.target.value)} placeholder="fr, en" className={fieldStyle} /></div>
               </div>
             </section>
 
