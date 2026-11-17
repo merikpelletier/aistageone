@@ -80,8 +80,8 @@ export default function MemberDossierPages({ dossier, onClose }) {
   const update = (key, value) => setEditingPage(prev => ({ ...prev, [key]: value }));
 
   return (
-    <div className="flex h-[calc(100dvh-9rem)] min-h-[480px] w-full min-w-0 flex-col overflow-hidden border border-white/10 bg-black text-white">
-      <div className="z-30 flex h-14 flex-none items-center justify-between border-b border-white/10 bg-black px-4 lg:px-5">
+    <div className="flex min-h-[calc(100dvh-9rem)] w-full min-w-0 flex-col bg-black text-white">
+      <div className="flex min-h-14 flex-none items-center justify-between border-b border-white/10 bg-black px-4 py-2">
         <div className="min-w-0">
           <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">{t('Manage dossier','Manage dossier')}</p>
           <h2 className="truncate text-base font-light lg:text-lg">{dossier.title}</h2>
@@ -89,11 +89,11 @@ export default function MemberDossierPages({ dossier, onClose }) {
         <button onClick={onClose} className="flex h-9 w-9 items-center justify-center border border-white/15" aria-label={t("Close dossier manager","Close dossier manager")}><X size={18} /></button>
       </div>
 
-      <div className="mx-auto grid min-h-0 w-full max-w-[1500px] flex-1 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden p-3 lg:grid-cols-[340px_minmax(0,1fr)] lg:grid-rows-1 lg:gap-5 lg:p-5">
-        <aside className="flex max-h-[28vh] min-h-0 flex-col overflow-hidden border border-white/10 bg-neutral-950 lg:max-h-none">
-          <div className="flex flex-none items-center justify-between border-b border-white/10 p-3 lg:p-4">
+      <div className="grid min-h-[560px] w-full min-w-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-[minmax(220px,25%)_minmax(0,1fr)] lg:items-start lg:gap-4 lg:p-4">
+        <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border border-white/10 bg-neutral-950 lg:sticky lg:top-3 lg:max-h-[calc(100dvh-11rem)]">
+          <div className="flex flex-none flex-wrap items-center justify-between gap-2 border-b border-white/10 p-3">
             <div><p className="font-semibold">{t('Pages','Pages')}</p><p className="text-xs text-white/40">{sorted.length} {sorted.length === 1 ? t('page','page') : t('pages','pages')}</p></div>
-            <Button onClick={newPage} className="h-9 bg-white px-3 text-black hover:bg-white/90"><Plus size={14} className="mr-1" /> {t('Add','Add')}</Button>
+            <Button onClick={newPage} className="h-8 bg-white px-3 text-xs text-black hover:bg-white/90"><Plus size={14} className="mr-1" /> {t('Add','Add')}</Button>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-2">
             {isLoading ? (
@@ -114,25 +114,25 @@ export default function MemberDossierPages({ dossier, onClose }) {
           </div>
         </aside>
 
-        <main className="min-h-0 min-w-0 overflow-y-auto overscroll-contain bg-neutral-950/30">
+        <main className="min-h-0 min-w-0 bg-neutral-950/30">
           {!editingPage ? (
             <div className="flex min-h-[260px] items-center justify-center border border-dashed border-white/10 bg-neutral-950 text-center lg:min-h-[360px]">
               <div><p className="text-base font-light lg:text-lg">{t('Select a page','Select a page')}</p><p className="mt-1 text-sm text-white/40">{t('or add a new one.','or add a new one.')}</p><Button onClick={newPage} className="mt-4 bg-white text-black hover:bg-white/90"><Plus size={14} className="mr-2" />{t('Add page','Add page')}</Button></div>
             </div>
           ) : (
             <div className="border border-white/10 bg-neutral-950">
-              <div className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-white/10 bg-neutral-950 px-3 py-3 lg:px-5 lg:py-4">
+              <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-neutral-950 px-3 py-3">
                 <h3 className="truncate text-base font-light lg:text-lg">{editingPage.id ? t('Edit page','Edit page') : t('New page','New page')}</h3>
                 <div className="flex flex-none gap-2">
                   <Button variant="ghost" onClick={() => setEditingPage(null)} className="h-9 px-3 text-white">{t('Cancel','Cancel')}</Button>
-                  <Button type="button" onClick={() => saveMutation.mutate(editingPage)} disabled={saveMutation.isPending || !!uploading} className="h-9 bg-white px-3 text-black hover:bg-white/90">
+                  <Button type="button" onClick={() => saveMutation.mutate(editingPage)} disabled={saveMutation.isPending || !!uploading} className="h-8 bg-white px-3 text-xs text-black hover:bg-white/90">
                     {saveMutation.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}{t('Save','Save')}
                   </Button>
                 </div>
               </div>
 
-              <div className="space-y-4 p-3 pb-8 lg:space-y-5 lg:p-5 lg:pb-10">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="space-y-4 p-3 pb-8 lg:p-4 lg:pb-8">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(150px,1fr)_minmax(180px,2fr)_minmax(70px,0.5fr)]">
                   <select value={editingPage.page_type || 'text'} onChange={e => update('page_type', e.target.value)} className="h-10 w-full border border-white/10 bg-neutral-900 px-3 text-sm text-white outline-none">
                     {PAGE_TYPES.map(([value, label]) => <option key={value} value={value}>{t(label,label)}</option>)}
                   </select>
@@ -140,7 +140,7 @@ export default function MemberDossierPages({ dossier, onClose }) {
                   <Input type="number" value={editingPage.order ?? 1} onChange={e => update('order', Number(e.target.value))} placeholder={t("Order","Order")} className="bg-neutral-900 border-white/10 text-white" />
                 </div>
 
-                <div className="flex flex-col gap-3 border border-white/10 bg-black/30 p-3 text-sm sm:flex-row sm:gap-6">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border border-white/10 bg-black/30 p-3 text-xs">
                   <label className="flex items-center gap-2"><input type="checkbox" checked={!!editingPage.is_hidden_from_public} onChange={e => update('is_hidden_from_public', e.target.checked)} /> {t('Hidden from public','Hidden from public')}</label>
                   <label className="flex items-center gap-2"><input type="checkbox" checked={!!editingPage.hide_title} onChange={e => update('hide_title', e.target.checked)} /> {t('Hide page title','Hide page title')}</label>
                 </div>
