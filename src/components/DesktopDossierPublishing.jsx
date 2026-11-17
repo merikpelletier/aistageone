@@ -120,6 +120,8 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
 
   return (
     <section className="pt-3">
+      {editingDossier === undefined ? (
+        <>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-white">{t("Dossiers", "Dossiers")}</h2>
@@ -232,8 +234,10 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
         </div>
       )}
 
-      {editingDossier !== undefined && (
+        </>
+      ) : (
         <MemberDossierEditor
+          embedded
           dossier={editingDossier}
           userEmail={userEmail}
           onClose={() => setEditingDossier(undefined)}
@@ -245,7 +249,6 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
           }}
         />
       )}
-
       {managingDossier && <MemberDossierPages dossier={managingDossier} onClose={() => setManagingDossier(null)} />}
     </section>
   );
