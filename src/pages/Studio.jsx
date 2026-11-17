@@ -925,7 +925,7 @@ export default function Studio() {
 
       {['generate_3d', 'three_d_shop', 'my_3d_assets'].includes(activeToolPanel) && <div className="absolute inset-0 z-20 bg-[#d8d8d3]"><ThreeDStudio mode={activeToolPanel} /></div>}
 
-      {activeToolPanel === 'dossiers' && <div className="absolute inset-0 z-20 bg-black px-4 md:px-6 pb-6"><DesktopDossierPublishing userEmail={user?.email} /></div>}
+      {activeToolPanel === 'dossiers' && <div className="relative z-20 min-h-[calc(100vh-3.5rem)] bg-[#202328] px-4 pb-6 md:px-6"><DesktopDossierPublishing userEmail={user?.email} /></div>}
 
       {activeToolPanel === 'ai_pilots' && <div className="absolute inset-0 z-20 bg-black"><MyAIPilots embedded /></div>}
 
