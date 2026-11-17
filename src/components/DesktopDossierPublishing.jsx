@@ -143,7 +143,7 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
           <Loader2 size={20} className="animate-spin text-white/60" />
         </div>
       ) : (
-        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 390px), 1fr))' }}>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {publishableStories.map(story => {
             const isPublished = Boolean(story.is_published);
             const audience = accessByStory[story.id] || 'public';
