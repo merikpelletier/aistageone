@@ -119,10 +119,6 @@
    native control-strip height before the Studio header and fixed sidebar.
    Without this, the blank titlebar overlay covers the Studio's top controls. */
 @media (min-width: 1024px) and (display-mode: window-controls-overlay) {
-  .studio-shell {
-    padding-top: env(titlebar-area-height, 0px);
-  }
-
   .studio-shell > .sticky.top-0 {
     top: env(titlebar-area-height, 0px) !important;
   }
