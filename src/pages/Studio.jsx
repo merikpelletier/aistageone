@@ -782,6 +782,12 @@ export default function Studio() {
       t={studioT}
     >
       <div className="min-h-[calc(100vh-4rem)] relative" style={activeViewBg ? { backgroundImage: `url(${activeViewBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : undefined}>
+      {activeToolPanel === 'dossiers' ? (
+        <div className="min-h-[calc(100vh-4rem)] bg-[#202328] px-4 pb-6 md:px-6">
+          <DesktopDossierPublishing userEmail={user?.email} />
+        </div>
+      ) : (
+      <>
       {activeViewBg && <div className="absolute inset-0 bg-black/40 pointer-events-none z-0" />}
       <div className="relative z-10">
       {showVoiceRecorder && (
@@ -925,7 +931,7 @@ export default function Studio() {
 
       {['generate_3d', 'three_d_shop', 'my_3d_assets'].includes(activeToolPanel) && <div className="absolute inset-0 z-20 bg-[#d8d8d3]"><ThreeDStudio mode={activeToolPanel} /></div>}
 
-      {activeToolPanel === 'dossiers' && <div className="relative z-20 min-h-[calc(100vh-7rem)] bg-[#202328] px-4 pb-6 md:px-6"><DesktopDossierPublishing userEmail={user?.email} /></div>}
+      
 
       {activeToolPanel === 'ai_pilots' && <div className="absolute inset-0 z-20 bg-black"><MyAIPilots embedded /></div>}
 
@@ -946,6 +952,8 @@ export default function Studio() {
         )}
       </AnimatePresence>
       </div>
+      </>
+      )}
       </div>
     </UnifiedStudioShell>
   );
