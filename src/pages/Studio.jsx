@@ -823,7 +823,7 @@ export default function Studio() {
         </div>
       )}
 
-      {activeShellKey && <div className="px-5 md:px-7 pt-6 pb-5 relative">
+      {activeShellKey && activeToolPanel !== 'dossiers' && <div className="px-5 md:px-7 pt-6 pb-5 relative">
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between gap-4">
           <div>
             <p className="text-white/45 text-[10px] tracking-[0.22em] uppercase font-bold mb-1">{user?.full_name || 'CREATOR'}</p>
@@ -925,7 +925,7 @@ export default function Studio() {
 
       {['generate_3d', 'three_d_shop', 'my_3d_assets'].includes(activeToolPanel) && <div className="absolute inset-0 z-20 bg-[#d8d8d3]"><ThreeDStudio mode={activeToolPanel} /></div>}
 
-      {activeToolPanel === 'dossiers' && <div className="absolute inset-0 z-20 overflow-y-auto bg-[#202328] px-4 pb-6 md:px-6"><DesktopDossierPublishing userEmail={user?.email} /></div>}
+      {activeToolPanel === 'dossiers' && <div className="relative z-20 min-h-[calc(100vh-7rem)] bg-[#202328] px-4 pb-6 md:px-6"><DesktopDossierPublishing userEmail={user?.email} /></div>}
 
       {activeToolPanel === 'ai_pilots' && <div className="absolute inset-0 z-20 bg-black"><MyAIPilots embedded /></div>}
 
