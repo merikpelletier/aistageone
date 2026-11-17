@@ -129,5 +129,7 @@
 
   .studio-shell > .flex > aside {
     top: calc(3.5rem + env(titlebar-area-height, 0px)) !important;
+    height: calc(100vh - 3.5rem - env(titlebar-area-height, 0px)) !important;
+    min-height: 0 !important;
   }
 }
