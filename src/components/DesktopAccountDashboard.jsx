@@ -8,7 +8,6 @@ import SponsorsContributorsSection from '@/components/SponsorsContributorsSectio
 import ProfileLinksSection from '@/components/ProfileLinksSection';
 import CampaignManager from '@/components/CampaignManager';
 import MemberInboxSection from '@/components/MemberInboxSection';
-import DesktopDossierPublishing from '@/components/DesktopDossierPublishing';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 function DesktopPanel({ children, className = '' }) {
@@ -84,8 +83,6 @@ export default function DesktopAccountDashboard({
           <DesktopPanel className="col-span-12 xl:col-span-6"><CampaignManager userEmail={viewingEmail} /></DesktopPanel>
           <DesktopPanel className="col-span-12 xl:col-span-6"><MemberInboxSection userEmail={viewingEmail} /></DesktopPanel>
         </section>
-
-        <DesktopDossierPublishing userEmail={viewingEmail} dossiers={dossiers} />
 
         <div className="mt-7 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
           <Link to="/MyAIPilots" className="flex items-center gap-2 border border-cyan-400/35 px-5 py-2 text-xs font-bold uppercase tracking-[0.14em] text-cyan-200 hover:border-cyan-300 hover:text-white"><Bot size={14} /> {t("profile.myPilots", "My AI Pilots")}</Link>
