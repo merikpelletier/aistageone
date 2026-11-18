@@ -38,6 +38,7 @@ import LabWorkspace from '@/components/studio/LabWorkspace';
 import StoryBlocks from '@/components/studio/StoryBlocks';
 import VaultSection from '@/components/VaultSection';
 import LayoutTool from '@/components/studio/LayoutTool';
+import SlideTool from '@/components/studio/SlideTool';
 import Catalog from '@/pages/Catalog';
 import AssetDetail from '@/pages/AssetDetail';
 import PitchDecks from '@/pages/PitchDecks';
@@ -96,6 +97,7 @@ const STUDIO_TOOL_SECTIONS = [
     label: 'Assemble',
     tools: [
       { key: 'timeline', label: 'Timeline', icon: ListVideo, action: 'timeline' },
+      { key: 'slide', label: 'Slide', icon: Presentation, action: 'workspace' },
       { key: 'layout', label: 'Layout', icon: LayoutTemplate, action: 'layout' },
       { key: 'pitch', label: 'Pitch Deck', icon: Presentation, action: 'workspace' },
     ],
@@ -920,6 +922,8 @@ export default function Studio() {
       {activeToolPanel === 'timeline' && (
         <div className="absolute inset-0 z-20 bg-black"><KitProductionRoom embedded kitPage={{ id: 'free_timeline', title: 'Free Timeline', kit_characters: [], kit_sets: [], kit_costumes: [] }} dossier={null} onClose={() => { setActiveToolPanel(null); setActiveTab(null); }} producedMedia={producedMedia} onMediaProduced={setProducedMedia} referenceMedia={[]} /></div>
       )}
+
+      {activeToolPanel === 'slide' && <div className="absolute inset-0 z-20 bg-[#202328]"><SlideTool /></div>}
 
       {activeToolPanel === 'layout' && <div className="absolute inset-0 z-20 bg-zinc-900"><LayoutTool user={user} onClose={() => { setActiveToolPanel(null); setActiveTab(null); }} /></div>}
 
