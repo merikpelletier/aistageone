@@ -33,7 +33,7 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
   const [saving, setSaving] = useState(false);
   const working = useRef(false);
   const { options: models, loading: loadingModels } = useAiModelOptions({
-    service: 'generateDubbing', kind: 'processing',
+    service: 'generateDubbing', kind: 'speech',
     input: { duration_seconds: durationSeconds, target_language: targetLanguage },
     enabled: durationSeconds > 0,
   });
@@ -54,7 +54,7 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
     let cancelled = false;
     supabase.functions.invoke('ai-price-quote', {
       body: {
-        service: 'generateDubbing', kind: 'processing', model_key: modelKey,
+        service: 'generateDubbing', kind: 'speech', model_key: modelKey,
         input: { duration_seconds: durationSeconds, source_url: videoUrl, target_language: targetLanguage },
       },
     }).then(({ data, error }) => {
