@@ -265,8 +265,8 @@ export default function SlideTool() {
           </div>
           <section className="bg-[#16181c] border border-white/10 p-2">
             <div className="flex items-center justify-between mb-2"><strong>Images ({slides.length})</strong><label className="cursor-pointer bg-white/10 px-3 py-2 flex items-center gap-2"><ImagePlus size={14} /> Ajouter des images<input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { addImages(e.target.files); e.target.value = ''; }} /></label></div>
-            <div className="flex gap-2 overflow-x-auto pb-2 min-h-32">
-              {slides.map((s, i) => <div key={s.id} className="w-32 shrink-0 border border-white/15 bg-white/5 p-1 space-y-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 pb-2 min-h-32">
+              {slides.map((s, i) => <div key={s.id} className="min-w-0 border border-white/15 bg-white/5 p-1 space-y-1">
                 <button onClick={() => { setPlaying(false); setPosition(duration(slides.slice(0, i))); }} className="w-full"><img src={urls.current.get(s.id)} alt={s.name} className="w-full aspect-video object-cover" /></button>
                 <div className="truncate" title={s.name}>{i + 1}. {s.name}</div>
                 <div className="flex justify-between items-center"><button disabled={i === 0} onClick={() => move(i, -1)}><ArrowLeft size={14} /></button><span>{s.duration}s</span><button disabled={i === slides.length - 1} onClick={() => move(i, 1)}><ArrowRight size={14} /></button><button onClick={() => remove(s.id)} aria-label="Retirer"><Trash2 size={14} /></button></div>
