@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { supabase } from '@/api/supabaseClient';
 import { Upload, Music, Play, Pause, Download, Save, Trash2, ArrowLeft, ArrowRight, ImagePlus } from 'lucide-react';
 
 const FPS = 30;
@@ -83,6 +84,10 @@ export default function SlideTool() {
   const [exporting, setExporting] = useState(false);
   const [status, setStatus] = useState('');
   const [title, setTitle] = useState('Nouveau Slide');
+  const [projectId, setProjectId] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const canvasRef = useRef(null);
   const audioRef = useRef(null);
   const images = useRef(new Map());
@@ -125,30 +130,120 @@ export default function SlideTool() {
     images.current.delete(id);
     setSlides((old) => old.filter((s) => s.id !== id));
   };
-  const save = async () => {
-    try {
-      await storeProject({ title, slides: slides.map(({ file, ...s }) => ({ ...s, file })), audio });
-      setStatus('Projet enregistré dans ce navigateur.');
-    } catch (e) { setStatus('Enregistrement impossible : ' + e.message); }
+  const getUserId = async () => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user?.id) throw new Error('Connexion requise pour enregistrer un projet.');
+    return data.user.id;
   };
-  const load = async () => {
+  const refreshProjects = async (ownerId) => {
+    const { data, error } = await supabase.from('slide_project').select('id,title,updated_at').eq('owner_id', ownerId).order('updated_at', { ascending: false });
+    if (error) throw error;
+    setProjects(data || []);
+  };
+  useEffect(() => {
+    getUserId().then(refreshProjects).catch(() => {});
+  }, []);
+  const save = async () => {
+    if (saving) return;
+    setSaving(true); setStatus('Enregistrement des images et du projet…');
+    try {
+      const ownerId = await getUserId();
+      const id = projectId || uid();
+      const bucket = supabase.storage.from('slide-project-media');
+      const savedSlides = [];
+      for (const slide of slides) {
+        let path = slide.path;
+        if (!path) {
+          if (!slide.file) throw new Error('Fichier manquant : ' + slide.name);
+          path = ownerId + '/' + id + '/images/' + slide.id + '-' + slide.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          const { error } = await bucket.upload(path, slide.file, { upsert: true, contentType: slide.file.type || 'application/octet-stream' });
+          if (error) throw error;
+        }
+        const { file, ...metadata } = slide;
+        savedSlides.push({ ...metadata, path });
+      }
+      let audioPath = audio?.path || null;
+      if (audio && !audioPath) {
+        audioPath = ownerId + '/' + id + '/audio/' + uid() + '-' + audio.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const { error } = await bucket.upload(audioPath, audio, { upsert: true, contentType: audio.type || 'application/octet-stream' });
+        if (error) throw error;
+      }
+      const payload = { id, owner_id: ownerId, title: title.trim() || 'Nouveau Slide', slides: savedSlides, audio: audioPath ? { path: audioPath, name: audio.name } : null, updated_at: new Date().toISOString() };
+      const { error } = await supabase.from('slide_project').upsert(payload, { onConflict: 'id' });
+      if (error) throw error;
+      setProjectId(id);
+      setSlides((old) => old.map((slide) => {
+        const saved = savedSlides.find((item) => item.id === slide.id);
+        return saved ? { ...slide, path: saved.path } : slide;
+      }));
+      if (audioPath && audio) audio.path = audioPath;
+      await refreshProjects(ownerId);
+      setStatus('Projet enregistré dans votre compte AISTAGE.ONE.');
+    } catch (e) { setStatus('Enregistrement impossible : ' + e.message); }
+    finally { setSaving(false); }
+  };
+  const openProject = async (id) => {
+    if (!id || loading) return;
+    setLoading(true); setPlaying(false); setStatus('Ouverture du projet…');
+    try {
+      const ownerId = await getUserId();
+      const { data, error } = await supabase.from('slide_project').select('*').eq('id', id).eq('owner_id', ownerId).single();
+      if (error) throw error;
+      const bucket = supabase.storage.from('slide-project-media');
+      const restored = [];
+      const loadedImages = new Map();
+      const loadedUrls = new Map();
+      try {
+        for (const slide of data.slides || []) {
+          const { data: blob, error: fileError } = await bucket.download(slide.path);
+          if (fileError) throw fileError;
+          const file = new File([blob], slide.name || 'image', { type: blob.type || 'image/png' });
+          const { img, url } = await readImage(file);
+          loadedImages.set(slide.id, img); loadedUrls.set(slide.id, url);
+          restored.push({ ...slide, file });
+        }
+        let audioFile = null;
+        if (data.audio?.path) {
+          const { data: blob, error: audioError } = await bucket.download(data.audio.path);
+          if (audioError) throw audioError;
+          audioFile = new File([blob], data.audio.name || 'audio', { type: blob.type || 'audio/mpeg' });
+          audioFile.path = data.audio.path;
+        }
+        for (const url of urls.current.values()) URL.revokeObjectURL(url);
+        images.current = loadedImages; urls.current = loadedUrls;
+        setSlides(restored); setTitle(data.title || 'Nouveau Slide');
+        setMusic(audioFile); setProjectId(id); setPosition(0);
+        setStatus('Projet ouvert depuis votre compte.');
+      } catch (e) {
+        for (const url of loadedUrls.values()) URL.revokeObjectURL(url);
+        throw e;
+      }
+    } catch (e) { setStatus('Ouverture impossible : ' + e.message); }
+    finally { setLoading(false); }
+  };
+  const newProject = () => {
+    setPlaying(false);
+    for (const url of urls.current.values()) URL.revokeObjectURL(url);
+    images.current.clear(); urls.current.clear();
+    setSlides([]); setMusic(null); setTitle('Nouveau Slide'); setProjectId(null); setPosition(0);
+    setStatus('Nouveau projet.');
+  };
+  const loadLocalBackup = async () => {
     try {
       const data = await restoreProject();
-      if (!data) { setStatus('Aucun projet local enregistré.'); return; }
-      playingRef.current = false; setPlaying(false);
-      for (const url of urls.current.values()) URL.revokeObjectURL(url);
-      images.current.clear(); urls.current.clear();
-      const restored = [];
+      if (!data) { setStatus('Aucune ancienne sauvegarde locale trouvée.'); return; }
+      const restored = []; const loadedImages = new Map(); const loadedUrls = new Map();
       for (const slide of data.slides || []) {
-        try {
-          const { img, url } = await readImage(slide.file);
-          images.current.set(slide.id, img); urls.current.set(slide.id, url);
-          restored.push(slide);
-        } catch { /* ignore corrupted image */ }
+        const { img, url } = await readImage(slide.file);
+        loadedImages.set(slide.id, img); loadedUrls.set(slide.id, url);
+        restored.push(slide);
       }
+      for (const url of urls.current.values()) URL.revokeObjectURL(url);
+      images.current = loadedImages; urls.current = loadedUrls;
       setSlides(restored); setTitle(data.title || 'Slide'); setMusic(data.audio || null);
-      setPosition(0); setStatus('Projet rouvert.');
-    } catch (e) { setStatus('Ouverture impossible : ' + e.message); }
+      setProjectId(null); setPosition(0); setPlaying(false);
+      setStatus('Ancienne sauvegarde locale chargée. Cliquez sur Enregistrer pour la conserver dans votre compte.');
+    } catch (e) { setStatus('Ouverture locale impossible : ' + e.message); }
   };
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -245,8 +340,10 @@ export default function SlideTool() {
       <div className="flex flex-wrap gap-2 items-center justify-between">
         <div className="flex gap-2 items-center"><strong className="text-base">Slide</strong><input aria-label="Titre du projet" className="bg-white/10 border border-white/15 px-2 py-1.5 w-48" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={save} className="bg-white/10 px-3 py-2 flex gap-2 items-center"><Save size={14} /> Enregistrer</button>
-          <button onClick={load} className="bg-white/10 px-3 py-2">Ouvrir le projet local</button>
+          <button disabled={saving || loading} onClick={save} className="bg-white/10 disabled:opacity-40 px-3 py-2 flex gap-2 items-center"><Save size={14} /> {saving ? 'Enregistrement…' : 'Enregistrer'}</button>
+          <select aria-label="Ouvrir un Slide enregistré" className="bg-[#25282e] px-2 py-2 max-w-52" value={projectId || ''} onChange={(e) => openProject(e.target.value)}><option value="">Projets enregistrés</option>{projects.map((p) => <option value={p.id} key={p.id}>{p.title}</option>)}</select>
+          <button onClick={newProject} className="bg-white/10 px-3 py-2">Nouveau</button>
+          <button onClick={loadLocalBackup} className="bg-white/10 px-3 py-2">Récupérer sauvegarde locale</button>
           <button disabled={!slides.length || exporting} onClick={exportVideo} className="bg-teal-600 disabled:opacity-40 px-3 py-2 flex gap-2 items-center"><Download size={14} /> {exporting ? 'Export…' : 'Exporter vidéo'}</button>
         </div>
       </div>
@@ -283,7 +380,7 @@ export default function SlideTool() {
             <label className="block">Mouvement<select className="w-full bg-[#25282e] p-2 mt-1" value={s.effect} onChange={(e) => update(s.id, { effect: e.target.value })}><option value="none">Fixe</option><option value="zoom-in">Zoom avant</option><option value="zoom-out">Zoom arrière</option><option value="pan">Panoramique horizontal</option></select></label>
             <label className="flex items-center justify-between gap-2">Fondu vers la suivante<input type="number" min="0" max="3" step="0.1" className="w-20 bg-white/10 p-1" value={s.transition} onChange={(e) => update(s.id, { transition: Math.max(0, Math.min(3, Number(e.target.value) || 0)) })} /></label>
           </div>)}
-          <p className="text-white/45 leading-relaxed">Projets enregistrés localement dans ce navigateur. Les fichiers originaux ne sont pas modifiés. L’export MP4 dépend du navigateur ; sinon WebM est utilisé.</p>
+          <p className="text-white/45 leading-relaxed">Les projets et leurs médias sont sauvegardés dans votre compte. Les originaux ne sont pas modifiés. L’export MP4 dépend du navigateur ; sinon WebM est utilisé.</p>
         </aside>
       </div>
       {!!status && <div role="status" className="text-teal-300">{status}</div>}
