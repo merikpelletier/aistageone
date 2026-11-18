@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
+import DossierQuizEditor, { parseDossierQuiz } from '@/components/DossierQuizEditor';
 
 const PAGE_TYPES = [
-  ['cover', 'Cover'], ['index', 'Visual Index'], ['contest', 'Contest / Open Call'], ['credits', 'Credits'],
+  ['cover', 'Cover'], ['index', 'Visual Index'], ['contest', 'Contest / Open Call'], ['credits', 'Credits'], ['quiz', 'Questions and answers game'],
   ['text', 'Text only'], ['image', 'Image only'], ['video', 'Video only'], ['mixed', 'Text + Image/Video'],
   ['block_player', 'Block Player'],
 ];
@@ -33,6 +34,10 @@ export default function MemberDossierPages({ dossier, onClose }) {
     mutationFn: async (page) => {
       const { id, created_date, updated_date, created_by, ...rest } = page;
       const payload = { ...rest, dossier_id: dossier.id, order: Number(rest.order) || 1 };
+      if (payload.page_type === 'quiz') {
+        const questions = parseDossierQuiz(payload.content).questions;
+        if (!questions.length || questions.some(q => !q.prompt?.trim() || !Array.isArray(q.choices) || q.choices.length < 2 || q.choices.some(choice => !String(choice).trim()) || !Number.isInteger(q.correctIndex) || q.correctIndex < 0 || q.correctIndex >= q.choices.length)) throw new Error(t('Complete all quiz questions and answers before saving', 'Complete all quiz questions and answers before saving'));
+      }
       if (id) return base44.entities.DossierPage.update(id, payload);
       return base44.entities.DossierPage.create(payload);
     },
@@ -147,6 +152,8 @@ export default function MemberDossierPages({ dossier, onClose }) {
                 </div>
 
  
+                {editingPage.page_type === 'quiz' && <DossierQuizEditor value={editingPage.content} onChange={value => update('content', value)} />}
+
                 <div className="flex flex-wrap gap-1 border-b border-white/10 pb-2">
                   {[
                     ['media', 'Media and text'],
@@ -197,7 +204,7 @@ export default function MemberDossierPages({ dossier, onClose }) {
                   </div>
                 )}
 
-                {detailsTab === 'media' && (editingPage.page_type === 'credits' ? (
+                {detailsTab === 'media' && editingPage.page_type !== 'quiz' && (editingPage.page_type === 'credits' ? (
                   <div className="border border-white/10 bg-black/30 p-3 lg:p-4">
                     <p className="mb-3 text-sm text-white/60">{t('Credits page content','Credits page content')}</p>
                     <Textarea value={editingPage.content || ''} onChange={e => update('content', e.target.value)} placeholder={t("Credits text or notes","Credits text or notes")} rows={4} className="h-8 bg-neutral-900 border-white/10 text-white text-xs" />
