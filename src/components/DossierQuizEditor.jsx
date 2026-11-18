@@ -2,20 +2,22 @@ import React from 'react';
 import { Plus, Trash2, Upload } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
+import { QUIZ_SOUND_OPTIONS, playQuizSound } from '@/components/DossierQuizSounds';
 
 export function parseDossierQuiz(content) {
   try {
     const data = JSON.parse(content || '{}');
-    return { questions: Array.isArray(data.questions) ? data.questions : [] };
+    return { questions: Array.isArray(data.questions) ? data.questions : [], sounds: data.sounds || {} };
   } catch {
-    return { questions: [] };
+    return { questions: [], sounds: {} };
   }
 }
 
 export default function DossierQuizEditor({ value, onChange }) {
   const t = useStudioTranslation();
   const quiz = parseDossierQuiz(value);
-  const change = (questions) => onChange(JSON.stringify({ version: 1, questions }));
+  const change = (questions, sounds = quiz.sounds) => onChange(JSON.stringify({ version: 1, questions, sounds }));
+  const updateSound = (event, value) => change(quiz.questions, { ...quiz.sounds, [event]: value });
   const setQuestion = (index, changes) => change(quiz.questions.map((q, i) => i === index ? { ...q, ...changes } : q));
   const addQuestion = () => change([...quiz.questions, { prompt: '', image_url: '', choices: ['', '', '', ''], correctIndex: 0, explanation: '' }]);
   const updateChoice = (questionIndex, choiceIndex, text) => {
@@ -32,7 +34,17 @@ export default function DossierQuizEditor({ value, onChange }) {
     }
   };
 
+  const defaults = { correct: 'chime', incorrect: 'boing', complete: 'fanfare', select: 'pop' };
+  const soundEvents = [['correct', 'Correct answer sound'], ['incorrect', 'Incorrect answer sound'], ['complete', 'Game completed sound'], ['select', 'Answer selection sound']];
   return <div className="space-y-3 border border-white/10 bg-black/30 p-3">
+    <div className="space-y-2 border-b border-white/10 pb-3">
+      <p className="text-xs font-medium text-white">{t('Sound effects', 'Sound effects')}</p>
+      <p className="text-[11px] text-white/50">{t('Choose and preview a sound for each game moment.', 'Choose and preview a sound for each game moment.')}</p>
+      {soundEvents.map(([event, label]) => <div key={event} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+        <label className="min-w-0 text-xs text-white/75">{t(label, label)}<select value={quiz.sounds[event] || defaults[event]} onChange={e => updateSound(event, e.target.value)} className="mt-1 h-8 w-full border border-white/15 bg-neutral-900 px-2 text-xs text-white">{QUIZ_SOUND_OPTIONS.map(option => <option key={option.value} value={option.value}>{t(option.label, option.label)}</option>)}</select></label>
+        <button type="button" onClick={() => playQuizSound(quiz.sounds[event] || defaults[event])} className="mt-5 border border-white/20 px-2 py-1.5 text-xs text-white">{t('Preview', 'Preview')}</button>
+      </div>)}
+    </div>
     <div className="flex items-center justify-between gap-2">
       <p className="text-xs text-white/70">{t('Quiz questions', 'Quiz questions')} · {quiz.questions.length}</p>
       <button type="button" onClick={addQuestion} className="flex items-center gap-1 border border-white/20 px-2 py-1 text-xs hover:bg-white/10"><Plus size={13}/>{t('Add question', 'Add question')}</button>
