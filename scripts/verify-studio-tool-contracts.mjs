@@ -17,7 +17,7 @@ const dubbingUi = read('src/components/studio/DubbingStudio.jsx');
 const studio = read('src/pages/Studio.jsx');
 const dubbingServer = read('supabase/functions/mixAudioVideo/index.ts');
 
-for (const marker of ['audio_url: voiceUrl', 'video_url: videoUrl', 'mediaType="video"', '<video src={mixedResult}']) {
+for (const marker of ["supabase.functions.invoke('generateDubbing'", 'audio_url: audioUrl', 'video_url: videoUrl', 'mediaType="video"', '<video src={finalUrl}']) {
   requireMarker('Dubbing UI', dubbingUi, marker);
 }
 for (const marker of ['background_music_url', 'instrumentalUrl', 'mediaType="audio"']) {
@@ -170,7 +170,7 @@ const visit = (directoryUrl) => {
 };
 for (const directory of activeRoots) visit(new URL(`${directory}/`, root));
 
-for (const slug of ["agent-conversations","checkStoryBlockPlan","generate-image","generate-speech","generateBlockVideos","generateCharacterSheet","generatePitchSpeech","generateSpeech","generateStoryBlock","generateVideo","invoke-llm","mixAudioVideo","proposeStoryArc","regenerateNarration","regenerateSegment","replicateGenerate","replicateWebhook","transcribe-audio"]) { requireMarker('Owner model control '+slug,read('supabase/functions/'+slug+'/index.ts'),"installModelControl('"+slug+"')"); }
+for (const slug of ["generateDubbing","agent-conversations","checkStoryBlockPlan","generate-image","generate-speech","generateBlockVideos","generateCharacterSheet","generatePitchSpeech","generateSpeech","generateStoryBlock","generateVideo","invoke-llm","mixAudioVideo","proposeStoryArc","regenerateNarration","regenerateSegment","replicateGenerate","replicateWebhook","transcribe-audio"]) { requireMarker('Owner model control '+slug,read('supabase/functions/'+slug+'/index.ts'),"installModelControl('"+slug+"')"); }
 const modelPolicy=read('supabase/functions/_shared/modelControlPolicy.ts');
 requireMarker('Blocked model policy',modelPolicy,"BLOCKED_MODEL='bytedance/seedream-4.5'");
 requireMarker('No automatic replacement',read('supabase/functions/_shared/modelControlRuntime.ts'),'if(context.failed)');
