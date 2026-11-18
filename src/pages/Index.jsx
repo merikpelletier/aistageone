@@ -147,7 +147,7 @@ function DossierCard({ dossier, dictionary, language }) {
   );
 }
 
-function CollapsibleCategory({ label, dossiers, accentClass, defaultOpen = true }) {
+function CollapsibleCategory({ label, dossiers, accentClass, dictionary, language, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="mb-2">
@@ -172,8 +172,8 @@ function ClassSection({ classLabel, dossiers, categories, dictionary, language }
     <div className="break-inside-avoid mb-6">
       <div className="flex items-center gap-2 mb-2"><h2 className="text-white text-lg font-extrabold tracking-wide uppercase">{translatedLabel(dictionary, 'class', classLabel, language)}</h2><span className={`px-2 py-0.5 ${accentClass} text-white text-[10px] font-bold rounded-full`}>{dossiers.length}</span><div className="flex-1 h-px bg-white/20" /></div>
       <div className="px-1">
-        {categorized.map(row => <CollapsibleCategory key={row.label} label={row.label} dossiers={row.dossiers} accentClass={accentClass} defaultOpen />)}
-        {uncategorized.length > 0 && <CollapsibleCategory label="Others" dossiers={uncategorized} accentClass={accentClass} defaultOpen={categorized.length === 0} />}
+        {categorized.map(row => <CollapsibleCategory key={row.label} label={row.label} dossiers={row.dossiers} accentClass={accentClass} dictionary={dictionary} language={language} defaultOpen />)}
+        {uncategorized.length > 0 && <CollapsibleCategory label="Others" dossiers={uncategorized} accentClass={accentClass} dictionary={dictionary} language={language} defaultOpen={categorized.length === 0} />}
       </div>
     </div>
   );
