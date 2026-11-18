@@ -109,7 +109,7 @@ function buildPopularityMap(ratings) {
   return scores;
 }
 
-function DossierCard({ dossier }) {
+function DossierCard({ dossier, dictionary, language }) {
   const img = dossier.cover_image;
   const isStoryTemplate = dossier.class === 'Story' && !!dossier.cover_template_image;
 
@@ -122,7 +122,7 @@ function DossierCard({ dossier }) {
           {!dossier.hide_text_on_cover && <div className="absolute top-0 left-0 right-0 px-2 pt-2 text-center"><p className="text-white text-xl font-black uppercase tracking-wide leading-tight line-clamp-2 drop-shadow-[0_1px_6px_rgba(0,0,0,0.95)]">{dossier.title}</p></div>}
           {(dossier.content_rating || dossier.default_language || dossier.original_language) && (
             <div className="absolute top-2 right-2 z-30 flex items-center gap-1.5">
-              {dossier.content_rating && <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">{dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}</span>}
+              {dossier.content_rating && <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">{dossier.content_rating === 'all' ? translatedLabel(dictionary, 'ui', 'All', language) : dossier.content_rating}</span>}
               {(dossier.default_language || dossier.original_language) && <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">{({ en: 'EN', fr: 'FR', es: 'ES', English: 'EN', French: 'FR', Français: 'FR', Spanish: 'ES', Español: 'ES' })[dossier.default_language || dossier.original_language] || String(dossier.default_language || dossier.original_language).toUpperCase()}</span>}
             </div>
           )}
@@ -138,7 +138,7 @@ function DossierCard({ dossier }) {
         {!dossier.hide_text_on_cover && <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black via-black/90 to-transparent pb-14 pt-2.5 px-2.5"><p className="text-white text-xl font-black uppercase leading-none tracking-tight line-clamp-3 drop-shadow-[0_2px_6px_rgba(0,0,0,1)]" style={{ WebkitTextStroke: '1.5px #FFC107' }}>{dossier.title}</p></div>}
         {(dossier.content_rating || dossier.default_language || dossier.original_language) && (
           <div className="absolute top-2 right-2 z-30 flex items-center gap-1.5">
-            {dossier.content_rating && <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">{dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}</span>}
+            {dossier.content_rating && <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">{dossier.content_rating === 'all' ? translatedLabel(dictionary, 'ui', 'All', language) : dossier.content_rating}</span>}
             {(dossier.default_language || dossier.original_language) && <span className="bg-black/90 border border-white text-white px-2 py-1 text-[10px] font-black uppercase tracking-wider">{({ en: 'EN', fr: 'FR', es: 'ES', English: 'EN', French: 'FR', Français: 'FR', Spanish: 'ES', Español: 'ES' })[dossier.default_language || dossier.original_language] || String(dossier.default_language || dossier.original_language).toUpperCase()}</span>}
           </div>
         )}
@@ -157,7 +157,7 @@ function CollapsibleCategory({ label, dossiers, accentClass, defaultOpen = true 
         <span className="text-white/40 text-[10px] font-bold">{dossiers.length}</span>
         <ChevronDown size={16} className={`text-white/60 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && <div className={`grid gap-2 pb-2 ${dossiers.length <= 1 ? 'grid-cols-1' : dossiers.length === 2 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'}`}>{dossiers.map(d => <DossierCard key={d.id} dossier={d} />)}</div>}
+      {open && <div className={`grid gap-2 pb-2 ${dossiers.length <= 1 ? 'grid-cols-1' : dossiers.length === 2 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'}`}>{dossiers.map(d => <DossierCard key={d.id} dossier={d} dictionary={dictionary} language={language} />)}</div>}
     </div>
   );
 }
@@ -213,7 +213,7 @@ function DesktopDossierTile({ dossier, size, dictionary, language }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/5 to-transparent opacity-90" />
         {(dossier.content_rating || dossier.default_language || dossier.original_language) && (
           <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
-            {dossier.content_rating && <span className="bg-black/90 border border-white text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em]">{dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}</span>}
+            {dossier.content_rating && <span className="bg-black/90 border border-white text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em]">{dossier.content_rating === 'all' ? translatedLabel(dictionary, 'ui', 'All', language) : dossier.content_rating}</span>}
             {(dossier.default_language || dossier.original_language) && <span className="bg-black/90 border border-white text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em]">{({ en: 'EN', fr: 'FR', es: 'ES', English: 'EN', French: 'FR', Français: 'FR', Spanish: 'ES', Español: 'ES' })[dossier.default_language || dossier.original_language] || String(dossier.default_language || dossier.original_language).toUpperCase()}</span>}
           </div>
         )}
