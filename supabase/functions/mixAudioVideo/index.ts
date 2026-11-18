@@ -11,7 +11,7 @@ import {
 import type { CreditCharge, CreditBillingContext } from '../_shared/credits.ts';
 
 const REPLICATE_API = 'https://api.replicate.com/v1';
-// lucataco/video-audio-merge — replace_audio=false mixes the voice with the video's original audio.
+// Video dubbing is a full audio replacement, never an audio mix.
 const MODEL_VERSION = '8c3d57c9c9a1aaa05feabafbcd2dff9f68a5cb394e54ec020c1c2dcc42bde109';
 
 serveWithCors(async (req) => {
@@ -50,7 +50,7 @@ serveWithCors(async (req) => {
         input: {
           audio_file: audio_url,
           video_file: video_url,
-          replace_audio: false,
+          replace_audio: true,
           audio_volume: 1.0,
         },
       }),
