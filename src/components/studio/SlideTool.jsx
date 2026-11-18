@@ -79,7 +79,6 @@ export default function SlideTool() {
   const [slides, setSlides] = useState([]);
   const [audio, setAudio] = useState(null);
   const [audioUrl, setAudioUrl] = useState('');
-  const [audioDuration, setAudioDuration] = useState(0);
   const [position, setPosition] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -97,9 +96,7 @@ export default function SlideTool() {
   const playingRef = useRef(false);
   const slidesRef = useRef(slides);
   slidesRef.current = slides;
-  const playbackTotalRef = useRef(0);
-  const total = Math.max(duration(slides), audioDuration);
-  playbackTotalRef.current = total;
+  const total = duration(slides);
   const update = (id, patch) => setSlides((items) => items.map((s) => s.id === id ? { ...s, ...patch } : s));
   const addImages = async (files) => {
     const incoming = [];
@@ -116,8 +113,7 @@ export default function SlideTool() {
   };
   const setMusic = (file) => {
     if (audioUrl) URL.revokeObjectURL(audioUrl);
-    if (!file) { setAudio(null); setAudioUrl(''); setAudioDuration(0); return; }
-    setAudioDuration(0);
+    if (!file) { setAudio(null); setAudioUrl(''); return; }
     setAudio(file);
     setAudioUrl(URL.createObjectURL(file));
   };
@@ -265,7 +261,7 @@ export default function SlideTool() {
     const tick = () => {
       if (!playingRef.current) return;
       const elapsed = (performance.now() - clock.current) / 1000;
-      if (elapsed >= playbackTotalRef.current) { setPosition(playbackTotalRef.current); setPlaying(false); return; }
+      if (elapsed >= duration(slidesRef.current)) { setPosition(duration(slidesRef.current)); setPlaying(false); return; }
       setPosition(elapsed);
       raf = requestAnimationFrame(tick);
     };
@@ -362,7 +358,7 @@ export default function SlideTool() {
           <div className="flex gap-3 items-center flex-wrap bg-[#16181c] border border-white/10 p-2">
             <label className="cursor-pointer bg-white/10 px-3 py-2 flex items-center gap-2"><Music size={14} /> {audio ? audio.name : 'Ajouter audio (facultatif)'}<input className="hidden" type="file" accept="audio/*" onChange={(e) => setMusic(e.target.files?.[0])} /></label>
             {audio && <><button className="text-red-300" onClick={() => setMusic(null)}>Retirer</button><button className="bg-white/10 px-2 py-2" onClick={fitAudio}>Répartir selon la musique</button></>}
-            <audio ref={audioRef} src={audioUrl || undefined} preload="metadata" onLoadedMetadata={(e) => setAudioDuration(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : 0)} onDurationChange={(e) => { if (Number.isFinite(e.currentTarget.duration)) setAudioDuration(e.currentTarget.duration); }} />
+            <audio ref={audioRef} src={audioUrl || undefined} preload="metadata" />
           </div>
           <section className="bg-[#16181c] border border-white/10 p-2">
             <div className="flex items-center justify-between mb-2"><strong>Images ({slides.length})</strong><label className="cursor-pointer bg-white/10 px-3 py-2 flex items-center gap-2"><ImagePlus size={14} /> Ajouter des images<input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { addImages(e.target.files); e.target.value = ''; }} /></label></div>
