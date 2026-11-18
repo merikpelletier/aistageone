@@ -174,6 +174,19 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
     } finally { working.current = false; }
   };
 
+  const retryAssembly = async () => {
+    if (!jobId || working.current) return;
+    try {
+      const data = await invoke('status', { job_id: jobId });
+      if (data.status !== 'audio_ready' || !data.audio_url) {
+        throw Error(t('The dubbed audio is no longer available for this job.', 'L’audio doublé n’est plus disponible pour ce traitement.'));
+      }
+      await finishVideo(data.audio_url, jobId);
+    } catch (error) {
+      toast.error(error.message || t('Video reconstruction failed', 'La reconstruction de la vidéo a échoué'));
+    }
+  };
+
   const useVideo = () => {
     if (!finalUrl) return;
     if (!user?.email) { onComplete?.(finalUrl); return; }
@@ -275,7 +288,10 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
                   : t('Starting dubbing…', 'Démarrage du doublage…')}
             </div>}
             {step === 'failed' && <p className="mt-3 text-sm text-red-300">{t('The dubbing could not be completed.', 'Le doublage n’a pas pu être terminé.')}</p>}
-            {step === 'mix_failed' && <p className="mt-3 text-sm text-red-300">{t('Video assembly failed. The dubbed audio is available for retry via this job.', 'L’assemblage a échoué. L’audio doublé demeure disponible pour reprendre l’opération.')}</p>}
+            {step === 'mix_failed' && <div className="mt-3 space-y-3">
+              <p className="text-sm text-red-300">{t('Video assembly failed. The dubbed audio is preserved; retry the assembly without paying for dubbing again.', 'L’assemblage a échoué. L’audio doublé est conservé ; relancez l’assemblage sans repayer le doublage.')}</p>
+              <button onClick={retryAssembly} className="rounded bg-[#23c7be] px-4 py-2 text-sm font-bold text-[#071211]">{t('Retry video assembly', 'Reprendre l’assemblage vidéo')}</button>
+            </div>}
           </section>
 
           {finalUrl && <section className="mt-3 rounded border border-white/10 bg-[#17191d] p-4">
