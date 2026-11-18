@@ -61,7 +61,7 @@ serveWithCors(async request => {
       // Price and eligibility always come from the platform's central Admin model registry.
       const quote = await quoteAiService(db, serviceName,
         { duration_seconds: duration, source_url: videoUrl, target_language: language },
-        modelKey, 'processing');
+        modelKey, 'speech');
       const charge = await reserveCredits({
         ...billing, toolId: 'dubbing', provider: 'replicate',
         relatedEntity: serviceName, explicitCost: quote.credits,
