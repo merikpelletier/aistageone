@@ -14,6 +14,8 @@ import SeriesPageEditor from './SeriesPageEditor';
 import DossierAssociatedMember from '@/components/DossierAssociatedMember';
 import VaultDrawer from '@/components/VaultDrawer';
 import { toast } from 'sonner';
+import DossierQuizEditor, { parseDossierQuiz } from '@/components/DossierQuizEditor';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 function DossierPagesIndex({ pages, onManage }) {
   const sorted = [...pages].sort((a, b) => a.order - b.order);
@@ -52,7 +54,7 @@ function DossierPagesIndex({ pages, onManage }) {
 
 const PAGE_TYPE_ICONS = {
   cover: '🖼️', text: '📝', image: '🎨', video: '🎬', mixed: '🗂️',
-  join_cast: '🎭', episode: '🎬', series: '📺', member_episodes: '🌟', block_player: '▶', index: '☰', contest: '🏆', credits: '✦',
+  join_cast: '🎭', episode: '🎬', series: '📺', member_episodes: '🌟', block_player: '▶', index: '☰', contest: '🏆', credits: '✦', quiz: '❓',
 };
 
 export default function AdminDossiers() {
@@ -395,6 +397,7 @@ export default function AdminDossiers() {
 }
 
 function PageEditor({ dossier, pages, onClose }) {
+  const t = useStudioTranslation();
   const [editingPage, setEditingPage] = useState(null);
   const [mediaUpload, setMediaUpload] = useState({ target: null, status: 'idle' });
   const queryClient = useQueryClient();
@@ -447,6 +450,13 @@ function PageEditor({ dossier, pages, onClose }) {
   };
 
   const handleSavePage = async () => {
+    if (editingPage.page_type === 'quiz') {
+      const questions = parseDossierQuiz(editingPage.content).questions;
+      if (!questions.length || questions.some(q => !q.prompt?.trim() || !Array.isArray(q.choices) || q.choices.length < 2 || q.choices.some(choice => !String(choice).trim()) || !Number.isInteger(q.correctIndex) || q.correctIndex < 0 || q.correctIndex >= q.choices.length)) {
+        toast.error(t('Complete all quiz questions and answers before saving', 'Complete all quiz questions and answers before saving'));
+        return;
+      }
+    }
     if (editingPage.id) {
       await updatePageMutation.mutateAsync({ id: editingPage.id, data: editingPage });
       await queryClient.invalidateQueries({ queryKey: ['adminDossierPages'] });
@@ -528,10 +538,12 @@ function PageEditor({ dossier, pages, onClose }) {
               <Select value={editingPage.page_type} onValueChange={(value) => setEditingPage(prev => ({ ...prev, page_type: value }))}>
                 <SelectTrigger className="bg-neutral-900 border-white/10 text-white"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cover">Cover</SelectItem><SelectItem value="index">☰ Visual Index</SelectItem><SelectItem value="contest">🏆 Contest / Open Call</SelectItem><SelectItem value="credits">✦ Credits</SelectItem><SelectItem value="text">Text only</SelectItem><SelectItem value="image">Image only</SelectItem><SelectItem value="video">Video only</SelectItem><SelectItem value="mixed">Text + Image/Video</SelectItem><SelectItem value="join_cast">🎬 Join the Cast</SelectItem><SelectItem value="episode">🎭 Episode</SelectItem><SelectItem value="series">📺 Series</SelectItem><SelectItem value="member_episodes">🌟 Member Episodes</SelectItem><SelectItem value="block_player">▶ Block Player</SelectItem>
+                  <SelectItem value="cover">Cover</SelectItem><SelectItem value="index">☰ Visual Index</SelectItem><SelectItem value="contest">🏆 Contest / Open Call</SelectItem><SelectItem value="credits">✦ Credits</SelectItem><SelectItem value="quiz">❓ {t('Questions and answers game', 'Questions and answers game')}</SelectItem><SelectItem value="text">Text only</SelectItem><SelectItem value="image">Image only</SelectItem><SelectItem value="video">Video only</SelectItem><SelectItem value="mixed">Text + Image/Video</SelectItem><SelectItem value="join_cast">🎬 Join the Cast</SelectItem><SelectItem value="episode">🎭 Episode</SelectItem><SelectItem value="series">📺 Series</SelectItem><SelectItem value="member_episodes">🌟 Member Episodes</SelectItem><SelectItem value="block_player">▶ Block Player</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {editingPage.page_type === 'quiz' && <DossierQuizEditor value={editingPage.content} onChange={value => setEditingPage(prev => ({ ...prev, content: value }))} />}
 
             {editingPage.page_type === 'index' && <div className="p-3 bg-neutral-800/50 border border-white/10 rounded space-y-2"><p className="text-white text-sm font-medium">☰ Visual dossier index</p><p className="text-white/60 text-xs">This page automatically displays all other public dossier pages as visual cards. Use the title and text fields below for its heading and introduction.</p></div>}
 
@@ -612,7 +624,7 @@ function PageEditor({ dossier, pages, onClose }) {
 
             {editingPage.page_type !== 'join_cast' && <><div><label className="text-white text-sm block mb-2">Title (optional)</label><Input value={editingPage.title || ''} onChange={(e) => setEditingPage({ ...editingPage, title: e.target.value })} placeholder="Page title..." className="bg-neutral-900 border-white/10 text-white" /></div><label className="flex items-center gap-3 p-3 border border-white/10 bg-neutral-900/50 cursor-pointer"><input type="checkbox" checked={editingPage.hide_title || false} onChange={(e) => setEditingPage({ ...editingPage, hide_title: e.target.checked })} className="w-4 h-4" /><div><p className="text-white text-sm font-medium">Hide page title</p><p className="text-white/50 text-xs">Keep the title for admin/navigation, but do not display it on the public page.</p></div></label></>}
 
-            {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && <div><label className="text-white text-sm block mb-2">Text</label><Textarea value={editingPage.content || ''} onChange={(e) => setEditingPage({ ...editingPage, content: e.target.value })} placeholder="Page text content..." className="bg-neutral-900 border-white/10 text-white min-h-[400px] text-base" rows={20} /></div>}
+            {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && editingPage.page_type !== 'quiz' && <div><label className="text-white text-sm block mb-2">Text</label><Textarea value={editingPage.content || ''} onChange={(e) => setEditingPage({ ...editingPage, content: e.target.value })} placeholder="Page text content..." className="bg-neutral-900 border-white/10 text-white min-h-[400px] text-base" rows={20} /></div>}
 
             {editingPage.page_type !== 'join_cast' && editingPage.page_type !== 'episode' && editingPage.page_type !== 'series' && editingPage.page_type !== 'credits' && <><div className="flex items-center gap-2 pt-2"><input type="checkbox" id="page-is-product" checked={editingPage.is_product || false} onChange={(e) => setEditingPage({ ...editingPage, is_product: e.target.checked })} className="w-4 h-4" /><label htmlFor="page-is-product" className="text-white text-sm">This page is a product</label></div>{editingPage.is_product && <><Input value={editingPage.price || ''} onChange={(e) => setEditingPage({ ...editingPage, price: e.target.value })} placeholder="Price (e.g. $25)" className="bg-white text-black border-white font-medium placeholder:text-black" /><div className="space-y-2"><label className="text-white text-sm">Product gallery (max 12 images)</label><div className="grid grid-cols-4 gap-2">{(editingPage.images || []).map((img, idx) => <div key={idx} className="relative group"><img src={img} alt="" className="w-full h-20 object-cover rounded" /><button type="button" onClick={() => { const newImages = editingPage.images.filter((_, i) => i !== idx); setEditingPage({ ...editingPage, images: newImages }); }} className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button></div>)}</div>{(!editingPage.images || editingPage.images.length < 12) && <><input type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const { file_url } = await base44.integrations.Core.UploadFile({ file }); const newImages = [...(editingPage.images || []), file_url]; setEditingPage({ ...editingPage, images: newImages }); }} className="hidden" id="gallery-image-upload" /><label htmlFor="gallery-image-upload"><Button type="button" className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700" asChild><span><Upload size={14} className="mr-2" />Add an image ({(editingPage.images || []).length}/12)</span></Button></label></>}</div><div className="space-y-3 pt-2"><label className="text-white text-sm">Product options (size, color...)</label>{(editingPage.product_options || []).map((option, optIdx) => <div key={optIdx} className="p-3 bg-neutral-900/50 rounded border border-white/10 space-y-2"><div className="flex gap-2"><Input value={option.name} onChange={(e) => { const newOptions = [...(editingPage.product_options || [])]; newOptions[optIdx].name = e.target.value; setEditingPage({ ...editingPage, product_options: newOptions }); }} placeholder="Name (e.g. Size, Color)" className="bg-neutral-900 border-white/10 text-white flex-1" /><Button type="button" variant="ghost" size="icon" onClick={() => { const newOptions = editingPage.product_options.filter((_, i) => i !== optIdx); setEditingPage({ ...editingPage, product_options: newOptions }); }} className="text-white hover:text-red-500"><Trash2 size={16} /></Button></div><div className="space-y-1"><label className="text-white text-xs">Values:</label>{(option.values || []).map((value, valIdx) => <div key={valIdx} className="flex gap-2"><Input value={value} onChange={(e) => { const newOptions = [...(editingPage.product_options || [])]; newOptions[optIdx].values[valIdx] = e.target.value; setEditingPage({ ...editingPage, product_options: newOptions }); }} placeholder="Value" className="bg-neutral-900 border-white/10 text-white text-sm flex-1" /><Button type="button" variant="ghost" size="icon" onClick={() => { const newOptions = [...(editingPage.product_options || [])]; newOptions[optIdx].values = newOptions[optIdx].values.filter((_, i) => i !== valIdx); setEditingPage({ ...editingPage, product_options: newOptions }); }} className="h-9 w-9 text-white hover:text-red-500"><Trash2 size={14} /></Button></div>)}<Button type="button" size="sm" onClick={() => { const newOptions = [...(editingPage.product_options || [])]; if (!newOptions[optIdx].values) newOptions[optIdx].values = []; newOptions[optIdx].values.push(''); setEditingPage({ ...editingPage, product_options: newOptions }); }} className="w-full bg-neutral-600 border border-white/30 text-white hover:bg-neutral-500 h-8 text-xs"><Plus size={12} className="mr-1" />Add a value</Button></div></div>)}<Button type="button" size="sm" onClick={() => { const newOptions = [...(editingPage.product_options || []), { name: '', values: [] }]; setEditingPage({ ...editingPage, product_options: newOptions }); }} className="w-full bg-neutral-800 border border-white/20 text-white hover:bg-neutral-700"><Plus size={14} className="mr-2" />Add an option</Button></div></>}</>}
 
