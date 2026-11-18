@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { getPlatformLanguage } from '@/lib/translationDictionary';
-import { Upload, Music, Play, Pause, Download, Save, Trash2, ArrowLeft, ArrowRight, ImagePlus } from 'lucide-react';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
+import { Upload, Music, Play, Pause, Download, Save, Trash2, ArrowLeft, ArrowRight, ImagePlus, RefreshCw } from 'lucide-react';
 
 const SLIDE_EN = {
   "Une image ne peut pas être lue.": "An image could not be loaded.",
@@ -130,6 +131,7 @@ export default function SlideTool() {
   const [language, setLanguage] = useState(() => getPlatformLanguage());
   useEffect(() => { const sync = () => setLanguage(getPlatformLanguage()); window.addEventListener('aistage-language-change', sync); window.addEventListener('storage', sync); return () => { window.removeEventListener('aistage-language-change', sync); window.removeEventListener('storage', sync); }; }, []);
   const tr = (fr) => translateSlide(fr, language);
+  const t = useStudioTranslation();
   const [slides, setSlides] = useState([]);
   const [audio, setAudio] = useState(null);
   const [audioUrl, setAudioUrl] = useState('');
@@ -164,6 +166,27 @@ export default function SlideTool() {
       } catch { setStatus(tr('Une image ne peut pas être lue.')); }
     }
     setSlides((old) => [...old, ...incoming]);
+  };
+  const replaceImage = async (id, file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    try {
+      // Decode before changing anything, so a bad file cannot erase the existing image.
+      const { img, url } = await readImage(file);
+      if (!slidesRef.current.some((slide) => slide.id === id)) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+      const oldUrl = urls.current.get(id);
+      images.current.set(id, img);
+      urls.current.set(id, url);
+      setSlides((items) => items.map((slide) => slide.id === id
+        ? { ...slide, file, name: file.name, path: null, mediaVersion: uid() }
+        : slide));
+      if (oldUrl) URL.revokeObjectURL(oldUrl);
+      setStatus(t('slide.image_replaced', 'Image replaced. Save the project to keep the change.'));
+    } catch (error) {
+      setStatus(t('slide.replace_failed', 'Unable to replace image: ') + (error?.message || ''));
+    }
   };
   const setMusic = (file) => {
     if (audioUrl) URL.revokeObjectURL(audioUrl);
@@ -209,7 +232,7 @@ export default function SlideTool() {
         let path = slide.path;
         if (!path) {
           if (!slide.file) throw new Error(tr('Fichier manquant : ') + slide.name);
-          path = ownerId + '/' + id + '/images/' + slide.id + '-' + slide.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          path = ownerId + '/' + id + '/images/' + (slide.mediaVersion || slide.id) + '-' + slide.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
           const { error } = await bucket.upload(path, slide.file, { upsert: true, contentType: slide.file.type || 'application/octet-stream' });
           if (error) throw error;
         }
@@ -420,7 +443,7 @@ export default function SlideTool() {
               {slides.map((s, i) => <div key={s.id} className="min-w-0 border border-white/15 bg-white/5 p-1 space-y-1">
                 <button onClick={() => { setPlaying(false); setPosition(duration(slides.slice(0, i))); }} className="w-full"><img src={urls.current.get(s.id)} alt={s.name} className="w-full aspect-video object-cover" /></button>
                 <div className="truncate" title={s.name}>{i + 1}. {s.name}</div>
-                <div className="flex justify-between items-center"><button disabled={i === 0} onClick={() => move(i, -1)}><ArrowLeft size={14} /></button><span>{s.duration}s</span><button disabled={i === slides.length - 1} onClick={() => move(i, 1)}><ArrowRight size={14} /></button><button onClick={() => remove(s.id)} aria-label={tr('Retirer')}><Trash2 size={14} /></button></div>
+                <div className="flex justify-between items-center"><button disabled={i === 0} onClick={() => move(i, -1)}><ArrowLeft size={14} /></button><span>{s.duration}s</span><button disabled={i === slides.length - 1} onClick={() => move(i, 1)}><ArrowRight size={14} /></button><label className="cursor-pointer inline-flex items-center gap-1 text-[11px] text-white/85 hover:text-white" title={t('slide.replace_image', 'Replace')}><RefreshCw size={13} /><span>{t('slide.replace_image', 'Replace')}</span><input type="file" accept="image/*" className="hidden" aria-label={t('slide.replace_image', 'Replace')} onChange={(e) => { const file = e.target.files?.[0]; if (file) replaceImage(s.id, file); e.target.value = ''; }} /></label><button onClick={() => remove(s.id)} aria-label={tr('Retirer')}><Trash2 size={14} /></button></div>
               </div>)}
               {!slides.length && <div className="p-8 text-white/50">{tr('Ajoutez des illustrations pour commencer.')}</div>}
             </div>
