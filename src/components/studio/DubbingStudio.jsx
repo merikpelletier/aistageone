@@ -35,7 +35,7 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
   const { options: models, loading: loadingModels } = useAiModelOptions({
     service: 'generateDubbing', kind: 'speech',
     input: { duration_seconds: durationSeconds, target_language: targetLanguage },
-    enabled: durationSeconds > 0,
+    enabled: true,
   });
 
   useEffect(() => {
