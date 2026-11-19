@@ -147,8 +147,11 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
     if (!audioBlob) return;
     setIsUploading(true);
     try {
-      const mp3File = new File([audioBlob], `voice-recording-${Date.now()}.mp3`, { type: 'audio/mpeg' });
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: mp3File });
+      const isMp3 = audioBlob.type === 'audio/mpeg';
+      const extension = isMp3 ? 'mp3' : 'webm';
+      const mimeType = isMp3 ? 'audio/mpeg' : (audioBlob.type || 'audio/webm');
+      const recordingFile = new File([audioBlob], `voice-recording-${Date.now()}.${extension}`, { type: mimeType });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: recordingFile });
       setUploadedUrl(file_url);
       if (!user?.email) return onRecordingComplete(file_url);
       setShowSaveVault(true);
