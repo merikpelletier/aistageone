@@ -155,14 +155,14 @@ export default function SketchStudio({ user }) {
           setIsGenerating(false);
           restoreStageFromJob(job);
           refreshBalance();
-          toast.success('Stage video ready');
+          toast.success(tr('stages.video_ready','Stage video ready'));
           return;
         }
 
         if (job.status === 'failed' || job.status === 'canceled') {
           setIsGenerating(false);
           refreshBalance();
-          toast.error(job.error || 'Stage video generation failed');
+          toast.error(job.error || tr('stages.error.video_failed','Stage video generation failed'));
           return;
         }
 
@@ -242,7 +242,7 @@ export default function SketchStudio({ user }) {
       setPhotoUrl(file_url);
       setPhotoFile(file);
     } catch {
-      toast.error('Photo upload failed');
+      toast.error(tr('stages.upload_failed','Photo upload failed'));
     } finally {
       setUploadingPhoto(false);
     }
@@ -255,7 +255,7 @@ export default function SketchStudio({ user }) {
       restoreStageFromJob(generationJob);
       return;
     }
-    if (!photoUrl) { toast.error('Upload your photo first'); return; }
+    if (!photoUrl) { toast.error(tr('stages.upload_first','Upload your photo first')); return; }
     const type = theme.output_type || 'video';
     setSelected({ ...theme, output_type: type });
     setSelectedStyleIndex(null);
@@ -460,11 +460,11 @@ export default function SketchStudio({ user }) {
 
   return <div className="w-full bg-[#202328] px-4 py-5 pb-28 text-white lg:pb-32">
     <div className="mx-auto max-w-5xl">
-      <button onClick={() => { setSelected(null); setResult(null); setSelectedStyleIndex(null); setSelectedOutput(null); }} className="mb-4 flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white"><ChevronLeft size={20}/> Back to Stages</button>
+      <button onClick={() => { setSelected(null); setResult(null); setSelectedStyleIndex(null); setSelectedOutput(null); }} className="mb-4 flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white"><ChevronLeft size={20}/> {tr('stages.back','Back to Stages')}</button>
       <div className="rounded-[4px] border border-white/10 bg-[#17191d] p-5 md:p-6">
-        <div className="mb-5 flex gap-3 border-b border-white/10 pb-4"><img src={photoUrl} alt="you" className="h-16 w-16 flex-shrink-0 rounded-[3px] object-cover"/><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-wide text-[#23c7be]"><User size={12} className="mr-1 inline"/>{configuredOutput === 'both' ? tr('kind.both','Image + Video Stage') : configuredOutput === 'image' ? tr('kind.image','Image Stage') : tr('kind.video','Video Stage')}</p><h3 className="mt-1 text-lg font-black text-white">{tr('stages.theme.'+selected.name,selected.name)}</h3>{selected.description && <p className="mt-1 text-sm text-white/45">{tr('stages.description.'+selected.description,selected.description)}</p>}<p className="mt-2 line-clamp-3 text-xs text-white/65">{selected.scenario}</p></div></div>
+        <div className="mb-5 flex gap-3 border-b border-white/10 pb-4"><img src={photoUrl} alt="you" className="h-16 w-16 flex-shrink-0 rounded-[3px] object-cover"/><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-wide text-[#23c7be]"><User size={12} className="mr-1 inline"/>{configuredOutput === 'both' ? tr('kind.both','Image + Video Stage') : configuredOutput === 'image' ? tr('kind.image','Image Stage') : tr('kind.video','Video Stage')}</p><h3 className="mt-1 text-lg font-black text-white">{tr('stages.theme.'+selected.name,selected.name)}</h3>{selected.description && <p className="mt-1 text-sm text-white/45">{tr('stages.description.'+selected.description,selected.description)}</p>}<p className="mt-2 line-clamp-3 text-xs text-white/65">{tr('stages.scenario.'+selected.scenario,selected.scenario)}</p></div></div>
 
-        {styles.length > 0 && <div className="mb-5"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">1 · {tr("stages.choose_style","Choose a style")}</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{styles.map((style, index) => <button key={`${style.name}-${index}`} onClick={() => chooseStyle(index)} disabled={isGenerating && isVideoStage} className={`overflow-hidden rounded-[3px] border text-left transition disabled:opacity-50 ${selectedStyleIndex === index ? 'border-[#23c7be] bg-[#23c7be]/10 shadow-[inset_2px_0_0_#23c7be]' : 'border-white/10 bg-white/[0.03] hover:border-white/25'}`}>{style.preview_image ? <img src={style.preview_image} alt={style.name} className="aspect-[4/3] w-full object-cover"/> : <div className="flex aspect-[4/3] items-center justify-center bg-[#202328]"><ImageIcon size={24} className="text-[#23c7be]"/></div>}<div className="px-3 py-2 text-xs font-black text-white">{style.name}</div></button>)}</div></div>}
+        {styles.length > 0 && <div className="mb-5"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">1 · {tr("stages.choose_style","Choose a style")}</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{styles.map((style, index) => <button key={`${style.name}-${index}`} onClick={() => chooseStyle(index)} disabled={isGenerating && isVideoStage} className={`overflow-hidden rounded-[3px] border text-left transition disabled:opacity-50 ${selectedStyleIndex === index ? 'border-[#23c7be] bg-[#23c7be]/10 shadow-[inset_2px_0_0_#23c7be]' : 'border-white/10 bg-white/[0.03] hover:border-white/25'}`}>{style.preview_image ? <img src={style.preview_image} alt={style.name} className="aspect-[4/3] w-full object-cover"/> : <div className="flex aspect-[4/3] items-center justify-center bg-[#202328]"><ImageIcon size={24} className="text-[#23c7be]"/></div>}<div className="px-3 py-2 text-xs font-black text-white">{tr('stages.style.'+style.name,style.name)}</div></button>)}</div></div>}
 
         {configuredOutput === 'both' && styleChosen && <div className="mb-5"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50">{styles.length > 0 ? '2' : '1'} · {tr("stages.choose_output","Choose output")}</p><div className="grid grid-cols-2 gap-2"><button onClick={() => chooseOutput('image')} disabled={isGenerating && isVideoStage} className={`flex items-center justify-center gap-2 rounded-[3px] border py-3 text-sm font-black disabled:opacity-50 ${selectedOutput === 'image' ? 'border-[#23c7be]/45 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.03] text-white/65'}`}><ImageIcon size={18}/> {tr("stages.output.image","Image")}</button><button onClick={() => chooseOutput('video')} disabled={isGenerating && isVideoStage} className={`flex items-center justify-center gap-2 rounded-[3px] border py-3 text-sm font-black disabled:opacity-50 ${selectedOutput === 'video' ? 'border-[#23c7be]/45 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.03] text-white/65'}`}><Film size={18}/> {tr("stages.output.video","Video")}</button></div></div>}
 
