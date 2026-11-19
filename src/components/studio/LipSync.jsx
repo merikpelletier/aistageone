@@ -23,10 +23,10 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
 
-  const usesMotionReference = effectiveModel === 'prunaai/p-video-animate';
   const pricingInput = { photo_url: imageUrl || undefined, reference_video_url: motionVideoUrl || undefined, audio_url: audioUrl || undefined };
   const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({ service: 'replicateGenerate:lip_sync', kind: 'video', input: pricingInput });
   const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
+  const usesMotionReference = effectiveModel === 'prunaai/p-video-animate';
   const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({ service: 'replicateGenerate:lip_sync', kind: 'video', input: pricingInput, modelKey: effectiveModel });
 
   const handleImageUpload = async (file) => {
