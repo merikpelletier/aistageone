@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { motion } from 'framer-motion';
-import { Sparkles, Film, Image as ImageIcon, Loader2, ChevronLeft, CheckCircle2, Upload, Download, User, Coins } from 'lucide-react';
+import { Sparkles, Film, Image as ImageIcon, Loader2, ChevronLeft, CheckCircle2, Upload, Download, User, Coins, Camera, X } from 'lucide-react';
 import { toast } from 'sonner';
 import SaveToVaultModal from '@/components/studio/SaveToVaultModal';
 import TokenPurchaseModal from '@/components/studio/TokenPurchaseModal';
@@ -30,6 +30,9 @@ export default function SketchStudio({ user }) {
   const [photoUrl, setPhotoUrl] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const cameraVideoRef = useRef(null);
+  const cameraStreamRef = useRef(null);
   const [selected, setSelected] = useState(null);
   const [selectedStyleIndex, setSelectedStyleIndex] = useState(null);
   const [selectedOutput, setSelectedOutput] = useState(null);
@@ -177,6 +180,59 @@ export default function SketchStudio({ user }) {
       if (timer) window.clearTimeout(timer);
     };
   }, [generationJob?.id, generationJob?.status, themes]);
+
+  const stopCamera = () => {
+    cameraStreamRef.current?.getTracks().forEach(track => track.stop());
+    cameraStreamRef.current = null;
+    setShowCamera(false);
+  };
+
+  useEffect(() => {
+    if (!showCamera || !cameraStreamRef.current || !cameraVideoRef.current) return;
+    cameraVideoRef.current.srcObject = cameraStreamRef.current;
+    cameraVideoRef.current.play().catch(() => {});
+  }, [showCamera]);
+
+  useEffect(() => () => {
+    cameraStreamRef.current?.getTracks().forEach(track => track.stop());
+  }, []);
+
+  const openCamera = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error(tr('stages.camera_unavailable', 'Camera access is not available in this browser.'));
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      cameraStreamRef.current = stream;
+      setShowCamera(true);
+    } catch (error) {
+      toast.error(error?.name === 'NotAllowedError'
+        ? tr('stages.camera_permission', 'Allow camera access to take a picture.')
+        : tr('stages.camera_failed', 'Could not open the camera.'));
+    }
+  };
+
+  const capturePhoto = () => {
+    const video = cameraVideoRef.current;
+    if (!video?.videoWidth || !video?.videoHeight) {
+      toast.error(tr('stages.camera_not_ready', 'The camera is not ready yet.'));
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(blob => {
+      if (!blob) {
+        toast.error(tr('stages.camera_capture_failed', 'Could not capture the picture.'));
+        return;
+      }
+      const file = new File([blob], 'stage-photo.jpg', { type: 'image/jpeg' });
+      stopCamera();
+      handlePhotoUpload(file);
+    }, 'image/jpeg', 0.92);
+  };
 
   const handlePhotoUpload = async (file) => {
     if (!file) return;
@@ -376,7 +432,10 @@ export default function SketchStudio({ user }) {
 
         <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
           <aside className="space-y-4">
-            {!photoUrl && <label className="flex min-h-[260px] cursor-pointer flex-col items-center justify-center rounded-[4px] border border-dashed border-white/20 bg-[#17191d] p-6 text-center transition hover:border-[#23c7be]/60 hover:bg-[#1d2126]">{uploadingPhoto ? <><Loader2 size={30} className="animate-spin text-[#23c7be]"/><p className="mt-3 text-sm font-bold">{tr("stages.uploading","Uploading…")}</p></> : <><div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10"><Upload size={25} className="text-[#23c7be]"/></div><p className="text-base font-black">{tr("stages.upload_photo","Upload a photo")}</p><p className="mt-1 text-xs text-white/40">{tr("stages.photo_hint","Face, full body or selfie")}</p></>}<input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(e.target.files?.[0])}/></label>}
+            {!photoUrl && <div className="space-y-3">
+              <label className="flex min-h-[220px] cursor-pointer flex-col items-center justify-center rounded-[4px] border border-dashed border-white/20 bg-[#17191d] p-6 text-center transition hover:border-[#23c7be]/60 hover:bg-[#1d2126]">{uploadingPhoto ? <><Loader2 size={30} className="animate-spin text-[#23c7be]"/><p className="mt-3 text-sm font-bold">{tr("stages.uploading","Uploading…")}</p></> : <><div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10"><Upload size={25} className="text-[#23c7be]"/></div><p className="text-base font-black">{tr("stages.upload_photo","Upload a photo")}</p><p className="mt-1 text-xs text-white/40">{tr("stages.photo_hint","Face, full body or selfie")}</p></>}<input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(e.target.files?.[0])}/></label>
+              <button type="button" onClick={openCamera} disabled={uploadingPhoto} className="flex w-full items-center justify-center gap-2 rounded-[4px] border border-[#23c7be]/35 bg-[#23c7be]/10 px-4 py-3 text-sm font-black text-[#8ee9e4] transition hover:bg-[#23c7be]/15 disabled:opacity-40"><Camera size={18}/>{tr('stages.take_picture', 'Take a picture')}</button>
+            </div>}
             <div className="rounded-[4px] border border-white/10 bg-[#17191d] p-3"><p className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-white/45">{tr("stages.filter","Filter")}</p><div className="flex flex-wrap gap-2 lg:flex-col">{CATEGORIES.map((c) => <button key={c.id} onClick={() => setCategory(c.id)} className={`rounded-[3px] border px-3 py-2 text-left text-xs font-black transition ${category === c.id ? 'border-[#23c7be]/40 bg-[#23c7be]/12 text-[#8ee9e4]' : 'border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.07]'}`}>{tr('stages.category.'+c.id,c.label)}</button>)}</div></div>
           </aside>
 
@@ -419,6 +478,13 @@ export default function SketchStudio({ user }) {
         {!result ? <button onClick={handleGenerate} disabled={isGenerating || insufficient || !styleChosen || !outputChosen} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-4 font-black text-[#071211] disabled:bg-white/[0.05] disabled:text-white/30">{isGenerating ? <><Loader2 size={20} className="animate-spin"/> {tr("stages.generating","Generating…")}</> : <><Sparkles size={20}/> {!styleChosen ? tr("stages.choose_a_style","Choose a style") : !outputChosen ? tr("stages.choose_image_or_video","Choose Image or Video") : `${tr("stages.generate","Generate")} ${isImageStage ? tr("stages.output.image","Image") : tr("stages.output.video","Video")}`}</>}</button> : <div className="space-y-4"><div className="flex min-h-[320px] items-center justify-center rounded-[4px] border border-white/10 bg-black p-3">{isImageStage ? <img src={result} alt={selected.name} className="max-h-[700px] max-w-full object-contain"/> : <video src={result} controls className="w-full rounded-[3px]"/>}</div><div className="grid grid-cols-1 gap-3 sm:grid-cols-3"><button onClick={() => { setResult(null); setGenerationJob(null); }} className="rounded-[3px] border border-white/10 bg-white/[0.04] py-3 font-bold text-white">{tr("stages.regenerate","Regenerate")}</button><button onClick={handleDownload} className="flex items-center justify-center gap-2 rounded-[3px] border border-[#23c7be]/35 bg-[#23c7be]/10 py-3 font-black text-[#8ee9e4]"><Download size={19}/> {tr("stages.download","Download")}</button><button onClick={() => setShowSaveVault(true)} className="flex items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3 font-black text-[#071211]"><CheckCircle2 size={20}/> {tr("stages.save_vault","Save to Vault")}</button></div></div>}
       </div>
 
+      {showCamera && <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 p-4" role="dialog" aria-modal="true" aria-label={tr('stages.take_picture', 'Take a picture')}>
+        <div className="w-full max-w-2xl overflow-hidden rounded-[4px] border border-white/15 bg-[#17191d]">
+          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3"><h3 className="text-sm font-black text-white">{tr('stages.take_picture', 'Take a picture')}</h3><button type="button" onClick={stopCamera} className="p-2 text-white/70 hover:text-white" aria-label={tr('common.close', 'Close')}><X size={20}/></button></div>
+          <video ref={cameraVideoRef} autoPlay playsInline muted className="max-h-[65vh] w-full bg-black object-contain"/>
+          <div className="flex justify-end gap-2 p-4"><button type="button" onClick={stopCamera} className="border border-white/15 px-4 py-3 text-sm font-bold text-white">{tr('common.cancel', 'Cancel')}</button><button type="button" onClick={capturePhoto} className="flex items-center gap-2 bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211]"><Camera size={17}/>{tr('stages.capture', 'Capture photo')}</button></div>
+        </div>
+      </div>}
       {showSaveVault && result && <SaveToVaultModal userEmail={user?.email} imageUrl={result} mediaType={isImageStage ? 'image' : 'video'} onClose={() => setShowSaveVault(false)} onSaved={handleSavedToVault}/>} 
       {showBuyTokens && <TokenPurchaseModal onClose={() => setShowBuyTokens(false)} onPurchased={refreshBalance}/>} 
     </div>
