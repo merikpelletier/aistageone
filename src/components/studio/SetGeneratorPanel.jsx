@@ -49,7 +49,7 @@ const EditableImage = ({ label, url, box, onStart, onMove, onEnd, onCancel, onCl
   </div>
 );
 
-export default function SetGeneratorPanel({ name, description, images, setImages, viewVariants = {}, setViewVariants, zoneShots = [], setZoneShots, compositionElements = [] }) {
+export default function SetGeneratorPanel({ name, description, setDescription, images, setImages, viewVariants = {}, setViewVariants, zoneShots = [], setZoneShots, compositionElements = [] }) {
   const t = useStudioTranslation();
   const [mode, setMode] = useState(images?.filter(Boolean).length ? 'reference' : 'scratch');
   const [masterOpen, setMasterOpen] = useState(!images?.[0]);
@@ -485,6 +485,21 @@ export default function SetGeneratorPanel({ name, description, images, setImages
           <button type="button" onClick={() => setMode('reference')} disabled={Boolean(generating)} className={`px-4 py-2.5 text-xs font-black ${mode === 'reference' ? 'bg-[#23c7be] text-black' : 'text-white/65 hover:text-white'} disabled:opacity-40`}>{t('setdesigner.generator.reference', 'From reference')}</button>
         </div>
       </div>
+
+      {mode === 'scratch' && !heroImage && (
+        <div className="mt-5">
+          <label htmlFor="set-from-scratch-prompt" className="mb-2 block text-xs font-bold text-white/70">{t('setdesigner.editor.hero.brief', 'Creative brief')}</label>
+          <textarea
+            id="set-from-scratch-prompt"
+            value={description || ''}
+            onChange={event => setDescription(event.target.value)}
+            disabled={Boolean(generating)}
+            rows={5}
+            placeholder={t('setdesigner.editor.hero.description_placeholder', 'Describe the place as a director would: architecture, atmosphere, story, textures, what the camera should feel...')}
+            className="w-full resize-y border border-white/15 bg-black/25 px-3 py-3 text-sm leading-6 text-white placeholder:text-white/35 focus:border-[#23c7be] focus:outline-none"
+          />
+        </div>
+      )}
 
       <div className="mt-5 grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
