@@ -199,10 +199,10 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
   return (
     <div className={`fixed z-[100] ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)] overflow-y-auto bg-[#202328]' : 'inset-0 flex items-center justify-center bg-black/80 p-4'}`}>
       <motion.div initial={{ opacity: 0, scale: .98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: .98 }} className={embedded ? 'min-h-full w-full bg-[#202328] p-5 pb-28 text-white md:p-8 lg:pb-32' : 'w-full max-w-3xl rounded-[4px] border border-white/10 bg-[#202328] p-6 text-white'}>
-        <div className="mx-auto max-w-5xl">
-          <header className="mb-5 flex items-center justify-between border-b border-white/10 bg-[#17191d] px-4 py-4 xl:mb-3 xl:py-2">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Mic size={19} /></div>
+        <div className="mx-auto max-w-5xl xl:max-w-4xl">
+          <header className="mb-5 flex items-center justify-between border-b border-white/10 bg-[#17191d] px-4 py-4 xl:mb-2 xl:px-3 xl:py-2">
+            <div className="flex items-center gap-3 xl:gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be] xl:h-8 xl:w-8"><Mic size={19} /></div>
               <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#23c7be]">{t('Sound & Voice', 'Sound & Voice')}</p><h3 className="text-xl font-black">{t('Voice Recorder', 'Voice Recorder')}</h3><p className="text-xs text-white/45">{t('Record dialogue or voice directly in the Studio.', 'Record dialogue or voice directly in the Studio.')}</p></div>
             </div>
             {!embedded && <button onClick={onClose} className="rounded-[3px] border border-white/10 bg-white/[.04] p-2 hover:bg-white/10"><X size={20} /></button>}
@@ -210,22 +210,22 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
 
           {showContext && <ProductionContextInfo productionMethod={productionMethod} block={block} character={character} referenceMedia={[]} />}
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-            <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4 xl:p-3">
-              <div className="flex min-h-[360px] flex-col items-center justify-center rounded-[4px] border border-white/10 bg-black/25 p-8 text-center xl:min-h-[240px] xl:p-5">
-                <div className="mb-7 flex h-24 items-center justify-center gap-1 xl:mb-3 xl:h-16">
-                  {isRecording ? [...Array(20)].map((_, i) => <motion.div key={i} className="w-1 rounded-[1px] bg-[#23c7be]" animate={{ height: [8, 28 + Math.random() * 44, 8] }} transition={{ duration: .5, repeat: Infinity, delay: i * .04 }} />) : audioUrl ? <audio ref={audioPlayerRef} src={audioUrl} onEnded={() => setIsPlaying(false)} className="hidden" /> : <div className="flex h-20 w-20 items-center justify-center rounded-[3px] border border-[#23c7be]/25 bg-[#23c7be]/10 xl:h-16 xl:w-16"><Mic size={38} className="text-[#23c7be] xl:scale-90" /></div>}
+          <div className="grid gap-4 xl:gap-3 xl:grid-cols-[minmax(0,1fr)_220px]">
+            <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4 xl:p-2">
+              <div className="flex min-h-[360px] flex-col items-center justify-center rounded-[4px] border border-white/10 bg-black/25 p-8 text-center xl:min-h-[190px] xl:p-3">
+                <div className="mb-7 flex h-24 items-center justify-center gap-1 xl:mb-2 xl:h-12">
+                  {isRecording ? [...Array(20)].map((_, i) => <motion.div key={i} className="w-1 rounded-[1px] bg-[#23c7be]" animate={{ height: [8, 28 + Math.random() * 44, 8] }} transition={{ duration: .5, repeat: Infinity, delay: i * .04 }} />) : audioUrl ? <audio ref={audioPlayerRef} src={audioUrl} onEnded={() => setIsPlaying(false)} className="hidden" /> : <div className="flex h-20 w-20 items-center justify-center rounded-[3px] border border-[#23c7be]/25 bg-[#23c7be]/10 xl:h-12 xl:w-12"><Mic size={38} className="text-[#23c7be] xl:scale-75" /></div>}
                 </div>
-                <div className="font-mono text-5xl font-black tracking-tight text-white xl:text-4xl">{fmt(recordingTime)}</div>
+                <div className="font-mono text-5xl font-black tracking-tight text-white xl:text-3xl">{fmt(recordingTime)}</div>
                 <div className="mt-2 text-sm font-bold text-white/45">{isRecording ? t('Recording…', 'Recording…') : isConverting ? t('Converting to MP3…', 'Converting to MP3…') : audioUrl ? t('MP3 recording ready', 'MP3 recording ready') : t('Tap the microphone to start', 'Tap the microphone to start')}</div>
-                <div className="mt-8 flex items-center gap-3 xl:mt-4">
-                  {!audioUrl ? (!isRecording ? <button onClick={startRecording} className="flex h-16 w-16 items-center justify-center rounded-[3px] bg-[#23c7be] text-[#071211] hover:bg-[#35d8cf] xl:h-12 xl:w-12"><Mic size={26} /></button> : <button onClick={stopRecording} className="flex h-16 w-16 items-center justify-center rounded-[3px] border border-red-400/40 bg-red-400/10 text-red-200 xl:h-12 xl:w-12"><Square size={24} /></button>) : <><button onClick={reset} className="flex h-11 w-11 items-center justify-center rounded-[3px] border border-white/10 bg-white/[.04] text-white/60 hover:bg-white/10"><X size={18} /></button><button onClick={togglePlayback} className="flex h-16 w-16 items-center justify-center rounded-[3px] border border-[#23c7be]/40 bg-[#23c7be]/10 text-[#23c7be] xl:h-12 xl:w-12">{isPlaying ? <Pause size={24} /> : <Play size={24} />}</button><button onClick={handleUpload} disabled={isUploading} className="flex h-11 w-11 items-center justify-center rounded-[3px] border border-white/10 bg-white/[.04] disabled:opacity-40">{isUploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}</button></>}
+                <div className="mt-8 flex items-center gap-3 xl:mt-3">
+                  {!audioUrl ? (!isRecording ? <button onClick={startRecording} className="flex h-16 w-16 items-center justify-center rounded-[3px] bg-[#23c7be] text-[#071211] hover:bg-[#35d8cf] xl:h-10 xl:w-10"><Mic size={26} /></button> : <button onClick={stopRecording} className="flex h-16 w-16 items-center justify-center rounded-[3px] border border-red-400/40 bg-red-400/10 text-red-200 xl:h-10 xl:w-10"><Square size={24} /></button>) : <><button onClick={reset} className="flex h-11 w-11 items-center justify-center rounded-[3px] border border-white/10 bg-white/[.04] text-white/60 hover:bg-white/10"><X size={18} /></button><button onClick={togglePlayback} className="flex h-16 w-16 items-center justify-center rounded-[3px] border border-[#23c7be]/40 bg-[#23c7be]/10 text-[#23c7be] xl:h-10 xl:w-10">{isPlaying ? <Pause size={24} /> : <Play size={24} />}</button><button onClick={handleUpload} disabled={isUploading} className="flex h-11 w-11 items-center justify-center rounded-[3px] border border-white/10 bg-white/[.04] disabled:opacity-40">{isUploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}</button></>}
                 </div>
               </div>
             </section>
 
             <aside className="space-y-4">
-              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4 xl:p-3">
                 <p className="text-[10px] font-black uppercase tracking-[.12em] text-white/40">{t('Recording status', 'Recording status')}</p>
                 <div className="mt-3 space-y-2 text-xs">
                   <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">{t('State', 'State')}</span><strong className={isRecording ? 'text-red-300' : audioUrl ? 'text-[#8ee9e4]' : 'text-white'}>{isRecording ? t('Recording', 'Recording') : audioUrl ? t('Ready', 'Ready') : t('Waiting', 'Waiting')}</strong></div>
