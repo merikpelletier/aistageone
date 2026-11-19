@@ -578,7 +578,7 @@ export default function SetAssetEditor({ asset, userEmail, onClose, onSaved, emb
         </div>
 
         <div className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 pb-28 sm:px-5">
-          <SetGeneratorPanel name={name} description={description} images={images} setImages={setImages} viewVariants={viewVariants} setViewVariants={setViewVariants} zoneShots={zoneShots} setZoneShots={setZoneShots} compositionElements={compositionElements} />
+          <SetGeneratorPanel name={name} description={description} setDescription={setDescription} images={images} setImages={setImages} viewVariants={viewVariants} setViewVariants={setViewVariants} zoneShots={zoneShots} setZoneShots={setZoneShots} compositionElements={compositionElements} />
 
           <details key={heroImage ? 'master-ready' : 'master-empty'} defaultOpen={!heroImage} className="border border-white/10 bg-[#17191d]">
             <summary className="cursor-pointer p-4 text-sm font-black uppercase tracking-wider text-[#23c7be]">{t('setdesigner.details.heading', 'Master Set Details & Creative Direction')} — {heroImage ? t('setdesigner.details.expand', 'Expand to edit') : t('setdesigner.details.required', 'Required for creation')}</summary>
