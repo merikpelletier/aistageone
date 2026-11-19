@@ -448,6 +448,13 @@ export default function SketchStudio({ user }) {
           </section>
         </div>
       </div>
+      {showCamera && <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 p-4" role="dialog" aria-modal="true" aria-label={tr('stages.take_picture', 'Take a picture')}>
+        <div className="w-full max-w-2xl overflow-hidden rounded-[4px] border border-white/15 bg-[#17191d]">
+          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3"><h3 className="text-sm font-black text-white">{tr('stages.take_picture', 'Take a picture')}</h3><button type="button" onClick={stopCamera} className="p-2 text-white/70 hover:text-white" aria-label={tr('common.close', 'Close')}><X size={20}/></button></div>
+          <video ref={cameraVideoRef} autoPlay playsInline muted className="max-h-[65vh] w-full bg-black object-contain"/>
+          <div className="flex justify-end gap-2 p-4"><button type="button" onClick={stopCamera} className="border border-white/15 px-4 py-3 text-sm font-bold text-white">{tr('common.cancel', 'Cancel')}</button><button type="button" onClick={capturePhoto} className="flex items-center gap-2 bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211]"><Camera size={17}/>{tr('stages.capture', 'Capture photo')}</button></div>
+        </div>
+      </div>}
     </div>;
   }
 
@@ -478,13 +485,6 @@ export default function SketchStudio({ user }) {
         {!result ? <button onClick={handleGenerate} disabled={isGenerating || insufficient || !styleChosen || !outputChosen} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-4 font-black text-[#071211] disabled:bg-white/[0.05] disabled:text-white/30">{isGenerating ? <><Loader2 size={20} className="animate-spin"/> {tr("stages.generating","Generating…")}</> : <><Sparkles size={20}/> {!styleChosen ? tr("stages.choose_a_style","Choose a style") : !outputChosen ? tr("stages.choose_image_or_video","Choose Image or Video") : `${tr("stages.generate","Generate")} ${isImageStage ? tr("stages.output.image","Image") : tr("stages.output.video","Video")}`}</>}</button> : <div className="space-y-4"><div className="flex min-h-[320px] items-center justify-center rounded-[4px] border border-white/10 bg-black p-3">{isImageStage ? <img src={result} alt={selected.name} className="max-h-[700px] max-w-full object-contain"/> : <video src={result} controls className="w-full rounded-[3px]"/>}</div><div className="grid grid-cols-1 gap-3 sm:grid-cols-3"><button onClick={() => { setResult(null); setGenerationJob(null); }} className="rounded-[3px] border border-white/10 bg-white/[0.04] py-3 font-bold text-white">{tr("stages.regenerate","Regenerate")}</button><button onClick={handleDownload} className="flex items-center justify-center gap-2 rounded-[3px] border border-[#23c7be]/35 bg-[#23c7be]/10 py-3 font-black text-[#8ee9e4]"><Download size={19}/> {tr("stages.download","Download")}</button><button onClick={() => setShowSaveVault(true)} className="flex items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3 font-black text-[#071211]"><CheckCircle2 size={20}/> {tr("stages.save_vault","Save to Vault")}</button></div></div>}
       </div>
 
-      {showCamera && <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 p-4" role="dialog" aria-modal="true" aria-label={tr('stages.take_picture', 'Take a picture')}>
-        <div className="w-full max-w-2xl overflow-hidden rounded-[4px] border border-white/15 bg-[#17191d]">
-          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3"><h3 className="text-sm font-black text-white">{tr('stages.take_picture', 'Take a picture')}</h3><button type="button" onClick={stopCamera} className="p-2 text-white/70 hover:text-white" aria-label={tr('common.close', 'Close')}><X size={20}/></button></div>
-          <video ref={cameraVideoRef} autoPlay playsInline muted className="max-h-[65vh] w-full bg-black object-contain"/>
-          <div className="flex justify-end gap-2 p-4"><button type="button" onClick={stopCamera} className="border border-white/15 px-4 py-3 text-sm font-bold text-white">{tr('common.cancel', 'Cancel')}</button><button type="button" onClick={capturePhoto} className="flex items-center gap-2 bg-[#23c7be] px-5 py-3 text-sm font-black text-[#071211]"><Camera size={17}/>{tr('stages.capture', 'Capture photo')}</button></div>
-        </div>
-      </div>}
       {showSaveVault && result && <SaveToVaultModal userEmail={user?.email} imageUrl={result} mediaType={isImageStage ? 'image' : 'video'} onClose={() => setShowSaveVault(false)} onSaved={handleSavedToVault}/>} 
       {showBuyTokens && <TokenPurchaseModal onClose={() => setShowBuyTokens(false)} onPurchased={refreshBalance}/>} 
     </div>
