@@ -10,6 +10,7 @@ import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { useAiModelOptions } from '@/hooks/useAiModelOptions';
 import { useAiPriceQuote } from '@/hooks/useAiPriceQuote';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
+import { getPlatformLanguage } from '@/lib/translationDictionary';
 
 const CATEGORIES = [
   { id: 'all', label: 'All' },
@@ -22,8 +23,17 @@ const CATEGORIES = [
 
 const ACTIVE_JOB_STATUSES = new Set(['starting', 'processing', 'finalizing']);
 
+const FRENCH_GENERATION_INSTRUCTION = "Le contenu destiné au public doit être entièrement en français. Tout texte lisible visible dans l’image ou la vidéo (titres, affiches, couvertures, légendes, panneaux et inscriptions) doit être rédigé en français naturel et correctement orthographié. Toute parole, tout dialogue ou toute narration générés doivent être en français. N’affichez aucun texte anglais. Conservez tels quels les noms propres, les marques et les titres explicitement fournis. N’ajoutez pas de texte s’il n’est pas demandé par le concept.";
+
+const applyOutputLanguage = (prompt, language) => {
+  const value = String(prompt || '').trim();
+  if (!value || language !== 'fr') return value;
+  return value.split('||').map(part => part.trim() ? part.trim() + '\\n\\n' + FRENCH_GENERATION_INSTRUCTION : part).join(' || ');
+};
+
 export default function SketchStudio({ user }) {
   const tr = useStudioTranslation();
+  const generationLanguage = getPlatformLanguage();
   const qc = useQueryClient();
   const restoredPendingRef = useRef(false);
   const [category, setCategory] = useState('all');
@@ -61,9 +71,9 @@ export default function SketchStudio({ user }) {
   const styleRequired = styles.length > 0;
   const styleChosen = !styleRequired || selectedStyleIndex !== null;
 
-  const activeImagePrompt = (selectedStyle?.image_prompt || selectedStyle?.prompt || selected?.image_prompt || '').trim();
-  const activeVideoPrompt = (selectedStyle?.video_prompt || selected?.video_prompt || '').trim();
-  const activeTransformationPrompt = (selectedStyle?.transformation_prompt || selected?.transformation_prompt || '').trim();
+  const activeImagePrompt = applyOutputLanguage(selectedStyle?.image_prompt || selectedStyle?.prompt || selected?.image_prompt || '', generationLanguage);
+  const activeVideoPrompt = applyOutputLanguage(selectedStyle?.video_prompt || selected?.video_prompt || '', generationLanguage);
+  const activeTransformationPrompt = applyOutputLanguage(selectedStyle?.transformation_prompt || selected?.transformation_prompt || '', generationLanguage);
   const currentEngine = activeTransformationPrompt ? 'kling_morph' : 'kling';
 
   const pricingInput = isImageStage
