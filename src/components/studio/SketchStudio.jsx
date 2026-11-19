@@ -244,14 +244,61 @@ export default function SketchStudio({ user }) {
     }, 'image/jpeg', 0.92);
   };
 
+  const normalizeStagePhoto = async (sourceFile) => {
+    const bitmap = await createImageBitmap(sourceFile);
+    try {
+      const sourceWidth = bitmap.width;
+      const sourceHeight = bitmap.height;
+      if (!sourceWidth || !sourceHeight) throw new Error('Invalid image dimensions');
+
+      // Kling v4 accepts JPEG/PNG images with a minimum 300px side and a 2:5–5:2 ratio.
+      // Normalize to a clean JPEG and 16px-aligned dimensions to avoid invalid-pixel inputs.
+      const scale = Math.min(2048 / Math.max(sourceWidth, sourceHeight), 1.0,
+        512 / Math.min(sourceWidth, sourceHeight));
+      let contentWidth = Math.max(512, Math.round(sourceWidth * scale));
+      let contentHeight = Math.max(512, Math.round(sourceHeight * scale));
+      const ratio = contentWidth / contentHeight;
+      let canvasWidth = contentWidth;
+      let canvasHeight = contentHeight;
+      if (ratio < 0.4) canvasWidth = Math.ceil((contentHeight * 0.4) / 16) * 16;
+      if (ratio > 2.5) canvasHeight = Math.ceil((contentWidth / 2.5) / 16) * 16;
+      canvasWidth = Math.ceil(canvasWidth / 16) * 16;
+      canvasHeight = Math.ceil(canvasHeight / 16) * 16;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Could not prepare image');
+      context.fillStyle = '#202328';
+      context.fillRect(0, 0, canvasWidth, canvasHeight);
+      const drawScale = Math.min(canvasWidth / sourceWidth, canvasHeight / sourceHeight);
+      const drawWidth = sourceWidth * drawScale;
+      const drawHeight = sourceHeight * drawScale;
+      context.drawImage(bitmap, (canvasWidth - drawWidth) / 2, (canvasHeight - drawHeight) / 2, drawWidth, drawHeight);
+
+      const blob = await new Promise((resolve, reject) => canvas.toBlob(
+        value => value ? resolve(value) : reject(new Error('JPEG conversion failed')),
+        'image/jpeg',
+        0.92
+      ));
+      const baseName = String(sourceFile.name || 'stage-photo').replace(/\.[^.]+$/, '');
+      return new File([blob], baseName + '.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+    } finally {
+      bitmap.close?.();
+    }
+  };
+
   const handlePhotoUpload = async (file) => {
     if (!file) return;
     setUploadingPhoto(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const normalizedFile = await normalizeStagePhoto(file);
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: normalizedFile });
       setPhotoUrl(file_url);
-      setPhotoFile(file);
-    } catch {
+      setPhotoFile(normalizedFile);
+    } catch (error) {
+      console.error('[Stages] Photo preparation/upload failed:', error);
       toast.error(tr('stages.upload_failed','Photo upload failed'));
     } finally {
       setUploadingPhoto(false);
