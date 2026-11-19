@@ -160,7 +160,24 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
                 )}
               </section>
 
-              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+{usesMotionReference ? (
+                <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
+                  <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Video size={14} className="text-[#23c7be]" /> {t("lip_sync.motion_video","Motion reference video")}</div>
+                  {motionVideoUrl ? (
+                    <div className="overflow-hidden rounded-[4px] border border-white/10 bg-black">
+                      <video src={motionVideoUrl} controls className="max-h-[420px] w-full object-contain" />
+                      <div className="flex items-center gap-3 border-t border-white/10 bg-[#17191d] px-3 py-2"><CheckCircle2 size={16} className="flex-shrink-0 text-[#23c7be]" /><span className="min-w-0 flex-1 truncate text-xs text-white/65">{motionVideoName}</span><button onClick={() => { setMotionVideoUrl(null); setMotionVideoName(''); }} className="text-white/45 hover:text-white"><X size={14} /></button></div>
+                    </div>
+                  ) : (
+                    <label className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[4px] border border-dashed border-white/20 bg-black/20 p-6 text-center transition hover:border-[#23c7be]/60 hover:bg-black/30">
+                      {uploading.video ? <Loader2 size={28} className="animate-spin text-[#23c7be]" /> : <Upload size={28} className="text-[#23c7be]" />}
+                      <div><p className="text-sm font-bold text-white">{uploading.video ? t('lip_sync.uploading', "Uploading…") : t('lip_sync.upload_motion_video',"Upload motion video")}</p><p className="mt-1 text-xs text-white/35">MP4, WebM, MOV</p></div>
+                      <input type="file" accept="video/*" className="hidden" disabled={uploading.video} onChange={e => e.target.files?.[0] && handleVideoUpload(e.target.files[0])} />
+                    </label>
+                  )}
+                </section>
+              ) : (
+                              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
                 <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Mic size={14} className="text-[#23c7be]" /> {t("lip_sync.audio","Audio")}</div>
                 {audioUrl ? (
                   <div className="flex items-center gap-3 rounded-[4px] border border-white/10 bg-black/20 px-3 py-3"><CheckCircle2 size={16} className="flex-shrink-0 text-[#23c7be]" /><span className="min-w-0 flex-1 truncate text-xs text-white/65">{audioName}</span><audio src={audioUrl} controls className="h-8 min-w-0 flex-1" /><button onClick={() => { setAudioUrl(null); setAudioName(''); }} className="flex-shrink-0 text-white/45 hover:text-white"><X size={14} /></button></div>
