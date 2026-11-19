@@ -22,6 +22,7 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [syncSettings, setSyncSettings] = useState({ resolution: '720p', target_fps: 'original', save_audio: true, ignore_audio: false, turbo: false, instruction_prompt: '' });
 
   const pricingInput = { photo_url: imageUrl || undefined, reference_video_url: motionVideoUrl || undefined, audio_url: audioUrl || undefined };
   const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({ service: 'replicateGenerate:lip_sync', kind: 'video', input: pricingInput });
@@ -71,8 +72,8 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
         sync_mode: usesMotionReference ? 'motion_transfer' : 'voice_sync',
         photo_url: imageUrl,
         ...(usesMotionReference
-          ? { reference_video_url: motionVideoUrl, model_key: 'prunaai/p-video-animate' }
-          : { audio_url: audioUrl, model_key: 'veed/fabric-1.0' }),
+          ? { reference_video_url: motionVideoUrl, model_key: 'prunaai/p-video-animate', settings: { resolution: syncSettings.resolution === '480p' ? '720p' : syncSettings.resolution, target_fps: syncSettings.target_fps, save_audio: syncSettings.save_audio, ignore_audio: syncSettings.ignore_audio, turbo: syncSettings.turbo, instruction_prompt: syncSettings.instruction_prompt } }
+          : { audio_url: audioUrl, model_key: 'veed/fabric-1.0', settings: { resolution: syncSettings.resolution === '1080p' ? '720p' : syncSettings.resolution } }),
       });
       if (res.data?.file_url) setResult(res.data.file_url);
       else toast.error(res.data?.error || t('lip_sync.failed', "Lip sync failed"));
@@ -209,6 +210,28 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
                   {!modelsLoading && modelOptions.length === 0 && <option value="">{t('lip_sync.no_model', "No model available")}</option>}
                   {modelOptions.map(m => <option key={m.model_key} value={m.model_key}>{m.name || m.model_key}{m.recommended ? ' — ' + t('lip_sync.recommended', "Recommended") : ''}{m.credits ? ` — ${m.credits} ${t('lip_sync.credits', "credits")}` : ''}</option>)}
                 </select>
+              </section>
+
+              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4 space-y-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/50">{t('lip_sync.settings', "Generation settings")}</p>
+                <label className="block text-xs text-white/65">{t('lip_sync.resolution', "Resolution")}
+                  <select value={syncSettings.resolution} onChange={e => setSyncSettings(s => ({ ...s, resolution: e.target.value }))} className="mt-1 w-full rounded-[3px] border border-white/15 bg-black/25 px-3 py-2.5 text-sm text-white">
+                    {(usesMotionReference ? ['720p','1080p'] : ['480p','720p']).map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </label>
+                {usesMotionReference && <>
+                  <label className="block text-xs text-white/65">{t('lip_sync.frame_rate', "Frame rate")}
+                    <select value={syncSettings.target_fps} onChange={e => setSyncSettings(s => ({ ...s, target_fps: e.target.value }))} className="mt-1 w-full rounded-[3px] border border-white/15 bg-black/25 px-3 py-2.5 text-sm text-white">
+                      <option value="original">Original</option><option value="24">24 FPS</option><option value="48">48 FPS</option>
+                    </select>
+                  </label>
+                  <label className="block text-xs text-white/70"><input type="checkbox" checked={syncSettings.save_audio} onChange={e => setSyncSettings(s => ({ ...s, save_audio: e.target.checked }))} className="mr-2 accent-[#23c7be]" />{t('lip_sync.save_audio', "Keep source audio")}</label>
+                  <label className="block text-xs text-white/70"><input type="checkbox" checked={syncSettings.ignore_audio} onChange={e => setSyncSettings(s => ({ ...s, ignore_audio: e.target.checked }))} className="mr-2 accent-[#23c7be]" />{t('lip_sync.ignore_audio', "Ignore source audio during animation")}</label>
+                  <label className="block text-xs text-white/70"><input type="checkbox" checked={syncSettings.turbo} onChange={e => setSyncSettings(s => ({ ...s, turbo: e.target.checked }))} className="mr-2 accent-[#23c7be]" />{t('lip_sync.turbo', "Turbo (faster, slightly lower quality)")}</label>
+                  <label className="block text-xs text-white/65">{t('lip_sync.instruction_prompt', "Animation instructions")}
+                    <textarea value={syncSettings.instruction_prompt} onChange={e => setSyncSettings(s => ({ ...s, instruction_prompt: e.target.value }))} rows={2} className="mt-1 w-full rounded-[3px] border border-white/15 bg-black/25 px-3 py-2 text-sm text-white" />
+                  </label>
+                </>}
               </section>
 
               {!result ? (
