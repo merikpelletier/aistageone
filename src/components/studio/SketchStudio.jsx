@@ -251,12 +251,13 @@ export default function SketchStudio({ user }) {
       const sourceHeight = bitmap.height;
       if (!sourceWidth || !sourceHeight) throw new Error('Invalid image dimensions');
 
-      // Kling v4 accepts JPEG/PNG images with a minimum 300px side and a 2:5–5:2 ratio.
-      // Normalize to a clean JPEG and 16px-aligned dimensions to avoid invalid-pixel inputs.
-      const scale = Math.min(2048 / Math.max(sourceWidth, sourceHeight), 1.0,
-        512 / Math.min(sourceWidth, sourceHeight));
-      let contentWidth = Math.max(512, Math.round(sourceWidth * scale));
-      let contentHeight = Math.max(512, Math.round(sourceHeight * scale));
+      // Build a clean Kling first frame: at least 1024px on the short side,
+      // no side above 2048px, and dimensions aligned to 16px.
+      const shortSide = Math.min(sourceWidth, sourceHeight);
+      const longSide = Math.max(sourceWidth, sourceHeight);
+      const scale = Math.min(2048 / longSide, Math.max(1, 1024 / shortSide));
+      const contentWidth = Math.round(sourceWidth * scale);
+      const contentHeight = Math.round(sourceHeight * scale);
       const ratio = contentWidth / contentHeight;
       let canvasWidth = contentWidth;
       let canvasHeight = contentHeight;
@@ -282,6 +283,7 @@ export default function SketchStudio({ user }) {
         'image/jpeg',
         0.92
       ));
+      if (canvasWidth < 1024 && canvasHeight < 1024) throw new Error('Prepared image is below Kling minimum dimensions');
       const baseName = String(sourceFile.name || 'stage-photo').replace(/\.[^.]+$/, '');
       return new File([blob], baseName + '.jpg', { type: 'image/jpeg', lastModified: Date.now() });
     } finally {
