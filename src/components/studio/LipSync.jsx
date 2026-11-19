@@ -135,7 +135,7 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
               <div className="flex h-10 w-10 items-center justify-center rounded-[3px] border border-[#23c7be]/30 bg-[#23c7be]/10 text-[#23c7be]"><Mic size={19} /></div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#23c7be]">{t('lip_sync.header_category', "Image & Video")}</p>
-                <h3 className="text-xl font-black text-white">{t('lip_sync.title', "Lip Sync")}</h3>
+                <h3 className="text-xl font-black text-white">{t('lip_sync.title', "Sync")}</h3>
                 <p className="text-xs text-white/45">{t('lip_sync.description', "Sync audio to a video automatically")}</p>
               </div>
             </div>
