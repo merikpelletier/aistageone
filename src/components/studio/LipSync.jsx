@@ -10,28 +10,42 @@ import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 export default function LipSync({ onComplete, onClose, episodePageId, blockId, user, embedded = false, inline = false }) {
   const t = useStudioTranslation();
-  const [videoUrl, setVideoUrl] = useState(null);
+  const [imageUrl, setImageUrl] = useState(null);
+  const [motionVideoUrl, setMotionVideoUrl] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
-  const [videoName, setVideoName] = useState('');
+  const [imageName, setImageName] = useState('');
+  const [motionVideoName, setMotionVideoName] = useState('');
   const [audioName, setAudioName] = useState('');
-  const [uploading, setUploading] = useState({ video: false, audio: false });
+  const [uploading, setUploading] = useState({ image: false, video: false, audio: false });
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
 
-  const pricingInput = { photo_url: videoUrl || undefined, audio_url: audioUrl || undefined };
+  const usesMotionReference = effectiveModel === 'prunaai/p-video-animate';
+  const pricingInput = { photo_url: imageUrl || undefined, reference_video_url: motionVideoUrl || undefined, audio_url: audioUrl || undefined };
   const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({ service: 'replicateGenerate:lip_sync', kind: 'video', input: pricingInput });
   const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
   const { quote: priceQuote, loading: priceLoading } = useAiPriceQuote({ service: 'replicateGenerate:lip_sync', kind: 'video', input: pricingInput, modelKey: effectiveModel });
+
+  const handleImageUpload = async (file) => {
+    setUploading(u => ({ ...u, image: true }));
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setImageUrl(file_url);
+      setImageName(file.name);
+    } finally {
+      setUploading(u => ({ ...u, image: false }));
+    }
+  };
 
   const handleVideoUpload = async (file) => {
     setUploading(u => ({ ...u, video: true }));
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setVideoUrl(file_url);
-      setVideoName(file.name);
+      setMotionVideoUrl(file_url);
+      setMotionVideoName(file.name);
     } finally {
       setUploading(u => ({ ...u, video: false }));
     }
@@ -49,13 +63,13 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
   };
 
   const handleGenerate = async () => {
-    if (!videoUrl || !audioUrl) return;
+    if (!imageUrl || (usesMotionReference ? !motionVideoUrl : !audioUrl)) return;
     setIsGenerating(true);
     try {
       const res = await base44.functions.invoke('replicateGenerate', {
         method: 'lip_sync',
-        photo_url: videoUrl,
-        audio_url: audioUrl,
+        photo_url: imageUrl,
+        ...(usesMotionReference ? { reference_video_url: motionVideoUrl } : { audio_url: audioUrl }),
         model_key: effectiveModel || undefined,
       });
       if (res.data?.file_url) setResult(res.data.file_url);
@@ -131,17 +145,17 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-4">
               <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
-                <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Video size={14} className="text-[#23c7be]" /> {t("lip_sync.video","Video")}</div>
-                {videoUrl ? (
+                <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/50"><Mic size={14} className="text-[#23c7be]" /> {t("lip_sync.character_image","Character image")}</div>
+                {imageUrl ? (
                   <div className="overflow-hidden rounded-[4px] border border-white/10 bg-black">
-                    <video src={videoUrl} controls className="max-h-[420px] w-full object-contain" />
-                    <div className="flex items-center gap-3 border-t border-white/10 bg-[#17191d] px-3 py-2"><CheckCircle2 size={16} className="flex-shrink-0 text-[#23c7be]" /><span className="min-w-0 flex-1 truncate text-xs text-white/65">{videoName}</span><button onClick={() => { setVideoUrl(null); setVideoName(''); }} className="text-white/45 hover:text-white"><X size={14} /></button></div>
+                    <img src={imageUrl} alt={imageName} className="max-h-[420px] w-full object-contain" />
+                    <div className="flex items-center gap-3 border-t border-white/10 bg-[#17191d] px-3 py-2"><CheckCircle2 size={16} className="flex-shrink-0 text-[#23c7be]" /><span className="min-w-0 flex-1 truncate text-xs text-white/65">{imageName}</span><button onClick={() => { setImageUrl(null); setImageName(''); }} className="text-white/45 hover:text-white"><X size={14} /></button></div>
                   </div>
                 ) : (
                   <label className="flex min-h-[190px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[4px] border border-dashed border-white/20 bg-black/20 p-6 text-center transition hover:border-[#23c7be]/60 hover:bg-black/30">
-                    {uploading.video ? <Loader2 size={28} className="animate-spin text-[#23c7be]" /> : <Upload size={28} className="text-[#23c7be]" />}
-                    <div><p className="text-sm font-bold text-white">{uploading.video ? t('lip_sync.uploading', "Uploading…") : t('lip_sync.upload_video', "Upload video")}</p><p className="mt-1 text-xs text-white/35">MP4, WebM, MOV</p></div>
-                    <input type="file" accept="video/*" className="hidden" disabled={uploading.video} onChange={e => e.target.files?.[0] && handleVideoUpload(e.target.files[0])} />
+                    {uploading.image ? <Loader2 size={28} className="animate-spin text-[#23c7be]" /> : <Upload size={28} className="text-[#23c7be]" />}
+                    <div><p className="text-sm font-bold text-white">{uploading.image ? t('lip_sync.uploading', "Uploading…") : t('lip_sync.upload_image', "Upload character image")}</p><p className="mt-1 text-xs text-white/35">JPG, PNG, WebP</p></div>
+                    <input type="file" accept="image/*" className="hidden" disabled={uploading.image} onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
                   </label>
                 )}
               </section>
@@ -158,6 +172,7 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
                   </label>
                 )}
               </section>
+              )}
 
               {result && (
                 <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
@@ -180,7 +195,7 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
               {!result ? (
                 <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
                   <div className="mb-3 flex items-center justify-between text-xs text-white/45"><span>{t('lip_sync.ai_cost', "AI cost")}</span><span>{priceLoading ? t('lip_sync.calculating', "Calculating…") : priceQuote?.credits ? `${priceQuote.credits} ${t('lip_sync.credits', "credits")}` : t('lip_sync.calculated', "Calculated automatically")}</span></div>
-                  <button onClick={handleGenerate} disabled={!videoUrl || !audioUrl || isGenerating} className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 text-sm font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:bg-white/[0.05] disabled:text-white/30">
+                  <button onClick={handleGenerate} disabled={!imageUrl || (usesMotionReference ? !motionVideoUrl : !audioUrl) || isGenerating} className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 text-sm font-black text-[#071211] transition hover:bg-[#35d8cf] disabled:bg-white/[0.05] disabled:text-white/30">
                     {isGenerating ? <><Loader2 size={18} className="animate-spin" /> {t('lip_sync.syncing', "Syncing… (~1–3 min)")}</> : <><Mic size={18} /> {t('lip_sync.generate', "Generate Lip Sync")}{priceQuote?.credits ? ` · ${priceQuote.credits} ${t('lip_sync.credits', "credits")}` : ''}</>}
                   </button>
                 </section>
