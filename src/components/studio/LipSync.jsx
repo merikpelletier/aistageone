@@ -68,9 +68,11 @@ export default function LipSync({ onComplete, onClose, episodePageId, blockId, u
     try {
       const res = await base44.functions.invoke('replicateGenerate', {
         method: 'lip_sync',
+        sync_mode: usesMotionReference ? 'motion_transfer' : 'voice_sync',
         photo_url: imageUrl,
-        ...(usesMotionReference ? { reference_video_url: motionVideoUrl } : { audio_url: audioUrl }),
-        model_key: effectiveModel || undefined,
+        ...(usesMotionReference
+          ? { reference_video_url: motionVideoUrl, model_key: 'prunaai/p-video-animate' }
+          : { audio_url: audioUrl, model_key: 'veed/fabric-1.0' }),
       });
       if (res.data?.file_url) setResult(res.data.file_url);
       else toast.error(res.data?.error || t('lip_sync.failed', "Lip sync failed"));
