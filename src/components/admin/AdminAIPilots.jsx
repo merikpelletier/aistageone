@@ -10,6 +10,7 @@ import AIPilotCharacters from './AIPilotCharacters';
 import AIPilotDirectionEditor from './AIPilotDirectionEditor';
 import AIPilotMedia from './AIPilotMedia';
 import AIPilotPreviewGallery from './AIPilotPreviewGallery';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const CONTROL_CLASS = 'bg-black/20 border-white/15 text-white placeholder:text-white/25 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[var(--studio-accent)]';
 const SELECT_TRIGGER_CLASS = 'bg-black/20 border-white/15 text-white focus:ring-0 focus:ring-offset-0 focus:border-[var(--studio-accent)]';
@@ -18,7 +19,67 @@ const SECONDARY_BUTTON_CLASS = 'bg-white/[0.04] text-white border border-white/1
 
 const emptyPilot = () => ({ pilot_key: '', name: '', description: '', category: '', tags: [], cover_url: '', status: 'draft', distribution_mode: 'private', asset_subcategory_id: '' });
 const slugify = (value = '') => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-const TABS = [['overview', 'Overview', FileText], ['characters', 'Characters', Users], ['direction', 'Direction', SlidersHorizontal], ['media', 'Media', Images], ['versions', 'Versions', History]];
+const TABS = [['overview', 'Overview', FileText], ['characters', 'Characters', Users], ['direction', 'Direction', SlidersHorizontal], ['media', 'Media', Images], ['presentation', 'Universe Presentation', Images], ['versions', 'Versions', History]];
+
+// Presentation-only block: no tool targets, generation settings or production data.
+function UniversePresentationEditor({ pilot, version, block, onSaved }) {
+  const t = useStudioTranslation();
+  const initial = block?.content || {};
+  const [content, setContent] = useState(initial);
+  const [locale, setLocale] = useState('en');
+  const [newLocale, setNewLocale] = useState('');
+  const [busy, setBusy] = useState('');
+  const [status, setStatus] = useState('');
+  React.useEffect(() => { setContent(block?.content || {}); setLocale('en'); setStatus(''); }, [pilot?.id, version?.id, block?.id]);
+  const languages = Array.from(new Set(['en', 'fr', ...Object.keys(content.locales || {})]));
+  const current = content.locales?.[locale] || {};
+  const setField = (key, value) => setContent((prev) => ({
+    ...prev, locales: { ...(prev.locales || {}), [locale]: { ...(prev.locales?.[locale] || {}), [key]: value } },
+  }));
+  const upload = async (key, file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    setBusy(key); setStatus('');
+    try {
+      if (file.size > 50 * 1024 * 1024) throw new Error('Maximum 50 MB per image.');
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!auth?.user?.id) throw new Error('Sign in required.');
+      const extension = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+      const path = `${auth.user.id}/ai-pilots/${pilot.id}/universe/${locale}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      const { error } = await supabase.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+      if (error) throw error;
+      const { data } = supabase.storage.from('media').getPublicUrl(path);
+      if (!data?.publicUrl) throw new Error('Media URL unavailable.');
+      setField(key, data.publicUrl);
+      setStatus(t('Image uploaded. Save presentation to apply it.', 'Image uploaded. Save presentation to apply it.'));
+    } catch (error) { setStatus(error.message || 'Upload failed.'); }
+    finally { setBusy(''); }
+  };
+  const save = async () => {
+    setBusy('save'); setStatus('');
+    try {
+      const payload = { version_id: version.id, block_key: 'universe-presentation', block_type: 'custom', title: 'Universe Presentation', content, tool_targets: [], priority: 100, sort_order: 999, is_active: true };
+      const { error } = await supabase.from('ai_pilot_blocks').upsert(payload, { onConflict: 'version_id,block_key' });
+      if (error) throw error;
+      await onSaved();
+      setStatus(t('Presentation saved.', 'Presentation saved.'));
+    } catch (error) { setStatus(error.message || 'Save failed.'); }
+    finally { setBusy(''); }
+  };
+  return <div className="max-w-5xl space-y-5">
+    <div><h3 className="text-lg font-semibold text-white">{t('Universe Presentation', 'Universe Presentation')}</h3><p className="mt-1 text-sm text-white/50">{t('Visuals and text for the AI Pilots game-style home. Production connections are unchanged.', 'Visuals and text for the AI Pilots game-style home. Production connections are unchanged.')}</p><p className="mt-2 text-xs text-[#23c7be]">{t('Editing selected version', 'Editing selected version')}: v{version.version_number}{version.is_published ? ' · Published' : ' · Draft'}. {t('Members see the published version.', 'Members see the published version.')}</p></div>
+    <div className="flex flex-wrap gap-2">{languages.map((lang) => <button key={lang} type="button" onClick={() => setLocale(lang)} className={`border px-4 py-2 text-xs font-bold uppercase ${locale === lang ? 'border-[#23c7be] bg-[#23c7be]/15 text-[#71e0d8]' : 'border-white/15 text-white/60'}`}>{lang}</button>)}</div>
+    <div className="flex flex-wrap items-center gap-2"><Input aria-label={t('Language code', 'Language code')} className={`max-w-40 ${CONTROL_CLASS}`} value={newLocale} onChange={(event) => setNewLocale(event.target.value.toLowerCase().replace(/[^a-z-]/g, '').slice(0,12))} placeholder="es, de, pt…" /><Button type="button" className={SECONDARY_BUTTON_CLASS} disabled={!/^[a-z]{2,3}(-[a-z]{2,4})?$/.test(newLocale)} onClick={() => { setContent((prev) => ({ ...prev, locales: { ...(prev.locales || {}), [newLocale]: prev.locales?.[newLocale] || {} } })); setLocale(newLocale); setNewLocale(''); }}><Plus size={15} className="mr-1" /> {t('Add language', 'Add language')}</Button></div>
+    <div className="grid gap-4 sm:grid-cols-2">
+      {[['title', 'Display title'], ['tagline', 'Tagline']].map(([key, label]) => <label key={key} className="space-y-2"><span className="text-xs text-white/65">{t(label,label)} ({locale.toUpperCase()})</span><Input className={CONTROL_CLASS} value={current[key] || ''} onChange={(event) => setField(key,event.target.value)} /></label>)}
+    </div>
+    <label className="block space-y-2"><span className="text-xs text-white/65">{t('Short synopsis', 'Short synopsis')} ({locale.toUpperCase()})</span><Textarea rows={3} className={CONTROL_CLASS} value={current.synopsis || ''} onChange={(event) => setField('synopsis',event.target.value)} /></label>
+    <div className="grid gap-4 md:grid-cols-3">
+      {[['hero_image', 'Universe hero image'], ['card_image', 'Selection image'], ['logo_image', 'Logo artwork']].map(([key,label]) => <div key={key} className="border border-white/10 bg-white/[0.02] p-3"><p className="mb-2 text-xs font-semibold text-white/75">{t(label,label)} ({locale.toUpperCase()})</p><div className="flex aspect-video items-center justify-center overflow-hidden bg-black/40">{current[key] ? <img src={current[key]} alt="" className="h-full w-full object-contain" /> : <span className="text-xs text-white/35">{t('Uses existing cover if empty', 'Uses existing cover if empty')}</span>}</div><label className="mt-3 flex cursor-pointer items-center justify-center gap-2 border border-white/20 p-2 text-xs text-white/70 hover:bg-white/10"><Upload size={14} />{busy===key ? 'Uploading…' : t('Replace image','Replace image')}<input type="file" accept="image/*" className="hidden" disabled={Boolean(busy)} onChange={(event) => { const file=event.target.files?.[0];event.target.value='';upload(key,file); }} /></label>{current[key] && <button type="button" className="mt-2 text-xs text-white/50 hover:text-white" onClick={()=>setField(key,'')}>{t('Use default image','Use default image')}</button>}</div>)}
+    </div>
+    <div className="flex flex-wrap items-center gap-4"><Button type="button" className={PRIMARY_BUTTON_CLASS} disabled={Boolean(busy)} onClick={save}><Save size={15} className="mr-2"/>{busy==='save' ? t('Saving…','Saving…') : t('Save presentation','Save presentation')}</Button>{status && <span role="status" className="text-sm text-[#71e0d8]">{status}</span>}</div>
+  </div>;
+}
 
 export default function AdminAIPilots() {
   const queryClient = useQueryClient();
@@ -466,6 +527,7 @@ export default function AdminAIPilots() {
               </div>}
 
               {selectedVersion && <div className={activeTab === 'media' ? '' : 'hidden'}><AIPilotMedia pilot={pilotDraft} version={selectedVersion} /></div>}
+              {selectedVersion && activeTab === 'presentation' && <UniversePresentationEditor key={selectedVersion.id} pilot={pilotDraft} version={selectedVersion} block={blocks.find((block) => block.block_key === 'universe-presentation')} onSaved={() => queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-blocks', selectedVersion.id] })} />}
 
               <div className={activeTab === 'versions' ? '' : 'hidden'}>
                 <div className="max-w-4xl space-y-4"><div className="flex items-center justify-between gap-4"><div><div className="text-sm text-white">Versions</div><div className="text-xs text-white/40 mt-1">Save updates the selected version. Publish remains a separate action.</div></div><Button className={SECONDARY_BUTTON_CLASS} onClick={() => createVersion.mutate()} disabled={!selectedVersion || createVersion.isPending}><Copy size={15} className="mr-2" /> New Version</Button></div><div className="border border-white/10 divide-y divide-white/10">{versions.map((version) => <button key={version.id} type="button" onClick={() => { setSelectedVersionId(version.id); setEditingBlock(null); }} className={`w-full text-left p-4 flex items-center justify-between gap-4 ${selectedVersion?.id === version.id ? 'bg-white/[0.05] shadow-[inset_2px_0_0_var(--studio-accent)]' : 'hover:bg-white/[0.03]'}`}><div><div className="text-sm text-white">Version {version.version_number}</div><div className="text-xs text-white/35 mt-1">{version.changelog || 'No version notes'}</div></div><span className="text-[10px] uppercase tracking-wider text-white/45">{version.is_published ? 'Published' : 'Draft'}</span></button>)}</div>{selectedVersion && <div className="border border-white/10 p-4 space-y-4"><label className="space-y-2 block"><span className="text-xs text-white/55">Version notes</span><Textarea className={CONTROL_CLASS} rows={4} value={versionNotesDraft} disabled={selectedVersion.is_published} onChange={(e) => setVersionNotesDraft(e.target.value)} /></label>{!selectedVersion.is_published && <div className="flex justify-end"><Button className={PRIMARY_BUTTON_CLASS} onClick={() => publishVersion.mutate()} disabled={publishVersion.isPending || blocks.length === 0}><Rocket size={15} className="mr-2" /> Publish v{selectedVersion.version_number}</Button></div>}</div>}</div>
