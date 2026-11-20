@@ -103,7 +103,7 @@ serveWithCors(async (req) => {
       owner_id: user.id,
       provider: 'cloudflare_stream',
       provider_video_id: uid,
-      source_type: 'dubbing_output',
+      source_type: 'import',
       source_url: source_video_url || video_url,
       status: 'processing',
       storage_billing_started_at: new Date().toISOString(),
