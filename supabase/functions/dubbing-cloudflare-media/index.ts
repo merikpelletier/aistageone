@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await service.from('video_asset')
         .select('id,provider_video_id,status,playback_url,source_url')
         .eq('id', assetId).eq('owner_id', user.id).eq('provider', 'cloudflare_stream')
-        .eq('source_type', 'dubbing_output').maybeSingle();
+        .eq('source_type', 'import').maybeSingle();
       if (error || !data) return json({ error: 'Output video not found' }, 404);
       asset = data;
     }
