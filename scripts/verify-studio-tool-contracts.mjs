@@ -24,7 +24,7 @@ for (const marker of ['background_music_url', 'instrumentalUrl', 'mediaType="aud
   forbidMarker('Dubbing UI', dubbingUi, marker);
 }
 requireMarker('Studio Dubbing output', studio, "setProducedMedia({ url: file_url, type: 'video' })");
-for (const marker of ["const { audio_url, video_url }", 'audio_file: audio_url', 'video_file: video_url', "toolId: 'dubbing'", "'dubbed_video.mp4'"]) {
+for (const marker of ["const { audio_url, video_url }", 'audio_file: audio_url', 'video_file: video_url', "toolId: 'dubbing'", '/stream/copy']) {
   requireMarker('Dubbing server', dubbingServer, marker);
 }
 
