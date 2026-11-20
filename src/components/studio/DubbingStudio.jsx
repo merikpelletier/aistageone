@@ -89,7 +89,7 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
       method: 'POST',
       headers: {
         authorization: `Bearer ${session.access_token}`,
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         'Tus-Resumable': '1.0.0',
         'Upload-Length': String(file.size),
         'Upload-Metadata': encodedMetadata,
@@ -106,7 +106,7 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
       const chunk = file.slice(offset, Math.min(offset + chunkSize, file.size));
       const response = await fetch(uploadUrl, {
         method: 'PATCH',
-        headers: { authorization: `Bearer ${session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, 'Tus-Resumable': '1.0.0', 'Upload-Offset': String(offset), 'Content-Type': 'application/offset+octet-stream' },
+        headers: { authorization: `Bearer ${session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, 'Tus-Resumable': '1.0.0', 'Upload-Offset': String(offset), 'Content-Type': 'application/offset+octet-stream' },
         body: chunk,
       });
       if (!response.ok) throw Error((await response.text()) || t('Original video upload failed.', 'Le téléversement de la vidéo originale a échoué.'));
@@ -138,10 +138,9 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
       if (!Number.isFinite(metadata) || metadata <= 0 || metadata > 14400) {
         throw Error(t('Video must be shorter than four hours', 'La vidéo doit durer moins de quatre heures'));
       }
-      originalVideoFile.current = file;
-      await uploadOriginalToAssemblyStorage(file);
       const result = await base44.integrations.Core.UploadFile({ file });
       if (!result.file_url) throw Error('Upload failed');
+      originalVideoFile.current = file;
       setVideoUrl(result.file_url);
       setDurationSeconds(metadata);
     } catch (error) {
