@@ -167,7 +167,7 @@ function ScenarioGuide({ content, sets = [], extensions = [], userSets = [], onS
   );
 }
 
-function PilotDetails({ access, user, onMessage, userSets = [], initialSection = 'overview' }) {
+function PilotDetails({ access, user, onMessage, userSets = [], initialSection = 'overview', hideTabs = false }) {
   const t = useStudioTranslation();
   const queryClient = useQueryClient();
   const emptyDraft = () => ({ extension_type: 'character_style', name: '', description: '', notes: '', details: {} });
@@ -302,9 +302,9 @@ function PilotDetails({ access, user, onMessage, userSets = [], initialSection =
   )) : <p className="py-8 text-sm text-white/45">{t("No direction available in this section.", "No direction available in this section.")}</p>;
   return (
     <div className="mt-5 border-t border-white/10 pt-5">
-      <div className="mb-5 flex flex-wrap gap-2">
+      {!hideTabs && <div className="mb-5 flex flex-wrap gap-2">
         {tabs.map(([id, label, Icon]) => <button key={id} type="button" onClick={() => setActiveSection(id)} className={`inline-flex items-center gap-2 border px-3 py-2.5 text-xs font-semibold transition-colors ${activeSection === id ? 'border-[#23c7be] bg-[#23c7be]/10 text-[#23c7be]' : 'border-white/10 bg-white/[0.03] text-white/65 hover:border-white/25 hover:text-white'}`}><Icon size={15} />{t(label,label)}</button>)}
-      </div>
+      </div>}
       <div className="min-h-[160px] max-w-5xl">
         {activeSection === 'overview' && <div className="space-y-3">{access.pilot?.description && <div className="border border-white/10 bg-[#171b20] p-4"><p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#23c7be]">{t("Series Overview", "Series Overview")}</p><p className="whitespace-pre-wrap text-sm leading-relaxed text-white/75">{access.pilot.description}</p></div>}</div>}
         {activeSection === 'scenario' && <div className="space-y-3">{renderBlocks(scenarioBlocks)}</div>}
@@ -639,7 +639,7 @@ export default function MyAIPilots({ embedded = false }) {
             })()}
             {universeSection && <section id="universe-content" className="mt-4 border border-white/10 bg-[#111418] p-4 sm:p-6">
               <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3"><h2 className="text-lg font-semibold text-white">{ui('Universe', 'Univers')} / {getTitle(selected)}</h2><button type="button" onClick={() => setUniverseSection(null)} className="text-sm text-white/60 hover:text-white">{ui('Close', 'Fermer')} <X size={16} className="inline" /></button></div>
-              <PilotDetails key={selected.id + ':' + universeSection} access={selected} user={user} onMessage={setMessage} userSets={mySets} initialSection={universeSection} />
+              <PilotDetails key={selected.id + ':' + universeSection} access={selected} user={user} onMessage={setMessage} userSets={mySets} initialSection={universeSection} hideTabs />
             </section>}
           </>
         )}
