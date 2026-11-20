@@ -239,7 +239,7 @@ export default function MemberDossierPages({ dossier, onClose, userEmail }) {
                 <div className="grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
                   <div className="space-y-2">
                     <p className="text-sm text-white/65">{t('Portrait media','Portrait media')}</p>
-                    {editingPage.media_url && (isVideoMedia(editingPage.media_url) ? <CloudflareStreamVideo src={editingPage.media_url} title={t('Portrait media','Portrait media')} className="h-24 w-full border border-white/10 object-contain" muted previewOnly /> : <img src={editingPage.media_url} alt="" className="h-24 w-full border border-white/10 object-contain" />)}
+                    {editingPage.media_url && (isVideoMedia(editingPage.media_url) ? <CloudflareStreamVideo src={editingPage.media_url} title={t('Portrait media','Portrait media')} className="h-40 w-full border border-white/10 bg-black object-contain" controls /> : <img src={editingPage.media_url} alt="" className="h-24 w-full border border-white/10 object-contain" />)}
                     <input id="member-page-portrait" type="file" accept="image/*,video/*" className="hidden" onChange={e => upload(e.target.files?.[0], 'media_url')} />
                     <label htmlFor="member-page-portrait" className="flex cursor-pointer items-center justify-center gap-1.5 border border-white/20 px-2 py-1.5 text-xs"><Upload size={14} />{uploading === 'media_url' ? t('Uploading…','Uploading…') : t('Upload portrait','Upload portrait')}</label>
                     {vaultButtons('media_url', [['image', 'Vault images'], ['video', 'Vault videos']])}
@@ -247,7 +247,7 @@ export default function MemberDossierPages({ dossier, onClose, userEmail }) {
                   </div>
                   <div className="space-y-2">
                     <p className="text-sm text-white/65">{t('Landscape media','Landscape media')}</p>
-                    {editingPage.media_url_landscape && (isVideoMedia(editingPage.media_url_landscape) ? <CloudflareStreamVideo src={editingPage.media_url_landscape} title={t('Landscape media','Landscape media')} className="h-24 w-full border border-white/10 object-contain" muted previewOnly /> : <img src={editingPage.media_url_landscape} alt="" className="h-24 w-full border border-white/10 object-contain" />)}
+                    {editingPage.media_url_landscape && (isVideoMedia(editingPage.media_url_landscape) ? <CloudflareStreamVideo src={editingPage.media_url_landscape} title={t('Landscape media','Landscape media')} className="h-40 w-full border border-white/10 bg-black object-contain" controls /> : <img src={editingPage.media_url_landscape} alt="" className="h-24 w-full border border-white/10 object-contain" />)}
                     <input id="member-page-landscape" type="file" accept="image/*,video/*" className="hidden" onChange={e => upload(e.target.files?.[0], 'media_url_landscape')} />
                     <label htmlFor="member-page-landscape" className="flex cursor-pointer items-center justify-center gap-2 border border-white/20 px-3 py-2 text-sm"><Upload size={14} />{uploading === 'media_url_landscape' ? t('Uploading…','Uploading…') : t('Upload landscape','Upload landscape')}</label>
                     {vaultButtons('media_url_landscape', [['image', 'Vault images'], ['video', 'Vault videos']])}
