@@ -535,46 +535,59 @@ export default function MyAIPilots({ embedded = false }) {
                   const enter = () => { setSelectedUniverse(active.id); setExpanded((current) => ({ ...current, [active.id]: false })); };
                   const changeSelection = (direction) => setPreviewUniverse(library[(activeIndex + direction + library.length) % library.length].id);
                   const visuals = getVisuals(active);
-                  return <section aria-label={ui('Universe selection', 'Sélection des univers')} className="relative overflow-hidden border border-white/15 bg-[#080c10] text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-                    <div className="flex items-center justify-between border-b border-white/10 bg-[#0a1115] px-4 py-3 sm:px-6">
-                      <div className="flex items-center gap-3"><span className="h-2 w-2 rotate-45 bg-[#23c7be]" /><span className="text-[11px] font-black uppercase tracking-[0.24em]">AI PILOTS</span><span className="hidden text-[10px] uppercase tracking-[0.15em] text-white/40 sm:inline">/ {ui('Choose your world', 'Choisissez votre monde')}</span></div>
-                      <span className="font-mono text-xs text-white/55">{String(activeIndex + 1).padStart(2,'0')} / {String(library.length).padStart(2,'0')}</span>
+                  return <section aria-label={ui('Universe selection', 'Sélection des univers')} className="relative isolate min-h-[690px] overflow-hidden bg-[#05090c] text-white shadow-[0_28px_90px_rgba(0,0,0,0.65)] sm:min-h-[750px] lg:min-h-[min(850px,calc(100vh-90px))]">
+                    <div className="pointer-events-none absolute inset-0 -z-30">
+                      {image ? <img key={'world-'+active.id} src={image} alt="" className="h-full w-full animate-[universe-scene_800ms_ease-out_both] object-cover object-center" /> : <div className="h-full w-full bg-[radial-gradient(ellipse_at_70%_35%,#23464e_0%,#0b161e_45%,#030609_100%)]" />}
                     </div>
-                    <div className="grid min-h-[580px] grid-cols-1 lg:grid-cols-[minmax(200px,23%)_minmax(0,1fr)]">
-                      <nav aria-label={ui('Choose a universe', 'Choisissez un univers')} className="order-2 flex min-w-0 gap-2 overflow-x-auto border-t border-white/10 bg-[#0b1015] p-3 lg:order-1 lg:flex-col lg:justify-center lg:gap-3 lg:overflow-y-auto lg:border-r lg:border-t-0 lg:px-4 lg:py-7">
-                        <p className="hidden px-2 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#70d9d0] lg:block">{ui('Select a destination', 'Choisir une destination')}</p>
-                        {library.map((entry,index) => <button type="button" key={entry.id} aria-current={entry.id === active.id ? 'true' : undefined} onClick={() => setPreviewUniverse(entry.id)} className={`group flex min-w-[160px] max-w-[260px] items-center gap-3 overflow-hidden border p-2 text-left transition-all duration-200 lg:w-full lg:max-w-none ${entry.id === active.id ? 'border-[#23c7be] bg-[#23c7be]/10 text-white' : 'border-white/10 bg-white/[0.02] text-white/65 hover:border-white/40 hover:bg-white/10'}`}>
-                          <div className="h-14 w-12 shrink-0 overflow-hidden bg-[#1d252d]">{getImage(entry,'card') ? <img src={getImage(entry,'card')} alt="" loading="lazy" className="h-full w-full object-cover" /> : <Bot className="m-auto mt-4 text-white/20" size={18}/>}</div>
-                          <div className="min-w-0 flex-1"><span className="font-mono text-[10px] text-[#70d9d0]">{String(index+1).padStart(2,'0')}</span><div className="mt-1 truncate text-xs font-bold uppercase tracking-[0.04em]">{getTitle(entry)}</div></div>
-                          {entry.id === active.id && <ChevronDown size={15} className="-rotate-90 text-[#23c7be]" />}
-                        </button>)}
-                      </nav>
-                      <div className="relative order-1 flex min-h-[560px] min-w-0 flex-col bg-[#0b1015] lg:order-2 lg:min-h-[620px]">
-                        <div className="relative min-h-[310px] flex-1 overflow-hidden sm:min-h-[380px]">
-                          {image ? <img key={'back-'+active.id} src={image} alt="" className="absolute inset-0 h-full w-full animate-[universe-reveal_700ms_ease-out_both] object-cover opacity-30 blur-xl scale-110" /> : <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,#1d343d,#080d12_75%)]" />}
-                          <div className="absolute inset-0 bg-[linear-gradient(0deg,#0b1015_0%,transparent_35%),linear-gradient(90deg,rgba(8,12,16,0.3),transparent)]" />
-                          <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 py-8 sm:px-12">
-                            {(visuals.hero_image || visuals.card_image || image) && <img key={'art-'+active.id} src={visuals.hero_image || visuals.card_image || image} alt="" className="max-h-[330px] max-w-full animate-[universe-reveal_700ms_ease-out_both] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.7)] sm:max-h-[410px]" />}
-                          </div>
-                          <div className="absolute left-5 top-5 border-l-2 border-[#23c7be] bg-black/45 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.19em] text-white/80 sm:left-8 sm:top-7">{ui('World', 'Monde')} {String(activeIndex + 1).padStart(2,'0')}</div>
-                          <div className="absolute bottom-5 right-5 flex items-center gap-2 sm:right-8">
-                            <button type="button" onClick={() => changeSelection(-1)} aria-label={ui('Previous universe', 'Univers précédent')} className="flex h-11 w-11 items-center justify-center border border-white/25 bg-black/70 text-white hover:border-[#23c7be]"><ChevronLeft size={19}/></button>
-                            <button type="button" onClick={() => changeSelection(1)} aria-label={ui('Next universe', 'Univers suivant')} className="flex h-11 w-11 items-center justify-center border border-white/25 bg-black/70 text-white hover:border-[#23c7be]"><ChevronDown size={19} className="-rotate-90"/></button>
-                          </div>
+                    <div className="pointer-events-none absolute inset-0 -z-20 bg-gradient-to-r from-[#020508]/95 via-[#030609]/60 to-[#030609]/15" />
+                    <div className="pointer-events-none absolute inset-0 -z-20 bg-gradient-to-t from-[#020508] via-transparent to-[#020508]/35" />
+                    <div className="pointer-events-none absolute inset-y-0 right-0 -z-10 w-[60%] opacity-20 [background:radial-gradient(ellipse_at_center,rgba(35,199,190,0.45),transparent_65%)]" />
+                    <div className="relative flex min-h-[690px] flex-col sm:min-h-[750px] lg:min-h-[min(850px,calc(100vh-90px))]">
+                      <div className="flex items-center justify-between gap-4 border-b border-white/15 bg-black/15 px-5 py-5 backdrop-blur-[2px] sm:px-10">
+                        <div className="flex items-center gap-3">
+                          <span className="h-2.5 w-2.5 rotate-45 border border-[#92f3e8] bg-[#23c7be] shadow-[0_0_22px_rgba(35,199,190,0.7)]" />
+                          <span className="text-xs font-black uppercase tracking-[0.28em]">AI PILOTS</span>
+                          <span className="hidden border-l border-white/25 pl-3 text-[10px] uppercase tracking-[0.19em] text-white/65 sm:block">{ui('Worlds', 'Mondes')}</span>
                         </div>
-                        <div className="relative z-10 grid gap-5 border-t border-white/15 bg-[#10171c] p-5 sm:p-7 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
-                          <div className="min-w-0">
-                            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.19em] text-[#6edbd2]">{ui('Available universe', 'Univers disponible')}</p>
-                            <h2 className="break-words text-2xl font-extrabold uppercase leading-tight tracking-tight sm:text-3xl">{getTitle(active)}</h2>
-                            {getDescription(active) && <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-relaxed text-white/65">{getDescription(active)}</p>}
+                        <span className="font-mono text-xs tracking-[0.16em] text-white/75">{String(activeIndex+1).padStart(2,'0')} <span className="text-[#23c7be]">/</span> {String(library.length).padStart(2,'0')}</span>
+                      </div>
+                      <div className="relative flex flex-1 flex-col justify-end">
+                        {cardImage && <div className="pointer-events-none absolute inset-y-8 right-[-5%] hidden w-[48%] items-center justify-center lg:flex">
+                          <img key={'character-'+active.id} src={cardImage} alt="" className="max-h-full max-w-full animate-[universe-scene_800ms_ease-out_both] object-contain drop-shadow-[0_25px_70px_rgba(0,0,0,0.8)]" />
+                        </div>}
+                        <div key={'caption-'+active.id} className="relative z-10 w-full px-6 pb-10 pt-24 sm:px-12 lg:max-w-[62%] lg:px-14 lg:pb-14">
+                          <div className="mb-5 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.26em] text-[#86e7de]">
+                            <span className="h-[2px] w-10 bg-[#23c7be]"/>
+                            {ui('Enter a new world', 'Entrez dans un nouveau monde')}
                           </div>
-                          <button type="button" onClick={enter} className="inline-flex min-h-12 shrink-0 items-center justify-center gap-4 border border-[#23c7be] bg-[#23c7be] px-5 py-3 text-xs font-black uppercase tracking-[0.08em] text-[#061012] transition-colors hover:bg-[#89eee5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{ui('Enter the universe', 'Entrer dans l’univers')} <ChevronDown size={18} className="-rotate-90" /></button>
+                          {visuals.logo_image ? <img src={visuals.logo_image} alt={getTitle(active)} className="mb-6 max-h-32 max-w-full object-contain object-left drop-shadow-xl" /> : <h2 className="max-w-[850px] break-words text-4xl font-black uppercase leading-[0.95] tracking-[-0.05em] drop-shadow-[0_6px_25px_rgba(0,0,0,0.95)] sm:text-6xl 2xl:text-7xl">{getTitle(active)}</h2>}
+                          {getDescription(active) && <p className="mt-6 line-clamp-3 max-w-lg border-l-2 border-[#23c7be] pl-4 text-sm leading-relaxed text-white/85 drop-shadow-[0_2px_8px_black] sm:text-base">{getDescription(active)}</p>}
+                          <button type="button" onClick={enter} className="group mt-9 inline-flex min-h-14 items-center justify-between gap-12 border border-[#23c7be] bg-[#23c7be] px-7 py-4 text-sm font-black uppercase tracking-[0.1em] text-[#041011] shadow-[0_0_35px_rgba(35,199,190,0.2)] transition-all duration-200 hover:scale-[1.025] hover:bg-[#93f3e9] hover:shadow-[0_0_55px_rgba(35,199,190,0.38)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{ui('Enter the universe', 'Entrer dans l’univers')} <ChevronDown className="-rotate-90" size={19}/></button>
                         </div>
+                      </div>
+                      <div className="relative z-10 border-t border-white/20 bg-[#04080b]/80 px-4 py-4 backdrop-blur-xl sm:px-8">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.23em] text-white/70">{ui('Select your universe', 'Sélectionnez votre univers')}</p>
+                          {library.length > 1 && <div className="flex items-center gap-2">
+                            <button type="button" onClick={() => changeSelection(-1)} aria-label={ui('Previous universe','Univers précédent')} className="flex h-9 w-9 items-center justify-center border border-white/25 bg-white/5 text-white hover:border-[#23c7be]"><ChevronLeft size={18}/></button>
+                            <button type="button" onClick={() => changeSelection(1)} aria-label={ui('Next universe','Univers suivant')} className="flex h-9 w-9 items-center justify-center border border-white/25 bg-white/5 text-white hover:border-[#23c7be]"><ChevronDown className="-rotate-90" size={18}/></button>
+                          </div>}
+                        </div>
+                        <nav aria-label={ui('Choose a universe','Choisissez un univers')} className="flex gap-3 overflow-x-auto pb-1">
+                          {library.map((entry,index) => <button type="button" key={entry.id} onClick={() => setPreviewUniverse(entry.id)} aria-current={entry.id === active.id ? 'true' : undefined} className={`group relative flex h-[84px] min-w-[170px] max-w-[250px] flex-1 items-end overflow-hidden border-2 text-left transition-all duration-200 sm:h-[105px] ${entry.id === active.id ? 'border-[#23c7be] shadow-[0_0_25px_rgba(35,199,190,0.25)]' : 'border-white/20 opacity-70 hover:border-white/75 hover:opacity-100'}`}>
+                            {getImage(entry,'card') ? <img src={getImage(entry,'card')} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-110" /> : <div className="absolute inset-0 bg-gradient-to-br from-[#24434c] to-[#0c131a]"/>}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-transparent"/>
+                            <div className="relative z-10 w-full p-2.5">
+                              <div className="text-[9px] font-mono text-[#78e6dd]">{String(index+1).padStart(2,'0')}</div>
+                              <div className="mt-0.5 truncate text-xs font-extrabold uppercase tracking-wide">{getTitle(entry)}</div>
+                            </div>
+                          </button>)}
+                        </nav>
                       </div>
                     </div>
                   </section>;
                 })()}
-                <style>{`@keyframes universe-reveal {from {opacity:0;transform:translateY(14px) scale(1.015)} to {opacity:1;transform:translateY(0) scale(1)}} @media (prefers-reduced-motion:reduce) { .animate-\\[universe-reveal_650ms_ease-out_both\\], .animate-\\[universe-reveal_750ms_ease-out_both\\], .animate-\\[universe-reveal_900ms_ease-out_both\\] {animation:none!important} }`}</style>
+                <style>{`@keyframes universe-scene {from {opacity:0;transform:scale(1.06)} to {opacity:1;transform:scale(1)}} @media (prefers-reduced-motion:reduce) { .animate-\\[universe-reveal_650ms_ease-out_both\\], .animate-\\[universe-reveal_750ms_ease-out_both\\], .animate-\\[universe-reveal_900ms_ease-out_both\\] {animation:none!important} }`}</style>
               </>
             )}
           </>
