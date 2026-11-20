@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Plus, Trash2, Upload, X } from 'lucide-react';
+import { FolderOpen, Loader2, Plus, Trash2, Upload, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import DossierQuizEditor, { parseDossierQuiz } from '@/components/DossierQuizEditor';
+import VaultPickerModal from '@/components/studio/VaultPickerModal';
 
 const PAGE_TYPES = [
   ['cover', 'Cover'], ['index', 'Visual Index'], ['contest', 'Contest / Open Call'], ['credits', 'Credits'], ['quiz', 'Questions and answers game'],
@@ -15,12 +16,13 @@ const PAGE_TYPES = [
   ['block_player', 'Block Player'],
 ];
 
-export default function MemberDossierPages({ dossier, onClose }) {
+export default function MemberDossierPages({ dossier, onClose, userEmail }) {
   const qc = useQueryClient();
   const t = useStudioTranslation();
   const [editingPage, setEditingPage] = useState(null);
   const [uploading, setUploading] = useState('');
   const [detailsTab, setDetailsTab] = useState('media');
+  const [vaultTarget, setVaultTarget] = useState(null);
 
   const { data: pages = [], isLoading } = useQuery({
     queryKey: ['memberDossierPages', dossier.id],
@@ -70,6 +72,23 @@ export default function MemberDossierPages({ dossier, onClose }) {
       setUploading('');
     }
   };
+
+  const selectVaultMedia = (url) => {
+    if (!vaultTarget || !url) return;
+    setEditingPage(prev => prev ? { ...prev, [vaultTarget.field]: url } : prev);
+    setVaultTarget(null);
+  };
+
+  const vaultButtons = (field, types) => userEmail ? (
+    <div className="flex flex-wrap gap-1.5">
+      {types.map(([mediaType, label]) => (
+        <button key={mediaType} type="button" onClick={() => setVaultTarget({ field, mediaType })}
+          className="inline-flex items-center justify-center gap-1.5 border border-white/20 px-2 py-1.5 text-xs text-white hover:border-teal-400/60">
+          <FolderOpen size={14} />{t(label, label)}
+        </button>
+      ))}
+    </div>
+  ) : null;
 
   const sorted = [...pages].sort((a, b) => (a.order || 0) - (b.order || 0));
   const newPage = () => setEditingPage({
@@ -220,6 +239,7 @@ export default function MemberDossierPages({ dossier, onClose }) {
                     {editingPage.media_url && <img src={editingPage.media_url} alt="" className="h-24 w-full border border-white/10 object-contain" />}
                     <input id="member-page-portrait" type="file" accept="image/*,video/*" className="hidden" onChange={e => upload(e.target.files?.[0], 'media_url')} />
                     <label htmlFor="member-page-portrait" className="flex cursor-pointer items-center justify-center gap-1.5 border border-white/20 px-2 py-1.5 text-xs"><Upload size={14} />{uploading === 'media_url' ? t('Uploading…','Uploading…') : t('Upload portrait','Upload portrait')}</label>
+                    {vaultButtons('media_url', [['image', 'Vault images'], ['video', 'Vault videos']])}
                     <Input value={editingPage.media_url || ''} onChange={e => update('media_url', e.target.value)} placeholder={t("Or paste media URL","Or paste media URL")} className="h-8 bg-neutral-900 border-white/10 text-white text-xs" />
                   </div>
                   <div className="space-y-2">
@@ -227,6 +247,7 @@ export default function MemberDossierPages({ dossier, onClose }) {
                     {editingPage.media_url_landscape && <img src={editingPage.media_url_landscape} alt="" className="h-24 w-full border border-white/10 object-contain" />}
                     <input id="member-page-landscape" type="file" accept="image/*,video/*" className="hidden" onChange={e => upload(e.target.files?.[0], 'media_url_landscape')} />
                     <label htmlFor="member-page-landscape" className="flex cursor-pointer items-center justify-center gap-2 border border-white/20 px-3 py-2 text-sm"><Upload size={14} />{uploading === 'media_url_landscape' ? t('Uploading…','Uploading…') : t('Upload landscape','Upload landscape')}</label>
+                    {vaultButtons('media_url_landscape', [['image', 'Vault images'], ['video', 'Vault videos']])}
                     <Input value={editingPage.media_url_landscape || ''} onChange={e => update('media_url_landscape', e.target.value)} placeholder={t("Or paste media URL","Or paste media URL")} className="h-8 bg-neutral-900 border-white/10 text-white text-xs" />
                   </div>
                 </div>
@@ -235,6 +256,7 @@ export default function MemberDossierPages({ dossier, onClose }) {
                   <p className="mb-2 text-sm text-white/65">{t('Audio','Audio')}</p>
                   <div className="flex flex-col gap-3 sm:flex-row">
                     <Input value={editingPage.audio_url || ''} onChange={e => update('audio_url', e.target.value)} placeholder={t("Audio URL","Audio URL")} className="h-8 bg-neutral-900 border-white/10 text-white text-xs" />
+                    {vaultButtons('audio_url', [['audio', 'Vault audio']])}
                     <input id="member-page-audio" type="file" accept="audio/*" className="hidden" onChange={e => upload(e.target.files?.[0], 'audio_url')} />
                     <label htmlFor="member-page-audio" className="flex cursor-pointer items-center justify-center gap-2 border border-white/20 px-4 py-2 text-sm"><Upload size={14} />{uploading === 'audio_url' ? t('Uploading…','Uploading…') : t('Upload audio','Upload audio')}</label>
                   </div>
@@ -245,6 +267,8 @@ export default function MemberDossierPages({ dossier, onClose }) {
           )}
         </main>
       </div>
+      {vaultTarget && <VaultPickerModal userEmail={userEmail} mediaType={vaultTarget.mediaType}
+        onSelect={selectVaultMedia} onClose={() => setVaultTarget(null)} />}
     </div>
   );
 }
