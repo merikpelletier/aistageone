@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, Square, Play, Pause, Upload, X, Loader2 } from 'lucide-react';
+import { Mic, Square, Play, Pause, Upload, X, Loader2, Undo2, Redo2, RotateCcw } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import ProductionContextInfo from '@/components/ProductionContextInfo';
@@ -113,6 +113,11 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
   const [duration, setDuration] = useState(0);
   const [selectionStart, setSelectionStart] = useState(0);
   const [selectionEnd, setSelectionEnd] = useState(0);
+  const [samples, setSamples] = useState(null);
+  const [takes, setTakes] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [redoHistory, setRedoHistory] = useState([]);
+  const [recordingRange, setRecordingRange] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
@@ -131,6 +136,7 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
   const streamRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const sampleRateRef = useRef(48000);
+  const audioSamplesRef = useRef(null);
   const timerRef = useRef(null);
   const audioPlayerRef = useRef(null);
 
@@ -148,11 +154,15 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
       sampleRateRef.current = context.sampleRate;
       processor.onaudioprocess = (event) => recordedChunksRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)));
       source.connect(processor);
-      processor.connect(context.destination);
+      const silentGain = context.createGain();
+      silentGain.gain.value = 0;
+      processor.connect(silentGain);
+      silentGain.connect(context.destination);
       streamRef.current = stream;
       audioContextRef.current = context;
       sourceRef.current = source;
       processorRef.current = processor;
+      setRecordingRange(audioBlob ? { start: selectionStart, end: selectionEnd } : null);
       setIsRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime(v => v + 1), 1000);
@@ -173,14 +183,35 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
     let offset = 0;
     recordedChunksRef.current.forEach(chunk => { samples.set(chunk, offset); offset += chunk.length; });
     const sampleRate = sampleRateRef.current;
-    const newBlob = encodeWav24(samples, sampleRate);
+    let finalSamples = samples;
+    if (recordingRange && audioBlob && samples.length) {
+      const start = Math.max(0, Math.floor(recordingRange.start * sampleRate));
+      const end = Math.min((audioSamplesRef.current?.length || 0), Math.floor(recordingRange.end * sampleRate));
+      const previous = audioSamplesRef.current || new Float32Array();
+      setTakes(current => [...current, { id: Date.now(), samples: samples.slice(), duration: samples.length / sampleRate, label: `Take ${current.length + 1}` }]);
+      setHistory(current => [...current, previous]);
+      setRedoHistory([]);
+      finalSamples = new Float32Array(previous.length - (end - start) + samples.length);
+      finalSamples.set(previous.subarray(0, start), 0);
+      finalSamples.set(samples, start);
+      finalSamples.set(previous.subarray(end), start + samples.length);
+    } else {
+      setHistory([]);
+      setRedoHistory([]);
+      setTakes([]);
+    }
+    audioSamplesRef.current = finalSamples;
+    setSamples(finalSamples);
+    const newBlob = encodeWav24(finalSamples, sampleRate);
     const newUrl = URL.createObjectURL(newBlob);
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioBlob(newBlob);
     setAudioUrl(newUrl);
-    setDuration(samples.length / sampleRate);
+    setDuration(finalSamples.length / sampleRate);
     setSelectionStart(0);
-    setSelectionEnd(samples.length / sampleRate);
-    setRecordingTime(Math.round(samples.length / sampleRate));
+    setSelectionEnd(finalSamples.length / sampleRate);
+    setRecordingTime(Math.round(finalSamples.length / sampleRate));
+    setRecordingRange(null);
     setIsRecording(false);
     audioContextRef.current.close();
     audioContextRef.current = null;
@@ -263,6 +294,11 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioBlob(null);
     setAudioUrl(null);
+    setSamples(null);
+    audioSamplesRef.current = null;
+    setTakes([]);
+    setHistory([]);
+    setRedoHistory([]);
     setRecordingTime(0);
     setIsPlaying(false);
   };
@@ -281,7 +317,7 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
 
           {showContext && <ProductionContextInfo productionMethod={productionMethod} block={block} character={character} referenceMedia={[]} />}
 
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px] lg:gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-3">
               <div className="flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-[4px] border border-white/10 bg-black/25 p-8 text-center lg:h-[132px] lg:min-h-0 lg:flex-row lg:justify-between lg:gap-5 lg:px-6 lg:py-3">
                 <div className="mb-7 flex h-24 items-center justify-center gap-1 lg:mb-0 lg:h-auto lg:w-16">
@@ -295,24 +331,29 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
               </div>
             </section>
 
-            <aside className="space-y-4">
-              <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-3">
-                <p className="text-[10px] font-black uppercase tracking-[.12em] text-white/40">{t('Recording status', 'Recording status')}</p>
-                <div className="mt-3 space-y-2 text-xs">
-                  <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">{t('State', 'State')}</span><strong className={isRecording ? 'text-red-300' : audioUrl ? 'text-[#8ee9e4]' : 'text-white'}>{isRecording ? t('Recording', 'Recording') : audioUrl ? t('Ready', 'Ready') : t('Waiting', 'Waiting')}</strong></div>
-                  <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">{t('Format', 'Format')}</span><strong>{audioBlob?.type === 'audio/mpeg' ? 'MP3' : 'WAV · 48 kHz · 24-bit'}</strong></div>
-                  <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">{t('Destination', 'Destination')}</span><strong>{t('Vault', 'Vault')}</strong></div>
+            <aside className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-[4px] border border-white/10 bg-[#17191d] px-3 py-2 text-xs">
+                <span className={isRecording ? 'text-red-300' : 'text-white/60'}>{isRecording ? t('Recording', 'Recording') : audioUrl ? t('Ready · WAV 48 kHz / 24-bit', 'Ready · WAV 48 kHz / 24-bit') : t('Waiting for recording', 'Waiting for recording')}</span>
+                <span className="text-white/40">{t('Destination: Vault', 'Destination: Vault')}</span>
+              </div>
+              {audioUrl && samples && <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-3">
+                <div className="mb-2 flex items-center justify-between text-xs"><strong>{t('Audio track', 'Audio track')}</strong><span className="text-white/45">{fmt(duration)}</span></div>
+                <div className="flex h-16 items-center gap-px overflow-hidden rounded bg-black/30 px-1">
+                  {Array.from({length: 180}, (_, i) => { const start = Math.floor(i * samples.length / 180); const end = Math.max(start + 1, Math.floor((i + 1) * samples.length / 180)); let peak = 0; for(let j=start;j<Math.min(end,samples.length);j++) peak=Math.max(peak,Math.abs(samples[j])); const time = start / sampleRateRef.current; const selected = time >= selectionStart && time <= selectionEnd; return <div key={i} className={selected ? 'flex-1 rounded-sm bg-[#23c7be]' : 'flex-1 rounded-sm bg-white/25'} style={{height: `${Math.max(3,peak*100)}%`}} />; })}
                 </div>
-              </section>
-              {audioUrl && <div className="mt-3 rounded-[3px] border border-white/10 bg-black/20 p-3">
-                <div className="mb-2 flex items-center justify-between text-xs text-white/55"><span>{t('Edit segment', 'Edit segment')}</span><span>{fmt(duration)}</span></div>
-                <div className="mb-3 h-2 overflow-hidden rounded bg-white/10"><div className="h-full bg-[#23c7be]" style={{ width: '100%' }} /></div>
-                <label className="mb-1 block text-[11px] text-white/45">{t('Selection start', 'Selection start')} · {selectionStart.toFixed(1)}s</label>
-                <input aria-label="Selection start" type="range" min="0" max={Math.max(0.1, duration)} step="0.1" value={selectionStart} onChange={e => setSelectionStart(Math.min(Number(e.target.value), Math.max(0, selectionEnd - 0.1)))} className="w-full accent-[#23c7be]" />
-                <label className="mb-1 mt-2 block text-[11px] text-white/45">{t('Selection end', 'Selection end')} · {selectionEnd.toFixed(1)}s</label>
-                <input aria-label="Selection end" type="range" min="0" max={Math.max(0.1, duration)} step="0.1" value={selectionEnd} onChange={e => setSelectionEnd(Math.max(Number(e.target.value), selectionStart + 0.1))} className="w-full accent-[#23c7be]" />
-                <div className="mt-2 flex gap-2"><button onClick={async () => { if (!audioBlob || selectionEnd <= selectionStart) return; setIsConverting(true); try { const decoded = await decodeWav(audioBlob); const a = Math.floor(selectionStart * decoded.sampleRate); const b = Math.floor(selectionEnd * decoded.sampleRate); const kept = new Float32Array(decoded.samples.length - (b - a)); kept.set(decoded.samples.subarray(0, a)); kept.set(decoded.samples.subarray(b), a); const blob = encodeWav24(kept, decoded.sampleRate); if (audioUrl) URL.revokeObjectURL(audioUrl); setAudioBlob(blob); setAudioUrl(URL.createObjectURL(blob)); setDuration(kept.length / decoded.sampleRate); setSelectionStart(0); setSelectionEnd(kept.length / decoded.sampleRate); } catch (error) { console.error(error); toast.error(t('Could not edit this recording', 'Could not edit this recording')); } finally { setIsConverting(false); } }} disabled={isConverting || selectionEnd <= selectionStart} className="flex-1 rounded-[3px] border border-white/10 px-2 py-2 text-xs disabled:opacity-40">{t('Delete selection', 'Delete selection')}</button><button onClick={() => { setSelectionStart(0); setSelectionEnd(duration); }} className="rounded-[3px] border border-white/10 px-2 py-2 text-xs">{t('Select all', 'Select all')}</button></div>
-              </div>}
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <label className="text-[11px] text-white/50">{t('Selection start', 'Selection start')} · {selectionStart.toFixed(1)}s<input aria-label="Selection start" type="range" min="0" max={Math.max(.1,duration)} step=".1" value={selectionStart} onChange={e=>setSelectionStart(Math.min(Number(e.target.value),Math.max(0,selectionEnd-.1)))} className="mt-1 w-full accent-[#23c7be]" /></label>
+                  <label className="text-[11px] text-white/50">{t('Selection end', 'Selection end')} · {selectionEnd.toFixed(1)}s<input aria-label="Selection end" type="range" min="0" max={Math.max(.1,duration)} step=".1" value={selectionEnd} onChange={e=>setSelectionEnd(Math.max(Number(e.target.value),selectionStart+.1))} className="mt-1 w-full accent-[#23c7be]" /></label>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button onClick={() => { if(!samples || selectionEnd<=selectionStart)return; const a=Math.floor(selectionStart*sampleRateRef.current),b=Math.floor(selectionEnd*sampleRateRef.current); const kept=new Float32Array(samples.length-(b-a)); kept.set(samples.subarray(0,a)); kept.set(samples.subarray(b),a); setHistory(h=>[...h,samples]); setRedoHistory([]); audioSamplesRef.current=kept; setSamples(kept); const blob=encodeWav24(kept,sampleRateRef.current); if(audioUrl)URL.revokeObjectURL(audioUrl); setAudioBlob(blob); setAudioUrl(URL.createObjectURL(blob)); setDuration(kept.length/sampleRateRef.current); setSelectionStart(0); setSelectionEnd(kept.length/sampleRateRef.current); }} className="rounded border border-white/10 px-3 py-2 text-xs">{t('Delete selection', 'Delete selection')}</button>
+                  <button onClick={() => {setSelectionStart(0);setSelectionEnd(duration);}} className="rounded border border-white/10 px-3 py-2 text-xs">{t('Select all', 'Select all')}</button>
+                  <button disabled={!history.length} onClick={() => {const prev=history[history.length-1];setRedoHistory(h=>[...h,samples]);setHistory(h=>h.slice(0,-1));audioSamplesRef.current=prev;setSamples(prev);const blob=encodeWav24(prev,sampleRateRef.current);if(audioUrl)URL.revokeObjectURL(audioUrl);setAudioBlob(blob);setAudioUrl(URL.createObjectURL(blob));setDuration(prev.length/sampleRateRef.current);setSelectionStart(0);setSelectionEnd(prev.length/sampleRateRef.current);}} className="flex items-center gap-1 rounded border border-white/10 px-3 py-2 text-xs disabled:opacity-30"><Undo2 size={13}/>{t('Undo', 'Undo')}</button>
+                  <button disabled={!redoHistory.length} onClick={() => {const next=redoHistory[redoHistory.length-1];setHistory(h=>[...h,samples]);setRedoHistory(h=>h.slice(0,-1));audioSamplesRef.current=next;setSamples(next);const blob=encodeWav24(next,sampleRateRef.current);if(audioUrl)URL.revokeObjectURL(audioUrl);setAudioBlob(blob);setAudioUrl(URL.createObjectURL(blob));setDuration(next.length/sampleRateRef.current);setSelectionStart(0);setSelectionEnd(next.length/sampleRateRef.current);}} className="flex items-center gap-1 rounded border border-white/10 px-3 py-2 text-xs disabled:opacity-30"><Redo2 size={13}/>{t('Redo', 'Redo')}</button>
+                  <span className="ml-auto self-center text-[11px] text-white/40">{takes.length} {t('retakes', 'retakes')}</span>
+                </div>
+              </section>}
+              {audioUrl && takes.length > 0 && <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-3"><strong className="text-xs">{t('Retakes', 'Retakes')}</strong>{takes.map((take,index)=><div key={take.id} className="mt-2 flex items-center justify-between text-xs"><span>{take.label} · {fmt(take.duration)}</span><button onClick={()=>{const blob=encodeWav24(take.samples,sampleRateRef.current);const url=URL.createObjectURL(blob);if(audioUrl)URL.revokeObjectURL(audioUrl);setAudioBlob(blob);setAudioUrl(url);audioSamplesRef.current=take.samples;setSamples(take.samples);setDuration(take.duration);setSelectionStart(0);setSelectionEnd(take.duration);}} className="rounded border border-white/10 px-2 py-1">{t('Load take', 'Load take')}</button></div>)}</section>}
               {audioUrl && <div className="space-y-2">
                 <button onClick={handleUpload} disabled={isUploading || isSaving || isConverting} className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[.05] disabled:text-white/30">{isSaving ? <><Loader2 size={17} className="animate-spin" /> {t('Saving…', 'Saving…')}</> : isUploading ? <><Loader2 size={17} className="animate-spin" /> {t('Uploading…', 'Uploading…')}</> : <><Upload size={17} /> {t('Save WAV', 'Save WAV')}</>}</button>
                 <button onClick={handleExportMp3} disabled={isExportingMp3 || isConverting} className="flex w-full items-center justify-center gap-2 rounded-[3px] border border-white/15 bg-white/[.04] py-2.5 text-xs font-bold text-white hover:bg-white/10 disabled:opacity-40">{isExportingMp3 ? <><Loader2 size={15} className="animate-spin" /> {t('Exporting…', 'Exporting…')}</> : t('Export MP3', 'Export MP3')}</button>
