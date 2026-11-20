@@ -513,8 +513,8 @@ export default function MyAIPilots({ embedded = false }) {
   };
 
   return (
-    <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} bg-[#090b0e] pb-20 text-white`}>
-      <main className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:py-8" style={getBackgroundStyle(selected || library.find((entry) => entry.id === previewUniverse) || library[0] || {})}>
+    <div className="min-h-screen w-full pb-20 text-white" style={getBackgroundStyle(selected || library.find((entry) => entry.id === previewUniverse) || library[0] || {})}>
+      <main className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:py-8">
         {!embedded && <button type="button" onClick={() => navigate('/MemberDashboard')} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-white/60 hover:text-white"><ChevronLeft size={18} /> {t('Account', 'Account')}</button>}
         {(libraryError || message) && <div role="status" className={`mb-5 border p-4 text-sm ${libraryError ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-cyan-400/20 bg-cyan-400/10 text-cyan-100'}`}>{libraryError?.message || message}</div>}
 
@@ -640,7 +640,7 @@ export default function MyAIPilots({ embedded = false }) {
                   </div>
                   <div className="mt-auto mb-2 ml-auto flex max-w-[55%] flex-col items-end text-right">
                     {logo ? <img src={logo} alt={getTitle(selected)} className="max-h-20 max-w-full object-contain object-right drop-shadow-[0_4px_18px_rgba(0,0,0,0.9)]" /> : <h1 className="text-xl font-bold uppercase leading-tight tracking-[-0.02em] drop-shadow-[0_4px_22px_rgba(0,0,0,0.9)] sm:text-2xl lg:text-3xl">{getTitle(selected)}</h1>}
-                    
+                    {getDescription(selected) && <p className="mt-1 max-w-[340px] truncate text-[11px] font-normal tracking-wide text-white/85 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] sm:text-xs" title={getDescription(selected)}>{getDescription(selected)}</p>}
                   </div>
                 </div>
               </div>;
