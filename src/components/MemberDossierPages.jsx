@@ -9,6 +9,9 @@ import { toast } from 'sonner';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import DossierQuizEditor, { parseDossierQuiz } from '@/components/DossierQuizEditor';
 import VaultPickerModal from '@/components/studio/VaultPickerModal';
+import CloudflareStreamVideo, { isCloudflareStreamUrl } from '@/components/CloudflareStreamVideo';
+
+const isVideoMedia = (url = '') => isCloudflareStreamUrl(url) || /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url);
 
 const PAGE_TYPES = [
   ['cover', 'Cover'], ['index', 'Visual Index'], ['contest', 'Contest / Open Call'], ['credits', 'Credits'], ['quiz', 'Questions and answers game'],
@@ -128,7 +131,7 @@ export default function MemberDossierPages({ dossier, onClose, userEmail }) {
             ) : sorted.map(page => (
               <div key={page.id} className="mb-1 flex items-center gap-1.5 border border-white/10 bg-black p-1.5">
                 <div className="w-6 text-center text-xs text-white/35">{page.order}</div>
-                {page.media_url ? <img src={page.media_url} alt="" className="h-9 w-7 object-cover" /> : <div className="h-9 w-7 bg-neutral-900" />}
+                {page.media_url ? (isVideoMedia(page.media_url) ? <div className="flex h-9 w-7 items-center justify-center bg-neutral-900 text-xs text-white/65">▶</div> : <img src={page.media_url} alt="" className="h-9 w-7 object-cover" />) : <div className="h-9 w-7 bg-neutral-900" />}
                 <button onClick={() => setEditingPage({ ...page })} className="min-w-0 flex-1 text-left">
                   <p className="truncate text-xs">{page.title || page.page_type}</p>
                   <p className="text-[10px] uppercase tracking-wider text-white/35">{page.page_type}</p>
@@ -236,7 +239,7 @@ export default function MemberDossierPages({ dossier, onClose, userEmail }) {
                 <div className="grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
                   <div className="space-y-2">
                     <p className="text-sm text-white/65">{t('Portrait media','Portrait media')}</p>
-                    {editingPage.media_url && <img src={editingPage.media_url} alt="" className="h-24 w-full border border-white/10 object-contain" />}
+                    {editingPage.media_url && (isVideoMedia(editingPage.media_url) ? <CloudflareStreamVideo src={editingPage.media_url} title={t('Portrait media','Portrait media')} className="h-24 w-full border border-white/10 object-contain" muted previewOnly /> : <img src={editingPage.media_url} alt="" className="h-24 w-full border border-white/10 object-contain" />)}
                     <input id="member-page-portrait" type="file" accept="image/*,video/*" className="hidden" onChange={e => upload(e.target.files?.[0], 'media_url')} />
                     <label htmlFor="member-page-portrait" className="flex cursor-pointer items-center justify-center gap-1.5 border border-white/20 px-2 py-1.5 text-xs"><Upload size={14} />{uploading === 'media_url' ? t('Uploading…','Uploading…') : t('Upload portrait','Upload portrait')}</label>
                     {vaultButtons('media_url', [['image', 'Vault images'], ['video', 'Vault videos']])}
@@ -244,7 +247,7 @@ export default function MemberDossierPages({ dossier, onClose, userEmail }) {
                   </div>
                   <div className="space-y-2">
                     <p className="text-sm text-white/65">{t('Landscape media','Landscape media')}</p>
-                    {editingPage.media_url_landscape && <img src={editingPage.media_url_landscape} alt="" className="h-24 w-full border border-white/10 object-contain" />}
+                    {editingPage.media_url_landscape && (isVideoMedia(editingPage.media_url_landscape) ? <CloudflareStreamVideo src={editingPage.media_url_landscape} title={t('Landscape media','Landscape media')} className="h-24 w-full border border-white/10 object-contain" muted previewOnly /> : <img src={editingPage.media_url_landscape} alt="" className="h-24 w-full border border-white/10 object-contain" />)}
                     <input id="member-page-landscape" type="file" accept="image/*,video/*" className="hidden" onChange={e => upload(e.target.files?.[0], 'media_url_landscape')} />
                     <label htmlFor="member-page-landscape" className="flex cursor-pointer items-center justify-center gap-2 border border-white/20 px-3 py-2 text-sm"><Upload size={14} />{uploading === 'media_url_landscape' ? t('Uploading…','Uploading…') : t('Upload landscape','Upload landscape')}</label>
                     {vaultButtons('media_url_landscape', [['image', 'Vault images'], ['video', 'Vault videos']])}
