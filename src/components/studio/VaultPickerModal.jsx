@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Folder, ChevronDown, Upload, Loader2 } from 'lucide-react';
+import { X, Folder, ChevronDown, Upload, Loader2, Film } from 'lucide-react';
 import { toast } from 'sonner';
 
 const folderColors = {
@@ -58,7 +58,7 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
 
   const { data: vaultAssets = [], isLoading: assetsLoading, refetch: refetchAssets } = useQuery({
     queryKey: ['vaultAssetsForPicker', userEmail],
-    queryFn: () => base44.entities.VaultAsset.filter({ user_email: userEmail }, '-created_date', null),
+    queryFn: () => base44.entities.VaultAsset.filterAll({ user_email: userEmail }, '-created_date'),
     enabled: !!userEmail,
     staleTime: 0,
     refetchOnMount: 'always',
@@ -119,7 +119,7 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
                   onClick={() => onSelect(asset.url, asset.name)}
                   className="aspect-square rounded-xl overflow-hidden bg-white/5 hover:ring-2 hover:ring-yellow-400 transition-all"
                 >
-                  {mediaType === 'audio' ? <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs font-bold text-white">{asset.name || 'Audio'}</div> : <img src={asset.url} alt="" className="w-full h-full object-cover" />}
+                  {mediaType === 'audio' ? <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs font-bold text-white">{asset.name || 'Audio'}</div> : mediaType === 'video' ? <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-2 text-white"><Film size={26} className="text-teal-300" /><span className="line-clamp-3 break-words text-center text-xs font-semibold">{asset.name || 'Video'}</span></div> : <img src={asset.url} alt="" className="h-full w-full object-cover" />}
                 </button>
               ))}
             </div>
@@ -153,7 +153,7 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
                       onClick={() => onSelect(asset.url, asset.name)}
                       className="aspect-square rounded-xl overflow-hidden bg-white/5 hover:ring-2 hover:ring-yellow-400 transition-all"
                     >
-                      {mediaType === 'audio' ? <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs font-bold text-white">{asset.name || 'Audio'}</div> : <img src={asset.url} alt="" className="w-full h-full object-cover" />}
+                      {mediaType === 'audio' ? <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs font-bold text-white">{asset.name || 'Audio'}</div> : mediaType === 'video' ? <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-2 text-white"><Film size={26} className="text-teal-300" /><span className="line-clamp-3 break-words text-center text-xs font-semibold">{asset.name || 'Video'}</span></div> : <img src={asset.url} alt="" className="h-full w-full object-cover" />}
                     </button>
                   ))}
                 </div>
