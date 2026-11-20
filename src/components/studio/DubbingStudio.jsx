@@ -135,13 +135,13 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
       if (!assemblyOutputAssetRef.current) {
         const prepared = await waitForCloudflareMedia('prepare', { video_url: videoUrl });
         const { data, error } = await supabase.functions.invoke('mixAudioVideo', {
-          body: { audio_url: audioUrl, video_url: prepared.mp4_url },
+          body: { audio_url: audioUrl, video_url: prepared.mp4_url, source_video_url: videoUrl },
         });
         if (error || data?.error) throw Error(data?.error || error?.message || t('Video assembly failed', 'Échec de l’assemblage vidéo'));
         if (!data?.output_asset_id) throw Error(t('The mixer returned no video', 'Le mixage n’a produit aucune vidéo'));
         assemblyOutputAssetRef.current = data.output_asset_id;
       }
-      const output = (await waitForCloudflareMedia('output_status', { asset_id: assemblyOutputAssetRef.current })).file_url;
+      const output = (await waitForCloudflareMedia('output_status', { asset_id: assemblyOutputAssetRef.current, audio_url: audioUrl })).file_url;
       if (!output) throw Error(t('The mixer returned no video', 'Le mixage n’a produit aucune vidéo'));
       await invoke('finish', { job_id: id, final_video_url: output });
       setFinalUrl(output);
