@@ -13,6 +13,20 @@ const forbidMarker = (label, content, marker) => {
   if (content.toLowerCase().includes(marker.toLowerCase())) failures.push(`${label}: forbidden ${marker}`);
 };
 
+// Protect the recovered Blender bridge and its Studio entry from accidental removal.
+const blenderStudio = read('src/components/studio/BlenderBridgeWorkspace.jsx');
+const blenderRuntime = read('public/blender-bridge/runtime.py');
+const studioBlender = read('src/pages/Studio.jsx');
+for (const marker of ["BlenderBridgeWorkspace", "blender_bridge", "label: 'Blender Bridge'"]) {
+  requireMarker('Blender Studio navigation', studioBlender, marker);
+}
+for (const marker of ["http://127.0.0.1:18765", "'/v1/health'", "'/v1/command'", "Connect to Blender"]) {
+  requireMarker('Blender bridge workspace', blenderStudio, marker);
+}
+for (const marker of ["PORT = 18765", "class AISTAGE_PT_bridge", "def _process_queue()", "def _authorized()", "'https://aistage.one'", "'https://leplateau.ai'"]) {
+  requireMarker('Blender local runtime', blenderRuntime, marker);
+}
+
 const dubbingUi = read('src/components/studio/DubbingStudio.jsx');
 const studio = read('src/pages/Studio.jsx');
 const dubbingServer = read('supabase/functions/mixAudioVideo/index.ts');
