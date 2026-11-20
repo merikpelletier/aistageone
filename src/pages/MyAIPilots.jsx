@@ -494,10 +494,18 @@ export default function MyAIPilots({ embedded = false }) {
   };
   const getTitle = (access) => getVisuals(access).title || access.presentation?.title || access.pilot?.name || 'AI Pilot';
   const getDescription = (access) => getVisuals(access).tagline || access.presentation?.description || access.pilot?.description || '';
-  const getImage = (access, format = 'hero') => {
+  const getImage = (access, format = 'banner') => {
     const visuals = getVisuals(access);
-    const original = access.presentation?.featured_image || access.pilot?.cover_url || access.presentation?.preview_images?.[0] || '';
-    return (format === 'card' ? visuals.card_image || visuals.hero_image : visuals.hero_image || visuals.card_image) || original;
+    const cover = access.pilot?.cover_url || access.presentation?.featured_image || access.presentation?.preview_images?.[0] || '';
+    if (format === 'card') return visuals.card_image || cover;
+    if (format === 'background') return visuals.background_type === 'color' ? '' : (visuals.background_image || '');
+    return visuals.hero_image || cover;
+  };
+  const getBackgroundStyle = (access) => {
+    const visuals = getVisuals(access);
+    const color = /^#[0-9a-fA-F]{6}$/.test(visuals.background_color || '') ? visuals.background_color : '#090b0e';
+    const image = getImage(access, 'background');
+    return image && visuals.background_type !== 'color' ? { backgroundColor: color, backgroundImage: `url("${image.replace(/["\\]/g, '')}")`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'scroll' } : { backgroundColor: color };
   };
   const getSynopsis = (access) => {
     const direction = (access.blocks || []).find((block) => block.block_key === 'series-direction')?.content || {};
@@ -506,7 +514,7 @@ export default function MyAIPilots({ embedded = false }) {
 
   return (
     <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} bg-[#090b0e] pb-20 text-white`}>
-      <main className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:py-8">
+      <main className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:py-8" style={getBackgroundStyle(selected || library.find((entry) => entry.id === previewUniverse) || library[0] || {})}>
         {!embedded && <button type="button" onClick={() => navigate('/MemberDashboard')} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-white/60 hover:text-white"><ChevronLeft size={18} /> {t('Account', 'Account')}</button>}
         {(libraryError || message) && <div role="status" className={`mb-5 border p-4 text-sm ${libraryError ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-cyan-400/20 bg-cyan-400/10 text-cyan-100'}`}>{libraryError?.message || message}</div>}
 
@@ -531,7 +539,7 @@ export default function MyAIPilots({ embedded = false }) {
                   const featured = library.find((entry) => /front row sins/i.test(entry.pilot?.name || entry.presentation?.title || '')) || library[0];
                   const active = library.find((entry) => entry.id === previewUniverse) || featured;
                   const activeIndex = library.findIndex((entry) => entry.id === active.id);
-                  const image = getImage(active);
+                  const image = getImage(active, 'background');
                   const cardImage = getImage(active, 'card');
                   const enter = () => { setSelectedUniverse(active.id); setExpanded((current) => ({ ...current, [active.id]: false })); };
                   const changeSelection = (direction) => setPreviewUniverse(library[(activeIndex + direction + library.length) % library.length].id);
@@ -542,7 +550,7 @@ export default function MyAIPilots({ embedded = false }) {
                   };
                   return <section aria-label={ui('Universe selection', 'Sélection des univers')} className="relative isolate min-h-[720px] overflow-hidden bg-[#05080d] text-white lg:min-h-[min(850px,calc(100vh-80px))]">
                     <div className="pointer-events-none absolute inset-0 -z-30">
-                      {image ? <img key={active.id} src={image} alt="" className="h-full w-full animate-[world-fade_700ms_ease-out_both] scale-110 object-cover object-center opacity-45 blur-md" /> : <div className="h-full w-full bg-[radial-gradient(ellipse_at_50%_38%,#1e3541_0%,#0a151e_45%,#030508_100%)]" />}
+                      {image ? <img key={active.id} src={image} alt="" className="h-full w-full animate-[world-fade_700ms_ease-out_both] object-cover object-center opacity-80" /> : <div className="h-full w-full" style={{backgroundColor: getBackgroundStyle(active).backgroundColor}} />}
                     </div>
                     <div className="pointer-events-none absolute inset-0 -z-20 bg-[linear-gradient(0deg,#030608_0%,rgba(3,6,8,0.25)_42%,rgba(3,6,8,0.82)_100%)]" />
                     <div className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(ellipse_at_50%_45%,transparent_5%,rgba(0,0,0,0.7)_100%)]" />
