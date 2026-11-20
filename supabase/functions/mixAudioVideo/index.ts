@@ -26,7 +26,9 @@ serveWithCors(async (req) => {
     const TOKEN = Deno.env.get('REPLICATE_API_TOKEN');
     if (!TOKEN) throw new Error('REPLICATE_API_TOKEN not set');
 
-    const { audio_url, video_url, source_video_url } = await req.json();
+    const body = await req.json();
+    const { audio_url, video_url } = body;
+    const source_video_url = body.source_video_url;
     if (!audio_url || !video_url) {
       return Response.json({ error: 'audio_url and video_url required' }, { status: 400 });
     }
