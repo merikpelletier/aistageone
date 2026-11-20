@@ -6,6 +6,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
+import { getPlatformLanguage } from '@/lib/translationDictionary';
 
 const EXTENSION_TYPES = [
   ['character_style', 'Character / Character Style'],
@@ -402,7 +403,9 @@ export default function MyAIPilots({ embedded = false }) {
   const queryClient = useQueryClient();
   const { user, isLoadingAuth } = useAuth();
   const [expanded, setExpanded] = useState({});
+  const [selectedUniverse, setSelectedUniverse] = useState(null);
   const [message, setMessage] = useState('');
+  const ui = (english, french) => t(english, getPlatformLanguage() === 'fr' ? french : english);
 
   const { data: library = [], isLoading: libraryLoading, error: libraryError } = useQuery({
     queryKey: ['my-ai-pilots', user?.id],
@@ -481,37 +484,78 @@ export default function MyAIPilots({ embedded = false }) {
 
   if (isLoadingAuth || libraryLoading) return <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} bg-black flex items-center justify-center`}><Loader2 className="animate-spin text-white" size={34} /></div>;
 
-  return (
-    <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} bg-black pb-20 text-white`}>
-      <main className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6">
-        {!embedded && <button type="button" onClick={() => navigate('/MemberDashboard')} className="mb-8 inline-flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white"><ChevronLeft size={18} /> {t("Account", "Account")}</button>}
-        <div className="mb-8 flex flex-col gap-3 border-b border-white/10 pb-6 sm:flex-row sm:items-end sm:justify-between">
-          <div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-400">{t("AISTAGE.ONE Direction System", "AISTAGE.ONE Direction System")}</p><h1 className="mt-2 text-4xl font-light tracking-tight">{t("My AI Pilots", "My AI Pilots")}</h1><p className="mt-2 max-w-2xl text-sm text-white/50">{t("View the published Pilot and add your own production elements.", "View the published Pilot and add your own production elements.")}</p></div>
-          <Button type="button" variant="outline" onClick={() => navigate('/Catalog')} className="border-white/20 bg-white/[0.03] text-white hover:bg-white/10">{t("Browse Assets Shop", "Browse Assets Shop")}</Button>
-        </div>
-        {(libraryError || message) && <div className={`mb-5 border p-4 text-sm ${libraryError ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-cyan-400/20 bg-cyan-400/10 text-cyan-100'}`}>{libraryError?.message || message}</div>}
-        {library.length === 0 ? <div className="border border-dashed border-white/15 px-6 py-16 text-center"><Bot className="mx-auto text-white/25" size={46} /><h2 className="mt-4 text-xl font-light">{t("No AI Pilot in your library", "No AI Pilot in your library")}</h2><p className="mt-2 text-sm text-white/40">{t("AI Pilots acquired or granted to your account will appear here.", "AI Pilots acquired or granted to your account will appear here.")}</p><Button type="button" onClick={() => navigate('/Catalog')} className="mt-6">{t("Browse Assets Shop", "Browse Assets Shop")}</Button></div> : (
-          <div className="space-y-4">{library.map((access) => {
-            const title = access.presentation?.title || access.pilot?.name || 'AI Pilot';
-            const description = access.presentation?.description || access.pilot?.description || '';
-            const image = access.presentation?.featured_image || access.pilot?.cover_url || '';
-            const series = (access.blocks || []).find((block) => block.block_key === 'series-direction')?.content || {};
-            const locationCount = (series.locations || []).length + (series.sets || []).length;
-            return <section key={access.id} className="overflow-hidden border border-white/10 bg-[#111418]">
-              <div className="grid gap-5 p-4 sm:grid-cols-[120px_minmax(0,1fr)] sm:p-5 lg:grid-cols-[140px_minmax(0,1fr)]">
-                <div className="aspect-[3/4] overflow-hidden bg-[#20242a]">{image ? <img src={image} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Bot size={38} className="text-white/25" /></div>}</div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-white/45"><span>{t('Version','Version')} {access.version?.version_number || '?'}</span><span>·</span><span>{t(humanize(access.access_source), humanize(access.access_source))}</span>{access.presentation?.creator_name && <><span>·</span><span>{access.presentation.creator_name}</span></>}</div>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">{title}</h2>
-                  {description && <p className="mt-2 line-clamp-3 max-w-2xl text-sm leading-relaxed text-white/60">{description}</p>}
-                  <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/55"><span className="border border-white/10 bg-white/[0.04] px-2.5 py-1.5">{(access.characters || []).length} {t('Characters','Characters')}</span><span className="border border-white/10 bg-white/[0.04] px-2.5 py-1.5">{locationCount} {t('Sets & Locations','Sets & Locations')}</span><span className="border border-white/10 bg-white/[0.04] px-2.5 py-1.5">{(access.blocks || []).length} {t('Direction Sections','Direction Sections')}</span></div>
-                  <button type="button" onClick={() => setExpanded((current) => ({ ...current, [access.id]: !current[access.id] }))} className="mt-4 inline-flex items-center gap-2 border border-[#23c7be]/50 bg-[#23c7be]/10 px-3 py-2 text-sm font-semibold text-[#23c7be]">{expanded[access.id] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{expanded[access.id] ? t('Close Pilot','Close Pilot') : t('Open Pilot','Open Pilot')}</button>
-                </div>
+  const selected = library.find((access) => access.id === selectedUniverse);
+  const getTitle = (access) => access.presentation?.title || access.pilot?.name || 'AI Pilot';
+  const getDescription = (access) => access.presentation?.description || access.pilot?.description || '';
+  const getImage = (access) => access.presentation?.featured_image || access.pilot?.cover_url || access.presentation?.preview_images?.[0] || '';
+  const getSynopsis = (access) => {
+    const direction = (access.blocks || []).find((block) => block.block_key === 'series-direction')?.content || {};
+    return direction.synopsis || direction.series_synopsis || direction.premise || getDescription(access);
+  };
 
+  return (
+    <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} bg-[#090b0e] pb-20 text-white`}>
+      <main className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:py-8">
+        {!embedded && <button type="button" onClick={() => navigate('/MemberDashboard')} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-white/60 hover:text-white"><ChevronLeft size={18} /> {t('Account', 'Account')}</button>}
+        {(libraryError || message) && <div role="status" className={`mb-5 border p-4 text-sm ${libraryError ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-cyan-400/20 bg-cyan-400/10 text-cyan-100'}`}>{libraryError?.message || message}</div>}
+
+        {!selected ? (
+          <>
+            <header className="mb-7 sm:mb-9">
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#23c7be]">AISTAGE.ONE / AI PILOTS</p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-5xl">{ui('Explore the universes', 'Explorez les univers')}</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/55 sm:text-base">{ui('Discover evolving creative worlds and choose the story you want to explore.', 'Découvrez des univers créatifs évolutifs et choisissez l’histoire que vous souhaitez explorer.')}</p>
+            </header>
+
+            {library.length === 0 ? (
+              <div className="border border-dashed border-white/15 bg-white/[0.02] px-6 py-16 text-center">
+                <Bot className="mx-auto text-white/25" size={46} />
+                <h2 className="mt-4 text-xl font-semibold">{t('No AI Pilot in your library', 'No AI Pilot in your library')}</h2>
+                <p className="mt-2 text-sm text-white/45">{t('AI Pilots acquired or granted to your account will appear here.', 'AI Pilots acquired or granted to your account will appear here.')}</p>
+                <Button type="button" onClick={() => navigate('/Catalog')} className="mt-6 bg-[#23c7be] text-black hover:bg-[#23c7be]/85">{t('Browse Assets Shop', 'Browse Assets Shop')}</Button>
               </div>
-              {expanded[access.id] && <div className="border-t border-white/10 px-4 pb-5 sm:px-5"><PilotDetails access={access} user={user} onMessage={setMessage} userSets={mySets} /></div>}
-            </section>;
-          })}</div>
+            ) : (
+              <>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">{ui('Available universes', 'Univers disponibles')}</h2>
+                  <span className="text-xs tabular-nums text-white/40">{library.length}</span>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {library.map((access) => {
+                    const image = getImage(access);
+                    return <button key={access.id} type="button" onClick={() => { setSelectedUniverse(access.id); setExpanded((current) => ({ ...current, [access.id]: false })); }} className="group relative flex min-h-[330px] flex-col justify-end overflow-hidden border border-white/10 bg-[#161b21] text-left transition-colors hover:border-[#23c7be]/65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#23c7be] sm:min-h-[420px]">
+                      {image ? <img src={image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-85 transition-transform duration-500 group-hover:scale-[1.04]" /> : <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1c2930] to-[#0c1015]"><Bot size={70} className="text-white/15" /></div>}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent" />
+                      <div className="relative p-5 sm:p-6">
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#71e0d8]">AI PILOT</p>
+                        <h3 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">{getTitle(access)}</h3>
+                        {getDescription(access) && <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-white/75">{getDescription(access)}</p>}
+                        <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#71e0d8]">{ui('Discover universe', 'Découvrir l’univers')} <ChevronDown size={16} className="-rotate-90" /></span>
+                      </div>
+                    </button>;
+                  })}
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <button type="button" onClick={() => { setSelectedUniverse(null); setExpanded((current) => ({ ...current, [selected.id]: false })); }} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-white/70 hover:text-white"><ChevronLeft size={18} /> {ui('All universes', 'Tous les univers')}</button>
+            <section className="relative isolate overflow-hidden border border-white/10 bg-[#14191e]">
+              {getImage(selected) && <img src={getImage(selected)} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover opacity-50" />}
+              <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#0b0e12] via-[#0b0e12]/90 to-[#0b0e12]/25 sm:bg-gradient-to-r sm:from-[#0b0e12] sm:via-[#0b0e12]/90 sm:to-[#0b0e12]/35" />
+              <div className="flex min-h-[340px] flex-col justify-end p-5 sm:min-h-[440px] sm:p-10 lg:p-14">
+                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#71e0d8]">AI PILOT / {ui('Universe', 'Univers')}</p>
+                <h1 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">{getTitle(selected)}</h1>
+                {getSynopsis(selected) && <div className="mt-5 max-w-2xl"><h2 className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#71e0d8]">{ui('Synopsis', 'Synopsis')}</h2><p className="whitespace-pre-wrap text-sm leading-relaxed text-white/80 sm:text-base">{getSynopsis(selected)}</p></div>}
+                {selected.presentation?.creator_name && <p className="mt-4 text-xs text-white/50">{selected.presentation.creator_name}</p>}
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <Button type="button" onClick={() => setExpanded((current) => ({ ...current, [selected.id]: !current[selected.id] }))} className="min-h-11 bg-[#23c7be] px-6 font-semibold text-black hover:bg-[#23c7be]/85">{expanded[selected.id] ? ui('Close universe', 'Fermer l’univers') : ui('Enter the universe', 'Entrer dans l’univers')} <ChevronDown size={17} className={`ml-2 ${expanded[selected.id] ? 'rotate-180' : '-rotate-90'}`} /></Button>
+                </div>
+              </div>
+            </section>
+            {expanded[selected.id] && <section className="mt-5 border border-white/10 bg-[#111418] p-4 sm:p-6"><PilotDetails access={selected} user={user} onMessage={setMessage} userSets={mySets} /></section>}
+          </>
         )}
       </main>
     </div>
