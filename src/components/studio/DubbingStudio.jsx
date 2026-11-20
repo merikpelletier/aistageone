@@ -116,9 +116,9 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
     if (assemblyUpload.current?.url) return assemblyUpload.current.url;
     const file = originalVideoFile.current;
     if (!file) throw Error(t('Reimport the original video for assembly.', 'Réimportez la vidéo originale pour l’assemblage.'));
-    // This dedicated Studio upload uses the existing media bucket and its limit.
-    if (file.size > 50 * 1024 * 1024) {
-      throw Error(t('The original video exceeds the 50 MB assembly upload limit.', 'La vidéo originale dépasse la limite de 50 Mo pour l’importation d’assemblage.'));
+    // Assembly re-import uses a dedicated 250 MB bucket, separate from general media uploads.
+    if (file.size > 250 * 1024 * 1024) {
+      throw Error(t('The original video exceeds the 250 MB assembly upload limit.', 'La vidéo originale dépasse la limite de 250 Mo pour l’importation d’assemblage.'));
     }
     const { data: { user: authenticatedUser }, error: authError } = await supabase.auth.getUser();
     if (authError || !authenticatedUser?.id) throw Error(t('Sign in to assemble the video.', 'Connectez-vous pour assembler la vidéo.'));
@@ -127,12 +127,12 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
       throw Error(t('Use an MP4, MOV or AVI original video for assembly.', 'Utilisez une vidéo originale MP4, MOV ou AVI pour l’assemblage.'));
     }
     const path = `${authenticatedUser.id}/dubbing-assembly/${crypto.randomUUID()}.${extension}`;
-    const { error } = await supabase.storage.from('media').upload(path, file, {
+    const { error } = await supabase.storage.from('dubbing-assembly').upload(path, file, {
       upsert: false,
       contentType: file.type || 'video/mp4',
     });
     if (error) throw Error(error.message || t('Cannot import original video for assembly.', 'Impossible d’importer la vidéo originale pour l’assemblage.'));
-    const { data } = supabase.storage.from('media').getPublicUrl(path);
+    const { data } = supabase.storage.from('dubbing-assembly').getPublicUrl(path);
     if (!data?.publicUrl) throw Error(t('Assembly video URL unavailable.', 'Adresse de la vidéo d’assemblage indisponible.'));
     assemblyUpload.current = { path, url: data.publicUrl };
     return data.publicUrl;
@@ -156,7 +156,7 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
       setStep('completed');
       // Remove only this Studio's temporary reimport, never the original video.
       if (assemblyUpload.current?.path) {
-        const { error: cleanupError } = await supabase.storage.from('media').remove([assemblyUpload.current.path]);
+        const { error: cleanupError } = await supabase.storage.from('dubbing-assembly').remove([assemblyUpload.current.path]);
         if (!cleanupError) assemblyUpload.current = null;
       }
     } catch (error) {
