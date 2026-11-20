@@ -32,8 +32,6 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [saving, setSaving] = useState(false);
   const working = useRef(false);
-  const originalVideoFile = useRef(null);
-  const assemblyUpload = useRef(null);
   const [assemblyError, setAssemblyError] = useState('');
   const { options: models, loading: loadingModels } = useAiModelOptions({
     service: 'generateDubbing', kind: 'speech',
@@ -71,51 +69,24 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
     return () => { cancelled = true; };
   }, [modelKey, videoUrl, durationSeconds, targetLanguage]);
 
-  const reset = () => { setStep('idle'); setFinalUrl(''); setJobId(''); setAssemblyError(''); originalVideoFile.current = null; assemblyUpload.current = null; working.current = false; };
-  const uploadOriginalToAssemblyStorage = async (file) => {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session?.access_token) throw Error(t('Sign in to upload the original video.', 'Connectez-vous pour téléverser la vidéo originale.'));
-    const { data: { user: authenticatedUser } } = await supabase.auth.getUser();
-    if (!authenticatedUser?.id) throw Error(t('Sign in to upload the original video.', 'Connectez-vous pour téléverser la vidéo originale.'));
-    const extension = (file.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (!['mp4', 'mov', 'avi', 'm4v'].includes(extension)) throw Error(t('Use an MP4, MOV or AVI original video for assembly.', 'Utilisez une vidéo originale MP4, MOV ou AVI pour l’assemblage.'));
-    const path = `${authenticatedUser.id}/dubbing-assembly/${crypto.randomUUID()}.${extension}`;
-    const projectUrl = import.meta.env.VITE_SUPABASE_URL;
-    const endpoint = `${projectUrl.replace('.supabase.co', '.storage.supabase.co')}/storage/v1/upload/resumable`;
-    const metadata = { bucketName: 'dubbing-assembly', objectName: path, contentType: file.type || 'video/mp4', cacheControl: '3600' };
-    const encodedMetadata = Object.entries(metadata).map(([key, value]) => `${key} ${btoa(unescape(encodeURIComponent(value)))}`).join(',');
-    const created = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${session.access_token}`,
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        'Tus-Resumable': '1.0.0',
-        'Upload-Length': String(file.size),
-        'Upload-Metadata': encodedMetadata,
-        'x-upsert': 'false',
-      },
+  const reset = () => { setStep('idle'); setFinalUrl(''); setJobId(''); setAssemblyError(''); working.current = false; };
+  const cloudflareMedia = async (action, payload = {}) => {
+    const { data, error } = await supabase.functions.invoke('dubbing-cloudflare-media', {
+      body: { action, ...payload },
     });
-    if (!created.ok) throw Error((await created.text()) || t('Could not start the original video upload.', 'Impossible de démarrer le téléversement de la vidéo originale.'));
-    let uploadUrl = created.headers.get('Location');
-    if (!uploadUrl) throw Error(t('The storage server did not return an upload URL.', 'Le serveur de stockage n’a pas retourné d’adresse de téléversement.'));
-    uploadUrl = new URL(uploadUrl, endpoint).toString();
-    const chunkSize = 6 * 1024 * 1024;
-    let offset = 0;
-    while (offset < file.size) {
-      const chunk = file.slice(offset, Math.min(offset + chunkSize, file.size));
-      const response = await fetch(uploadUrl, {
-        method: 'PATCH',
-        headers: { authorization: `Bearer ${session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, 'Tus-Resumable': '1.0.0', 'Upload-Offset': String(offset), 'Content-Type': 'application/offset+octet-stream' },
-        body: chunk,
-      });
-      if (!response.ok) throw Error((await response.text()) || t('Original video upload failed.', 'Le téléversement de la vidéo originale a échoué.'));
-      offset = Number(response.headers.get('Upload-Offset') || offset + chunk.size);
-      if (offset <= 0) throw Error(t('Original video upload did not progress.', 'Le téléversement de la vidéo originale n’a pas progressé.'));
+    if (error || data?.error) throw Error(data?.error || error?.message || 'Cloudflare video unavailable');
+    return data;
+  };
+
+  const waitForCloudflareMedia = async (action, payload) => {
+    // Cloudflare generates downloadable MP4s asynchronously, without re-uploading.
+    for (let attempt = 0; attempt < 150; attempt++) {
+      const result = await cloudflareMedia(action, payload);
+      if (result.status === 'ready') return result;
+      if (result.status !== 'processing') throw Error(result.error || 'Cloudflare video processing failed');
+      await new Promise(resolve => setTimeout(resolve, 4000));
     }
-    const { data } = supabase.storage.from('dubbing-assembly').getPublicUrl(path);
-    if (!data?.publicUrl) throw Error(t('Assembly video URL unavailable.', 'Adresse de la vidéo d’assemblage indisponible.'));
-    assemblyUpload.current = { path, url: data.publicUrl };
-    return data.publicUrl;
+    throw Error(t('Video is still processing. Retry assembly shortly.', 'La vidéo est toujours en préparation. Réessayez l’assemblage dans quelques instants.'));
   };
 
   const handleUpload = async event => {
@@ -139,7 +110,6 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
       }
       const result = await base44.integrations.Core.UploadFile({ file });
       if (!result.file_url) throw Error('Upload failed');
-      originalVideoFile.current = file;
       setVideoUrl(result.file_url);
       setDurationSeconds(metadata);
     } catch (error) {
@@ -155,37 +125,24 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
     return data;
   };
 
-  // Keep the existing Cloudflare video URL for dubbing. For assembly, submit
-  // the actual original file rather than Cloudflare's HLS (.m3u8) playlist.
-  // This local-only reimport does not modify the platform's upload system.
-  const uploadOriginalForAssembly = async () => {
-    if (assemblyUpload.current?.url) return assemblyUpload.current.url;
-    const file = originalVideoFile.current;
-    if (!file) throw Error(t('Reimport the original video for assembly.', 'Réimportez la vidéo originale pour l’assemblage.'));
-    return uploadOriginalToAssemblyStorage(file);
-  };
-
   const finishVideo = async (audioUrl, id) => {
     if (working.current) return;
     working.current = true;
     setAssemblyError('');
     setStep('mixing');
     try {
-      const assemblyVideoUrl = await uploadOriginalForAssembly();
+      const prepared = await waitForCloudflareMedia('prepare', { video_url: videoUrl });
       const { data, error } = await supabase.functions.invoke('mixAudioVideo', {
-        body: { audio_url: audioUrl, video_url: assemblyVideoUrl },
+        body: { audio_url: audioUrl, video_url: prepared.mp4_url },
       });
       if (error || data?.error) throw Error(data?.error || error?.message || t('Video assembly failed', 'Échec de l’assemblage vidéo'));
-      const output = data?.file_url;
+      const output = data?.output_asset_id
+        ? (await waitForCloudflareMedia('output_status', { asset_id: data.output_asset_id })).file_url
+        : data?.file_url;
       if (!output) throw Error(t('The mixer returned no video', 'Le mixage n’a produit aucune vidéo'));
       await invoke('finish', { job_id: id, final_video_url: output });
       setFinalUrl(output);
       setStep('completed');
-      // Remove only this Studio's temporary reimport, never the original video.
-      if (assemblyUpload.current?.path) {
-        const { error: cleanupError } = await supabase.storage.from('dubbing-assembly').remove([assemblyUpload.current.path]);
-        if (!cleanupError) assemblyUpload.current = null;
-      }
     } catch (error) {
       setAssemblyError(error.message || t('Video reconstruction failed', 'La reconstruction de la vidéo a échoué'));
       setStep('mix_failed');
@@ -251,16 +208,6 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
       }
       await finishVideo(data.audio_url, jobId);
     } catch (error) { setAssemblyError(error.message); toast.error(error.message); }
-  };
-
-  const reimportForAssembly = event => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    originalVideoFile.current = file;
-    assemblyUpload.current = null;
-    setAssemblyError('');
-    event.target.value = '';
-    retryAssembly();
   };
 
   const useVideo = () => {
@@ -368,7 +315,7 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
               <p className="text-sm text-red-300">{assemblyError || t('The assembly failed; your translated audio is preserved.', 'L’assemblage a échoué ; votre audio traduit est conservé.')}</p>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={retryAssembly} disabled={working.current} className="rounded bg-[#23c7be] px-4 py-2 text-sm font-bold text-black">{t('Retry video assembly', 'Reprendre l’assemblage vidéo')}</button>
-                {!originalVideoFile.current && <label className="cursor-pointer rounded border border-white/25 px-4 py-2 text-sm">{t('Reimport original video', 'Réimporter la vidéo originale')}<input type="file" accept="video/*" className="hidden" onChange={reimportForAssembly} /></label>}
+
               </div>
             </div>}
           </section>
