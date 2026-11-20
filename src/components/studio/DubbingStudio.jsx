@@ -34,6 +34,38 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
   const working = useRef(false);
   const assemblyOutputAssetRef = useRef(null);
   const [assemblyError, setAssemblyError] = useState('');
+  // Restore the last saved dubbing job after a browser refresh.
+  useEffect(() => {
+    let cancelled = false;
+    const restore = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('generateDubbing', { body: { action: 'latest' } });
+        if (cancelled || error || data?.error || !data?.job?.id) return;
+        const job = data.job;
+        setVideoUrl(job.source_video_url || '');
+        setDurationSeconds(Number(job.duration_seconds) || 0);
+        setSourceLanguage(job.source_language || 'auto');
+        setTargetLanguage(job.target_language || 'fr');
+        setModelKey(job.model_key || '');
+        setJobId(job.id);
+        if (job.status === 'completed' && job.final_video_url) {
+          setFinalUrl(job.final_video_url);
+          setStep('completed');
+        } else if (job.status === 'audio_ready' && job.audio_url) {
+          // Do not silently charge for assembly on restoration.
+          setAssemblyError(t('The translated audio is ready. Resume video assembly.', 'L’audio traduit est prêt. Reprenez l’assemblage vidéo.'));
+          setStep('mix_failed');
+        } else if (job.status === 'processing') {
+          setStep('dubbing');
+        }
+      } catch (error) {
+        console.error('Dubbing session recovery failed:', error);
+      }
+    };
+    restore();
+    return () => { cancelled = true; };
+  }, []);
+
   const { options: models, loading: loadingModels } = useAiModelOptions({
     service: 'generateDubbing', kind: 'speech',
     input: { duration_seconds: durationSeconds, target_language: targetLanguage },
