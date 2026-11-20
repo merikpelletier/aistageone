@@ -485,12 +485,21 @@ export default function MyAIPilots({ embedded = false }) {
   if (isLoadingAuth || libraryLoading) return <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} bg-black flex items-center justify-center`}><Loader2 className="animate-spin text-white" size={34} /></div>;
 
   const selected = library.find((access) => access.id === selectedUniverse);
-  const getTitle = (access) => access.presentation?.title || access.pilot?.name || 'AI Pilot';
-  const getDescription = (access) => access.presentation?.description || access.pilot?.description || '';
-  const getImage = (access) => access.presentation?.featured_image || access.pilot?.cover_url || access.presentation?.preview_images?.[0] || '';
+  const locale = getPlatformLanguage();
+  const getVisuals = (access) => {
+    const content = (access.blocks || []).find((block) => block.block_key === 'universe-presentation')?.content || {};
+    return { ...content.locales?.en, ...content.locales?.[locale] };
+  };
+  const getTitle = (access) => getVisuals(access).title || access.presentation?.title || access.pilot?.name || 'AI Pilot';
+  const getDescription = (access) => getVisuals(access).tagline || access.presentation?.description || access.pilot?.description || '';
+  const getImage = (access, format = 'hero') => {
+    const visuals = getVisuals(access);
+    const original = access.presentation?.featured_image || access.pilot?.cover_url || access.presentation?.preview_images?.[0] || '';
+    return (format === 'card' ? visuals.card_image || visuals.hero_image : visuals.hero_image || visuals.card_image) || original;
+  };
   const getSynopsis = (access) => {
     const direction = (access.blocks || []).find((block) => block.block_key === 'series-direction')?.content || {};
-    return direction.synopsis || direction.series_synopsis || direction.premise || getDescription(access);
+    return getVisuals(access).synopsis || direction.synopsis || direction.series_synopsis || direction.premise || access.presentation?.description || access.pilot?.description || '';
   };
 
   return (
@@ -516,21 +525,35 @@ export default function MyAIPilots({ embedded = false }) {
               </div>
             ) : (
               <>
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">{ui('Available universes', 'Univers disponibles')}</h2>
-                  <span className="text-xs tabular-nums text-white/40">{library.length}</span>
-                </div>
-                <div className="grid gap-5">
+                {(() => {
+                  const featured = library.find((entry) => /front row sins/i.test(entry.pilot?.name || entry.presentation?.title || '')) || library[0];
+                  const image = getImage(featured);
+                  const showUniverse = (access) => { setSelectedUniverse(access.id); setExpanded((current) => ({ ...current, [access.id]: false })); };
+                  return <section className="relative isolate mb-8 flex min-h-[420px] flex-col justify-end overflow-hidden border border-white/15 bg-[#11171d] shadow-[0_20px_80px_rgba(0,0,0,0.45)] sm:min-h-[510px]">
+                    {image ? <><img src={image} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-65" /><div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#080b0e] via-[#080b0e]/60 to-black/15 sm:bg-gradient-to-r sm:from-[#080b0e] sm:via-[#080b0e]/75 sm:to-transparent" /></> : <div className="absolute inset-0 -z-20 bg-gradient-to-br from-[#1b2930] to-[#090c10]" />}
+                    <div className="relative max-w-2xl p-6 sm:p-10 lg:p-14">
+                      <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.25em] text-[#77e8df]">{ui('Featured universe', 'Univers vedette')}</p>
+                      {getVisuals(featured).logo_image ? <img src={getVisuals(featured).logo_image} alt={getTitle(featured)} className="mb-5 max-h-28 max-w-[75%] object-contain object-left" /> : <h2 className="text-4xl font-black tracking-tight text-white drop-shadow-lg sm:text-6xl">{getTitle(featured)}</h2>}
+                      {getDescription(featured) && <p className="mt-4 line-clamp-3 max-w-lg text-base leading-relaxed text-white/80">{getDescription(featured)}</p>}
+                      <button type="button" onClick={() => showUniverse(featured)} className="mt-8 inline-flex min-h-12 items-center gap-3 border border-[#23c7be] bg-[#23c7be] px-6 py-3 text-sm font-bold text-black transition-transform hover:scale-[1.03] hover:bg-[#7ce9e1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+                        {ui('Enter the universe', 'Entrer dans l’univers')} <ChevronDown size={18} className="-rotate-90" />
+                      </button>
+                    </div>
+                    <div className="pointer-events-none absolute bottom-0 right-0 hidden border-l border-t border-white/20 bg-black/45 px-5 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 sm:block">{ui('Explore · Create · Participate', 'Explorer · Créer · Participer')}</div>
+                  </section>;
+                })()}
+                <div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-xs font-bold uppercase tracking-[0.16em] text-white/65">{ui('Choose your universe', 'Choisissez votre univers')}</h2><span className="text-xs tabular-nums text-white/40">{library.length}</span></div>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {library.map((access) => {
-                    const image = getImage(access);
-                    return <button key={access.id} type="button" onClick={() => { setSelectedUniverse(access.id); setExpanded((current) => ({ ...current, [access.id]: false })); }} className="group relative isolate grid min-h-[340px] w-full overflow-hidden border border-white/15 bg-[#11171d] text-left shadow-[0_24px_70px_rgba(0,0,0,0.28)] transition-all duration-300 hover:border-[#23c7be]/65 hover:shadow-[0_28px_80px_rgba(0,0,0,0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#23c7be] sm:min-h-[390px] sm:grid-cols-[minmax(0,1fr)_minmax(260px,42%)]">
-                      {image ? <><img src={image} alt="" aria-hidden="true" className="absolute inset-0 -z-20 h-full w-full object-cover opacity-15 blur-2xl" /><div className="absolute inset-y-0 right-0 -z-10 hidden w-[46%] bg-black/20 sm:block"><img src={image} alt="" loading="lazy" className="h-full w-full object-contain object-center transition-transform duration-500 group-hover:scale-[1.03]" /></div></> : <div className="absolute inset-0 -z-20 bg-gradient-to-br from-[#1c2930] to-[#0c1015]" />}
-                      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#0a0e12] via-[#0a0e12]/85 to-[#0a0e12]/40 sm:bg-gradient-to-r sm:from-[#0b0f13] sm:via-[#0b0f13]/95 sm:to-transparent" />
-                      <div className="relative flex min-h-[340px] flex-col justify-center p-6 sm:min-h-[390px] sm:p-9 lg:p-12">
-                        <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.24em] text-[#71e0d8]">AI PILOT <span className="ml-2 text-white/35">/ {ui('Creative universe', 'Univers créatif')}</span></p>
-                        <h3 className="max-w-xl text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">{getTitle(access)}</h3>
-                        {getDescription(access) && <p className="mt-4 line-clamp-3 max-w-lg text-sm leading-relaxed text-white/70 sm:text-base">{getDescription(access)}</p>}
-                        <span className="mt-7 inline-flex w-fit items-center gap-3 border border-[#23c7be]/70 bg-[#23c7be]/15 px-5 py-3 text-sm font-semibold text-[#86e9e1] transition-colors group-hover:bg-[#23c7be] group-hover:text-black">{ui('Discover universe', 'Découvrir l’univers')} <ChevronDown size={16} className="-rotate-90" /></span>
+                    const image = getImage(access, 'card');
+                    return <button key={access.id} type="button" onClick={() => { setSelectedUniverse(access.id); setExpanded((current) => ({ ...current, [access.id]: false })); }} className="group relative isolate flex min-h-[220px] flex-col justify-end overflow-hidden border border-white/15 bg-[#151b21] text-left transition-all duration-300 hover:-translate-y-1 hover:border-[#23c7be] hover:shadow-[0_15px_45px_rgba(0,0,0,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#23c7be] sm:min-h-[270px]">
+                      {image ? <img src={image} alt="" loading="lazy" className="absolute inset-0 -z-20 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <div className="absolute inset-0 -z-20 bg-gradient-to-br from-[#25313a] to-[#0b1015]" />}
+                      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black via-black/55 to-transparent" />
+                      <div className="p-5">
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#79e9df]">AI PILOT</p>
+                        <h3 className="text-xl font-bold text-white sm:text-2xl">{getTitle(access)}</h3>
+                        {getDescription(access) && <p className="mt-1 line-clamp-2 text-xs text-white/70">{getDescription(access)}</p>}
+                        <span className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#79e9df]">{ui('Discover', 'Découvrir')} <ChevronDown size={14} className="-rotate-90" /></span>
                       </div>
                     </button>;
                   })}
