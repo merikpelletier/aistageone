@@ -83,7 +83,7 @@ export default function DesktopDossierPublishing({ userEmail, dossiers = [] }) {
   return (
     <section className="pt-3">
       {managingDossier ? (
-        <MemberDossierPages dossier={managingDossier} onClose={() => setManagingDossier(null)} />
+        <MemberDossierPages dossier={managingDossier} userEmail={userEmail} onClose={() => setManagingDossier(null)} />
       ) : editingDossier === undefined ? (
         <>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
