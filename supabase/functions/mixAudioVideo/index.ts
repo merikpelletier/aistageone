@@ -26,7 +26,7 @@ serveWithCors(async (req) => {
     const TOKEN = Deno.env.get('REPLICATE_API_TOKEN');
     if (!TOKEN) throw new Error('REPLICATE_API_TOKEN not set');
 
-    const { audio_url, video_url } = await req.json();
+    const { audio_url, video_url, source_video_url } = await req.json();
     if (!audio_url || !video_url) {
       return Response.json({ error: 'audio_url and video_url required' }, { status: 400 });
     }
@@ -102,7 +102,7 @@ serveWithCors(async (req) => {
       provider: 'cloudflare_stream',
       provider_video_id: uid,
       source_type: 'dubbing_output',
-      source_url: outputUrl,
+      source_url: source_video_url || video_url,
       status: 'processing',
       storage_billing_started_at: new Date().toISOString(),
     }).select('id').single();
