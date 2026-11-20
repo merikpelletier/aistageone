@@ -32,6 +32,7 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
   const [showSaveVault, setShowSaveVault] = useState(false);
   const [saving, setSaving] = useState(false);
   const working = useRef(false);
+  const assemblyOutputAssetRef = useRef(null);
   const [assemblyError, setAssemblyError] = useState('');
   const { options: models, loading: loadingModels } = useAiModelOptions({
     service: 'generateDubbing', kind: 'speech',
@@ -69,7 +70,7 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
     return () => { cancelled = true; };
   }, [modelKey, videoUrl, durationSeconds, targetLanguage]);
 
-  const reset = () => { setStep('idle'); setFinalUrl(''); setJobId(''); setAssemblyError(''); working.current = false; };
+  const reset = () => { setStep('idle'); setFinalUrl(''); setJobId(''); setAssemblyError(''); assemblyOutputAssetRef.current = null; working.current = false; };
   const cloudflareMedia = async (action, payload = {}) => {
     const { data, error } = await supabase.functions.invoke('dubbing-cloudflare-media', {
       body: { action, ...payload },
@@ -131,14 +132,16 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
     setAssemblyError('');
     setStep('mixing');
     try {
-      const prepared = await waitForCloudflareMedia('prepare', { video_url: videoUrl });
-      const { data, error } = await supabase.functions.invoke('mixAudioVideo', {
-        body: { audio_url: audioUrl, video_url: prepared.mp4_url },
-      });
-      if (error || data?.error) throw Error(data?.error || error?.message || t('Video assembly failed', 'Échec de l’assemblage vidéo'));
-      const output = data?.output_asset_id
-        ? (await waitForCloudflareMedia('output_status', { asset_id: data.output_asset_id })).file_url
-        : data?.file_url;
+      if (!assemblyOutputAssetRef.current) {
+        const prepared = await waitForCloudflareMedia('prepare', { video_url: videoUrl });
+        const { data, error } = await supabase.functions.invoke('mixAudioVideo', {
+          body: { audio_url: audioUrl, video_url: prepared.mp4_url },
+        });
+        if (error || data?.error) throw Error(data?.error || error?.message || t('Video assembly failed', 'Échec de l’assemblage vidéo'));
+        if (!data?.output_asset_id) throw Error(t('The mixer returned no video', 'Le mixage n’a produit aucune vidéo'));
+        assemblyOutputAssetRef.current = data.output_asset_id;
+      }
+      const output = (await waitForCloudflareMedia('output_status', { asset_id: assemblyOutputAssetRef.current })).file_url;
       if (!output) throw Error(t('The mixer returned no video', 'Le mixage n’a produit aucune vidéo'));
       await invoke('finish', { job_id: id, final_video_url: output });
       setFinalUrl(output);
