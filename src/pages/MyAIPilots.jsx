@@ -615,24 +615,24 @@ export default function MyAIPilots({ embedded = false }) {
               ];
               const chooseSection = (section) => { setUniverseSection(section); setExpanded((current) => ({ ...current, [selected.id]: true })); };
               const back = () => { setSelectedUniverse(null); setUniverseSection(null); setExpanded((current) => ({ ...current, [selected.id]: false })); };
-              return <div className="relative isolate min-h-[min(850px,calc(100vh-80px))] overflow-hidden bg-[#100f10] text-white">
+              return <div className="relative isolate min-h-[350px] overflow-hidden border border-white/10 bg-[#100f10] text-white sm:min-h-[390px] lg:min-h-[420px]">
                 {background ? <img src={background} alt="" className="pointer-events-none absolute inset-0 -z-30 h-full w-full object-cover object-center" /> : <div className="pointer-events-none absolute inset-0 -z-30 bg-[radial-gradient(ellipse_at_75%_35%,#384047,#14171b_60%,#07090b)]" />}
                 <div className="pointer-events-none absolute inset-0 -z-20 bg-[linear-gradient(90deg,rgba(5,6,8,0.9)_0%,rgba(5,6,8,0.6)_28%,rgba(5,6,8,0.06)_73%)]" />
                 <div className="pointer-events-none absolute inset-0 -z-20 bg-[linear-gradient(0deg,rgba(0,0,0,0.7)_0%,transparent_32%,rgba(0,0,0,0.2)_100%)]" />
-                <div className="relative flex min-h-[min(850px,calc(100vh-80px))] flex-col justify-between px-6 pb-8 pt-8 sm:px-12 sm:pt-12 lg:px-16">
-                  <div className="max-w-sm">
-                    <p className="mb-4 text-[11px] font-medium tracking-[0.18em] text-white/65">AISTAGE.ONE / AI PILOTS</p>
-                    <nav aria-label={ui('Universe menu', 'Menu de l’univers')} className="flex flex-col items-start gap-1">
+                <div className="relative flex min-h-[350px] flex-col justify-between px-5 py-5 sm:min-h-[390px] sm:px-8 sm:py-7 lg:min-h-[420px] lg:px-10">
+                  <div className="max-w-[260px]">
+                    <p className="mb-3 text-[10px] font-medium tracking-[0.12em] text-white/65">AISTAGE.ONE / AI PILOTS</p>
+                    <nav aria-label={ui('Universe menu', 'Menu de l’univers')} className="flex flex-col items-start gap-0.5">
                       {sections.map(([id,label]) => <button key={id} type="button" onClick={() => chooseSection(id)}
-                        className={`group min-h-12 w-full max-w-[340px] border-l-[3px] px-4 py-2 text-left text-lg font-semibold uppercase tracking-[0.12em] transition-all duration-200 sm:text-xl ${universeSection === id ? 'border-[#23c7be] bg-white/90 text-black' : 'border-transparent text-white/90 hover:border-white/80 hover:bg-white/15 hover:text-white'}`}>
+                        className={`group min-h-8 w-full max-w-[260px] border-l-2 px-3 py-1.5 text-left text-xs font-medium uppercase tracking-[0.08em] transition-all duration-200 sm:text-sm ${universeSection === id ? 'border-[#23c7be] bg-white/90 text-black' : 'border-transparent text-white/90 hover:border-white/80 hover:bg-white/15 hover:text-white'}`}>
                         {label}
                       </button>)}
-                      <button type="button" onClick={back} className="mt-4 min-h-12 w-full max-w-[340px] border-l-[3px] border-transparent px-4 py-2 text-left text-lg font-semibold uppercase tracking-[0.12em] text-white/85 transition-all hover:border-white/80 hover:bg-white/15 sm:text-xl">{ui('Back to universes', 'Retour aux univers')}</button>
+                      <button type="button" onClick={back} className="mt-2 min-h-8 w-full max-w-[260px] border-l-2 border-transparent px-3 py-1.5 text-left text-xs font-medium uppercase tracking-[0.08em] text-white/85 transition-all hover:border-white/80 hover:bg-white/15 sm:text-xl">{ui('Back to universes', 'Retour aux univers')}</button>
                     </nav>
                   </div>
-                  <div className="mt-12 flex max-w-3xl flex-col items-start">
-                    {logo ? <img src={logo} alt={getTitle(selected)} className="max-h-40 max-w-full object-contain object-left drop-shadow-[0_4px_18px_rgba(0,0,0,0.9)]" /> : <h1 className="text-4xl font-black uppercase leading-none tracking-[-0.04em] drop-shadow-[0_4px_22px_rgba(0,0,0,0.9)] sm:text-6xl lg:text-7xl">{getTitle(selected)}</h1>}
-                    {getDescription(selected) && <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/85 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] sm:text-base">{getDescription(selected)}</p>}
+                  <div className="mt-5 flex max-w-lg flex-col items-start">
+                    {logo ? <img src={logo} alt={getTitle(selected)} className="max-h-20 max-w-[85%] object-contain object-left drop-shadow-[0_4px_18px_rgba(0,0,0,0.9)]" /> : <h1 className="text-2xl font-bold uppercase leading-tight tracking-[-0.02em] drop-shadow-[0_4px_22px_rgba(0,0,0,0.9)] sm:text-3xl lg:text-4xl">{getTitle(selected)}</h1>}
+                    {getDescription(selected) && <p className="mt-2 max-w-md text-xs leading-relaxed text-white/85 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] sm:text-sm">{getDescription(selected)}</p>}
                   </div>
                 </div>
               </div>;
