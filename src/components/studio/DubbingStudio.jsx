@@ -72,6 +72,53 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
   }, [modelKey, videoUrl, durationSeconds, targetLanguage]);
 
   const reset = () => { setStep('idle'); setFinalUrl(''); setJobId(''); setAssemblyError(''); originalVideoFile.current = null; assemblyUpload.current = null; working.current = false; };
+  const uploadOriginalToAssemblyStorage = async (file) => {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session?.access_token) throw Error(t('Sign in to upload the original video.', 'Connectez-vous pour téléverser la vidéo originale.'));
+    const { data: { user: authenticatedUser } } = await supabase.auth.getUser();
+    if (!authenticatedUser?.id) throw Error(t('Sign in to upload the original video.', 'Connectez-vous pour téléverser la vidéo originale.'));
+    const extension = (file.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!['mp4', 'mov', 'avi', 'm4v'].includes(extension)) throw Error(t('Use an MP4, MOV or AVI original video for assembly.', 'Utilisez une vidéo originale MP4, MOV ou AVI pour l’assemblage.'));
+    if (file.size > 250 * 1024 * 1024) throw Error(t('The original video exceeds the 250 MB assembly limit.', 'La vidéo originale dépasse la limite de 250 Mo pour l’assemblage.'));
+    const path = `${authenticatedUser.id}/dubbing-assembly/${crypto.randomUUID()}.${extension}`;
+    const projectUrl = import.meta.env.VITE_SUPABASE_URL;
+    const endpoint = `${projectUrl.replace('.supabase.co', '.storage.supabase.co')}/storage/v1/upload/resumable`;
+    const metadata = { bucketName: 'dubbing-assembly', objectName: path, contentType: file.type || 'video/mp4', cacheControl: '3600' };
+    const encodedMetadata = Object.entries(metadata).map(([key, value]) => `${key} ${btoa(unescape(encodeURIComponent(value)))}`).join(',');
+    const created = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${session.access_token}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        'Tus-Resumable': '1.0.0',
+        'Upload-Length': String(file.size),
+        'Upload-Metadata': encodedMetadata,
+        'x-upsert': 'false',
+      },
+    });
+    if (!created.ok) throw Error((await created.text()) || t('Could not start the original video upload.', 'Impossible de démarrer le téléversement de la vidéo originale.'));
+    let uploadUrl = created.headers.get('Location');
+    if (!uploadUrl) throw Error(t('The storage server did not return an upload URL.', 'Le serveur de stockage n’a pas retourné d’adresse de téléversement.'));
+    uploadUrl = new URL(uploadUrl, endpoint).toString();
+    const chunkSize = 6 * 1024 * 1024;
+    let offset = 0;
+    while (offset < file.size) {
+      const chunk = file.slice(offset, Math.min(offset + chunkSize, file.size));
+      const response = await fetch(uploadUrl, {
+        method: 'PATCH',
+        headers: { authorization: `Bearer ${session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, 'Tus-Resumable': '1.0.0', 'Upload-Offset': String(offset), 'Content-Type': 'application/offset+octet-stream' },
+        body: chunk,
+      });
+      if (!response.ok) throw Error((await response.text()) || t('Original video upload failed.', 'Le téléversement de la vidéo originale a échoué.'));
+      offset = Number(response.headers.get('Upload-Offset') || offset + chunk.size);
+      if (offset <= 0) throw Error(t('Original video upload did not progress.', 'Le téléversement de la vidéo originale n’a pas progressé.'));
+    }
+    const { data } = supabase.storage.from('dubbing-assembly').getPublicUrl(path);
+    if (!data?.publicUrl) throw Error(t('Assembly video URL unavailable.', 'Adresse de la vidéo d’assemblage indisponible.'));
+    assemblyUpload.current = { path, url: data.publicUrl };
+    return data.publicUrl;
+  };
+
   const handleUpload = async event => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -91,9 +138,10 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
       if (!Number.isFinite(metadata) || metadata <= 0 || metadata > 14400) {
         throw Error(t('Video must be shorter than four hours', 'La vidéo doit durer moins de quatre heures'));
       }
+      originalVideoFile.current = file;
+      await uploadOriginalToAssemblyStorage(file);
       const result = await base44.integrations.Core.UploadFile({ file });
       if (!result.file_url) throw Error('Upload failed');
-      originalVideoFile.current = file;
       setVideoUrl(result.file_url);
       setDurationSeconds(metadata);
     } catch (error) {
@@ -116,26 +164,7 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
     if (assemblyUpload.current?.url) return assemblyUpload.current.url;
     const file = originalVideoFile.current;
     if (!file) throw Error(t('Reimport the original video for assembly.', 'Réimportez la vidéo originale pour l’assemblage.'));
-    // Assembly re-import uses a dedicated 250 MB bucket, separate from general media uploads.
-    if (file.size > 250 * 1024 * 1024) {
-      throw Error(t('The original video exceeds the 250 MB assembly upload limit.', 'La vidéo originale dépasse la limite de 250 Mo pour l’importation d’assemblage.'));
-    }
-    const { data: { user: authenticatedUser }, error: authError } = await supabase.auth.getUser();
-    if (authError || !authenticatedUser?.id) throw Error(t('Sign in to assemble the video.', 'Connectez-vous pour assembler la vidéo.'));
-    const extension = (file.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (!['mp4', 'mov', 'avi', 'm4v'].includes(extension)) {
-      throw Error(t('Use an MP4, MOV or AVI original video for assembly.', 'Utilisez une vidéo originale MP4, MOV ou AVI pour l’assemblage.'));
-    }
-    const path = `${authenticatedUser.id}/dubbing-assembly/${crypto.randomUUID()}.${extension}`;
-    const { error } = await supabase.storage.from('dubbing-assembly').upload(path, file, {
-      upsert: false,
-      contentType: file.type || 'video/mp4',
-    });
-    if (error) throw Error(error.message || t('Cannot import original video for assembly.', 'Impossible d’importer la vidéo originale pour l’assemblage.'));
-    const { data } = supabase.storage.from('dubbing-assembly').getPublicUrl(path);
-    if (!data?.publicUrl) throw Error(t('Assembly video URL unavailable.', 'Adresse de la vidéo d’assemblage indisponible.'));
-    assemblyUpload.current = { path, url: data.publicUrl };
-    return data.publicUrl;
+    return uploadOriginalToAssemblyStorage(file);
   };
 
   const finishVideo = async (audioUrl, id) => {
