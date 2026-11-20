@@ -34,7 +34,7 @@ function UniversePresentationEditor({ pilot, version, block, onSaved }) {
   const languages = Array.from(new Set(['en', 'fr', ...Object.keys(content.locales || {})]));
   const current = content.locales?.[locale] || {};
   const base = content.locales?.en || {};
-  const previewImage = (key) => current[key] || base[key] || (key !== 'logo_image' ? pilot?.cover_url : '') || '';
+  const previewImage = (key) => current[key] || base[key] || (key === 'card_image' ? pilot?.cover_url : '') || '';
   const label = (english, french) => t(english, locale === 'fr' ? french : english);
   const setField = (key, value) => setContent((prev) => ({
     ...prev, locales: { ...(prev.locales || {}), [locale]: { ...(prev.locales?.[locale] || {}), [key]: value } },
@@ -78,15 +78,27 @@ function UniversePresentationEditor({ pilot, version, block, onSaved }) {
       {[['title', label('Display title','Titre affiché')], ['tagline', label('Tagline','Slogan')]].map(([key, fieldLabel]) => <label key={key} className="space-y-2"><span className="text-xs text-white/65">{fieldLabel} ({locale.toUpperCase()})</span><Input className={CONTROL_CLASS} placeholder={key === 'title' ? pilot?.name || '' : pilot?.description || ''} value={current[key] || ''} onChange={(event) => setField(key,event.target.value)} /></label>)}
     </div>
     <label className="block space-y-2"><span className="text-xs text-white/65">{label('Short synopsis', 'Synopsis court')} ({locale.toUpperCase()})</span><Textarea rows={3} className={CONTROL_CLASS} value={current.synopsis || ''} onChange={(event) => setField('synopsis',event.target.value)} /></label>
-    <div className="grid gap-4 md:grid-cols-3">
-      {[['hero_image', label('Universe background','Décor de l’univers')], ['card_image', label('Selection image','Image de sélection')], ['logo_image', label('Universe logo','Logo de l’univers')]].map(([key,fieldLabel]) => <div key={key} className="min-w-0 border border-white/10 bg-white/[0.02] p-3">
+    <div className="grid gap-4 md:grid-cols-2">
+      {[['card_image', label('Pilot cover / selection image','Couverture du Pilot / sélection')], ['hero_image', label('Rectangular universe banner','Bannière rectangulaire de l’univers')], ['logo_image', label('Universe logo','Logo de l’univers')], ['background_image', label('Page background image','Image de fond de page')]].map(([key,fieldLabel]) => <div key={key} className="min-w-0 border border-white/10 bg-white/[0.02] p-3">
         <p className="mb-2 text-xs font-semibold text-white/75">{fieldLabel} ({locale.toUpperCase()})</p>
-        <div className="flex aspect-video items-center justify-center overflow-hidden bg-black/40">{previewImage(key) ? <img src={previewImage(key)} alt="" className="h-full w-full object-contain" /> : <span className="text-xs text-white/35">{label('No image yet','Aucune image')}</span>}</div>
+        <div className="flex aspect-video items-center justify-center overflow-hidden bg-black/40">{previewImage(key) ? <img src={previewImage(key)} alt="" className="h-full w-full object-contain" /> : <span className="text-xs text-white/35">{label('No image selected','Aucune image sélectionnée')}</span>}</div>
         {!current[key] && previewImage(key) && <p className="mt-2 text-[11px] text-white/45">{label('Showing default image','Image par défaut affichée')}</p>}
         <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 border border-white/20 p-2 text-xs text-white/70 hover:bg-white/10"><Upload size={14} />{busy===key ? label('Uploading…','Importation…') : label('Upload / replace','Importer / remplacer')}<input type="file" accept="image/*" className="hidden" disabled={Boolean(busy)} onChange={(event) => { const file=event.target.files?.[0]; event.target.value=''; upload(key,file); }} /></label>
         <label className="mt-3 block space-y-1"><span className="text-[11px] text-white/55">{label('Or paste an image URL','Ou coller une URL d’image')}</span><Input className={CONTROL_CLASS} value={current[key] || ''} placeholder="https://…" onChange={(event) => setField(key,event.target.value.trim())} /></label>
         {current[key] && <button type="button" className="mt-2 text-xs text-white/50 hover:text-white" onClick={()=>setField(key,'')}>{label('Restore default image','Rétablir l’image par défaut')}</button>}
       </div>)}
+    </div>
+    <div className="border border-white/10 bg-white/[0.02] p-4">
+      <h4 className="text-sm font-semibold text-white">{label('Page background', 'Fond de page')} ({locale.toUpperCase()})</h4>
+      <p className="mt-1 text-xs text-white/50">{label('Choose a solid color or an image for the space around the universe selection and banner.', 'Choisissez une couleur unie ou une image derrière la sélection et la bannière.')}</p>
+      <div className="mt-3 flex flex-wrap gap-4">
+        {[['color',label('Color','Couleur')],['image',label('Image','Image')]].map(([value,text]) => <label key={value} className="flex items-center gap-2 text-sm text-white/75"><input type="radio" name={`pilot-background-${pilot.id}-${locale}`} checked={(current.background_type || base.background_type || 'color') === value} onChange={() => setField('background_type',value)} />{text}</label>)}
+      </div>
+      <label className="mt-4 flex items-center gap-3 text-xs text-white/70">
+        {label('Background color','Couleur de fond')}
+        <input type="color" className="h-9 w-14 cursor-pointer border border-white/20 bg-transparent" value={/^#[0-9a-fA-F]{6}$/.test(current.background_color || base.background_color || '') ? (current.background_color || base.background_color) : '#090b0e'} onChange={(event) => setField('background_color',event.target.value)} />
+        <Input className={`max-w-[120px] ${CONTROL_CLASS}`} value={current.background_color ?? base.background_color ?? '#090b0e'} onChange={(event) => { if (/^#[0-9a-fA-F]{0,6}$/.test(event.target.value)) setField('background_color',event.target.value); }} />
+      </label>
     </div>
     <div className="flex flex-wrap items-center gap-4"><Button type="button" className={PRIMARY_BUTTON_CLASS} disabled={Boolean(busy)} onClick={save}><Save size={15} className="mr-2"/>{busy==='save' ? t('Saving…','Saving…') : t('Save presentation','Save presentation')}</Button>{status && <span role="status" className="text-sm text-[#71e0d8]">{status}</span>}</div>
   </div>;
