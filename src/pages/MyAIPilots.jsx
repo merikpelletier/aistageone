@@ -543,7 +543,7 @@ export default function MyAIPilots({ embedded = false }) {
                     <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(0deg,#05090d_0%,transparent_35%,rgba(0,0,0,0.35)_100%)]" />
                     <div className="pointer-events-none absolute inset-0 -z-10 opacity-40" style={{backgroundImage: 'linear-gradient(rgba(114,218,211,0.055) 1px,transparent 1px),linear-gradient(90deg,rgba(114,218,211,0.055) 1px,transparent 1px)',backgroundSize:'72px 72px',maskImage:'linear-gradient(90deg,transparent,black)'}} />
                     <div className="pointer-events-none absolute left-[70%] top-[42%] -z-10 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#68cec5]/20 shadow-[0_0_110px_rgba(35,199,190,0.14),inset_0_0_90px_rgba(35,199,190,0.06)]" />
-                    {cardImage && <div key={'art-'+active.id} className="pointer-events-none absolute inset-y-[12%] right-[2%] hidden w-[48%] items-center justify-center lg:flex">
+                    {cardImage && <div key={'art-'+active.id} className="pointer-events-none absolute inset-y-[11%] right-[3%] hidden w-[40%] items-center justify-center overflow-hidden lg:flex">
                       <img src={cardImage} alt="" className="max-h-full max-w-full animate-[universe-reveal_750ms_ease-out_both] object-contain drop-shadow-[0_25px_55px_rgba(0,0,0,0.75)]" />
                     </div>}
                     <div className="relative flex min-h-[660px] flex-col sm:min-h-[710px] lg:min-h-[min(780px,calc(100vh-130px))]">
@@ -560,11 +560,11 @@ export default function MyAIPilots({ embedded = false }) {
                             {entry.id === active.id && <ChevronDown size={14} className="-rotate-90 text-[#23c7be]" />}
                           </button>)}
                         </nav>
-                        <div className="order-1 relative flex flex-1 flex-col justify-end px-6 pb-8 pt-16 sm:px-10 sm:pb-12 lg:order-2 lg:px-14 lg:pb-16">
-                          <div className="max-w-xl animate-[universe-reveal_650ms_ease-out_both]" key={'copy-'+active.id}>
+                        <div className="order-1 relative flex min-w-0 flex-1 flex-col justify-end px-6 pb-8 pt-16 sm:px-10 sm:pb-12 lg:order-2 lg:px-10 lg:pb-16">
+                          <div className="relative z-10 max-w-xl animate-[universe-reveal_650ms_ease-out_both] lg:w-[50%] lg:max-w-[500px]" key={'copy-'+active.id}>
                             <div className="mb-5 flex items-center gap-3"><span className="h-px w-9 bg-[#23c7be]" /><p className="text-[10px] font-black uppercase tracking-[0.26em] text-[#73e5da]">{ui('World available', 'Monde disponible')} <span className="text-white/40">/ {String(activeIndex+1).padStart(2,'0')}</span></p></div>
-                            {visuals.logo_image ? <img src={visuals.logo_image} alt={getTitle(active)} className="mb-6 max-h-32 max-w-[90%] object-contain object-left" /> : <h2 className="max-w-xl text-4xl font-black uppercase leading-[0.97] tracking-[-0.045em] text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)] sm:text-6xl xl:text-7xl">{getTitle(active)}</h2>}
-                            {getDescription(active) && <p className="mt-6 max-w-md border-l-2 border-[#23c7be]/65 pl-4 text-sm leading-relaxed text-white/80 sm:text-base">{getDescription(active)}</p>}
+                            {visuals.logo_image ? <img src={visuals.logo_image} alt={getTitle(active)} className="mb-6 max-h-32 max-w-[90%] object-contain object-left" /> : <h2 className="break-words text-3xl font-black uppercase leading-[1.02] tracking-[-0.035em] text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)] sm:text-5xl lg:text-4xl xl:text-5xl">{getTitle(active)}</h2>}
+                            {getDescription(active) && <p className="mt-5 line-clamp-3 max-w-md border-l-2 border-[#23c7be]/65 pl-4 text-sm leading-relaxed text-white/80">{getDescription(active)}</p>}
                             <button type="button" onClick={enter} className="group mt-9 inline-flex min-h-14 items-center gap-8 border border-[#23c7be] bg-[#23c7be] px-7 py-3 text-sm font-black uppercase tracking-[0.11em] text-[#061012] shadow-[0_0_36px_rgba(35,199,190,0.15)] transition-all hover:gap-11 hover:bg-[#83e9df] hover:shadow-[0_0_50px_rgba(35,199,190,0.28)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{ui('Enter the universe', 'Entrer dans l’univers')} <ChevronDown className="-rotate-90" size={20}/></button>
                           </div>
                           <div className="mt-10 flex items-center justify-between gap-4 border-t border-white/15 pt-5 sm:mt-14">
