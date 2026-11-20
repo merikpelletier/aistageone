@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Folder, ChevronDown, Upload, Loader2, Film } from 'lucide-react';
+import { X, Folder, ChevronDown, Upload, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import CloudflareStreamVideo from '@/components/CloudflareStreamVideo';
 
 const folderColors = {
   red: 'bg-red-500/20 border-red-500/40 text-red-400',
@@ -119,7 +120,7 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
                   onClick={() => onSelect(asset.url, asset.name)}
                   className="aspect-square rounded-xl overflow-hidden bg-white/5 hover:ring-2 hover:ring-yellow-400 transition-all"
                 >
-                  {mediaType === 'audio' ? <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs font-bold text-white">{asset.name || 'Audio'}</div> : mediaType === 'video' ? <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-2 text-white"><Film size={26} className="text-teal-300" /><span className="line-clamp-3 break-words text-center text-xs font-semibold">{asset.name || 'Video'}</span></div> : <img src={asset.url} alt="" className="h-full w-full object-cover" />}
+                  {mediaType === 'audio' ? <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs font-bold text-white">{asset.name || 'Audio'}</div> : mediaType === 'video' ? <div className="relative h-full w-full bg-black"><CloudflareStreamVideo src={asset.url} title={asset.name || 'Vault video'} className="pointer-events-none h-full w-full object-contain" muted previewOnly /><span className="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-black/75 px-2 py-1 text-center text-xs font-semibold text-white">{asset.name || 'Video'}</span></div> : <img src={asset.url} alt="" className="h-full w-full object-cover" />}
                 </button>
               ))}
             </div>
@@ -153,7 +154,7 @@ export default function VaultPickerModal({ userEmail, onSelect, onClose, allowUp
                       onClick={() => onSelect(asset.url, asset.name)}
                       className="aspect-square rounded-xl overflow-hidden bg-white/5 hover:ring-2 hover:ring-yellow-400 transition-all"
                     >
-                      {mediaType === 'audio' ? <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs font-bold text-white">{asset.name || 'Audio'}</div> : mediaType === 'video' ? <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-2 text-white"><Film size={26} className="text-teal-300" /><span className="line-clamp-3 break-words text-center text-xs font-semibold">{asset.name || 'Video'}</span></div> : <img src={asset.url} alt="" className="h-full w-full object-cover" />}
+                      {mediaType === 'audio' ? <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs font-bold text-white">{asset.name || 'Audio'}</div> : mediaType === 'video' ? <div className="relative h-full w-full bg-black"><CloudflareStreamVideo src={asset.url} title={asset.name || 'Vault video'} className="pointer-events-none h-full w-full object-contain" muted previewOnly /><span className="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-black/75 px-2 py-1 text-center text-xs font-semibold text-white">{asset.name || 'Video'}</span></div> : <img src={asset.url} alt="" className="h-full w-full object-cover" />}
                     </button>
                   ))}
                 </div>
