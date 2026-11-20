@@ -167,14 +167,14 @@ function ScenarioGuide({ content, sets = [], extensions = [], userSets = [], onS
   );
 }
 
-function PilotDetails({ access, user, onMessage, userSets = [] }) {
+function PilotDetails({ access, user, onMessage, userSets = [], initialSection = 'overview' }) {
   const t = useStudioTranslation();
   const queryClient = useQueryClient();
   const emptyDraft = () => ({ extension_type: 'character_style', name: '', description: '', notes: '', details: {} });
   const [draft, setDraft] = useState(emptyDraft);
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [activeSection, setActiveSection] = useState('overview');
+  const [activeSection, setActiveSection] = useState(initialSection);
   const [savingSet, setSavingSet] = useState('');
   const [savingShot, setSavingShot] = useState('');
   const saveSetLink = async (setId, mySetId) => {
@@ -405,6 +405,7 @@ export default function MyAIPilots({ embedded = false }) {
   const [expanded, setExpanded] = useState({});
   const [selectedUniverse, setSelectedUniverse] = useState(null);
   const [previewUniverse, setPreviewUniverse] = useState(null);
+  const [universeSection, setUniverseSection] = useState(null);
   const [message, setMessage] = useState('');
   const ui = (english, french) => t(english, getPlatformLanguage() === 'fr' ? french : english);
 
@@ -601,21 +602,45 @@ export default function MyAIPilots({ embedded = false }) {
           </>
         ) : (
           <>
-            <button type="button" onClick={() => { setSelectedUniverse(null); setExpanded((current) => ({ ...current, [selected.id]: false })); }} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-white/70 hover:text-white"><ChevronLeft size={18} /> {ui('All universes', 'Tous les univers')}</button>
-            <section className="relative isolate overflow-hidden border border-white/10 bg-[#14191e]">
-              {getImage(selected) && <img src={getImage(selected)} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover opacity-50" />}
-              <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#0b0e12] via-[#0b0e12]/90 to-[#0b0e12]/25 sm:bg-gradient-to-r sm:from-[#0b0e12] sm:via-[#0b0e12]/90 sm:to-[#0b0e12]/35" />
-              <div className="flex min-h-[340px] flex-col justify-end p-5 sm:min-h-[440px] sm:p-10 lg:p-14">
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#71e0d8]">AI PILOT / {ui('Universe', 'Univers')}</p>
-                <h1 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">{getTitle(selected)}</h1>
-                {getSynopsis(selected) && <div className="mt-5 max-w-2xl"><h2 className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#71e0d8]">{ui('Synopsis', 'Synopsis')}</h2><p className="whitespace-pre-wrap text-sm leading-relaxed text-white/80 sm:text-base">{getSynopsis(selected)}</p></div>}
-                {selected.presentation?.creator_name && <p className="mt-4 text-xs text-white/50">{selected.presentation.creator_name}</p>}
-                <div className="mt-7 flex flex-wrap gap-3">
-                  <Button type="button" onClick={() => setExpanded((current) => ({ ...current, [selected.id]: !current[selected.id] }))} className="min-h-11 bg-[#23c7be] px-6 font-semibold text-black hover:bg-[#23c7be]/85">{expanded[selected.id] ? ui('Close universe', 'Fermer l’univers') : ui('Enter the universe', 'Entrer dans l’univers')} <ChevronDown size={17} className={`ml-2 ${expanded[selected.id] ? 'rotate-180' : '-rotate-90'}`} /></Button>
+            {(() => {
+              const background = getImage(selected);
+              const logo = getVisuals(selected).logo_image;
+              const sections = [
+                ['overview', ui('Explore universe', 'Explorer l’univers')],
+                ['scenario', ui('Episodes & story', 'Épisodes et histoire')],
+                ['characters', ui('Characters', 'Personnages')],
+                ['sets', ui('Locations & sets', 'Lieux et décors')],
+                ['direction', ui('Creative direction', 'Direction artistique')],
+                ['additions', ui('My creations', 'Mes créations')],
+              ];
+              const chooseSection = (section) => { setUniverseSection(section); setExpanded((current) => ({ ...current, [selected.id]: true })); };
+              const back = () => { setSelectedUniverse(null); setUniverseSection(null); setExpanded((current) => ({ ...current, [selected.id]: false })); };
+              return <div className="relative isolate min-h-[min(850px,calc(100vh-80px))] overflow-hidden bg-[#100f10] text-white">
+                {background ? <img src={background} alt="" className="pointer-events-none absolute inset-0 -z-30 h-full w-full object-cover object-center" /> : <div className="pointer-events-none absolute inset-0 -z-30 bg-[radial-gradient(ellipse_at_75%_35%,#384047,#14171b_60%,#07090b)]" />}
+                <div className="pointer-events-none absolute inset-0 -z-20 bg-[linear-gradient(90deg,rgba(5,6,8,0.9)_0%,rgba(5,6,8,0.6)_28%,rgba(5,6,8,0.06)_73%)]" />
+                <div className="pointer-events-none absolute inset-0 -z-20 bg-[linear-gradient(0deg,rgba(0,0,0,0.7)_0%,transparent_32%,rgba(0,0,0,0.2)_100%)]" />
+                <div className="relative flex min-h-[min(850px,calc(100vh-80px))] flex-col justify-between px-6 pb-8 pt-8 sm:px-12 sm:pt-12 lg:px-16">
+                  <div className="max-w-sm">
+                    <p className="mb-4 text-[11px] font-medium tracking-[0.18em] text-white/65">AISTAGE.ONE / AI PILOTS</p>
+                    <nav aria-label={ui('Universe menu', 'Menu de l’univers')} className="flex flex-col items-start gap-1">
+                      {sections.map(([id,label]) => <button key={id} type="button" onClick={() => chooseSection(id)}
+                        className={`group min-h-12 w-full max-w-[340px] border-l-[3px] px-4 py-2 text-left text-lg font-semibold uppercase tracking-[0.12em] transition-all duration-200 sm:text-xl ${universeSection === id ? 'border-[#23c7be] bg-white/90 text-black' : 'border-transparent text-white/90 hover:border-white/80 hover:bg-white/15 hover:text-white'}`}>
+                        {label}
+                      </button>)}
+                      <button type="button" onClick={back} className="mt-4 min-h-12 w-full max-w-[340px] border-l-[3px] border-transparent px-4 py-2 text-left text-lg font-semibold uppercase tracking-[0.12em] text-white/85 transition-all hover:border-white/80 hover:bg-white/15 sm:text-xl">{ui('Back to universes', 'Retour aux univers')}</button>
+                    </nav>
+                  </div>
+                  <div className="mt-12 flex max-w-3xl flex-col items-start">
+                    {logo ? <img src={logo} alt={getTitle(selected)} className="max-h-40 max-w-full object-contain object-left drop-shadow-[0_4px_18px_rgba(0,0,0,0.9)]" /> : <h1 className="text-4xl font-black uppercase leading-none tracking-[-0.04em] drop-shadow-[0_4px_22px_rgba(0,0,0,0.9)] sm:text-6xl lg:text-7xl">{getTitle(selected)}</h1>}
+                    {getDescription(selected) && <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/85 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] sm:text-base">{getDescription(selected)}</p>}
+                  </div>
                 </div>
-              </div>
-            </section>
-            {expanded[selected.id] && <section className="mt-5 border border-white/10 bg-[#111418] p-4 sm:p-6"><PilotDetails access={selected} user={user} onMessage={setMessage} userSets={mySets} /></section>}
+              </div>;
+            })()}
+            {universeSection && <section id="universe-content" className="mt-4 border border-white/10 bg-[#111418] p-4 sm:p-6">
+              <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3"><h2 className="text-lg font-semibold text-white">{ui('Universe', 'Univers')} / {getTitle(selected)}</h2><button type="button" onClick={() => setUniverseSection(null)} className="text-sm text-white/60 hover:text-white">{ui('Close', 'Fermer')} <X size={16} className="inline" /></button></div>
+              <PilotDetails key={selected.id + ':' + universeSection} access={selected} user={user} onMessage={setMessage} userSets={mySets} initialSection={universeSection} />
+            </section>}
           </>
         )}
       </main>
