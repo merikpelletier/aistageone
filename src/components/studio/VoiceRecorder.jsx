@@ -9,6 +9,49 @@ import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
+const encodeWav24 = (samples, sampleRate) => {
+  const bytesPerSample = 3;
+  const dataSize = samples.length * bytesPerSample;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+  const write = (offset, value) => {
+    for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i));
+  };
+  write(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  write(8, 'WAVE');
+  write(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * bytesPerSample, true);
+  view.setUint16(32, bytesPerSample, true);
+  view.setUint16(34, 24, true);
+  write(36, 'data');
+  view.setUint32(40, dataSize, true);
+  for (let i = 0; i < samples.length; i++) {
+    const sample = Math.max(-1, Math.min(1, samples[i]));
+    const value = Math.round(sample < 0 ? sample * 8388608 : sample * 8388607);
+    const offset = 44 + i * 3;
+    view.setUint8(offset, value & 255);
+    view.setUint8(offset + 1, (value >> 8) & 255);
+    view.setUint8(offset + 2, (value >> 16) & 255);
+  }
+  return new Blob([buffer], { type: 'audio/wav' });
+};
+
+const decodeWav = async (blob) => {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  const context = new AudioContextClass();
+  try {
+    const decoded = await context.decodeAudioData(await blob.arrayBuffer());
+    return { samples: decoded.getChannelData(0).slice(), sampleRate: decoded.sampleRate };
+  } finally {
+    await context.close();
+  }
+};
+
 const loadMp3Encoder = () => new Promise((resolve, reject) => {
   if (window.lamejs?.Mp3Encoder) return resolve(window.lamejs);
   const existing = document.querySelector('script[data-lamejs]');
@@ -67,6 +110,9 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
   const t = useStudioTranslation();
   const showContext = productionMethod && block;
   const [isRecording, setIsRecording] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [selectionStart, setSelectionStart] = useState(0);
+  const [selectionEnd, setSelectionEnd] = useState(0);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
@@ -78,46 +124,34 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
   const [showSaveVault, setShowSaveVault] = useState(false);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
+  const audioContextRef = useRef(null);
+  const processorRef = useRef(null);
+  const sourceRef = useRef(null);
+  const streamRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const sampleRateRef = useRef(48000);
   const timerRef = useRef(null);
   const audioPlayerRef = useRef(null);
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: { ideal: 1 },
-          sampleRate: { ideal: 48000 },
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-        },
+        audio: { channelCount: { ideal: 1 }, sampleRate: { ideal: 48000 }, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
       });
-      const preferredMimeType = 'audio/webm;codecs=opus';
-      const recorderOptions = { audioBitsPerSecond: 192000 };
-      if (MediaRecorder.isTypeSupported(preferredMimeType)) {
-        recorderOptions.mimeType = preferredMimeType;
-      }
-      const recorder = new MediaRecorder(stream, recorderOptions);
-      mediaRecorderRef.current = recorder;
-      chunksRef.current = [];
-      recorder.ondataavailable = (e) => e.data.size > 0 && chunksRef.current.push(e.data);
-      recorder.onstop = async () => {
-        const sourceBlob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-        setIsConverting(true);
-        try {
-          const mp3Blob = await convertToMp3(sourceBlob);
-          setAudioBlob(mp3Blob);
-          setAudioUrl(URL.createObjectURL(mp3Blob));
-        } catch (error) {
-          console.error('MP3 conversion failed:', error);
-          setAudioBlob(sourceBlob);
-          setAudioUrl(URL.createObjectURL(sourceBlob));
-          toast.error(t('MP3 conversion failed. Original recording is available.', 'MP3 conversion failed. Original recording is available.'));
-        } finally {
-          setIsConverting(false);
-        }
-      };
-      recorder.start();
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      const context = new AudioContextClass({ sampleRate: 48000 });
+      await context.resume();
+      const source = context.createMediaStreamSource(stream);
+      const processor = context.createScriptProcessor(4096, 1, 1);
+      recordedChunksRef.current = [];
+      sampleRateRef.current = context.sampleRate;
+      processor.onaudioprocess = (event) => recordedChunksRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+      source.connect(processor);
+      processor.connect(context.destination);
+      streamRef.current = stream;
+      audioContextRef.current = context;
+      sourceRef.current = source;
+      processorRef.current = processor;
       setIsRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime(v => v + 1), 1000);
@@ -128,12 +162,27 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
   };
 
   const stopRecording = () => {
-    const recorder = mediaRecorderRef.current;
-    if (!recorder || !isRecording) return;
-    recorder.stop();
-    recorder.stream.getTracks().forEach(track => track.stop());
+    if (!isRecording || !audioContextRef.current) return;
     clearInterval(timerRef.current);
+    processorRef.current?.disconnect();
+    sourceRef.current?.disconnect();
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    const totalLength = recordedChunksRef.current.reduce((sum, chunk) => sum + chunk.length, 0);
+    const samples = new Float32Array(totalLength);
+    let offset = 0;
+    recordedChunksRef.current.forEach(chunk => { samples.set(chunk, offset); offset += chunk.length; });
+    const sampleRate = sampleRateRef.current;
+    const newBlob = encodeWav24(samples, sampleRate);
+    const newUrl = URL.createObjectURL(newBlob);
+    setAudioBlob(newBlob);
+    setAudioUrl(newUrl);
+    setDuration(samples.length / sampleRate);
+    setSelectionStart(0);
+    setSelectionEnd(samples.length / sampleRate);
+    setRecordingTime(Math.round(samples.length / sampleRate));
     setIsRecording(false);
+    audioContextRef.current.close();
+    audioContextRef.current = null;
   };
 
   const togglePlayback = () => {
@@ -148,8 +197,8 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
     setIsUploading(true);
     try {
       const isMp3 = audioBlob.type === 'audio/mpeg';
-      const extension = isMp3 ? 'mp3' : 'webm';
-      const mimeType = isMp3 ? 'audio/mpeg' : (audioBlob.type || 'audio/webm');
+      const extension = isMp3 ? 'mp3' : 'wav';
+      const mimeType = isMp3 ? 'audio/mpeg' : 'audio/wav';
       const recordingFile = new File([audioBlob], `voice-recording-${Date.now()}.${extension}`, { type: mimeType });
       const { file_url } = await base44.integrations.Core.UploadFile({ file: recordingFile });
       setUploadedUrl(file_url);
@@ -217,7 +266,7 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
                   {isRecording ? [...Array(20)].map((_, i) => <motion.div key={i} className="w-1 rounded-[1px] bg-[#23c7be]" animate={{ height: [8, 28 + Math.random() * 44, 8] }} transition={{ duration: .5, repeat: Infinity, delay: i * .04 }} />) : audioUrl ? <audio ref={audioPlayerRef} src={audioUrl} onEnded={() => setIsPlaying(false)} className="hidden" /> : <div className="flex h-20 w-20 items-center justify-center rounded-[3px] border border-[#23c7be]/25 bg-[#23c7be]/10 xl:h-12 xl:w-12"><Mic size={38} className="text-[#23c7be] xl:scale-75" /></div>}
                 </div>
                 <div className="font-mono text-5xl font-black tracking-tight text-white lg:text-3xl">{fmt(recordingTime)}</div>
-                <div className="mt-2 text-sm font-bold text-white/45 lg:mt-0 lg:flex-1 lg:text-left">{isRecording ? t('Recording…', 'Recording…') : isConverting ? t('Converting to MP3…', 'Converting to MP3…') : audioUrl ? t('MP3 recording ready', 'MP3 recording ready') : t('Tap the microphone to start', 'Tap the microphone to start')}</div>
+                <div className="mt-2 text-sm font-bold text-white/45 lg:mt-0 lg:flex-1 lg:text-left">{isRecording ? t('Recording…', 'Recording…') : isConverting ? t('Preparing audio…', 'Preparing audio…') : audioUrl ? t('WAV recording ready', 'WAV recording ready') : t('Tap the microphone to start', 'Tap the microphone to start')}</div>
                 <div className="mt-8 flex items-center gap-3 lg:mt-0 lg:shrink-0">
                   {!audioUrl ? (!isRecording ? <button onClick={startRecording} className="flex h-16 w-16 items-center justify-center rounded-[3px] bg-[#23c7be] text-[#071211] hover:bg-[#35d8cf] lg:h-12 lg:w-12"><Mic size={26} /></button> : <button onClick={stopRecording} className="flex h-16 w-16 items-center justify-center rounded-[3px] border border-red-400/40 bg-red-400/10 text-red-200 lg:h-12 lg:w-12"><Square size={24} /></button>) : <><button onClick={reset} className="flex h-11 w-11 items-center justify-center rounded-[3px] border border-white/10 bg-white/[.04] text-white/60 hover:bg-white/10"><X size={18} /></button><button onClick={togglePlayback} className="flex h-16 w-16 items-center justify-center rounded-[3px] border border-[#23c7be]/40 bg-[#23c7be]/10 text-[#23c7be] lg:h-12 lg:w-12">{isPlaying ? <Pause size={24} /> : <Play size={24} />}</button><button onClick={handleUpload} disabled={isUploading} className="flex h-11 w-11 items-center justify-center rounded-[3px] border border-white/10 bg-white/[.04] disabled:opacity-40">{isUploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}</button></>}
                 </div>
@@ -229,11 +278,20 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
                 <p className="text-[10px] font-black uppercase tracking-[.12em] text-white/40">{t('Recording status', 'Recording status')}</p>
                 <div className="mt-3 space-y-2 text-xs">
                   <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">{t('State', 'State')}</span><strong className={isRecording ? 'text-red-300' : audioUrl ? 'text-[#8ee9e4]' : 'text-white'}>{isRecording ? t('Recording', 'Recording') : audioUrl ? t('Ready', 'Ready') : t('Waiting', 'Waiting')}</strong></div>
-                  <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">{t('Format', 'Format')}</span><strong>{audioBlob?.type === 'audio/mpeg' ? 'MP3 audio' : 'WebM (original)'}</strong></div>
+                  <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">{t('Format', 'Format')}</span><strong>{audioBlob?.type === 'audio/mpeg' ? 'MP3' : 'WAV · 48 kHz · 24-bit'}</strong></div>
                   <div className="flex justify-between rounded-[3px] border border-white/10 bg-black/20 px-3 py-3"><span className="text-white/40">{t('Destination', 'Destination')}</span><strong>{t('Vault', 'Vault')}</strong></div>
                 </div>
               </section>
-              {audioUrl && <button onClick={handleUpload} disabled={isUploading || isSaving || isConverting} className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[.05] disabled:text-white/30">{isSaving ? <><Loader2 size={17} className="animate-spin" /> {t('Saving…', 'Saving…')}</> : isUploading ? <><Loader2 size={17} className="animate-spin" /> {t('Uploading…', 'Uploading…')}</> : <><Upload size={17} /> {t('Save Recording', 'Save Recording')}</>}</button>}
+              {audioUrl && <div className="mt-3 rounded-[3px] border border-white/10 bg-black/20 p-3">
+                <div className="mb-2 flex items-center justify-between text-xs text-white/55"><span>{t('Edit segment', 'Edit segment')}</span><span>{fmt(duration)}</span></div>
+                <div className="mb-3 h-2 overflow-hidden rounded bg-white/10"><div className="h-full bg-[#23c7be]" style={{ width: '100%' }} /></div>
+                <label className="mb-1 block text-[11px] text-white/45">{t('Selection start', 'Selection start')} · {selectionStart.toFixed(1)}s</label>
+                <input aria-label="Selection start" type="range" min="0" max={Math.max(0.1, duration)} step="0.1" value={selectionStart} onChange={e => setSelectionStart(Math.min(Number(e.target.value), Math.max(0, selectionEnd - 0.1)))} className="w-full accent-[#23c7be]" />
+                <label className="mb-1 mt-2 block text-[11px] text-white/45">{t('Selection end', 'Selection end')} · {selectionEnd.toFixed(1)}s</label>
+                <input aria-label="Selection end" type="range" min="0" max={Math.max(0.1, duration)} step="0.1" value={selectionEnd} onChange={e => setSelectionEnd(Math.max(Number(e.target.value), selectionStart + 0.1))} className="w-full accent-[#23c7be]" />
+                <div className="mt-2 flex gap-2"><button onClick={async () => { if (!audioBlob || selectionEnd <= selectionStart) return; setIsConverting(true); try { const decoded = await decodeWav(audioBlob); const a = Math.floor(selectionStart * decoded.sampleRate); const b = Math.floor(selectionEnd * decoded.sampleRate); const kept = new Float32Array(decoded.samples.length - (b - a)); kept.set(decoded.samples.subarray(0, a)); kept.set(decoded.samples.subarray(b), a); const blob = encodeWav24(kept, decoded.sampleRate); if (audioUrl) URL.revokeObjectURL(audioUrl); setAudioBlob(blob); setAudioUrl(URL.createObjectURL(blob)); setDuration(kept.length / decoded.sampleRate); setSelectionStart(0); setSelectionEnd(kept.length / decoded.sampleRate); } catch (error) { console.error(error); toast.error(t('Could not edit this recording', 'Could not edit this recording')); } finally { setIsConverting(false); } }} disabled={isConverting || selectionEnd <= selectionStart} className="flex-1 rounded-[3px] border border-white/10 px-2 py-2 text-xs disabled:opacity-40">{t('Delete selection', 'Delete selection')}</button><button onClick={() => { setSelectionStart(0); setSelectionEnd(duration); }} className="rounded-[3px] border border-white/10 px-2 py-2 text-xs">{t('Select all', 'Select all')}</button></div>
+              </div>}
+              {audioUrl && <button onClick={handleUpload} disabled={isUploading || isSaving || isConverting} className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[.05] disabled:text-white/30">{isSaving ? <><Loader2 size={17} className="animate-spin" /> {t('Saving…', 'Saving…')}</> : isUploading ? <><Loader2 size={17} className="animate-spin" /> {t('Uploading…', 'Uploading…')}</> : <><Upload size={17} /> {t('Save WAV', 'Save WAV')}</>}</button>}
             </aside>
           </div>
         </div>
