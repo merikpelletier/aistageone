@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
       const assetId = typeof body.asset_id === 'string' ? body.asset_id : '';
       if (!/^[0-9a-f-]{36}$/i.test(assetId)) return json({ error: 'Valid output asset ID required' }, 422);
       const { data, error } = await service.from('video_asset')
-        .select('id,provider_video_id,status,playback_url')
+        .select('id,provider_video_id,status,playback_url,source_url')
         .eq('id', assetId).eq('owner_id', user.id).eq('provider', 'cloudflare_stream')
         .eq('source_type', 'dubbing_output').maybeSingle();
       if (error || !data) return json({ error: 'Output video not found' }, 404);
@@ -91,6 +91,17 @@ Deno.serve(async (req: Request) => {
     }
     const download = listed.result?.default;
     if (download?.status === 'error') return json({ error: 'Cloudflare dubbed MP4 processing failed' }, 502);
+    if (download?.status === 'ready' && download?.url) {
+      const inputs = [asset.source_url, typeof body.audio_url === 'string' ? body.audio_url : '']
+        .filter((url): url is string => Boolean(url && url.startsWith('https://')));
+      if (inputs.length) {
+        const { error: lineageError } = await service.rpc('inherit_media_product_placements', {
+          p_output_url: download.url,
+          p_input_urls: inputs,
+        });
+        if (lineageError) console.error('Dubbing placement lineage failed:', lineageError.message);
+      }
+    }
     return json({
       status: download?.status === 'ready' && download?.url ? 'ready' : 'processing',
       file_url: download?.status === 'ready' ? download.url : null,
