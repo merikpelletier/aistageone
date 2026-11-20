@@ -209,7 +209,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children, t = 
   };
 
   return (
-    <div className="studio-shell min-h-screen bg-[#202328] text-white">
+    <div className={`studio-shell min-h-screen text-white ${activeKey === 'ai_pilots' ? 'bg-black' : 'bg-[#202328]'}`}>
       <div className="sticky top-0 z-[5000] h-14 border-b border-white/10 bg-[#202328]/95 backdrop-blur flex items-center px-3 md:px-4 gap-3">
         <button
           type="button"
@@ -273,7 +273,7 @@ function UnifiedStudioShell({ activeKey, onTool, title, subtitle, children, t = 
           )}
         </aside>
 
-        <main className="min-w-0 flex-1 bg-[#202328] text-white pb-[64px] lg:pb-0">
+        <main className={`min-w-0 flex-1 text-white pb-[64px] lg:pb-0 ${activeKey === 'ai_pilots' ? 'bg-black' : 'bg-[#202328]'}`}>
           {children}
         </main>
       </div>
