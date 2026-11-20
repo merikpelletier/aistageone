@@ -26,7 +26,7 @@ serveWithCors(async (req) => {
     const TOKEN = Deno.env.get('REPLICATE_API_TOKEN');
     if (!TOKEN) throw new Error('REPLICATE_API_TOKEN not set');
 
-    const body = await req.json();
+    const body = await req.clone().json();
     const { audio_url, video_url } = body;
     const source_video_url = body.source_video_url;
     if (!audio_url || !video_url) {
