@@ -64,7 +64,7 @@ function UniversePresentationEditor({ pilot, version, block, onSaved }) {
       const payload = { version_id: version.id, block_key: 'universe-presentation', block_type: 'custom', title: 'Universe Presentation', content, tool_targets: [], priority: 100, sort_order: 999, is_active: true };
       const { data: saved, error } = await supabase.from('ai_pilot_blocks').upsert(payload, { onConflict: 'version_id,block_key' }).select('id, content').single();
       if (error) throw error;
-      if (!saved?.id || JSON.stringify(saved.content) !== JSON.stringify(content)) throw new Error('Unable to verify saved presentation.');
+      if (!saved?.id || Object.keys(content.locales || {}).some((lang) => Object.entries(content.locales[lang] || {}).some(([key, value]) => saved.content?.locales?.[lang]?.[key] !== value))) throw new Error('Unable to verify saved presentation.');
       await onSaved();
       setStatus(t('Presentation saved.', 'Présentation enregistrée.'));
     } catch (error) { setStatus(error.message || 'Save failed.'); }
