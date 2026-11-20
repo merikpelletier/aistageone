@@ -101,6 +101,18 @@ serveWithCors(async request => {
       }
     }
 
+    if (action === 'latest') {
+      const { data: job, error } = await db.from('dubbing_jobs')
+        .select('id,model_key,source_video_url,source_language,target_language,duration_seconds,status,audio_url,final_video_url,updated_at')
+        .eq('user_id', userId)
+        .in('status', ['processing', 'audio_ready', 'completed'])
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return Response.json({ job: job || null });
+    }
+
     if (!['status', 'finish'].includes(action)) {
       return Response.json({ error: 'Unknown action' }, { status: 400 });
     }
