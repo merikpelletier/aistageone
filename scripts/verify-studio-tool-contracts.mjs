@@ -23,7 +23,7 @@ for (const marker of ["BlenderBridgeWorkspace", "blender_bridge", "label: 'Blend
 for (const marker of ["http://127.0.0.1:18765", "'/v1/health'", "'/v1/command'", "Connect to Blender"]) {
   requireMarker('Blender bridge workspace', blenderStudio, marker);
 }
-for (const marker of ["PORT = 18765", "class AISTAGE_PT_bridge", "def _process_queue()", "def _authorized()", "'https://aistage.one'", "'https://leplateau.ai'"]) {
+for (const marker of ["PORT = 18765", "class AISTAGE_PT_bridge", "def _process_queue()", "def _authorized(self):", "'https://aistage.one'", "'https://leplateau.ai'"]) {
   requireMarker('Blender local runtime', blenderRuntime, marker);
 }
 
