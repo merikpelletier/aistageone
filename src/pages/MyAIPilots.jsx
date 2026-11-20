@@ -499,7 +499,7 @@ export default function MyAIPilots({ embedded = false }) {
     const cover = access.pilot?.cover_url || access.presentation?.featured_image || access.presentation?.preview_images?.[0] || '';
     if (format === 'card') return visuals.card_image || cover;
     if (format === 'background') return visuals.background_type === 'color' ? '' : (visuals.background_image || '');
-    return visuals.hero_image || cover;
+    return visuals.hero_image || '';
   };
   const getBackgroundStyle = (access) => {
     const visuals = getVisuals(access);
