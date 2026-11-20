@@ -119,6 +119,7 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
   const [isPlaying, setIsPlaying] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
+  const [isExportingMp3, setIsExportingMp3] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState(null);
   const [showSaveVault, setShowSaveVault] = useState(false);
@@ -190,6 +191,27 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
     if (isPlaying) audioPlayerRef.current.pause();
     else audioPlayerRef.current.play();
     setIsPlaying(v => !v);
+  };
+
+  const handleExportMp3 = async () => {
+    if (!audioBlob) return;
+    setIsExportingMp3(true);
+    try {
+      const mp3Blob = await convertToMp3(audioBlob);
+      const url = URL.createObjectURL(mp3Blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `voice-recording-${Date.now()}.mp3`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('MP3 export failed:', error);
+      toast.error(t('Could not export MP3', 'Could not export MP3'));
+    } finally {
+      setIsExportingMp3(false);
+    }
   };
 
   const handleUpload = async () => {
@@ -291,7 +313,10 @@ export default function VoiceRecorder({ onRecordingComplete, onClose, production
                 <input aria-label="Selection end" type="range" min="0" max={Math.max(0.1, duration)} step="0.1" value={selectionEnd} onChange={e => setSelectionEnd(Math.max(Number(e.target.value), selectionStart + 0.1))} className="w-full accent-[#23c7be]" />
                 <div className="mt-2 flex gap-2"><button onClick={async () => { if (!audioBlob || selectionEnd <= selectionStart) return; setIsConverting(true); try { const decoded = await decodeWav(audioBlob); const a = Math.floor(selectionStart * decoded.sampleRate); const b = Math.floor(selectionEnd * decoded.sampleRate); const kept = new Float32Array(decoded.samples.length - (b - a)); kept.set(decoded.samples.subarray(0, a)); kept.set(decoded.samples.subarray(b), a); const blob = encodeWav24(kept, decoded.sampleRate); if (audioUrl) URL.revokeObjectURL(audioUrl); setAudioBlob(blob); setAudioUrl(URL.createObjectURL(blob)); setDuration(kept.length / decoded.sampleRate); setSelectionStart(0); setSelectionEnd(kept.length / decoded.sampleRate); } catch (error) { console.error(error); toast.error(t('Could not edit this recording', 'Could not edit this recording')); } finally { setIsConverting(false); } }} disabled={isConverting || selectionEnd <= selectionStart} className="flex-1 rounded-[3px] border border-white/10 px-2 py-2 text-xs disabled:opacity-40">{t('Delete selection', 'Delete selection')}</button><button onClick={() => { setSelectionStart(0); setSelectionEnd(duration); }} className="rounded-[3px] border border-white/10 px-2 py-2 text-xs">{t('Select all', 'Select all')}</button></div>
               </div>}
-              {audioUrl && <button onClick={handleUpload} disabled={isUploading || isSaving || isConverting} className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[.05] disabled:text-white/30">{isSaving ? <><Loader2 size={17} className="animate-spin" /> {t('Saving…', 'Saving…')}</> : isUploading ? <><Loader2 size={17} className="animate-spin" /> {t('Uploading…', 'Uploading…')}</> : <><Upload size={17} /> {t('Save WAV', 'Save WAV')}</>}</button>}
+              {audioUrl && <div className="space-y-2">
+                <button onClick={handleUpload} disabled={isUploading || isSaving || isConverting} className="flex w-full items-center justify-center gap-2 rounded-[3px] bg-[#23c7be] py-3.5 text-sm font-black text-[#071211] hover:bg-[#35d8cf] disabled:bg-white/[.05] disabled:text-white/30">{isSaving ? <><Loader2 size={17} className="animate-spin" /> {t('Saving…', 'Saving…')}</> : isUploading ? <><Loader2 size={17} className="animate-spin" /> {t('Uploading…', 'Uploading…')}</> : <><Upload size={17} /> {t('Save WAV', 'Save WAV')}</>}</button>
+                <button onClick={handleExportMp3} disabled={isExportingMp3 || isConverting} className="flex w-full items-center justify-center gap-2 rounded-[3px] border border-white/15 bg-white/[.04] py-2.5 text-xs font-bold text-white hover:bg-white/10 disabled:opacity-40">{isExportingMp3 ? <><Loader2 size={15} className="animate-spin" /> {t('Exporting…', 'Exporting…')}</> : t('Export MP3', 'Export MP3')}</button>
+              </div>}
             </aside>
           </div>
         </div>
