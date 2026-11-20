@@ -79,7 +79,6 @@ export default function DubbingStudio({ block, dossier, onClose, onComplete, pro
     if (!authenticatedUser?.id) throw Error(t('Sign in to upload the original video.', 'Connectez-vous pour téléverser la vidéo originale.'));
     const extension = (file.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '');
     if (!['mp4', 'mov', 'avi', 'm4v'].includes(extension)) throw Error(t('Use an MP4, MOV or AVI original video for assembly.', 'Utilisez une vidéo originale MP4, MOV ou AVI pour l’assemblage.'));
-    if (file.size > 250 * 1024 * 1024) throw Error(t('The original video exceeds the 250 MB assembly limit.', 'La vidéo originale dépasse la limite de 250 Mo pour l’assemblage.'));
     const path = `${authenticatedUser.id}/dubbing-assembly/${crypto.randomUUID()}.${extension}`;
     const projectUrl = import.meta.env.VITE_SUPABASE_URL;
     const endpoint = `${projectUrl.replace('.supabase.co', '.storage.supabase.co')}/storage/v1/upload/resumable`;
