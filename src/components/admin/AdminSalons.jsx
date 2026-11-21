@@ -31,6 +31,8 @@ export default function AdminSalons() {
 
   const { data: aiPilots = [] } = useQuery({
     queryKey: ['adminSocialAiPilots'],
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase.from('ai_pilots').select('id,name,status').order('name');
       if (error) throw error;
@@ -46,6 +48,8 @@ export default function AdminSalons() {
   const { data: salonLabels = [] } = useQuery({
     queryKey: ['salonLabels'],
     queryFn: () => base44.entities.SalonLabel.list(),
+    refetchInterval: 3000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: messages = [] } = useQuery({
