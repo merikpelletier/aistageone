@@ -294,12 +294,11 @@ function PilotDetails({ access, user, onMessage, userSets = [], initialSection =
   const storyGroups = [
     { id: 'characters', title: 'My Characters', description: 'Create your lead and supporting cast.', icon: Users, types: ['character_style', 'look'], type: 'character_style' },
     { id: 'locations', title: 'My Locations', description: 'Build the places where your story takes place.', icon: MapPin, types: ['location', 'set'], type: 'location' },
-    { id: 'scenes', title: 'My Scenes', description: 'Develop important moments in your story.', icon: FileText, types: ['scene'], type: 'scene' },
-    { id: 'episodes', title: 'My Episodes', description: 'Organize the episodes of your branch.', icon: Layers, types: ['episode'], type: 'episode' },
+    { id: 'episodes', title: 'My Episodes', description: 'Organize the episodes of your branch.', icon: Layers, types: ['episode', 'scene'], type: 'episode' },
     { id: 'other', title: 'Other Additions', description: 'Keep your existing music and creative directions.', icon: Plus, types: ['music_piece', 'visual_direction'], type: 'music_piece' },
   ];
   const selectedStoryGroup = storyGroups.find((group) => group.id === storyCategory) || storyGroups[0];
-  const storyAdditions = (access.extensions || []).filter((entry) => storyCategory === 'other' ? (entry.operation !== 'add' || !storyGroups.slice(0, 4).some((group) => group.types.includes(entry.extension_type))) : (entry.operation === 'add' && selectedStoryGroup.types.includes(entry.extension_type)));
+  const storyAdditions = (access.extensions || []).filter((entry) => storyCategory === 'other' ? (entry.operation !== 'add' || !storyGroups.slice(0, 3).some((group) => group.types.includes(entry.extension_type))) : (entry.operation === 'add' && selectedStoryGroup.types.includes(entry.extension_type)));
   const scenarioBlocks = blocks.filter((item) => item.block_key === 'scenario');
   const directionBlocks = blocks.filter((item) => !['series-direction', 'scenario'].includes(item.block_key));
   const renderBlocks = (items) => items.length ? items.map((block) => (
@@ -354,9 +353,9 @@ function PilotDetails({ access, user, onMessage, userSets = [], initialSection =
               })}{!sets.length && <p className="text-sm text-white/45">{t("No sets added.", "No sets added.")}</p>}</div></div></div>}
         {activeSection === 'direction' && <div className="space-y-3">{renderBlocks(directionBlocks)}</div>}
         {activeSection === 'additions' && <div className="max-w-5xl space-y-5">
-          <div><h3 className="text-lg font-semibold text-white">{t('My Story', 'My Story')}</h3><p className="mt-1 text-sm text-white/50">{t('Build your own branch with characters, locations, scenes and episodes. The official series remains unchanged.', 'Build your own branch with characters, locations, scenes and episodes. The official series remains unchanged.')}</p></div>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            {storyGroups.slice(0,4).map(({id,title,icon:Icon,types,type}) => <button key={id} type="button" onClick={() => { setStoryCategory(id); setDraft({ ...emptyDraft(), extension_type: type }); setFiles([]); }} className={`flex min-h-[92px] flex-col items-start justify-between border p-3 text-left transition-colors ${storyCategory === id ? 'border-[#23c7be] bg-[#23c7be]/10 text-white' : 'border-white/10 bg-white/[0.025] text-white/70 hover:bg-white/[0.06]'}`}>
+          <div><h3 className="text-lg font-semibold text-white">{t('My Story', 'My Story')}</h3><p className="mt-1 text-sm text-white/50">{t('Build your own branch with characters, locations and episodes. The official series remains unchanged.', 'Build your own branch with characters, locations, scenes and episodes. The official series remains unchanged.')}</p></div>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+            {storyGroups.slice(0,3).map(({id,title,icon:Icon,types,type}) => <button key={id} type="button" onClick={() => { setStoryCategory(id); setDraft({ ...emptyDraft(), extension_type: type }); setFiles([]); }} className={`flex min-h-[92px] flex-col items-start justify-between border p-3 text-left transition-colors ${storyCategory === id ? 'border-[#23c7be] bg-[#23c7be]/10 text-white' : 'border-white/10 bg-white/[0.025] text-white/70 hover:bg-white/[0.06]'}`}>
               <Icon size={19} className={storyCategory === id ? 'text-[#23c7be]' : 'text-white/55'} />
               <span className="flex w-full items-end justify-between gap-2 text-xs font-semibold sm:text-sm"><span>{t(title,title)}</span><span className="text-xs text-white/40">{(access.extensions || []).filter((entry) => entry.operation === 'add' && types.includes(entry.extension_type)).length}</span></span>
             </button>)}
@@ -367,7 +366,7 @@ function PilotDetails({ access, user, onMessage, userSets = [], initialSection =
           </div>
           {onOpenStoryTool && storyCategory !== 'other' && <div className="flex flex-wrap items-center gap-2 border border-white/10 bg-[#171b20] p-3">
             <p className="mr-auto text-xs text-white/60">{t('Create with AISTAGE.ONE tools', 'Create with AISTAGE.ONE tools')}</p>
-            {(storyCategory === 'characters' ? [['actor', 'Open Actor']] : storyCategory === 'locations' ? [['set', 'Open Set Designer']] : storyCategory === 'scenes' ? [['fotoplay', 'Open FotoPlay'], ['shoot', 'Open Shoot']] : [['fotoplay', 'Open FotoPlay'], ['shoot', 'Open Shoot']]).map(([tool,label]) => (
+            {(storyCategory === 'characters' ? [['actor', 'Open Actor']] : storyCategory === 'locations' ? [['set', 'Open Set Designer']] : [['fotoplay', 'Open FotoPlay'], ['shoot', 'Open Shoot']]).map(([tool,label]) => (
               <Button key={tool} type="button" className="border border-[#23c7be]/60 bg-[#23c7be]/10 text-[#7ce8df] hover:bg-[#23c7be]/20" onClick={() => onOpenStoryTool(tool, { pilotId: access.pilot?.id, accessId: access.id, category: storyCategory })}>{t(label,label)}</Button>
             ))}
           </div>}
@@ -394,7 +393,7 @@ function PilotDetails({ access, user, onMessage, userSets = [], initialSection =
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block space-y-2"><span className="text-xs font-semibold text-white/65">{t("Addition type", "Addition type")}</span>
                 <select value={selectedStoryGroup.types.includes(draft.extension_type) ? draft.extension_type : selectedStoryGroup.type} onChange={(event) => setDraft((current) => ({ ...current, extension_type: event.target.value, details: {} }))} className="w-full border border-white/20 bg-[#15191e] px-3 py-3 text-sm text-white">
-                  {[...EXTENSION_TYPES.filter(([value]) => selectedStoryGroup.types.includes(value)), ...selectedStoryGroup.types.filter((value) => !EXTENSION_TYPES.some(([type]) => type === value)).map((value) => [value, value === 'scene' ? 'Scene' : 'Episode'])].map(([value, label]) => <option key={value} value={value}>{t(label, label)}</option>)}
+                  {[...EXTENSION_TYPES.filter(([value]) => selectedStoryGroup.types.includes(value)), ...selectedStoryGroup.types.filter((value) => value !== 'scene' && !EXTENSION_TYPES.some(([type]) => type === value)).map((value) => [value, value === 'scene' ? 'Scene' : 'Episode'])].map(([value, label]) => <option key={value} value={value}>{t(label, label)}</option>)}
                 </select>
               </label>
               <label className="block space-y-2"><span className="text-xs font-semibold text-white/65">{t("Name *", "Name *")}</span>
