@@ -67,11 +67,14 @@ export default function Salons() {
   const { data: salonLabels = [] } = useQuery({
     queryKey: ['salonLabels'],
     queryFn: () => base44.entities.SalonLabel.list(),
-    refetchInterval: 2000,
+    refetchInterval: 3000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: aiPilots = [] } = useQuery({
     queryKey: ['socialPublishedAiPilots'],
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase.from('ai_pilots').select('id,name').eq('status', 'published').order('name');
       if (error) throw error;
@@ -382,12 +385,12 @@ export default function Salons() {
           <TabsContent value="aipilots" className="h-full mt-0">
             {selectedPilot ? (
               <div className="h-full flex flex-col">
-                <div className="flex flex-wrap gap-2 border-b border-white/10 p-2 text-white">
+                <div className="flex flex-wrap gap-2 border-b border-white/10 p-2 text-white relative z-10 bg-black/75">
                   <select
                     aria-label={t('social.pilots.selectTitle', 'Select AI Pilot')}
                     value={selectedPilot.id}
                     onChange={e => { setSelectedPilotId(e.target.value); setSelectedPilotRoom(''); }}
-                    className="min-w-0 flex-1 bg-neutral-950 border border-white/20 px-3 py-2 text-sm"
+                    className="min-w-[160px] flex-1 max-w-full h-9 bg-neutral-950 border border-white/20 px-3 py-1 text-sm"
                   >
                     {aiPilots.map(pilot => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}
                   </select>
@@ -395,7 +398,7 @@ export default function Salons() {
                     aria-label={t('social.pilots.selectRoom', 'Select room')}
                     value={activePilotRoom || ''}
                     onChange={e => setSelectedPilotRoom(e.target.value)}
-                    className="min-w-0 flex-1 bg-neutral-950 border border-white/20 px-3 py-2 text-sm"
+                    className="min-w-[140px] flex-1 max-w-full h-9 bg-neutral-950 border border-white/20 px-3 py-1 text-sm"
                   >
                     {pilotRooms.map(room => <option key={room.salon_id} value={room.salon_id}>{room.name}</option>)}
                   </select>
@@ -404,6 +407,7 @@ export default function Salons() {
                   <div className="relative flex-1 min-h-0">
                     <ChatRoom
                       key={activePilotRoom}
+                      embedded
                       salon={activePilotRoom}
                       salonStatus={getSalonStatus(activePilotRoom)}
                       userIdentifier={sessionData?.identifier}
