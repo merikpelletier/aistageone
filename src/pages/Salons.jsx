@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ChatRoom from '@/components/ChatRoom';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import IdentifierModal from '@/components/IdentifierModal';
 import ProfileEditor from '@/components/ProfileEditor';
 import PrivateConversations from '@/components/PrivateConversations';
@@ -11,6 +12,7 @@ import PrivateChat from '@/components/PrivateChat';
 import { User, Settings, Heart, MessageCircle, User as UserIcon, FileText } from 'lucide-react';
 
 export default function Salons() {
+  const t = useStudioTranslation();
   const [activeSalon, setActiveSalon] = useState('contact');
   const [showIdentifierModal, setShowIdentifierModal] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
@@ -221,7 +223,7 @@ export default function Salons() {
       <div className="relative z-10">
       {/* Header */}
       <div className="px-4 py-4 border-b border-white/10 flex items-center justify-between">
-        <h1 className="text-white text-xl font-extralight tracking-widest">CHAT ROOMS</h1>
+        <h1 className="text-white text-xl font-extralight tracking-widest">{t("social.rooms.title", "CHAT ROOMS")}</h1>
         
         {sessionData && (
           <div className="flex items-center gap-3">
@@ -246,7 +248,7 @@ export default function Salons() {
             className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white relative whitespace-nowrap flex items-center gap-2 lg:flex-1 lg:min-w-0 lg:h-9 lg:py-1 lg:px-2 lg:text-[11px] lg:gap-1.5"
           >
             <Heart size={24} className="text-white lg:w-3.5 lg:h-3.5" strokeWidth={2} />
-            <span className="hidden sm:inline lg:truncate">MESSAGE</span>
+            <span className="hidden sm:inline lg:truncate">{t("social.rooms.messages", "MESSAGE")}</span>
             {unreadCount > 0 && activeSalon !== 'messages' && (
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full animate-pulse" />
             )}
@@ -256,7 +258,7 @@ export default function Salons() {
             className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:flex-1 lg:min-w-0 lg:h-9 lg:py-1 lg:px-2 lg:text-[11px] lg:gap-1.5"
           >
             <MessageCircle size={24} className="text-white lg:w-3.5 lg:h-3.5" strokeWidth={2} />
-            <span className="hidden sm:inline lg:truncate">{getSalonLabel('contact') || 'CONTACT'}</span>
+            <span className="hidden sm:inline lg:truncate">{getSalonLabel("contact") || t("social.rooms.contact", "CONTACT")}</span>
           </TabsTrigger>
           {isRegistered && (
             <TabsTrigger
@@ -264,7 +266,7 @@ export default function Salons() {
               className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:flex-1 lg:min-w-0 lg:h-9 lg:py-1 lg:px-2 lg:text-[11px] lg:gap-1.5"
             >
               <UserIcon size={24} className="text-white lg:w-3.5 lg:h-3.5" strokeWidth={2} />
-              <span className="hidden sm:inline lg:truncate">{getSalonLabel('cochon') || 'CREATOR CHATS'}</span>
+              <span className="hidden sm:inline lg:truncate">{getSalonLabel("cochon") || t("social.rooms.creators", "CREATOR CHATS")}</span>
             </TabsTrigger>
           )}
           <TabsTrigger
@@ -272,7 +274,7 @@ export default function Salons() {
             className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:flex-1 lg:min-w-0 lg:h-9 lg:py-1 lg:px-2 lg:text-[11px] lg:gap-1.5"
           >
             <FileText size={24} className="text-white lg:w-3.5 lg:h-3.5" strokeWidth={2} />
-            <span className="hidden sm:inline lg:truncate">{getSalonLabel('commercial') || 'INFO'}</span>
+            <span className="hidden sm:inline lg:truncate">{getSalonLabel("commercial") || t("social.rooms.info", "INFO")}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -284,13 +286,13 @@ export default function Salons() {
               ) : (
                 <>
                   <p className="text-white text-sm mb-4">
-                    Get an identifier to view your private messages
+                    {t("social.rooms.identifierPrivate", "Get an identifier to view your private messages")}
                   </p>
                   <button
                     onClick={handleRequestIdentifier}
                     className="bg-white text-black hover:bg-white/90 font-light tracking-wider px-4 py-2 rounded-md transition-colors"
                   >
-                    GET AN IDENTIFIER
+                    {t("social.rooms.getIdentifier", "GET AN IDENTIFIER")}
                   </button>
                 </>
               )}
