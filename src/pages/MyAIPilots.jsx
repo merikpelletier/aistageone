@@ -643,10 +643,6 @@ export default function MyAIPilots({ embedded = false, onOpenStoryTool }) {
                           <button type="button" onClick={enter} className="inline-flex min-h-10 items-center justify-between gap-3 border border-[#6fece1]/60 bg-[#23c7be]/15 px-4 text-left text-[11px] font-bold uppercase tracking-[0.07em] text-[#9cf8ed] transition-colors hover:bg-[#23c7be]/25">{ui('Enter the universe','Entrer dans l’univers')}<ChevronDown size={16} className="-rotate-90"/></button>
                         </nav>
                         <div className="relative z-10 flex min-w-0 flex-1 items-end justify-between gap-4 px-6 py-8 xl:px-10">
-                          <div key={'world-title-'+active.id} className="relative z-20 max-w-[58%] animate-[world-fade_500ms_ease-out_both]">
-                            {visuals.logo_image ? <img src={visuals.logo_image} alt={getTitle(active)} className="max-h-[76px] max-w-[300px] object-contain object-left drop-shadow-[0_3px_15px_rgba(0,0,0,0.9)]"/> : <h2 className="text-xl font-bold uppercase tracking-[0.015em] text-white drop-shadow-[0_2px_12px_black] xl:text-2xl">{getTitle(active)}</h2>}
-                            {getDescription(active) && <p className="mt-2 line-clamp-2 max-w-[380px] text-xs font-normal leading-relaxed text-white/80 drop-shadow-[0_2px_9px_black]">{getDescription(active)}</p>}
-                          </div>
                           {cardImage && <div key={'art-'+active.id} className="pointer-events-none absolute bottom-5 right-5 top-5 z-10 flex w-[min(38%,270px)] items-center justify-center xl:right-10">
                             <img src={cardImage} alt={getTitle(active)} className="max-h-full max-w-full animate-[world-fade_700ms_ease-out_both] object-contain shadow-[0_16px_48px_rgba(0,0,0,0.65)]" />
                           </div>}
