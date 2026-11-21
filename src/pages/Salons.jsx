@@ -69,7 +69,8 @@ export default function Salons() {
   });
 
   const getSalonLabel = (salonId) => {
-    return salonLabels.find(l => l?.salon_id === salonId)?.name || '';
+    const name = salonLabels.find(l => l?.salon_id === salonId)?.name || '';
+    return name ? t(`social.room.label.${name}`, name) : '';
   };
 
   const pageBackground = (() => {
