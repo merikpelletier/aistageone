@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { base44, supabase } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,9 +14,18 @@ import { Settings, Mail, Heart, Users, BriefcaseBusiness, Clapperboard } from 'l
 
 export default function Salons() {
   const t = useStudioTranslation();
-  const [activeSalon, setActiveSalon] = useState('contact');
-  const [selectedPilotId, setSelectedPilotId] = useState('');
+  const location = useLocation();
+  const deepLink = new URLSearchParams(location.search);
+  const [activeSalon, setActiveSalon] = useState(() => deepLink.get('section') === 'aipilots' ? 'aipilots' : 'contact');
+  const [selectedPilotId, setSelectedPilotId] = useState(() => deepLink.get('section') === 'aipilots' ? (deepLink.get('pilotId') || '') : '');
   const [selectedPilotRoom, setSelectedPilotRoom] = useState('');
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('section') !== 'aipilots') return;
+    setActiveSalon('aipilots');
+    setSelectedPilotId(params.get('pilotId') || '');
+    setSelectedPilotRoom('');
+  }, [location.search]);
   const [showIdentifierModal, setShowIdentifierModal] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [privateChatWith, setPrivateChatWith] = useState(null);
