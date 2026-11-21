@@ -850,10 +850,6 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                     ))}
                     {!readOnly && <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => addSecondaryTheme(index)}><Plus size={14} className="mr-2"/>{t('social.themes.add', 'Add secondary theme')}</Button>}
                   </div>
-                  <div className="space-y-2">
-                    {input(t('social.themes.legacy', 'Creative Variations (existing notes)'), episode.creative_options, value => updateEpisode(index, { creative_options: value }), 3)}
-                    <p className="text-[11px] text-white/45">{t('social.themes.legacyHelper', 'Existing text is preserved and does not automatically authorize a spin-off theme.')}</p>
-                  </div>
                 </div>
               </details>
                 <div className="space-y-3 border border-white/10 p-3">
