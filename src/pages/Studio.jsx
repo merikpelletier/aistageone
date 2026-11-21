@@ -956,7 +956,7 @@ export default function Studio() {
 
       
 
-      {activeToolPanel === 'ai_pilots' && editingActor === null && <div className="absolute inset-0 z-20 bg-black">
+      {activeToolPanel === 'ai_pilots' && <div className={editingActor !== null ? 'hidden' : 'absolute inset-0 z-20 bg-black'}>
         <MyAIPilots embedded onOpenStoryTool={openPilotStoryTool} />
         {pilotStoryTool && <div className="fixed bottom-0 left-0 right-0 top-14 z-[700] flex flex-col overflow-y-auto bg-[#202328] lg:left-[var(--studio-toolbar-width)]">
           <div className="sticky top-0 z-40 flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-white/15 bg-[#17191d] px-4 py-2">
