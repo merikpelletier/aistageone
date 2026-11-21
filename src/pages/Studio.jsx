@@ -809,7 +809,8 @@ export default function Studio() {
       <>
       {activeViewBg && <div className="absolute inset-0 bg-black/40 pointer-events-none z-0" />}
       <div className="relative z-10">
-      {showVoiceRecorder && (
+      {editingActor !== null && !backgroundMode && <CharacterSheetEditor inlineWorkspace embedded key="actor-editor" sheet={editingActor || null} userEmail={user?.email} onOpenBackgroundGroup={() => setBackgroundMode(true)} onClose={() => setEditingActor(null)} />}
+      {editingActor === null && showVoiceRecorder && (
         <VoiceRecorder embedded onRecordingComplete={(file_url) => { setProducedMedia({ url: file_url, type: 'audio' }); setShowVoiceRecorder(false); }} onClose={() => setShowVoiceRecorder(false)} productionMethod={isInProductionContext ? productionMethod : null} block={isInProductionContext ? blockDetails?.block : null} character={isInProductionContext ? blockDetails?.character : null} episodePageId={kitPage?.id} blockId={blockDetails?.block?.id} user={user} />
       )}
 
@@ -981,10 +982,7 @@ export default function Studio() {
       )}
 
       <AnimatePresence>
-        {editingActor !== null && (backgroundMode ?
-          <BackgroundGroupEditor key="background-group-editor" sheet={null} userEmail={user?.email} onClose={() => setBackgroundMode(false)} /> :
-          <CharacterSheetEditor embedded key="actor-editor" sheet={editingActor || null} userEmail={user?.email} onOpenBackgroundGroup={() => setBackgroundMode(true)} onClose={() => setEditingActor(null)} />
-        )}
+        {editingActor !== null && backgroundMode && <BackgroundGroupEditor key="background-group-editor" sheet={null} userEmail={user?.email} onClose={() => setBackgroundMode(false)} />}
       </AnimatePresence>
       </div>
       </>
