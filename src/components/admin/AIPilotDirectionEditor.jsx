@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import AIPilotDirectionEditorBase from './AIPilotDirectionEditorBase';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import ScenarioSceneComposer from './ScenarioSceneComposer';
 
 const CONTROL_CLASS = 'bg-black/20 border-white/15 text-white placeholder:text-white/25 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[var(--studio-accent)]';
@@ -150,6 +151,7 @@ const VIDEO_PARTS = [
 ];
 
 function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCharacters = [], availableSets = [], availableLooks = [] }) {
+  const t = useStudioTranslation();
   const content = block.content || {};
   const stored = Array.isArray(content.scenarios) ? content.scenarios : [];
   const episodes = Array.from({ length: EPISODE_COUNT }, (_, index) => stored[index] || { id: `episode-${index + 1}`, title: '', premise: '', outline: '', scene_ideas: '', creative_options: '', parts: {} });
@@ -165,6 +167,19 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
   const updateEpisode = (index, patch) => updateContent({
     scenarios: [...episodes.map((ep, i) => i === index ? { ...ep, ...patch } : ep), ...stored.slice(EPISODE_COUNT)],
   });
+  const updateSecondaryThemes = (index, nextThemes) => updateEpisode(index, { secondary_themes: nextThemes });
+  const addSecondaryTheme = (index) => updateSecondaryThemes(index, [
+    ...(Array.isArray(episodes[index].secondary_themes) ? episodes[index].secondary_themes : []),
+    { id: makeId('theme'), title: '', description: '', enabled: false },
+  ]);
+  const editSecondaryTheme = (index, themeId, patch) => updateSecondaryThemes(
+    index,
+    (episodes[index].secondary_themes || []).map(theme => theme.id === themeId ? { ...theme, ...patch } : theme),
+  );
+  const removeSecondaryTheme = (index, themeId) => updateSecondaryThemes(
+    index,
+    (episodes[index].secondary_themes || []).filter(theme => theme.id !== themeId),
+  );
   const toggleSceneResource = (episodeIndex, partKey, field, resourceId) => {
     const episode = episodes[episodeIndex];
     const sceneResources = episode.scene_resources || {};
@@ -809,7 +824,36 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                   {input('Premise / Conflict', episode.premise, value => updateEpisode(index, { premise: value }), 3)}
                   {input('Story Development', episode.outline, value => updateEpisode(index, { outline: value }), 5)}
                   {input('Scene Inspirations', episode.scene_ideas, value => updateEpisode(index, { scene_ideas: value }), 4)}
-                  {input('Creative Variations', episode.creative_options, value => updateEpisode(index, { creative_options: value }), 3)}
+                  <div className="space-y-3 border-t border-white/10 pt-3">
+                    <h4 className="text-xs font-semibold text-white">{t('social.themes.heading', 'Participant spin-off themes')}</h4>
+                    {input(t('social.themes.main', 'Main episode theme'), episode.primary_theme, value => updateEpisode(index, { primary_theme: value }), 2)}
+                    <p className="text-[11px] text-white/50">{t('social.themes.helper', 'Every authorized secondary theme belongs to this episode’s main theme. Only enabled themes with a title are available for future spin-off registration.')}</p>
+                    {(Array.isArray(episode.secondary_themes) ? episode.secondary_themes : []).map((theme, themeIndex) => (
+                      <div key={theme.id} className="space-y-2 border border-white/15 bg-white/[0.02] p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-white/75">{t('social.themes.secondary', 'Secondary theme')} {themeIndex + 1}</span>
+                          {!readOnly && <button type="button" className={REMOVE_BUTTON_CLASS} title={t('social.themes.remove', 'Remove theme')} aria-label={t('social.themes.remove', 'Remove theme')} onClick={() => removeSecondaryTheme(index, theme.id)}><Trash2 size={15} /></button>}
+                        </div>
+                        <Input className={CONTROL_CLASS} disabled={readOnly} placeholder={t('social.themes.title', 'Theme title')} value={theme.title || ''} onChange={event => editSecondaryTheme(index, theme.id, { title: event.target.value, enabled: false })} />
+                        <Textarea className={CONTROL_CLASS} rows={2} disabled={readOnly} placeholder={t('social.themes.description', 'Creative guidance and limits')} value={theme.description || ''} onChange={event => editSecondaryTheme(index, theme.id, { description: event.target.value })} />
+                        <label className="flex items-center gap-2 text-xs text-white/75">
+                          <input
+                            type="checkbox"
+                            disabled={readOnly || !episode.primary_theme?.trim() || !theme.title?.trim()}
+                            checked={Boolean(theme.enabled && episode.primary_theme?.trim() && theme.title?.trim())}
+                            onChange={event => editSecondaryTheme(index, theme.id, { enabled: event.target.checked })}
+                            className="accent-teal-400"
+                          />
+                          {t('social.themes.authorize', 'Authorized for spin-offs')}
+                        </label>
+                      </div>
+                    ))}
+                    {!readOnly && <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => addSecondaryTheme(index)}><Plus size={14} className="mr-2"/>{t('social.themes.add', 'Add secondary theme')}</Button>}
+                  </div>
+                  <div className="space-y-2">
+                    {input(t('social.themes.legacy', 'Creative Variations (existing notes)'), episode.creative_options, value => updateEpisode(index, { creative_options: value }), 3)}
+                    <p className="text-[11px] text-white/45">{t('social.themes.legacyHelper', 'Existing text is preserved and does not automatically authorize a spin-off theme.')}</p>
+                  </div>
                 </div>
               </details>
                 <div className="space-y-3 border border-white/10 p-3">
