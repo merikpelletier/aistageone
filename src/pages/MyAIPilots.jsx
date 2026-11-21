@@ -573,22 +573,22 @@ export default function MyAIPilots({ embedded = false, onOpenStoryTool }) {
                     const offset = (index - activeIndex + library.length) % library.length;
                     return offset > library.length / 2 ? offset - library.length : offset;
                   };
-                  return <section aria-label={ui('Universe selection', 'Sélection des univers')} className="relative isolate min-h-[720px] overflow-hidden bg-[#05080d] text-white lg:min-h-[min(850px,calc(100vh-80px))]">
+                  return <section aria-label={ui('Universe selection', 'Sélection des univers')} className="relative isolate min-h-[660px] overflow-hidden bg-[#05080d] text-white lg:min-h-0">
                     <div className="pointer-events-none absolute inset-0 -z-30">
                       {image ? <img key={active.id} src={image} alt="" className="h-full w-full animate-[world-fade_700ms_ease-out_both] object-cover object-center opacity-80" /> : <div className="h-full w-full" style={{backgroundColor: getBackgroundStyle(active).backgroundColor}} />}
                     </div>
                     <div className="pointer-events-none absolute inset-0 -z-20 bg-[linear-gradient(0deg,#030608_0%,rgba(3,6,8,0.25)_42%,rgba(3,6,8,0.82)_100%)]" />
                     <div className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(ellipse_at_50%_45%,transparent_5%,rgba(0,0,0,0.7)_100%)]" />
                     <div className="pointer-events-none absolute inset-0 -z-10 opacity-25" style={{backgroundImage:'linear-gradient(90deg,transparent 49.9%,rgba(75,234,218,0.12) 50%,transparent 50.1%)',backgroundSize:'70px 100%'}} />
-                    <div className="flex min-h-[720px] flex-col lg:min-h-[min(850px,calc(100vh-80px))]">
-                      <header className="flex items-center justify-between gap-4 px-5 pb-4 pt-6 sm:px-10 sm:pt-8">
+                    <div className="flex min-h-[660px] flex-col lg:min-h-[480px]">
+                      <header className="flex items-center justify-between gap-4 px-5 pb-4 pt-6 sm:px-10 sm:pt-8 lg:px-8 lg:pb-2 lg:pt-5">
                         <div className="flex items-center gap-3">
                           <span className="relative flex h-8 w-8 items-center justify-center border border-[#6fece1]/65 bg-[#24c8bd]/15"><span className="h-2.5 w-2.5 rotate-45 bg-[#7cf5eb] shadow-[0_0_17px_#4dd9cf]"/></span>
                           <div><p className="text-sm font-black uppercase tracking-[0.25em] text-white">AI PILOTS</p><p className="text-[9px] font-semibold uppercase tracking-[0.25em] text-white/45">{ui('World selection', 'Sélection des mondes')}</p></div>
                         </div>
                         <div className="font-mono text-xs tracking-[0.2em] text-white/65">{String(activeIndex+1).padStart(2,'0')} <span className="text-[#65dcd2]">/</span> {String(library.length).padStart(2,'0')}</div>
                       </header>
-                      <div className="flex flex-1 flex-col items-center justify-center px-3 pb-4 pt-3 sm:px-8">
+                      <div className="flex flex-1 flex-col items-center justify-center px-3 pb-4 pt-3 sm:px-8 lg:hidden">
                         <div className="text-center">
                           <p className="text-[10px] font-black uppercase tracking-[0.32em] text-[#8df5e9]">{ui('Choose your story', 'Choisissez votre histoire')}</p>
                           <div className="mx-auto mt-3 h-px w-24 bg-gradient-to-r from-transparent via-[#57dbd0] to-transparent" />
@@ -620,6 +620,26 @@ export default function MyAIPilots({ embedded = false, onOpenStoryTool }) {
                           {visuals.logo_image ? <img src={visuals.logo_image} alt={getTitle(active)} className="mx-auto max-h-16 max-w-[70%] object-contain" /> : <h2 className="text-3xl font-black uppercase tracking-[-0.035em] drop-shadow-[0_3px_18px_black] sm:text-4xl">{getTitle(active)}</h2>}
                           {getDescription(active) && <p className="mx-auto mt-2 line-clamp-2 max-w-lg text-sm leading-relaxed text-white/75">{getDescription(active)}</p>}
                           <button type="button" onClick={enter} className="group mx-auto mt-5 inline-flex min-h-14 items-center gap-8 border border-[#95f3e7] bg-[#23c7be] px-8 py-3 text-sm font-black uppercase tracking-[0.12em] text-[#041011] shadow-[0_0_35px_rgba(35,199,190,0.28)] transition-all hover:scale-[1.04] hover:bg-[#96f7e9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{ui('Enter the universe', 'Entrer dans l’univers')} <ChevronDown size={19} className="-rotate-90"/></button>
+                        </div>
+                      </div>
+                      <div className="hidden flex-1 items-center justify-between gap-8 px-8 py-5 lg:flex xl:px-12">
+                        <div className="relative z-20 flex max-w-[520px] flex-1 flex-col items-start gap-4">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#7ce8df]">{ui('Choose your story', 'Choisissez votre histoire')}</p>
+                          {visuals.logo_image ? <img src={visuals.logo_image} alt={getTitle(active)} className="max-h-20 max-w-[310px] object-contain object-left" /> : <h2 className="text-2xl font-bold uppercase tracking-[0.015em] text-white xl:text-3xl">{getTitle(active)}</h2>}
+                          {getDescription(active) && <p className="line-clamp-2 max-w-md text-xs leading-relaxed text-white/70 xl:text-sm">{getDescription(active)}</p>}
+                          <button type="button" onClick={enter} className="inline-flex h-10 items-center gap-3 border border-[#7ce8df]/70 bg-[#23c7be] px-5 text-xs font-bold uppercase tracking-[0.08em] text-[#061818] hover:bg-[#98f5e8]">{ui('Enter the universe', 'Entrer dans l’univers')} <ChevronDown size={15} className="-rotate-90"/></button>
+                          {library.length > 1 && <div className="flex max-w-full items-center gap-2 overflow-x-auto pt-3">
+                            {library.map((entry) => <button key={entry.id} type="button" onClick={() => setPreviewUniverse(entry.id)} aria-current={entry.id === active.id ? 'true' : undefined} className={`flex shrink-0 items-center gap-2 border px-2 py-1.5 text-left ${entry.id === active.id ? 'border-[#7ce8df] bg-[#23c7be]/15' : 'border-white/20 bg-black/45 hover:border-white/60'}`}>
+                              {getImage(entry,'card') && <img src={getImage(entry,'card')} alt="" className="h-10 w-8 object-cover"/>}
+                              <span className="max-w-[120px] truncate text-[11px] font-semibold text-white/85">{getTitle(entry)}</span>
+                            </button>)}
+                          </div>}
+                        </div>
+                        <div className="relative flex h-[315px] w-[300px] shrink-0 items-center justify-end xl:w-[360px]">
+                          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(35,199,190,0.10),transparent_65%)]"/>
+                          <button type="button" onClick={enter} className="relative h-[290px] w-[210px] overflow-hidden border border-white/25 bg-black/70 shadow-[0_16px_50px_rgba(0,0,0,0.6)] hover:border-[#7ce8df]" aria-label={ui('Enter the universe','Entrer dans l’univers')+': '+getTitle(active)}>
+                            {cardImage ? <img src={cardImage} alt={getTitle(active)} className="h-full w-full object-cover"/> : <div className="flex h-full w-full items-center justify-center"><Bot size={40} className="text-white/30"/></div>}
+                          </button>
                         </div>
                       </div>
                       <footer className="flex items-center justify-between gap-3 border-t border-white/15 bg-black/45 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white/55 sm:px-10">
