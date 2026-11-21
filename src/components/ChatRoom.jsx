@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Send, Lock, Image as ImageIcon, Eye, Heart, MessageCircle, Share2, Check } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ProfileViewer from '@/components/ProfileViewer';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import UserGridDrawer from '@/components/UserGridDrawer';
 
 async function requireSupabaseUser() {
@@ -26,6 +27,7 @@ async function loadSalonRows(table, salon, limit) {
 }
 
 export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId, onRequestIdentifier, onOpenPrivateChat }) {
+  const t = useStudioTranslation();
   const [gridOpen, setGridOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [viewingProfile, setViewingProfile] = useState(null);
@@ -293,9 +295,9 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
         <div className="w-20 h-20 bg-black/10 rounded-3xl flex items-center justify-center mb-6">
           <Lock className="w-10 h-10 text-black" />
         </div>
-        <h3 className="text-black text-xl font-bold mb-3">Room Closed</h3>
+        <h3 className="text-black text-xl font-bold mb-3">{t("social.room.closed", "Room Closed")}</h3>
         <p className="text-black text-base">
-          {salonStatus.closed_message || "This room is temporarily closed."}
+          {salonStatus.closed_message || t("social.room.temporarilyClosed", "This room is temporarily closed.")}
         </p>
       </div>
     );
@@ -309,7 +311,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
           className="flex items-center gap-2 text-black hover:text-black font-medium text-sm transition-colors lg:text-xs lg:gap-1.5"
         >
           <Eye size={18} className="text-black lg:w-3.5 lg:h-3.5" />
-          <span>See who is online</span>
+          <span>{t("social.room.online", "See who is online")}</span>
         </button>
       </div>
 
@@ -414,7 +416,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
                     }`}
                   >
                     <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} className="lg:w-4 lg:h-4" />
-                    <span>{isLiked ? 'Liked' : 'Like'}{messageLikes.length > 0 ? ` ${messageLikes.length}` : ''}</span>
+                    <span>{isLiked ? t('social.room.liked', 'Liked') : t('social.room.like', 'Like')}{messageLikes.length > 0 ? ` ${messageLikes.length}` : ''}</span>
                   </button>
 
                   <button
@@ -424,7 +426,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
                     }`}
                   >
                     <MessageCircle size={18} className="lg:w-4 lg:h-4" />
-                    <span>Comment{messageComments.length > 0 ? ` ${messageComments.length}` : ''}</span>
+                    <span>{t("social.room.comment", "Comment")}{messageComments.length > 0 ? ` ${messageComments.length}` : ''}</span>
                   </button>
 
                   <button
@@ -432,13 +434,13 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
                     className="flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/5 transition-colors border-l border-white/10 lg:gap-1.5 lg:px-2 lg:py-2 lg:text-xs"
                   >
                     {copiedPostId === msg.id ? <Check size={18} className="lg:w-4 lg:h-4" /> : <Share2 size={18} className="lg:w-4 lg:h-4" />}
-                    <span>{copiedPostId === msg.id ? 'Copied' : 'Share'}</span>
+                    <span>{copiedPostId === msg.id ? t('social.room.copied', 'Copied') : t('social.room.share', 'Share')}</span>
                   </button>
                 </div>
 
                 {likeError && (
                   <div className="px-5 py-2 border-t border-red-500/30 bg-red-950/40 text-red-300 text-xs">
-                    Like error: {likeError}
+                    {t("social.room.likeError", "Like error")}: {likeError}
                   </div>
                 )}
 
@@ -470,14 +472,14 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
                             handleCommentSubmit(msg.id);
                           }
                         }}
-                        placeholder="Write a comment..."
+                        placeholder={t("social.room.writeComment", "Write a comment...")}
                         className="flex-1 bg-white text-black placeholder:text-black/50 border-white/20"
                       />
                       <button
                         onClick={() => handleCommentSubmit(msg.id)}
                         disabled={!(commentDrafts[msg.id] || '').trim() || commentMutation.isPending}
                         className="w-11 h-10 flex items-center justify-center bg-white text-black hover:bg-white/90 disabled:opacity-40 transition-colors"
-                        aria-label="Send comment"
+                        aria-label={t("social.room.sendComment", "Send comment")}
                       >
                         <Send size={17} />
                       </button>
@@ -497,7 +499,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
             onClick={onRequestIdentifier}
             className="w-full bg-black text-yellow-400 hover:bg-black/90 font-bold tracking-wide px-6 py-4 rounded-2xl transition-colors shadow-lg lg:h-8 lg:px-3 lg:py-0 lg:text-xs lg:rounded-md lg:shadow-none"
           >
-            GET AN IDENTIFIER TO PARTICIPATE
+            {t("social.room.identifierToParticipate", "GET AN IDENTIFIER TO PARTICIPATE")}
           </button>
         ) : (
           <div className="flex gap-3 lg:gap-1.5">
@@ -520,14 +522,14 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Your message..."
+              placeholder={t("social.room.yourMessage", "Your message...")}
               className="flex-1 bg-white border-black/10 text-black placeholder:text-black text-base font-medium rounded-2xl px-5 lg:hidden"
             />
             <Input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Your Post..."
+              placeholder={t("social.room.yourPost", "Your Post...")}
               className="hidden lg:block flex-1 h-8 bg-white border-black/10 text-black placeholder:text-black/55 text-xs font-medium rounded-md px-2.5"
             />
             <button
