@@ -167,7 +167,7 @@ function ScenarioGuide({ content, sets = [], extensions = [], userSets = [], onS
   );
 }
 
-function PilotDetails({ access, user, onMessage, userSets = [], initialSection = 'overview', hideTabs = false }) {
+function PilotDetails({ access, user, onMessage, userSets = [], initialSection = 'overview', hideTabs = false, onOpenStoryTool }) {
   const t = useStudioTranslation();
   const queryClient = useQueryClient();
   const emptyDraft = () => ({ extension_type: 'character_style', name: '', description: '', notes: '', details: {} });
@@ -365,6 +365,12 @@ function PilotDetails({ access, user, onMessage, userSets = [], initialSection =
             <div><h4 className="font-semibold text-white">{t(selectedStoryGroup.title, selectedStoryGroup.title)}</h4><p className="mt-1 text-xs text-white/50">{t(selectedStoryGroup.description, selectedStoryGroup.description)}</p></div>
             <button type="button" className="shrink-0 text-xs text-white/55 underline hover:text-white" onClick={() => { setStoryCategory('other'); setDraft({ ...emptyDraft(), extension_type: 'music_piece' }); setFiles([]); }}>{t('Other Additions','Other Additions')}</button>
           </div>
+          {onOpenStoryTool && storyCategory !== 'other' && <div className="flex flex-wrap items-center gap-2 border border-white/10 bg-[#171b20] p-3">
+            <p className="mr-auto text-xs text-white/60">{t('Create with AISTAGE.ONE tools', 'Create with AISTAGE.ONE tools')}</p>
+            {(storyCategory === 'characters' ? [['actor', 'Open Actor']] : storyCategory === 'locations' ? [['set', 'Open Set Designer']] : storyCategory === 'scenes' ? [['compose', 'Open Compose a Scene']] : [['fotoplay', 'Open FotoPlay'], ['shoot', 'Open Shoot']]).map(([tool,label]) => (
+              <Button key={tool} type="button" className="border border-[#23c7be]/60 bg-[#23c7be]/10 text-[#7ce8df] hover:bg-[#23c7be]/20" onClick={() => onOpenStoryTool(tool, { pilotId: access.pilot?.id, accessId: access.id, category: storyCategory })}>{t(label,label)}</Button>
+            ))}
+          </div>}
           <div className="grid gap-3 lg:grid-cols-2">
             {storyAdditions.map((extension) => {
               const content = extension.content || {};
@@ -417,7 +423,7 @@ function PilotDetails({ access, user, onMessage, userSets = [], initialSection =
   );
 }
 
-export default function MyAIPilots({ embedded = false }) {
+export default function MyAIPilots({ embedded = false, onOpenStoryTool }) {
   const t = useStudioTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -667,7 +673,7 @@ export default function MyAIPilots({ embedded = false }) {
             })()}
             {universeSection && <section id="universe-content" className="mt-4 border border-white/10 bg-[#111418] p-4 sm:p-6">
               <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3"><h2 className="text-lg font-semibold text-white">{ui('Universe', 'Univers')} / {getTitle(selected)}</h2><button type="button" onClick={() => setUniverseSection(null)} className="text-sm text-white/60 hover:text-white">{ui('Close', 'Fermer')} <X size={16} className="inline" /></button></div>
-              <PilotDetails key={selected.id + ':' + universeSection} access={selected} user={user} onMessage={setMessage} userSets={mySets} initialSection={universeSection} hideTabs />
+              <PilotDetails key={selected.id + ':' + universeSection} access={selected} user={user} onMessage={setMessage} userSets={mySets} initialSection={universeSection} hideTabs onOpenStoryTool={onOpenStoryTool} />
             </section>}
           </>
         )}
