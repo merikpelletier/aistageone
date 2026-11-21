@@ -538,7 +538,7 @@ export default function MyAIPilots({ embedded = false, onOpenStoryTool }) {
   };
 
   return (
-    <div className="min-h-screen w-full pb-20 text-white" style={getBackgroundStyle(selected || library.find((entry) => entry.id === previewUniverse) || library[0] || {})}>
+    <div className="min-h-screen w-full pb-20 text-white" style={selected ? getBackgroundStyle(selected) : { backgroundColor: '#05080d' }}>
       <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:py-8">
         {!embedded && <button type="button" onClick={() => navigate('/MemberDashboard')} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-white/60 hover:text-white"><ChevronLeft size={18} /> {t('Account', 'Account')}</button>}
         {(libraryError || message) && <div role="status" className={`mb-5 border p-4 text-sm ${libraryError ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-cyan-400/20 bg-cyan-400/10 text-cyan-100'}`}>{libraryError?.message || message}</div>}
@@ -575,7 +575,7 @@ export default function MyAIPilots({ embedded = false, onOpenStoryTool }) {
                   };
                   return <section aria-label={ui('Universe selection', 'Sélection des univers')} className="relative isolate min-h-[660px] overflow-hidden bg-[#05080d] text-white lg:min-h-0">
                     <div className="pointer-events-none absolute inset-0 -z-30">
-                      {image ? <img key={active.id} src={image} alt="" className="h-full w-full animate-[world-fade_700ms_ease-out_both] object-cover object-center opacity-80" /> : <div className="h-full w-full" style={{backgroundColor: getBackgroundStyle(active).backgroundColor}} />}
+                      <div className="h-full w-full bg-[radial-gradient(ellipse_at_75%_85%,rgba(46,66,70,0.22),transparent_55%),linear-gradient(125deg,#020508,#0b1116_65%,#05070a)]" />
                     </div>
                     <div className="pointer-events-none absolute inset-0 -z-20 bg-[linear-gradient(0deg,#030608_0%,rgba(3,6,8,0.25)_42%,rgba(3,6,8,0.82)_100%)]" />
                     <div className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(ellipse_at_50%_45%,transparent_5%,rgba(0,0,0,0.7)_100%)]" />
@@ -624,7 +624,7 @@ export default function MyAIPilots({ embedded = false, onOpenStoryTool }) {
                       </div>
                       <div className="relative hidden min-h-[390px] flex-1 overflow-hidden lg:flex">
                         <div className="pointer-events-none absolute inset-0">
-                          {(image || cardImage) && <img key={active.id} src={image || cardImage} alt="" className={`h-full w-full animate-[world-fade_700ms_ease-out_both] ${image ? 'object-cover object-center' : 'scale-110 object-cover object-center opacity-60 blur-xl'}`} />}
+                          <div className="h-full w-full bg-[radial-gradient(ellipse_at_70%_70%,rgba(36,88,88,0.15),transparent_62%),linear-gradient(110deg,#030608,#10151b)]" />
                           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,5,8,0.95)_0%,rgba(2,5,8,0.75)_26%,rgba(2,5,8,0.30)_55%,rgba(2,5,8,0.50)_100%)]"/>
                         </div>
                         <nav aria-label={ui('Universe selection','Sélection des univers')} className="relative z-20 flex w-[31%] min-w-[250px] max-w-[355px] flex-col gap-3 border-r border-white/10 bg-black/50 px-5 py-5 xl:px-7">
