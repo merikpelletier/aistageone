@@ -299,7 +299,7 @@ function PilotDetails({ access, user, onMessage, userSets = [], initialSection =
     { id: 'other', title: 'Other Additions', description: 'Keep your existing music and creative directions.', icon: Plus, types: ['music_piece', 'visual_direction'], type: 'music_piece' },
   ];
   const selectedStoryGroup = storyGroups.find((group) => group.id === storyCategory) || storyGroups[0];
-  const storyAdditions = (access.extensions || []).filter((entry) => entry.operation === 'add' && selectedStoryGroup.types.includes(entry.extension_type));
+  const storyAdditions = (access.extensions || []).filter((entry) => storyCategory === 'other' ? (entry.operation !== 'add' || !storyGroups.slice(0, 4).some((group) => group.types.includes(entry.extension_type))) : (entry.operation === 'add' && selectedStoryGroup.types.includes(entry.extension_type)));
   const scenarioBlocks = blocks.filter((item) => item.block_key === 'scenario');
   const directionBlocks = blocks.filter((item) => !['series-direction', 'scenario'].includes(item.block_key));
   const renderBlocks = (items) => items.length ? items.map((block) => (
