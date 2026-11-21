@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, supabase } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,11 +9,13 @@ import IdentifierModal from '@/components/IdentifierModal';
 import ProfileEditor from '@/components/ProfileEditor';
 import PrivateConversations from '@/components/PrivateConversations';
 import PrivateChat from '@/components/PrivateChat';
-import { Settings, Mail, Heart, Users, BriefcaseBusiness } from 'lucide-react';
+import { Settings, Mail, Heart, Users, BriefcaseBusiness, Clapperboard } from 'lucide-react';
 
 export default function Salons() {
   const t = useStudioTranslation();
   const [activeSalon, setActiveSalon] = useState('contact');
+  const [selectedPilotId, setSelectedPilotId] = useState('');
+  const [selectedPilotRoom, setSelectedPilotRoom] = useState('');
   const [showIdentifierModal, setShowIdentifierModal] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [privateChatWith, setPrivateChatWith] = useState(null);
@@ -67,6 +69,24 @@ export default function Salons() {
     queryFn: () => base44.entities.SalonLabel.list(),
     refetchInterval: 2000,
   });
+
+  const { data: aiPilots = [] } = useQuery({
+    queryKey: ['socialPublishedAiPilots'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('ai_pilots').select('id,name').eq('status', 'published').order('name');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  const selectedPilot = aiPilots.find(p => p.id === selectedPilotId) || aiPilots[0];
+  const pilotRoomPrefix = selectedPilot ? `aipilot:${selectedPilot.id}:` : '';
+  const pilotRooms = selectedPilot ? [
+    { salon_id: `${pilotRoomPrefix}general`, name: t('social.pilots.general', 'General') },
+    ...salonLabels.filter(l => l.salon_id?.startsWith(pilotRoomPrefix) && l.salon_id !== `${pilotRoomPrefix}general`)
+  ] : [];
+  const activePilotRoom = pilotRooms.some(room => room.salon_id === selectedPilotRoom)
+    ? selectedPilotRoom : pilotRooms[0]?.salon_id;
 
   const getSalonLabel = (salonId) => {
     const name = salonLabels.find(l => l?.salon_id === salonId)?.name || '';
@@ -285,6 +305,15 @@ export default function Salons() {
             <BriefcaseBusiness size={18} className="shrink-0 lg:w-4 lg:h-4" />
             <span className="hidden sm:inline truncate">{t('social.nav.brands', 'Brands')}</span>
           </TabsTrigger>
+          <TabsTrigger
+            value="aipilots"
+            title={t('social.nav.aipilots', 'AI PILOTS')}
+            aria-label={t('social.nav.aipilots', 'AI PILOTS')}
+            className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-3 text-xs font-medium data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap lg:h-9 lg:py-1"
+          >
+            <Clapperboard size={18} className="shrink-0 lg:w-4 lg:h-4" />
+            <span className="hidden sm:inline truncate">{t('social.nav.aipilots', 'AI PILOTS')}</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="messages" className="h-full mt-0">
@@ -350,6 +379,45 @@ export default function Salons() {
             onOpenPrivateChat={setPrivateChatWith}
           />
         </TabsContent>
+          <TabsContent value="aipilots" className="h-full mt-0">
+            {selectedPilot ? (
+              <div className="h-full flex flex-col">
+                <div className="flex flex-wrap gap-2 border-b border-white/10 p-2 text-white">
+                  <select
+                    aria-label={t('social.pilots.selectTitle', 'Select AI Pilot')}
+                    value={selectedPilot.id}
+                    onChange={e => { setSelectedPilotId(e.target.value); setSelectedPilotRoom(''); }}
+                    className="min-w-0 flex-1 bg-neutral-950 border border-white/20 px-3 py-2 text-sm"
+                  >
+                    {aiPilots.map(pilot => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}
+                  </select>
+                  <select
+                    aria-label={t('social.pilots.selectRoom', 'Select room')}
+                    value={activePilotRoom || ''}
+                    onChange={e => setSelectedPilotRoom(e.target.value)}
+                    className="min-w-0 flex-1 bg-neutral-950 border border-white/20 px-3 py-2 text-sm"
+                  >
+                    {pilotRooms.map(room => <option key={room.salon_id} value={room.salon_id}>{room.name}</option>)}
+                  </select>
+                </div>
+                {activePilotRoom && (
+                  <div className="relative flex-1 min-h-0">
+                    <ChatRoom
+                      key={activePilotRoom}
+                      salon={activePilotRoom}
+                      salonStatus={getSalonStatus(activePilotRoom)}
+                      userIdentifier={sessionData?.identifier}
+                      sessionId={sessionData?.sessionId}
+                      onRequestIdentifier={handleRequestIdentifier}
+                      onOpenPrivateChat={setPrivateChatWith}
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="p-6 text-sm text-white/70">{t('social.pilots.noTitles', 'No AI Pilots available.')}</p>
+            )}
+          </TabsContent>
         </Tabs>
 
         {/* Private Chat */}
