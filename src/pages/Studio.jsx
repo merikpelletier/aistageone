@@ -953,7 +953,7 @@ export default function Studio() {
 
       {activeToolPanel === 'ai_pilots' && <div className="absolute inset-0 z-20 bg-black">
         <MyAIPilots embedded onOpenStoryTool={openPilotStoryTool} />
-        {pilotStoryTool && <div className="absolute inset-0 z-30 flex min-h-full flex-col bg-[#202328]">
+        {pilotStoryTool && <div className="fixed inset-0 z-[6000] flex flex-col overflow-y-auto bg-[#202328]">
           <div className="sticky top-0 z-40 flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-white/15 bg-[#17191d] px-4 py-2">
             <span className="text-xs font-bold uppercase tracking-wider text-white">{pilotStoryTool === 'set' ? studioT('Open Set Designer','Set Designer') : pilotStoryTool === 'compose' ? studioT('Open Compose a Scene','Compose a Scene') : pilotStoryTool === 'fotoplay' ? studioT('Open FotoPlay','FotoPlay') : studioT('Open Shoot','Shoot')}</span>
             <button type="button" onClick={() => setPilotStoryTool(null)} className="inline-flex items-center gap-2 border border-white/20 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10"><ChevronLeft size={15}/>{studioT('Back to My Story','Back to My Story')}</button>
