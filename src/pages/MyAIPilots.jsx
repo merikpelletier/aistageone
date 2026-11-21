@@ -367,7 +367,7 @@ function PilotDetails({ access, user, onMessage, userSets = [], initialSection =
           </div>
           {onOpenStoryTool && storyCategory !== 'other' && <div className="flex flex-wrap items-center gap-2 border border-white/10 bg-[#171b20] p-3">
             <p className="mr-auto text-xs text-white/60">{t('Create with AISTAGE.ONE tools', 'Create with AISTAGE.ONE tools')}</p>
-            {(storyCategory === 'characters' ? [['actor', 'Open Actor']] : storyCategory === 'locations' ? [['set', 'Open Set Designer']] : storyCategory === 'scenes' ? [['compose', 'Open Compose a Scene']] : [['fotoplay', 'Open FotoPlay'], ['shoot', 'Open Shoot']]).map(([tool,label]) => (
+            {(storyCategory === 'characters' ? [['actor', 'Open Actor']] : storyCategory === 'locations' ? [['set', 'Open Set Designer']] : storyCategory === 'scenes' ? [['fotoplay', 'Open FotoPlay'], ['shoot', 'Open Shoot']] : [['fotoplay', 'Open FotoPlay'], ['shoot', 'Open Shoot']]).map(([tool,label]) => (
               <Button key={tool} type="button" className="border border-[#23c7be]/60 bg-[#23c7be]/10 text-[#7ce8df] hover:bg-[#23c7be]/20" onClick={() => onOpenStoryTool(tool, { pilotId: access.pilot?.id, accessId: access.id, category: storyCategory })}>{t(label,label)}</Button>
             ))}
           </div>}
