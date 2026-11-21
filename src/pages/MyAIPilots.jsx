@@ -514,7 +514,7 @@ export default function MyAIPilots({ embedded = false }) {
 
   return (
     <div className="min-h-screen w-full pb-20 text-white" style={getBackgroundStyle(selected || library.find((entry) => entry.id === previewUniverse) || library[0] || {})}>
-      <main className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:py-8">
+      <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:py-8">
         {!embedded && <button type="button" onClick={() => navigate('/MemberDashboard')} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-white/60 hover:text-white"><ChevronLeft size={18} /> {t('Account', 'Account')}</button>}
         {(libraryError || message) && <div role="status" className={`mb-5 border p-4 text-sm ${libraryError ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-cyan-400/20 bg-cyan-400/10 text-cyan-100'}`}>{libraryError?.message || message}</div>}
 
@@ -651,7 +651,7 @@ export default function MyAIPilots({ embedded = false }) {
             </section>}
           </>
         )}
-      </main>
+      </div>
     </div>
   );
 }
