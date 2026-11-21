@@ -1,97 +1,97 @@
 /* Actor workspace — visual unification only.
-   CharacterSheetEditor renders directly under document.body via createPortal. */
+   CharacterSheetEditor uses its original styles both in the Studio workspace and in standalone portal mode. */
 
-body > div.fixed.z-\[1000\] {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) {
   background: var(--studio-bg) !important;
 }
 
-body > div.fixed.z-\[1000\] > header {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) > header {
   background: var(--studio-surface) !important;
   border-bottom-color: var(--studio-border) !important;
   padding-top: 12px !important;
   padding-bottom: 12px !important;
 }
 
-body > div.fixed.z-\[1000\] > header > div:first-child {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) > header > div:first-child {
   display: none !important;
 }
 
-body > div.fixed.z-\[1000\] > header .bg-amber-300 {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) > header .bg-amber-300 {
   background: rgba(35,199,190,0.12) !important;
   border: 1px solid rgba(35,199,190,0.35) !important;
   color: var(--studio-accent) !important;
   border-radius: 3px !important;
 }
 
-body > div.fixed.z-\[1000\] > header .text-amber-300 {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) > header .text-amber-300 {
   color: var(--studio-accent) !important;
 }
 
-body > div.fixed.z-\[1000\] .max-w-7xl.grid {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) .max-w-7xl.grid {
   grid-template-columns: 280px minmax(0, 1fr) !important;
   gap: 16px !important;
   padding-top: 16px !important;
   padding-bottom: 88px !important;
 }
 
-body > div.fixed.z-\[1000\] aside > div,
-body > div.fixed.z-\[1000\] main > section {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) aside > div,
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section {
   border-radius: 4px !important;
   border-color: var(--studio-border) !important;
   background: var(--studio-surface) !important;
   box-shadow: none !important;
 }
 
-body > div.fixed.z-\[1000\] aside > div > div:first-child {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) aside > div > div:first-child {
   background: var(--studio-surface-2) !important;
 }
 
-body > div.fixed.z-\[1000\] aside .rounded-full {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) aside .rounded-full {
   border-radius: 3px !important;
 }
 
-body > div.fixed.z-\[1000\] main > section {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section {
   padding: 18px !important;
 }
 
-body > div.fixed.z-\[1000\] main > section + section {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section + section {
   margin-top: 14px !important;
 }
 
-body > div.fixed.z-\[1000\] main span.bg-amber-300,
-body > div.fixed.z-\[1000\] .bg-amber-300 {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) main span.bg-amber-300,
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) .bg-amber-300 {
   background: rgba(35,199,190,0.12) !important;
   border: 1px solid rgba(35,199,190,0.35) !important;
   color: var(--studio-accent) !important;
   border-radius: 3px !important;
 }
 
-body > div.fixed.z-\[1000\] .text-amber-300,
-body > div.fixed.z-\[1000\] .text-yellow-400 {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) .text-amber-300,
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) .text-yellow-400 {
   color: var(--studio-accent) !important;
 }
 
-body > div.fixed.z-\[1000\] main input,
-body > div.fixed.z-\[1000\] main textarea,
-body > div.fixed.z-\[1000\] main select {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) main input,
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) main textarea,
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) main select {
   border-radius: 3px !important;
 }
 
-body > div.fixed.z-\[1000\] main input:focus,
-body > div.fixed.z-\[1000\] main textarea:focus,
-body > div.fixed.z-\[1000\] main select:focus {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) main input:focus,
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) main textarea:focus,
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) main select:focus {
   border-color: var(--studio-accent) !important;
 }
 
-body > div.fixed.z-\[1000\] .rounded-\[28px\],
-body > div.fixed.z-\[1000\] .rounded-2xl,
-body > div.fixed.z-\[1000\] .rounded-xl {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) .rounded-\[28px\],
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) .rounded-2xl,
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) .rounded-xl {
   border-radius: 4px !important;
 }
 
-body > div.fixed.z-\[1000\] button.bg-amber-300,
-body > div.fixed.z-\[1000\] button.bg-yellow-400,
-body > div.fixed.z-\[1000\] button[class*="from-amber-300"] {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) button.bg-amber-300,
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) button.bg-yellow-400,
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) button[class*="from-amber-300"] {
   background: var(--studio-accent) !important;
   border: 1px solid var(--studio-accent) !important;
   color: #071211 !important;
@@ -99,125 +99,125 @@ body > div.fixed.z-\[1000\] button[class*="from-amber-300"] {
   box-shadow: none !important;
 }
 
-body > div.fixed.z-\[1000\] button.bg-cyan-300 {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) button.bg-cyan-300 {
   background: rgba(35,199,190,0.12) !important;
   border: 1px solid rgba(35,199,190,0.35) !important;
   color: var(--studio-accent) !important;
   border-radius: 3px !important;
 }
 
-body > div.fixed.z-\[1000\] > footer {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) > footer {
   background: rgba(23,25,29,0.96) !important;
   border-top-color: var(--studio-border) !important;
   padding-top: 10px !important;
   padding-bottom: 10px !important;
 }
 
-body > div.fixed.z-\[1000\] > footer button {
+:is(body > div.fixed.z-\[1000\], .actor-studio-inline) > footer button {
   min-height: 42px !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
 }
 
 @media (max-width: 1100px) {
-  body > div.fixed.z-\[1000\] .max-w-7xl.grid {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) .max-w-7xl.grid {
     grid-template-columns: 250px minmax(0, 1fr) !important;
   }
 }
 
 @media (max-width: 1023px) {
-  body > div.fixed.z-\[1000\] .max-w-7xl.grid {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) .max-w-7xl.grid {
     grid-template-columns: 1fr !important;
   }
 }
 
 /* Desktop Actor workspace: compact editorial layout, without changing tablet/mobile. */
 @media (min-width: 1024px) {
-  body > div.fixed.z-\[1000\] > header {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) > header {
     padding: 8px 16px !important;
   }
-  body > div.fixed.z-\[1000\] > header .max-w-7xl > div:first-child {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) > header .max-w-7xl > div:first-child {
     gap: 10px !important;
   }
-  body > div.fixed.z-\[1000\] > header .h-11.w-11 {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) > header .h-11.w-11 {
     width: 30px !important;
     height: 30px !important;
   }
-  body > div.fixed.z-\[1000\] > header h2 {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) > header h2 {
     font-size: 17px !important;
     line-height: 1.3 !important;
   }
-  body > div.fixed.z-\[1000\] .max-w-7xl.grid {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) .max-w-7xl.grid {
     grid-template-columns: 210px minmax(0, 1fr) !important;
     gap: 12px !important;
     padding: 12px 16px 76px !important;
   }
-  body > div.fixed.z-\[1000\] main {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main {
     gap: 10px !important;
   }
-  body > div.fixed.z-\[1000\] main > section {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section {
     padding: 12px !important;
   }
-  body > div.fixed.z-\[1000\] main > section + section {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section + section {
     margin-top: 10px !important;
   }
-  body > div.fixed.z-\[1000\] main > section > div:first-child {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section > div:first-child {
     margin-bottom: 12px !important;
     gap: 8px !important;
   }
-  body > div.fixed.z-\[1000\] main > section > div:first-child h3 {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section > div:first-child h3 {
     font-size: 15px !important;
     line-height: 1.25 !important;
   }
-  body > div.fixed.z-\[1000\] main > section > div:first-child p {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section > div:first-child p {
     font-size: 12px !important;
     line-height: 1.4 !important;
   }
-  body > div.fixed.z-\[1000\] main > section > div:first-child > span {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section > div:first-child > span {
     width: 26px !important;
     height: 26px !important;
     font-size: 12px !important;
   }
-  body > div.fixed.z-\[1000\] main > section .gap-4 {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section .gap-4 {
     gap: 10px !important;
   }
-  body > div.fixed.z-\[1000\] main > section input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
-  body > div.fixed.z-\[1000\] main > section textarea,
-  body > div.fixed.z-\[1000\] main > section select {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section textarea,
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section select {
     font-size: 13px !important;
     padding: 8px 10px !important;
     line-height: 1.35 !important;
   }
-  body > div.fixed.z-\[1000\] main > section label {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section label {
     font-size: 11px;
   }
-  body > div.fixed.z-\[1000\] main > section button:not([class*="absolute"]):not([class*="fixed"]),
-  body > div.fixed.z-\[1000\] main > section label.cursor-pointer {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section button:not([class*="absolute"]):not([class*="fixed"]),
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section label.cursor-pointer {
     min-height: 30px;
     padding: 6px 10px;
     font-size: 12px;
     line-height: 1.2;
   }
-  body > div.fixed.z-\[1000\] main > section .min-w-64 {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) main > section .min-w-64 {
     min-width: 180px;
   }
-  body > div.fixed.z-\[1000\] aside .p-5 {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) aside .p-5 {
     padding: 12px !important;
   }
-  body > div.fixed.z-\[1000\] aside .text-2xl {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) aside .text-2xl {
     font-size: 17px !important;
   }
-  body > div.fixed.z-\[1000\] aside .mt-4 {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) aside .mt-4 {
     margin-top: 10px !important;
   }
-  body > div.fixed.z-\[1000\] aside .py-2 {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) aside .py-2 {
     padding-top: 5px !important;
     padding-bottom: 5px !important;
   }
-  body > div.fixed.z-\[1000\] > footer {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) > footer {
     padding: 7px 16px !important;
   }
-  body > div.fixed.z-\[1000\] > footer button {
+  :is(body > div.fixed.z-\[1000\], .actor-studio-inline) > footer button {
     min-height: 34px !important;
     padding: 6px 12px !important;
     font-size: 12px !important;
