@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, supabase } from '@/api/base44Client';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { MessageSquare, Trash2, Edit2 } from 'lucide-react';
+import { MessageSquare, Trash2, Edit2, Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const SALON_IDS = [
@@ -24,7 +24,19 @@ export default function AdminSalons() {
   const [editingDesc, setEditingDesc] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [uploadingBg, setUploadingBg] = useState(false);
+  const [pilotRoomTitleId, setPilotRoomTitleId] = useState('');
+  const [newPilotRoomName, setNewPilotRoomName] = useState('');
+  const [pilotRoomError, setPilotRoomError] = useState('');
   const queryClient = useQueryClient();
+
+  const { data: aiPilots = [] } = useQuery({
+    queryKey: ['adminSocialAiPilots'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('ai_pilots').select('id,name,status').order('name');
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
   const { data: salonStatuses = [] } = useQuery({
     queryKey: ['salonStatuses'],
@@ -81,6 +93,27 @@ export default function AdminSalons() {
       queryClient.invalidateQueries({ queryKey: ['salonLabels'] });
       setEditDialogOpen(false);
     }
+  });
+
+  const selectedPilot = aiPilots.find(p => p.id === pilotRoomTitleId) || aiPilots.find(p => p.status === 'published') || aiPilots[0];
+  const pilotPrefix = selectedPilot ? `aipilot:${selectedPilot.id}:` : '';
+  const pilotRooms = selectedPilot ? [
+    { salon_id: `${pilotPrefix}general`, name: t('social.pilots.general', 'General') },
+    ...salonLabels.filter(label => label.salon_id?.startsWith(pilotPrefix) && label.salon_id !== `${pilotPrefix}general`)
+  ] : [];
+
+  const createPilotRoomMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedPilot || !newPilotRoomName.trim()) return;
+      const salonId = `${pilotPrefix}${crypto.randomUUID()}`;
+      await base44.entities.SalonLabel.create({ salon_id: salonId, name: newPilotRoomName.trim(), description: '' });
+    },
+    onSuccess: () => {
+      setNewPilotRoomName('');
+      setPilotRoomError('');
+      queryClient.invalidateQueries({ queryKey: ['salonLabels'] });
+    },
+    onError: error => setPilotRoomError(error?.message || 'Unable to create room.')
   });
 
   const backgroundRecord = salonLabels.find(s => s.salon_id === PAGE_BACKGROUND_KEY);
@@ -311,6 +344,59 @@ export default function AdminSalons() {
             </div>
           );
         })}
+      </div>
+
+      {/* AI Pilot rooms: titles are drawn from the existing AI Pilots catalog. */}
+      <div className="bg-neutral-950 border border-white/10 p-4 mb-8 space-y-4">
+        <h3 className="text-white text-sm font-semibold">{t('social.nav.aipilots', 'AI PILOTS')}</h3>
+        <select
+          aria-label={t('social.pilots.selectTitle', 'Select AI Pilot')}
+          value={selectedPilot?.id || ''}
+          onChange={event => setPilotRoomTitleId(event.target.value)}
+          className="w-full bg-neutral-900 border border-white/20 text-white px-3 py-2 text-sm"
+        >
+          {aiPilots.map(pilot => (
+            <option key={pilot.id} value={pilot.id}>{pilot.name}{pilot.status !== 'published' ? ' (draft)' : ''}</option>
+          ))}
+        </select>
+        {selectedPilot && (
+          <>
+            <div className="space-y-2">
+              {pilotRooms.map(room => {
+                const status = getSalonStatus(room.salon_id);
+                return (
+                  <div key={room.salon_id} className="flex gap-3 items-center justify-between border border-white/10 px-3 py-2">
+                    <span className="text-white text-sm truncate">{room.name}</span>
+                    <div className="flex gap-2 items-center shrink-0">
+                      {room.salon_id !== `${pilotPrefix}general` && (
+                        <button type="button" aria-label={t('social.admin.editInfo', 'Edit Salon Info')} onClick={() => openEditDialog(room.salon_id)} className="text-white p-1"><Edit2 size={15}/></button>
+                      )}
+                      <span className="text-xs text-white/70">{status.is_open === false ? t('social.admin.closed', 'Closed') : t('social.admin.open', 'Open')}</span>
+                      <Switch
+                        checked={status.is_open !== false}
+                        onCheckedChange={checked => updateStatusMutation.mutate({ salon: room.salon_id, is_open: checked, closed_message: status.closed_message })}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={newPilotRoomName}
+                onChange={event => setNewPilotRoomName(event.target.value)}
+                placeholder={t('social.pilots.newRoom', 'New room name')}
+                className="bg-neutral-900 border-white/20 text-white"
+              />
+              <Button
+                disabled={!newPilotRoomName.trim() || createPilotRoomMutation.isPending}
+                onClick={() => createPilotRoomMutation.mutate()}
+                className="bg-white text-black hover:bg-white/90 shrink-0"
+              ><Plus size={16} className="mr-1"/>{t('social.pilots.createRoom', 'Create room')}</Button>
+            </div>
+            {pilotRoomError && <p role="alert" className="text-red-400 text-xs">{pilotRoomError}</p>}
+          </>
+        )}
       </div>
 
       {/* Recent Messages */}
