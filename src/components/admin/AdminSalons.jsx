@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ const SALON_IDS = [
 const PAGE_BACKGROUND_KEY = '_page_background';
 
 export default function AdminSalons() {
+  const t = useStudioTranslation();
   const [editingSalon, setEditingSalon] = useState(null);
   const [editingName, setEditingName] = useState('');
   const [editingDesc, setEditingDesc] = useState('');
@@ -163,25 +165,25 @@ export default function AdminSalons() {
 
   return (
     <div>
-      <h2 className="text-white text-lg font-light mb-6">Salon Management</h2>
+      <h2 className="text-white text-lg font-light mb-6">{t('social.admin.management', 'Salon Management')}</h2>
 
       {/* Page Background */}
       <div className="bg-neutral-950 border border-white/10 rounded-sm p-4 mb-8">
-        <h3 className="text-white font-light mb-4">Chat Rooms Page Background</h3>
+        <h3 className="text-white font-light mb-4">{t('social.admin.pageBackground', 'Chat Rooms Page Background')}</h3>
         <div className="flex flex-col md:flex-row gap-6">
           <div className="flex-shrink-0">
             <div className="w-48 h-28 bg-neutral-900 border border-white/10 rounded-sm overflow-hidden flex items-center justify-center">
               {backgroundSettings.image_url ? (
                 <img src={backgroundSettings.image_url} alt="Background preview" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-white/40 text-xs">No background set</span>
+                <span className="text-white/40 text-xs">{t('social.admin.noBackground', 'No background set')}</span>
               )}
             </div>
             <div className="flex gap-2 mt-3">
               <label className="cursor-pointer">
                 <input type="file" accept="image/*" onChange={handleBackgroundUpload} className="hidden" />
                 <span className="inline-block bg-white text-black hover:bg-white/90 text-xs font-light px-3 py-2 rounded-md">
-                  {uploadingBg ? 'Uploading...' : 'Upload image'}
+                  {uploadingBg ? t('social.admin.uploading', 'Uploading...') : t('social.admin.uploadImage', 'Upload image')}
                 </span>
               </label>
               {backgroundSettings.image_url && (
@@ -191,14 +193,14 @@ export default function AdminSalons() {
                   onClick={handleRemoveBackground}
                   className="border-red-900/50 text-red-400 hover:bg-red-900/20"
                 >
-                  Remove
+                  {t('social.admin.remove', 'Remove')}
                 </Button>
               )}
             </div>
           </div>
           <div className="flex-1 space-y-4">
             <div>
-              <Label className="text-white text-sm mb-2 block">Overlay darkness ({Math.round((backgroundSettings.overlay ?? 0.5) * 100)}%)</Label>
+              <Label className="text-white text-sm mb-2 block">{t('social.admin.overlayDarkness', 'Overlay darkness')} ({Math.round((backgroundSettings.overlay ?? 0.5) * 100)}%)</Label>
               <input
                 type="range"
                 min="0"
@@ -211,26 +213,26 @@ export default function AdminSalons() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-white text-sm mb-2 block">Position</Label>
+                <Label className="text-white text-sm mb-2 block">{t('social.admin.position', 'Position')}</Label>
                 <select
                   value={backgroundSettings.position || 'center'}
                   onChange={(e) => handlePositionChange(e.target.value)}
                   className="w-full bg-neutral-900 border border-white/10 text-white text-sm rounded-md px-3 py-2"
                 >
-                  <option value="center">Center</option>
-                  <option value="top">Top</option>
-                  <option value="bottom">Bottom</option>
+                  <option value="center">{t('social.admin.center', 'Center')}</option>
+                  <option value="top">{t('social.admin.top', 'Top')}</option>
+                  <option value="bottom">{t('social.admin.bottom', 'Bottom')}</option>
                 </select>
               </div>
               <div>
-                <Label className="text-white text-sm mb-2 block">Fit</Label>
+                <Label className="text-white text-sm mb-2 block">{t('social.admin.fit', 'Fit')}</Label>
                 <select
                   value={backgroundSettings.fit || 'cover'}
                   onChange={(e) => handleFitChange(e.target.value)}
                   className="w-full bg-neutral-900 border border-white/10 text-white text-sm rounded-md px-3 py-2"
                 >
-                  <option value="cover">Cover</option>
-                  <option value="contain">Contain</option>
+                  <option value="cover">{t('social.admin.cover', 'Cover')}</option>
+                  <option value="contain">{t('social.admin.contain', 'Contain')}</option>
                 </select>
               </div>
             </div>
@@ -253,7 +255,7 @@ export default function AdminSalons() {
                   <h3 className="text-white font-light">{info.name}</h3>
                   <p className="text-white text-sm">{info.description}</p>
                   <p className="text-white text-xs mt-1">
-                    {messages.filter(m => m.salon === salonDef.id).length} messages
+                    {messages.filter(m => m.salon === salonDef.id).length} {t('social.admin.messages', 'messages')}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -266,7 +268,7 @@ export default function AdminSalons() {
                     <Edit2 size={14} />
                   </Button>
                   <Label htmlFor={`open-${salonDef.id}`} className="text-white text-sm">
-                    {status.is_open ? 'Open' : 'Closed'}
+                    {status.is_open ? t('social.admin.open', 'Open') : t('social.admin.closed', 'Closed')}
                   </Label>
                   <Switch
                     id={`open-${salonDef.id}`}
@@ -292,7 +294,7 @@ export default function AdminSalons() {
                       closed_message: e.target.value 
                     })
                   }
-                  placeholder="Closure message..."
+                  placeholder={t('social.admin.closureMessage', 'Closure message...')}
                   className="bg-neutral-900 border-white/10 text-white mb-4"
                 />
               )}
@@ -304,7 +306,7 @@ export default function AdminSalons() {
                 className="border-red-900/50 text-red-400 hover:bg-red-900/20"
               >
                 <Trash2 size={14} className="mr-2" />
-                Clear salon
+                {t('social.admin.clearSalon', 'Clear salon')}
               </Button>
             </div>
           );
@@ -313,7 +315,7 @@ export default function AdminSalons() {
 
       {/* Recent Messages */}
       <div>
-        <h3 className="text-white text-sm mb-4">Recent messages</h3>
+        <h3 className="text-white text-sm mb-4">{t('social.admin.recentMessages', 'Recent messages')}</h3>
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {messages.slice(0, 50).map((msg) => (
             <div
@@ -348,11 +350,11 @@ export default function AdminSalons() {
       <Dialog open={editDialogOpen} onOpenChange={(open) => !open && setEditDialogOpen(false)}>
         <DialogContent className="bg-neutral-950 border-white/10 text-white">
           <DialogHeader>
-            <DialogTitle className="font-light">Edit Salon Info</DialogTitle>
+            <DialogTitle className="font-light">{t('social.admin.editInfo', 'Edit Salon Info')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label className="text-white text-sm mb-2 block">Salon Name</Label>
+              <Label className="text-white text-sm mb-2 block">{t('social.admin.salonName', 'Salon Name')}</Label>
               <Input
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
@@ -361,7 +363,7 @@ export default function AdminSalons() {
               />
             </div>
             <div>
-              <Label className="text-white text-sm mb-2 block">Description</Label>
+              <Label className="text-white text-sm mb-2 block">{t('social.admin.description', 'Description')}</Label>
               <Input
                 value={editingDesc}
                 onChange={(e) => setEditingDesc(e.target.value)}
@@ -375,13 +377,13 @@ export default function AdminSalons() {
                 onClick={() => setEditDialogOpen(false)}
                 className="border-white/20 text-white"
               >
-                Cancel
+                {t('social.admin.cancel', 'Cancel')}
               </Button>
               <Button
                 onClick={handleSaveLabel}
                 className="bg-white text-black hover:bg-white/90"
               >
-                Save
+                {t('social.admin.save', 'Save')}
               </Button>
             </div>
           </div>
