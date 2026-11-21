@@ -468,6 +468,7 @@ export default function Studio() {
   }, []);
   const [activeTab, setActiveTab] = useState(null);
   const [activeToolPanel, setActiveToolPanel] = useState(null);
+  const [pilotStoryTool, setPilotStoryTool] = useState(null);
   const [activeAssetId, setActiveAssetId] = useState(null);
   const [pitchView, setPitchView] = useState('list');
   const [pitchProjectId, setPitchProjectId] = useState(null);
@@ -756,6 +757,7 @@ export default function Studio() {
   };
 
   const handleShellTool = (tool) => {
+    setPilotStoryTool(null);
     closeAllStudioTools();
     if (tool.action === 'fotoplay') { setActiveTab('stories'); return; }
     if (tool.action === 'workspace') { setActiveToolPanel(tool.key); return; }
@@ -775,6 +777,15 @@ export default function Studio() {
     if (tool.action === 'route') { navigate(tool.path); return; }
     if (tool.action === 'layout') { setEditingActor(null); setEditingSet(null); setActiveToolPanel('layout'); return; }
     setActiveToolPanel(tool.key);
+  };
+
+  const openPilotStoryTool = (tool) => {
+    if (!['actor', 'set', 'compose', 'fotoplay', 'shoot'].includes(tool)) return;
+    if (tool === 'actor') {
+      setEditingActor(false);
+      return;
+    }
+    setPilotStoryTool(tool);
   };
 
   return (
@@ -940,7 +951,21 @@ export default function Studio() {
 
       
 
-      {activeToolPanel === 'ai_pilots' && <div className="absolute inset-0 z-20 bg-black"><MyAIPilots embedded /></div>}
+      {activeToolPanel === 'ai_pilots' && <div className="absolute inset-0 z-20 bg-black">
+        <MyAIPilots embedded onOpenStoryTool={openPilotStoryTool} />
+        {pilotStoryTool && <div className="absolute inset-0 z-30 flex min-h-full flex-col bg-[#202328]">
+          <div className="sticky top-0 z-40 flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-white/15 bg-[#17191d] px-4 py-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-white">{pilotStoryTool === 'set' ? studioT('Open Set Designer','Set Designer') : pilotStoryTool === 'compose' ? studioT('Open Compose a Scene','Compose a Scene') : pilotStoryTool === 'fotoplay' ? studioT('Open FotoPlay','FotoPlay') : studioT('Open Shoot','Shoot')}</span>
+            <button type="button" onClick={() => setPilotStoryTool(null)} className="inline-flex items-center gap-2 border border-white/20 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10"><ChevronLeft size={15}/>{studioT('Back to My Story','Back to My Story')}</button>
+          </div>
+          <div className="min-h-0 flex-1">
+            {pilotStoryTool === 'set' && <SetDesignerWorkspace userEmail={user?.email} />}
+            {pilotStoryTool === 'compose' && <LabWorkspace user={user} directTool="compose" directMode={true} onOpenActor={() => { setPilotStoryTool(null); setEditingActor(false); }} onOpenSet={() => setPilotStoryTool('set')} onOpenVoiceRecorder={() => setShowVoiceRecorder(true)} onOpenAudioUploader={() => setShowAudioUploader(true)} onOpenDubbing={() => setShowDubbingStudio(true)} onOpenTTS={() => setShowTextToSpeech(true)} onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }} onOpenLipSync={() => setShowLipSync(true)} onOpenAnimateImage={() => { setVideoInitialMode('image'); setShowVideoTools(true); }} onJoinProject={handleJoinProject} onOpenFreeTimeline={() => setShowFreeTimeline(true)} onOpenLayout={() => setShowLayout(true)} hideProjects={true} />}
+            {pilotStoryTool === 'fotoplay' && <StoryBlocks user={user} onBack={() => setPilotStoryTool(null)} />}
+            {pilotStoryTool === 'shoot' && <VideoTools embedded onComplete={(file_url) => { setProducedMedia({ url: file_url, type: 'video' }); setPilotStoryTool(null); }} onClose={() => setPilotStoryTool(null)} recommendedTools={recommendedTools} referenceMedia={referenceMedia} user={user} />}
+          </div>
+        </div>}
+      </div>}
 
       {activeToolPanel === 'ai_connections' && <div className="absolute inset-0 z-20 bg-zinc-950"><AiConnections embedded onClose={() => { setActiveToolPanel(null); setActiveTab('home'); }} /></div>}
 
