@@ -785,6 +785,10 @@ export default function Studio() {
       setEditingActor(false);
       return;
     }
+    if (tool === 'shoot') {
+      setShowVideoTools(true);
+      return;
+    }
     setPilotStoryTool(tool);
   };
 
@@ -953,7 +957,7 @@ export default function Studio() {
 
       {activeToolPanel === 'ai_pilots' && <div className="absolute inset-0 z-20 bg-black">
         <MyAIPilots embedded onOpenStoryTool={openPilotStoryTool} />
-        {pilotStoryTool && <div className="fixed inset-0 z-[6000] flex flex-col overflow-y-auto bg-[#202328]">
+        {pilotStoryTool && <div className="fixed bottom-0 left-0 right-0 top-14 z-[700] flex flex-col overflow-y-auto bg-[#202328] lg:left-[var(--studio-toolbar-width)]">
           <div className="sticky top-0 z-40 flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-white/15 bg-[#17191d] px-4 py-2">
             <span className="text-xs font-bold uppercase tracking-wider text-white">{pilotStoryTool === 'set' ? studioT('Open Set Designer','Set Designer') : pilotStoryTool === 'compose' ? studioT('Open Compose a Scene','Compose a Scene') : pilotStoryTool === 'fotoplay' ? studioT('Open FotoPlay','FotoPlay') : studioT('Open Shoot','Shoot')}</span>
             <button type="button" onClick={() => setPilotStoryTool(null)} className="inline-flex items-center gap-2 border border-white/20 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10"><ChevronLeft size={15}/>{studioT('Back to My Story','Back to My Story')}</button>
@@ -962,7 +966,6 @@ export default function Studio() {
             {pilotStoryTool === 'set' && <SetDesignerWorkspace userEmail={user?.email} />}
             {pilotStoryTool === 'compose' && <LabWorkspace user={user} directTool="compose" directMode={true} onOpenActor={() => { setPilotStoryTool(null); setEditingActor(false); }} onOpenSet={() => setPilotStoryTool('set')} onOpenVoiceRecorder={() => setShowVoiceRecorder(true)} onOpenAudioUploader={() => setShowAudioUploader(true)} onOpenDubbing={() => setShowDubbingStudio(true)} onOpenTTS={() => setShowTextToSpeech(true)} onOpenVideo={(mode) => { setVideoInitialMode(mode || null); setShowVideoTools(true); }} onOpenLipSync={() => setShowLipSync(true)} onOpenAnimateImage={() => { setVideoInitialMode('image'); setShowVideoTools(true); }} onJoinProject={handleJoinProject} onOpenFreeTimeline={() => setShowFreeTimeline(true)} onOpenLayout={() => setShowLayout(true)} hideProjects={true} />}
             {pilotStoryTool === 'fotoplay' && <StoryBlocks user={user} onBack={() => setPilotStoryTool(null)} />}
-            {pilotStoryTool === 'shoot' && <VideoTools embedded onComplete={(file_url) => { setProducedMedia({ url: file_url, type: 'video' }); setPilotStoryTool(null); }} onClose={() => setPilotStoryTool(null)} recommendedTools={recommendedTools} referenceMedia={referenceMedia} user={user} />}
           </div>
         </div>}
       </div>}
