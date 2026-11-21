@@ -9,7 +9,7 @@ import IdentifierModal from '@/components/IdentifierModal';
 import ProfileEditor from '@/components/ProfileEditor';
 import PrivateConversations from '@/components/PrivateConversations';
 import PrivateChat from '@/components/PrivateChat';
-import { User, Settings, Heart, MessageCircle, User as UserIcon, FileText } from 'lucide-react';
+import { Settings, Mail, Heart, Users, BriefcaseBusiness } from 'lucide-react';
 
 export default function Salons() {
   const t = useStudioTranslation();
@@ -246,36 +246,44 @@ export default function Salons() {
         <TabsList className="w-full bg-transparent border-b border-white/10 rounded-none h-auto p-0 overflow-x-auto flex-nowrap text-white lg:w-[60%] lg:max-w-[60%] lg:h-9 lg:min-h-9 lg:overflow-hidden">
           <TabsTrigger
             value="messages"
-            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white relative whitespace-nowrap flex items-center gap-2 lg:flex-1 lg:min-w-0 lg:h-9 lg:py-1 lg:px-2 lg:text-[11px] lg:gap-1.5"
+            title={t('social.nav.messages', 'Messages')}
+            aria-label={t('social.nav.messages', 'Messages')}
+            className="flex-1 min-w-0 relative flex items-center justify-center gap-1.5 px-2 py-3 text-xs font-medium data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap lg:h-9 lg:py-1"
           >
-            <Heart size={24} className="text-white lg:w-3.5 lg:h-3.5" strokeWidth={2} />
-            <span className="hidden sm:inline lg:truncate">{t("social.rooms.messages", "MESSAGE")}</span>
+            <Mail size={18} className="shrink-0 lg:w-4 lg:h-4" />
+            <span className="hidden sm:inline truncate">{t('social.nav.messages', 'Messages')}</span>
             {unreadCount > 0 && activeSalon !== 'messages' && (
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full animate-pulse" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-600 rounded-full animate-pulse" />
             )}
           </TabsTrigger>
           <TabsTrigger
             value="contact"
-            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:flex-1 lg:min-w-0 lg:h-9 lg:py-1 lg:px-2 lg:text-[11px] lg:gap-1.5"
+            title={t('social.nav.fans', 'Fans')}
+            aria-label={t('social.nav.fans', 'Fans')}
+            className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-3 text-xs font-medium data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap lg:h-9 lg:py-1"
           >
-            <MessageCircle size={24} className="text-white lg:w-3.5 lg:h-3.5" strokeWidth={2} />
-            <span className="hidden sm:inline lg:truncate">{getSalonLabel("contact") || t("social.rooms.contact", "CONTACT")}</span>
+            <Heart size={18} className="shrink-0 lg:w-4 lg:h-4" />
+            <span className="hidden sm:inline truncate">{t('social.nav.fans', 'Fans')}</span>
           </TabsTrigger>
           {isRegistered && (
             <TabsTrigger
               value="cochon"
-              className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:flex-1 lg:min-w-0 lg:h-9 lg:py-1 lg:px-2 lg:text-[11px] lg:gap-1.5"
+              title={t('social.nav.creators', 'Creators')}
+              aria-label={t('social.nav.creators', 'Creators')}
+              className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-3 text-xs font-medium data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap lg:h-9 lg:py-1"
             >
-              <UserIcon size={24} className="text-white lg:w-3.5 lg:h-3.5" strokeWidth={2} />
-              <span className="hidden sm:inline lg:truncate">{getSalonLabel("cochon") || t("social.rooms.creators", "CREATOR CHATS")}</span>
+              <Users size={18} className="shrink-0 lg:w-4 lg:h-4" />
+              <span className="hidden sm:inline truncate">{t('social.nav.creators', 'Creators')}</span>
             </TabsTrigger>
           )}
           <TabsTrigger
             value="commercial"
-            className="flex-shrink-0 py-3 px-4 text-sm tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap flex items-center gap-2 lg:flex-1 lg:min-w-0 lg:h-9 lg:py-1 lg:px-2 lg:text-[11px] lg:gap-1.5"
+            title={t('social.nav.brands', 'Brands')}
+            aria-label={t('social.nav.brands', 'Brands')}
+            className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-3 text-xs font-medium data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none text-white whitespace-nowrap lg:h-9 lg:py-1"
           >
-            <FileText size={24} className="text-white lg:w-3.5 lg:h-3.5" strokeWidth={2} />
-            <span className="hidden sm:inline lg:truncate">{getSalonLabel("commercial") || t("social.rooms.info", "INFO")}</span>
+            <BriefcaseBusiness size={18} className="shrink-0 lg:w-4 lg:h-4" />
+            <span className="hidden sm:inline truncate">{t('social.nav.brands', 'Brands')}</span>
           </TabsTrigger>
         </TabsList>
 
