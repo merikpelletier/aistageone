@@ -321,7 +321,7 @@ function StepTitle({ number, title, description }) {
   );
 }
 
-export default function CharacterSheetEditor({ sheet, userEmail, onClose, onOpenBackgroundGroup, embedded = false }) {
+export default function CharacterSheetEditor({ sheet, userEmail, onClose, onOpenBackgroundGroup, embedded = false, inlineWorkspace = false }) {
   const queryClient = useQueryClient();
   const initial = useMemo(() => parseSavedDesign(sheet), [sheet]);
   const [name, setName] = useState(sheet?.character_name || '');
@@ -770,8 +770,8 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, onOpen
     }
   };
 
-  return createPortal(
-    <motion.div style={{ zIndex: 7000 }} className={`fixed z-[1000] flex flex-col overflow-hidden bg-[#09090b] text-white ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)]' : 'inset-0'}`} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 18 }}>
+  const editor = (
+    <motion.div style={inlineWorkspace ? undefined : { zIndex: 7000 }} className={inlineWorkspace ? 'actor-studio-inline relative z-[1000] flex h-[calc(100dvh-7.5rem)] min-h-[440px] w-full flex-col overflow-hidden bg-[#09090b] text-white lg:h-[calc(100dvh-3.5rem)]' : `fixed z-[1000] flex flex-col overflow-hidden bg-[#09090b] text-white ${embedded ? 'top-14 right-0 bottom-[64px] left-0 lg:bottom-0 lg:left-[var(--studio-toolbar-width)]' : 'inset-0'}`} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 18 }}>
       <header className="relative shrink-0 overflow-hidden border-b border-white/10 bg-black px-4 py-4 sm:px-7">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(251,191,36,0.18),transparent_32%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.12),transparent_30%)]" />
         <div className="relative mx-auto flex max-w-7xl items-center justify-between gap-4">
@@ -989,7 +989,7 @@ export default function CharacterSheetEditor({ sheet, userEmail, onClose, onOpen
           onClose={() => setShowSaveVault(false)}
         />
       )}
-    </motion.div>,
-    document.body,
+    </motion.div>
   );
+  return inlineWorkspace ? editor : createPortal(editor, document.body);
 }
