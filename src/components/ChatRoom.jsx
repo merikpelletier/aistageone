@@ -26,7 +26,7 @@ async function loadSalonRows(table, salon, limit) {
   return data || [];
 }
 
-export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId, onRequestIdentifier, onOpenPrivateChat }) {
+export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId, onRequestIdentifier, onOpenPrivateChat, embedded = false }) {
   const t = useStudioTranslation();
   const [gridOpen, setGridOpen] = useState(false);
   const [message, setMessage] = useState('');
@@ -493,7 +493,7 @@ export default function ChatRoom({ salon, salonStatus, userIdentifier, sessionId
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-6 border-t border-white/10 bg-black/40 lg:absolute lg:-top-[37px] lg:right-2 lg:z-20 lg:w-[46%] lg:p-0 lg:border-0 lg:bg-transparent">
+      <div className={embedded ? "order-first shrink-0 p-2 border-b border-white/10 bg-black/75 lg:relative lg:top-auto lg:right-auto lg:w-full lg:p-2 lg:border-b lg:bg-black/75" : "p-6 border-t border-white/10 bg-black/40 lg:absolute lg:-top-[37px] lg:right-2 lg:z-20 lg:w-[46%] lg:p-0 lg:border-0 lg:bg-transparent"}>
         {!userIdentifier ? (
           <button
             onClick={onRequestIdentifier}
