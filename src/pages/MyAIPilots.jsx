@@ -634,6 +634,7 @@ export default function MyAIPilots({ embedded = false, onOpenStoryTool }) {
                               const chosen = entry.id === active.id;
                               return <button key={entry.id} type="button" onClick={() => setPreviewUniverse(entry.id)} aria-current={chosen ? 'true' : undefined} className={`group flex w-full min-h-[53px] items-center gap-3 border-l-2 px-3 py-2 text-left transition-colors ${chosen ? 'border-[#6fece1] bg-white/10 text-white' : 'border-transparent text-white/65 hover:border-white/40 hover:bg-white/[0.06] hover:text-white'}`}>
                                 <span className={`font-mono text-[10px] ${chosen ? 'text-[#7ce8df]' : 'text-white/35'}`}>{String(index + 1).padStart(2,'0')}</span>
+                                {getImage(entry,'card') && <img src={getImage(entry,'card')} alt="" className="h-11 w-8 shrink-0 object-cover" loading="lazy" />}
                                 <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-semibold">{getTitle(entry)}</span>{getDescription(entry) && <span className="mt-0.5 block truncate text-[10px] font-normal text-white/45">{getDescription(entry)}</span>}</span>
                                 {chosen && <ChevronDown size={14} className="-rotate-90 text-[#7ce8df]"/>}
                               </button>;
@@ -646,7 +647,9 @@ export default function MyAIPilots({ embedded = false, onOpenStoryTool }) {
                             {visuals.logo_image ? <img src={visuals.logo_image} alt={getTitle(active)} className="max-h-[76px] max-w-[300px] object-contain object-left drop-shadow-[0_3px_15px_rgba(0,0,0,0.9)]"/> : <h2 className="text-xl font-bold uppercase tracking-[0.015em] text-white drop-shadow-[0_2px_12px_black] xl:text-2xl">{getTitle(active)}</h2>}
                             {getDescription(active) && <p className="mt-2 line-clamp-2 max-w-[380px] text-xs font-normal leading-relaxed text-white/80 drop-shadow-[0_2px_9px_black]">{getDescription(active)}</p>}
                           </div>
-                          {!image && cardImage && <img key={'art-'+active.id} src={cardImage} alt="" className="pointer-events-none absolute bottom-0 right-1 h-[94%] max-w-[57%] animate-[world-fade_700ms_ease-out_both] object-contain object-bottom" style={{maskImage:'linear-gradient(to right, transparent, black 20%, black 90%)'}}/>}
+                          {cardImage && <div key={'art-'+active.id} className="pointer-events-none absolute bottom-5 right-5 top-5 z-10 flex w-[min(38%,270px)] items-center justify-center xl:right-10">
+                            <img src={cardImage} alt={getTitle(active)} className="max-h-full max-w-full animate-[world-fade_700ms_ease-out_both] object-contain shadow-[0_16px_48px_rgba(0,0,0,0.65)]" />
+                          </div>}
                         </div>
                       </div>
                       <footer className="flex items-center justify-between gap-3 border-t border-white/15 bg-black/45 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white/55 sm:px-10">
