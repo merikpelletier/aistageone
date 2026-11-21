@@ -622,14 +622,14 @@ export default function MyAIPilots({ embedded = false, onOpenStoryTool }) {
                           <button type="button" onClick={enter} className="group mx-auto mt-5 inline-flex min-h-14 items-center gap-8 border border-[#95f3e7] bg-[#23c7be] px-8 py-3 text-sm font-black uppercase tracking-[0.12em] text-[#041011] shadow-[0_0_35px_rgba(35,199,190,0.28)] transition-all hover:scale-[1.04] hover:bg-[#96f7e9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{ui('Enter the universe', 'Entrer dans l’univers')} <ChevronDown size={19} className="-rotate-90"/></button>
                         </div>
                       </div>
-                      <div className="relative hidden min-h-[460px] flex-1 overflow-hidden lg:flex">
+                      <div className="relative hidden min-h-[390px] flex-1 overflow-hidden lg:flex">
                         <div className="pointer-events-none absolute inset-0">
-                          {(image || cardImage) && <img key={active.id} src={image || cardImage} alt="" className={`h-full w-full animate-[world-fade_700ms_ease-out_both] ${image ? 'object-cover object-center' : 'object-cover object-right opacity-45 blur-2xl scale-110'}`} />}
-                          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,5,8,0.98)_0%,rgba(2,5,8,0.93)_27%,rgba(2,5,8,0.65)_50%,rgba(2,5,8,0.18)_100%)]"/>
+                          {(image || cardImage) && <img key={active.id} src={image || cardImage} alt="" className={`h-full w-full animate-[world-fade_700ms_ease-out_both] ${image ? 'object-cover object-center' : 'scale-110 object-cover object-center opacity-60 blur-xl'}`} />}
+                          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,5,8,0.95)_0%,rgba(2,5,8,0.75)_26%,rgba(2,5,8,0.30)_55%,rgba(2,5,8,0.50)_100%)]"/>
                         </div>
-                        <nav aria-label={ui('Universe selection','Sélection des univers')} className="relative z-20 flex w-[35%] min-w-[250px] max-w-[430px] flex-col gap-3 border-r border-white/10 bg-black/30 px-6 py-6 xl:px-9">
+                        <nav aria-label={ui('Universe selection','Sélection des univers')} className="relative z-20 flex w-[31%] min-w-[250px] max-w-[355px] flex-col gap-3 border-r border-white/10 bg-black/50 px-5 py-5 xl:px-7">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7ce8df]">{ui('Choose your story','Choisissez votre histoire')}</p>
-                          <div className="max-h-[310px] min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+                          <div className="max-h-[238px] min-h-0 space-y-1 overflow-y-auto pr-1">
                             {library.map((entry,index) => {
                               const chosen = entry.id === active.id;
                               return <button key={entry.id} type="button" onClick={() => setPreviewUniverse(entry.id)} aria-current={chosen ? 'true' : undefined} className={`group flex w-full min-h-[53px] items-center gap-3 border-l-2 px-3 py-2 text-left transition-colors ${chosen ? 'border-[#6fece1] bg-white/10 text-white' : 'border-transparent text-white/65 hover:border-white/40 hover:bg-white/[0.06] hover:text-white'}`}>
@@ -642,8 +642,8 @@ export default function MyAIPilots({ embedded = false, onOpenStoryTool }) {
                           </div>
                           <button type="button" onClick={enter} className="inline-flex min-h-10 items-center justify-between gap-3 border border-[#6fece1]/60 bg-[#23c7be]/15 px-4 text-left text-[11px] font-bold uppercase tracking-[0.07em] text-[#9cf8ed] transition-colors hover:bg-[#23c7be]/25">{ui('Enter the universe','Entrer dans l’univers')}<ChevronDown size={16} className="-rotate-90"/></button>
                         </nav>
-                        <div className="relative z-10 flex min-w-0 flex-1 items-end justify-between gap-4 px-6 py-8 xl:px-10">
-                          {cardImage && <div key={'art-'+active.id} className="pointer-events-none absolute bottom-5 right-5 top-5 z-10 flex w-[min(38%,270px)] items-center justify-center xl:right-10">
+                        <div className="relative z-10 flex min-w-0 flex-1 items-center justify-center overflow-hidden px-5 py-5">
+                          {cardImage && <div key={'art-'+active.id} className="pointer-events-none relative z-10 flex h-[330px] w-full max-w-[255px] items-center justify-center">
                             <img src={cardImage} alt={getTitle(active)} className="max-h-full max-w-full animate-[world-fade_700ms_ease-out_both] object-contain shadow-[0_16px_48px_rgba(0,0,0,0.65)]" />
                           </div>}
                         </div>
