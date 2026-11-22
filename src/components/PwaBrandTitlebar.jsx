@@ -28,7 +28,7 @@ export default function PwaBrandTitlebar() {
         left: 'env(titlebar-area-x, 0px)',
         width: 'env(titlebar-area-width, 100%)',
         height: 'env(titlebar-area-height, 32px)',
-        background: '#080a0c',
+        background: 'transparent',
         WebkitAppRegion: 'drag',
         appRegion: 'drag',
         userSelect: 'none',
