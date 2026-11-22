@@ -165,6 +165,8 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
   const [generationError, setGenerationError] = useState('');
   const [suggestedThemes, setSuggestedThemes] = useState([]);
   const [themeMessage, setThemeMessage] = useState('');
+  const [experienceDraft, setExperienceDraft] = useState(null);
+  const [experienceError, setExperienceError] = useState('');
   const updateContent = (patch) => setBlock({ ...block, content: { ...content, ...patch } });
   const updateEpisode = (index, patch) => updateContent({
     scenarios: [...episodes.map((ep, i) => i === index ? { ...ep, ...patch } : ep), ...stored.slice(EPISODE_COUNT)],
@@ -183,6 +185,65 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     (episodes[index].secondary_themes || []).filter(theme => theme.id !== themeId),
   );
   const OFFICIAL_CHARACTER_RULE = 'Participants MUST create their own original characters and write storylines only for those participant-created characters. Official/canonical characters may appear only as background presence or established context. Participants must NEVER write dialogue, actions, decisions, motivations, character arcs, or new storylines for official characters; never let a spin-off theme invite or require that. Canonical plot and established character continuity are controlled exclusively by the official authors.';
+  const generateParticipantExperience = async () => {
+    const relevantEpisodes = episodes.map((episode, index) => ({
+      episode: index + 1,
+      title: episode.title || '',
+      primary_theme: episode.primary_theme || '',
+      premise: episode.premise || '',
+      outline: episode.outline || '',
+    })).filter(episode => episode.title || episode.primary_theme || episode.premise || episode.outline);
+    if (!content.creative_brief?.trim() && !relevantEpisodes.length) {
+      setExperienceError(t('social.participantExperience.noContext', 'Add a creative brief or episode details before generating.'));
+      return;
+    }
+    setExperienceError('');
+    setExperienceDraft(null);
+    setGenerating('participant-experience');
+    try {
+      const response_json_schema = {
+        type: 'object',
+        properties: {
+          universe: { type: 'string' },
+          roles: { type: 'string' },
+          activities: { type: 'string' },
+          rules: { type: 'string' },
+        },
+        required: ['universe', 'roles', 'activities', 'rules'],
+      };
+      const { data, error } = await supabase.functions.invoke('invoke-llm', { body: {
+        instructions: 'You are designing a participatory fiction experience for an existing series. Use ONLY the supplied series creative brief and episode information to propose four concise editable fields: universe (places, culture and setting to explore), roles (original participant-character identities and aspirations), activities (experiences participants can pursue), and rules (additional participant constraints grounded in the supplied series). Do not invent established canon or imply an official character can be controlled by participants. ' + OFFICIAL_CHARACTER_RULE + ' The official character restrictions are mandatory regardless of other rules. Return JSON only matching the requested schema.',
+        response_json_schema,
+        prompt: JSON.stringify({
+          creative_brief: content.creative_brief || '',
+          episodes: relevantEpisodes,
+          existing_experience: content.participant_experience || {},
+        }),
+      } });
+      if (error) throw error;
+      const result = typeof data === 'string' ? JSON.parse(data) : typeof data?.text === 'string' ? JSON.parse(data.text) : data;
+      if (!result || !['universe', 'roles', 'activities', 'rules'].every(key => typeof result[key] === 'string')) throw new Error('Invalid participant experience proposal.');
+      setExperienceDraft({
+        universe: result.universe.trim(), roles: result.roles.trim(),
+        activities: result.activities.trim(), rules: result.rules.trim(),
+      });
+    } catch (error) {
+      setExperienceError(error.message || 'Unable to generate participant experience.');
+    } finally {
+      setGenerating('');
+    }
+  };
+  const applyParticipantExperience = () => {
+    if (!experienceDraft) return;
+    setBlock(current => ({
+      ...current,
+      content: {
+        ...(current.content || {}),
+        participant_experience: { ...(current.content?.participant_experience || {}), ...experienceDraft },
+      },
+    }));
+    setExperienceDraft(null);
+  };
   const generateSecondaryThemes = async (scope) => {
     const indices = scope === 'season' ? episodes.map((_, index) => index) : [expandedIndex ?? 0];
     const eligible = indices.filter(index => episodes[index].primary_theme?.trim());
@@ -904,6 +965,26 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
               {input(t('social.participantExperience.activities', 'Experiences to offer'), content.participant_experience?.activities, value => updateContent({ participant_experience: { ...(content.participant_experience || {}), activities: value } }), 3)}
               {input(t('social.participantExperience.rules', 'Additional participation rules'), content.participant_experience?.rules, value => updateContent({ participant_experience: { ...(content.participant_experience || {}), rules: value } }), 3)}
               <p className="text-[11px] text-white/55">{t('social.participantExperience.canonRule', 'Mandatory rule: participants create their own characters and write only for them. Official characters may appear in the background, but participants cannot write their dialogue, actions or storylines.')}</p>
+              {!readOnly && <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={Boolean(generating)} onClick={generateParticipantExperience}>{generating === 'participant-experience' ? t('social.participantExperience.generating', 'Generating…') : t('social.participantExperience.generate', 'Generate participant experience')}</Button>}
+              {experienceError && <p role="alert" className="text-xs text-red-300">{experienceError}</p>}
+              {experienceDraft && <div className="space-y-3 border border-white/20 bg-white/[0.03] p-3">
+                <p className="text-xs text-white/70">{t('social.participantExperience.reviewHint', 'Review these proposals before applying. Applying replaces the four fields in the draft; use Save All to save.')}</p>
+                {[
+                  ['universe', t('social.participantExperience.universe', 'Universe to explore')],
+                  ['roles', t('social.participantExperience.roles', 'Participant roles and ambitions')],
+                  ['activities', t('social.participantExperience.activities', 'Experiences to offer')],
+                  ['rules', t('social.participantExperience.rules', 'Additional participation rules')],
+                ].map(([key, label]) => (
+                  <label key={key} className="block space-y-1">
+                    <span className="text-xs text-white/65">{label}</span>
+                    <Textarea className={CONTROL_CLASS} rows={3} value={experienceDraft[key]} onChange={event => setExperienceDraft(previous => ({ ...previous, [key]: event.target.value }))}/>
+                  </label>
+                ))}
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" className={PRIMARY_BUTTON_CLASS} onClick={applyParticipantExperience}>{t('social.participantExperience.apply', 'Apply to draft')}</Button>
+                  <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => setExperienceDraft(null)}>{t('social.participantExperience.discard', 'Discard')}</Button>
+                </div>
+              </div>}
             </div>
           </details>
         </div>
