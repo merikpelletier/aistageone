@@ -163,6 +163,8 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
   const [activeImageReference, setActiveImageReference] = useState(null);
   const [generating, setGenerating] = useState('');
   const [generationError, setGenerationError] = useState('');
+  const [suggestedThemes, setSuggestedThemes] = useState([]);
+  const [themeMessage, setThemeMessage] = useState('');
   const updateContent = (patch) => setBlock({ ...block, content: { ...content, ...patch } });
   const updateEpisode = (index, patch) => updateContent({
     scenarios: [...episodes.map((ep, i) => i === index ? { ...ep, ...patch } : ep), ...stored.slice(EPISODE_COUNT)],
@@ -180,6 +182,90 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     index,
     (episodes[index].secondary_themes || []).filter(theme => theme.id !== themeId),
   );
+  const generateSecondaryThemes = async (scope) => {
+    const indices = scope === 'season' ? episodes.map((_, index) => index) : [expandedIndex ?? 0];
+    const eligible = indices.filter(index => episodes[index].primary_theme?.trim());
+    if (!eligible.length) {
+      setGenerationError(t('social.themes.missingMain', 'Add a main episode theme before generating secondary themes.'));
+      return;
+    }
+    setGenerationError('');
+    setThemeMessage('');
+    setSuggestedThemes([]);
+    setGenerating('secondary-themes');
+    try {
+      const requests = eligible.map(index => ({
+        episode_index: index,
+        title: episodes[index].title || '',
+        main_theme: episodes[index].primary_theme.trim(),
+        premise: episodes[index].premise || '',
+        story: episodes[index].outline || '',
+        current_secondary_themes: (episodes[index].secondary_themes || []).map(theme => theme.title).filter(Boolean),
+      }));
+      const schema = {
+        type: 'object',
+        properties: {
+          episodes: { type: 'array', items: { type: 'object', properties: {
+            episode_index: { type: 'integer' },
+            themes: { type: 'array', items: { type: 'object', properties: {
+              title: { type: 'string' },
+              description: { type: 'string' },
+            }, required: ['title', 'description'] } },
+          }, required: ['episode_index', 'themes'] } },
+        },
+        required: ['episodes'],
+      };
+      const { data, error } = await supabase.functions.invoke('invoke-llm', { body: {
+        instructions: 'You are a collaborative fiction story editor. Propose 3 to 5 DISTINCT secondary themes for each requested episode, always subordinate to that episode main theme. Respect the provided series creative brief, narrative continuity and episode premise. Each theme must be usable by participants as a spin-off prompt. Write a concise title and specific creative guidance with boundaries; do not invent canonical events or change established story facts. Never repeat existing secondary themes. Return valid JSON ONLY matching the requested schema. Keep the episode_index values exactly as provided.',
+        response_json_schema: schema,
+        prompt: JSON.stringify({ series_creative_brief: content.creative_brief || '', episodes: requests }),
+      } });
+      if (error) throw error;
+      const parsed = typeof data === 'string' ? JSON.parse(data) : (typeof data?.text === 'string' ? JSON.parse(data.text) : data);
+      if (!Array.isArray(parsed?.episodes)) throw new Error('No valid themes returned.');
+      const proposals = [];
+      for (const item of parsed.episodes) {
+        const index = Number(item.episode_index);
+        if (!eligible.includes(index) || !Array.isArray(item.themes)) continue;
+        const seen = new Set((episodes[index].secondary_themes || []).map(theme => (theme.title || '').trim().toLocaleLowerCase()).filter(Boolean));
+        for (const theme of item.themes.slice(0, 5)) {
+          const title = String(theme?.title || '').trim();
+          const description = String(theme?.description || '').trim();
+          const normalized = title.toLocaleLowerCase();
+          if (!title || !description || seen.has(normalized)) continue;
+          seen.add(normalized);
+          proposals.push({ id: makeId('proposal'), episode_index: index, title, description });
+        }
+      }
+      if (!proposals.length) throw new Error('No new themes were generated.');
+      setSuggestedThemes(proposals);
+    } catch (error) {
+      setGenerationError(error.message || 'Unable to generate secondary themes.');
+    } finally {
+      setGenerating('');
+    }
+  };
+  const applySuggestedThemes = () => {
+    const accepted = suggestedThemes.filter(theme => theme.title.trim() && theme.description.trim());
+    if (!accepted.length) return;
+    setBlock(current => {
+      const previous = current.content || {};
+      const scenarios = Array.isArray(previous.scenarios) ? [...previous.scenarios] : [];
+      for (const proposal of accepted) {
+        const index = proposal.episode_index;
+        const episode = scenarios[index];
+        if (!episode?.primary_theme?.trim()) continue;
+        const existing = Array.isArray(episode.secondary_themes) ? episode.secondary_themes : [];
+        if (existing.some(theme => (theme.title || '').trim().toLocaleLowerCase() === proposal.title.trim().toLocaleLowerCase())) continue;
+        scenarios[index] = { ...episode, secondary_themes: [...existing, {
+          id: makeId('theme'), title: proposal.title.trim(), description: proposal.description.trim(), enabled: false,
+        }] };
+      }
+      return { ...current, content: { ...previous, scenarios } };
+    });
+    setSuggestedThemes([]);
+    setThemeMessage(t('social.themes.addedDraft', 'Themes added to the draft. Use Save All to save them. Authorization for spin-offs remains off until enabled.'));
+  };
   const toggleSceneResource = (episodeIndex, partKey, field, resourceId) => {
     const episode = episodes[episodeIndex];
     const sceneResources = episode.scene_resources || {};
@@ -828,6 +914,26 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                     <h4 className="text-xs font-semibold text-white">{t('social.themes.heading', 'Participant spin-off themes')}</h4>
                     {input(t('social.themes.main', 'Main episode theme'), episode.primary_theme, value => updateEpisode(index, { primary_theme: value }), 2)}
                     <p className="text-[11px] text-white/50">{t('social.themes.helper', 'Every authorized secondary theme belongs to this episode’s main theme. Only enabled themes with a title are available for future spin-off registration.')}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {!readOnly && <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={Boolean(generating)} onClick={() => generateSecondaryThemes('episode')}>{generating === 'secondary-themes' ? t('social.themes.generating', 'Generating…') : t('social.themes.generateEpisode', 'Generate for episode')}</Button>}
+                      {!readOnly && <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} disabled={Boolean(generating)} onClick={() => generateSecondaryThemes('season')}>{t('social.themes.generateSeason', 'Generate for season')}</Button>}
+                    </div>
+                    {suggestedThemes.length > 0 && <div className="space-y-2 border border-white/20 bg-white/[0.03] p-3">
+                      <div className="text-xs font-semibold text-white">{t('social.themes.review', 'Review proposed themes')} ({suggestedThemes.length})</div>
+                      {suggestedThemes.map(proposal => <div key={proposal.id} className="space-y-1 border-t border-white/10 pt-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-white/55">EP {proposal.episode_index + 1}</span>
+                          <button type="button" className={REMOVE_BUTTON_CLASS} title={t('social.themes.remove', 'Remove theme')} aria-label={t('social.themes.remove', 'Remove theme')} onClick={() => setSuggestedThemes(items => items.filter(item => item.id !== proposal.id))}><Trash2 size={15}/></button>
+                        </div>
+                        <Input className={CONTROL_CLASS} value={proposal.title} onChange={event => setSuggestedThemes(items => items.map(item => item.id === proposal.id ? { ...item, title: event.target.value } : item))}/>
+                        <Textarea className={CONTROL_CLASS} rows={2} value={proposal.description} onChange={event => setSuggestedThemes(items => items.map(item => item.id === proposal.id ? { ...item, description: event.target.value } : item))}/>
+                      </div>)}
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" size="sm" className={PRIMARY_BUTTON_CLASS} onClick={applySuggestedThemes}>{t('social.themes.applyAll', 'Add reviewed themes to draft')}</Button>
+                        <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => setSuggestedThemes([])}>{t('social.themes.discard', 'Discard proposals')}</Button>
+                      </div>
+                    </div>}
+                    {themeMessage && <p role="status" className="text-xs text-white/70">{themeMessage}</p>
                     {(Array.isArray(episode.secondary_themes) ? episode.secondary_themes : []).map((theme, themeIndex) => (
                       <div key={theme.id} className="space-y-2 border border-white/15 bg-white/[0.02] p-3">
                         <div className="flex items-center justify-between gap-2">
