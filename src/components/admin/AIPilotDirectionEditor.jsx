@@ -933,7 +933,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
                         <Button type="button" size="sm" className={SECONDARY_BUTTON_CLASS} onClick={() => setSuggestedThemes([])}>{t('social.themes.discard', 'Discard proposals')}</Button>
                       </div>
                     </div>}
-                    {themeMessage && <p role="status" className="text-xs text-white/70">{themeMessage}</p>
+                    {themeMessage && <p role="status" className="text-xs text-white/70">{themeMessage}</p>}
                     {(Array.isArray(episode.secondary_themes) ? episode.secondary_themes : []).map((theme, themeIndex) => (
                       <div key={theme.id} className="space-y-2 border border-white/15 bg-white/[0.02] p-3">
                         <div className="flex items-center justify-between gap-2">
