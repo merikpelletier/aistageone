@@ -182,6 +182,7 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
     index,
     (episodes[index].secondary_themes || []).filter(theme => theme.id !== themeId),
   );
+  const OFFICIAL_CHARACTER_RULE = 'Participants MUST create their own original characters and write storylines only for those participant-created characters. Official/canonical characters may appear only as background presence or established context. Participants must NEVER write dialogue, actions, decisions, motivations, character arcs, or new storylines for official characters; never let a spin-off theme invite or require that. Canonical plot and established character continuity are controlled exclusively by the official authors.';
   const generateSecondaryThemes = async (scope) => {
     const indices = scope === 'season' ? episodes.map((_, index) => index) : [expandedIndex ?? 0];
     const eligible = indices.filter(index => episodes[index].primary_theme?.trim());
@@ -216,9 +217,9 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
         required: ['episodes'],
       };
       const { data, error } = await supabase.functions.invoke('invoke-llm', { body: {
-        instructions: 'You are a collaborative fiction story editor. Propose 3 to 5 DISTINCT secondary themes for each requested episode, always subordinate to that episode main theme. Respect the provided series creative brief, narrative continuity and episode premise. Each theme must be usable by participants as a spin-off prompt. Write a concise title and specific creative guidance with boundaries; do not invent canonical events or change established story facts. Never repeat existing secondary themes. Return valid JSON ONLY matching the requested schema. Keep the episode_index values exactly as provided.',
+        instructions: 'You are a collaborative fiction story editor. Propose 3 to 5 DISTINCT secondary themes for each requested episode, always subordinate to that episode main theme. Respect the provided series creative brief, participant experience and narrative continuity. Offer playable experiences and varied participant-created roles and career paths where appropriate, not only dramatic plots. Each theme must be usable by participants as a spin-off prompt and include creative boundaries. Do not invent canonical events or change established story facts. Never repeat existing secondary themes. Return valid JSON ONLY matching the requested schema. Keep episode_index values exactly as provided. ' + OFFICIAL_CHARACTER_RULE + ' Additional participation rules must not override these restrictions.',
         response_json_schema: schema,
-        prompt: JSON.stringify({ series_creative_brief: content.creative_brief || '', episodes: requests }),
+        prompt: JSON.stringify({ series_creative_brief: content.creative_brief || '', participant_experience: content.participant_experience || {}, official_character_rule: OFFICIAL_CHARACTER_RULE, episodes: requests }),
       } });
       if (error) throw error;
       const parsed = typeof data === 'string' ? JSON.parse(data) : (typeof data?.text === 'string' ? JSON.parse(data.text) : data);
@@ -893,7 +894,19 @@ function ScenarioEditor({ block, setBlock, readOnly, onSave, saving, availableCh
       </div>
       <details className="border border-white/10 px-3 py-2">
         <summary className="cursor-pointer text-xs font-medium text-white/65">Season · Central Theme / Creative Brief</summary>
-        <div className="pt-3">{input('Central Theme / Creative Brief', content.creative_brief, value => updateContent({ creative_brief: value }), 5)}</div>
+        <div className="space-y-3 pt-3">
+          {input('Central Theme / Creative Brief', content.creative_brief, value => updateContent({ creative_brief: value }), 5)}
+          <details className="border-t border-white/10 pt-2">
+            <summary className="cursor-pointer text-xs font-medium text-white/65">{t('social.participantExperience.heading', 'Participant Experience / Expérience des participants')}</summary>
+            <div className="space-y-3 pt-3">
+              {input(t('social.participantExperience.universe', 'Universe to explore'), content.participant_experience?.universe, value => updateContent({ participant_experience: { ...(content.participant_experience || {}), universe: value } }), 2)}
+              {input(t('social.participantExperience.roles', 'Participant roles and ambitions'), content.participant_experience?.roles, value => updateContent({ participant_experience: { ...(content.participant_experience || {}), roles: value } }), 3)}
+              {input(t('social.participantExperience.activities', 'Experiences to offer'), content.participant_experience?.activities, value => updateContent({ participant_experience: { ...(content.participant_experience || {}), activities: value } }), 3)}
+              {input(t('social.participantExperience.rules', 'Additional participation rules'), content.participant_experience?.rules, value => updateContent({ participant_experience: { ...(content.participant_experience || {}), rules: value } }), 3)}
+              <p className="text-[11px] text-white/55">{t('social.participantExperience.canonRule', 'Mandatory rule: participants create their own characters and write only for them. Official characters may appear in the background, but participants cannot write their dialogue, actions or storylines.')}</p>
+            </div>
+          </details>
+        </div>
       </details>
       <div className="space-y-2">
         {episodes.map((episode, index) => {
