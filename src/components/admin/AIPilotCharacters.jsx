@@ -126,6 +126,9 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
       continuity_locks: draft.continuity_locks || '',
       physical_performance: draft.physical_performance || '',
       voice_identity: draft.voice_identity || '',
+      voice_language: draft.voice_language || 'auto',
+      voice_style_instruction: draft.voice_style_instruction || '',
+      voice_preview_text: draft.voice_preview_text || '',
       voice_sample_url: draft.voice_sample_url || null,
       voice_sample_text: draft.voice_sample_text || null,
       voice_id: draft.voice_id || null,
@@ -261,7 +264,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
         character = await persistCharacter();
       }
       const { data, error } = await supabase.functions.invoke('designCharacterVoice', {
-        body: { action: 'design', character_id: character.id },
+        body: { action: 'design', character_id: character.id, language: character.voice_language || 'auto', style_instruction: character.voice_style_instruction || '', preview_text: character.voice_preview_text || '' },
       });
       if (error) throw error;
       if (!Array.isArray(data?.previews) || data.previews.length !== 3) throw new Error(data?.error || 'Replicate did not return three voice proposals.');
@@ -443,6 +446,32 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                   readOnly={readOnly}
                   rows={3}
                   placeholder="Example: young British female voice, subtle London accent, warm but controlled, medium-low pitch, clear articulation, natural rhythm..."
+                />
+
+                <label className="space-y-2 block">
+                  <span className="text-xs text-white/60">Language</span>
+                  <Input className={CONTROL_CLASS} disabled={readOnly} value={draft.voice_language || 'auto'} onChange={(e) => setField('voice_language', e.target.value)} placeholder="auto, English, French, Spanish…" />
+                  <span className="text-[11px] text-white/30">Language value passed to the selected speech model.</span>
+                </label>
+
+                <Field
+                  label="Style instruction"
+                  helper="Optional delivery direction passed to the speech model (for example: restrained, intimate, energetic)."
+                  value={draft.voice_style_instruction}
+                  onChange={(value) => setField('voice_style_instruction', value)}
+                  readOnly={readOnly}
+                  rows={2}
+                  placeholder="Describe how the character should deliver the preview."
+                />
+
+                <Field
+                  label="Preview text"
+                  helper="Exact text the model will speak in each generated proposal."
+                  value={draft.voice_preview_text}
+                  onChange={(value) => setField('voice_preview_text', value)}
+                  readOnly={readOnly}
+                  rows={3}
+                  placeholder="Leave blank to use the default character introduction."
                 />
 
                 <div className="space-y-3 border border-white/10 bg-white/[0.025] p-3">
