@@ -16,7 +16,7 @@ function orderBoxes(boxes) {
 }
 
 function defaultCharacterVoice(character, index) {
-  return character?.voice || character?.voice_id || character?.tts_voice || VOICE_NAMES[(index + 1) % VOICE_NAMES.length] || VOICE_NAMES[0] || '';
+  return character?.voice_id || character?.voice || character?.tts_voice || VOICE_NAMES[(index + 1) % VOICE_NAMES.length] || VOICE_NAMES[0] || '';
 }
 
 function dispatchActive(id) {
@@ -138,11 +138,14 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
     onBoxesChange(next.map((box, i) => ({ ...box, order: i + 1 })));
   };
 
+  const resolveCharacter = (box) => characters.find((item) => item.id === box.speaker_id) || null;
+
   const resolveVoice = (box) => {
     if (box.voice) return box.voice;
     if (box.type === 'narration') return segment.narrator_voice || VOICE_NAMES[0] || '';
     const characterIndex = characters.findIndex((item) => item.id === box.speaker_id);
-    return defaultCharacterVoice(characters[characterIndex], Math.max(0, characterIndex));
+    const character = characters[characterIndex];
+    return character?.voice_id || box.voice || defaultCharacterVoice(character, Math.max(0, characterIndex));
   };
 
   const resolveLanguage = (box) => box.language || language;
@@ -152,7 +155,8 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
     if (!box.text?.trim()) throw new Error(`Line ${box.order} has no text`);
     const voice = resolveVoice(box);
     if (!voice) throw new Error(`Choose a voice for line ${box.order}`);
-    const response = await base44.functions.invoke('generateSpeech', { text: box.text, voice, language_code: resolveLanguage(box) });
+    const character = box.type === 'dialogue' ? resolveCharacter(box) : null;
+    const response = await base44.functions.invoke('generateSpeech', { text: box.text, voice, voice_id: character?.voice_id || undefined, language_code: resolveLanguage(box) });
     const data = response?.data || {};
     const url = data.file_url;
     if (!url) throw new Error(`No audio returned for line ${box.order}`);
@@ -164,6 +168,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
       audio_url: url,
       audio_source_text: item.text,
       audio_voice: voice,
+      audio_character_voice_id: item.type === 'dialogue' ? (resolveCharacter(item)?.voice_id || '') : '',
       audio_language: resolveLanguage(item),
       audio_credit_cost: Number.isFinite(creditCost) ? creditCost : 0,
       audio_balance_after: Number.isFinite(balanceAfter) ? balanceAfter : null,
@@ -189,7 +194,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
       const playable = next.filter((box) => box.text?.trim() && box.audio_url);
       const { file, timeline } = await combineToWav(playable);
       const uploaded = await base44.integrations.Core.UploadFile({ file });
-      const signature = JSON.stringify(next.map((box) => ({ id: box.id, order: box.order, text: box.text, voice: resolveVoice(box), language: resolveLanguage(box), pause: box.pause_after ?? 0.35 })));
+      const signature = JSON.stringify(next.map((box) => ({ id: box.id, order: box.order, text: box.text, voice: resolveVoice(box), characterVoiceId: resolveCharacter(box)?.voice_id || '', language: resolveLanguage(box), pause: box.pause_after ?? 0.35 })));
       await onPersist({ text_boxes: next, narration_url: uploaded.file_url, audio_sequence: timeline, audio_source_text: signature, audio_voice: 'multi', audio_stale: false, status: 'draft' });
       toast.success(totalCharged > 0 ? `${t('fotoplay.audio.audio_generated', 'FotoPlay final audio generated')} · ${totalCharged} ${t('fotoplay.audio.credits', 'credits')} ${t('fotoplay.audio.charged', 'charged')}` : t('fotoplay.audio.audio_assembled', 'FotoPlay final audio assembled · no new credits charged'));
     } finally {
@@ -252,7 +257,8 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
 
         <div className="grid grid-cols-2 gap-2">
           <label className="text-[10px] font-black uppercase text-white/50">{t('fotoplay.audio.voice', 'Voice')}
-            <select value={voice} onChange={(e) => patchBox(box.id, { voice: e.target.value })} className={`${control} mt-1`}>
+            <select value={character?.voice_id ? `custom:${character.voice_id}` : voice} onChange={(e) => patchBox(box.id, { voice: e.target.value.startsWith('custom:') ? '' : e.target.value })} disabled={Boolean(character?.voice_id)} className={`${control} mt-1`}>
+              {character?.voice_id && <option value={`custom:${character.voice_id}`} className="text-black">{character.name || character.role_name} · Custom voice</option>}
               {VOICE_NAMES.map((name) => <option key={name} value={name} className="text-black">{name}</option>)}
             </select>
           </label>
