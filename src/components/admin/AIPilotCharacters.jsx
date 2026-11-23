@@ -283,7 +283,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
         character = await persistCharacter();
       }
       const { data, error } = await supabase.functions.invoke('designCharacterVoice', {
-        body: { action: 'design', character_id: character.id, mode: character.voice_mode || 'voice_design', language: character.voice_language || 'auto', style_instruction: character.voice_style_instruction || '', preview_text: character.voice_preview_text || '', speaker: character.voice_speaker || 'Serena', reference_text: character.voice_reference_text || '', reference_audio: character.voice_reference_audio || '' },
+        body: { action: 'design', character_id: character.id, mode: character.voice_mode || 'voice_design', language: character.voice_language || 'auto', preview_text: character.voice_preview_text || '', speaker: character.voice_speaker || 'Serena', reference_text: character.voice_reference_text || '', reference_audio: character.voice_reference_audio || '' },
       });
       if (error) throw error;
       if (!data?.preview?.audio_url) throw new Error(data?.error || 'Replicate did not return a voice sample.');
@@ -456,15 +456,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                   )}
                 </div>
 
-                <Field
-                  label="Voice Prompt"
-                  helper="Prompt sent to the voice model / TTS to guide the generated voice: apparent age, accent, tone, pitch, texture, rhythm, energy and other useful vocal qualities."
-                  value={draft.voice_identity}
-                  onChange={(value) => setField('voice_identity', value)}
-                  readOnly={readOnly}
-                  rows={3}
-                  placeholder="Example: young British female voice, subtle London accent, warm but controlled, medium-low pitch, clear articulation, natural rhythm..."
-                />
+                
 
                 <div className="space-y-3 border border-white/10 bg-white/[0.025] p-3">
                   <div>
@@ -509,15 +501,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                   <span className="text-[11px] text-white/30">Language value passed to the selected speech model.</span>
                 </label>
 
-                <Field
-                  label="Style instruction"
-                  helper="Optional delivery direction passed to the speech model (for example: restrained, intimate, energetic)."
-                  value={draft.voice_style_instruction}
-                  onChange={(value) => setField('voice_style_instruction', value)}
-                  readOnly={readOnly}
-                  rows={2}
-                  placeholder="Describe how the character should deliver the preview."
-                />
+                
 
                 {(draft.voice_mode || 'voice_design') === 'custom_voice' && (
                   <label className="space-y-2 block">
