@@ -126,6 +126,8 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
       continuity_locks: draft.continuity_locks || '',
       physical_performance: draft.physical_performance || '',
       voice_identity: draft.voice_identity || '',
+      voice_sample_url: draft.voice_sample_url || null,
+      voice_sample_text: draft.voice_sample_text || null,
       voice_id: draft.voice_id || null,
       voice_delivery: draft.voice_delivery || '',
       voice_emotional_range: draft.voice_emotional_range || '',
@@ -262,7 +264,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
         body: { action: 'design', character_id: character.id },
       });
       if (error) throw error;
-      if (!Array.isArray(data?.previews) || !data.previews.length) throw new Error(data?.error || 'No voice proposals were returned.');
+      if (!Array.isArray(data?.previews) || data.previews.length !== 3) throw new Error(data?.error || 'Replicate did not return three voice proposals.');
       setVoicePreviews(data.previews);
       setSelectedVoicePreview(0);
     } catch (error) {
@@ -274,15 +276,15 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
 
   const saveDesignedVoice = async () => {
     const preview = voicePreviews[selectedVoicePreview];
-    if (!draft?.id || !preview?.generated_voice_id || voiceSaving) return;
+    if (!draft?.id || !preview?.audio_url || voiceSaving) return;
     setVoiceSaving(true);
     try {
       const { data, error } = await supabase.functions.invoke('designCharacterVoice', {
-        body: { action: 'save', character_id: draft.id, generated_voice_id: preview.generated_voice_id, voice_name: draft.role_name },
+        body: { action: 'save', character_id: draft.id, audio_url: preview.audio_url, preview_text: preview.preview_text },
       });
       if (error) throw error;
-      if (!data?.voice_id) throw new Error(data?.error || 'ElevenLabs did not return a saved voice ID.');
-      setDraft((current) => ({ ...current, voice_id: data.voice_id }));
+      if (!data?.voice_sample_url) throw new Error(data?.error || 'Replicate voice sample was not saved.');
+      setDraft((current) => ({ ...current, voice_sample_url: data.voice_sample_url, voice_sample_text: preview.preview_text, voice_id: null }));
       setVoicePreviews([]);
       await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-characters', version?.id] });
       alert('Character voice saved. It will be reused automatically in FotoPlay and compatible Shoot speech generation.');
@@ -447,21 +449,21 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <div className="text-xs font-bold text-white/75">Character voice</div>
-                      <div className="mt-1 text-[11px] text-white/40">{draft.voice_id ? 'A custom ElevenLabs voice is saved for this character.' : 'Generate voice proposals from the Voice Prompt above, then save the voice once.'}</div>
+                      <div className="mt-1 text-[11px] text-white/40">{draft.voice_id ? 'A custom Replicate voice sample is saved for this character.' : 'Generate voice proposals from the Voice Prompt above, then save the voice once.'}</div>
                     </div>
-                    <span className="text-[10px] font-bold text-[#23c7be]">{draft.voice_id ? 'VOICE SAVED' : 'NOT DESIGNED'}</span>
+                    <span className="text-[10px] font-bold text-[#23c7be]">{draft.voice_sample_url ? 'VOICE SAVED' : 'NOT DESIGNED'}</span>
                   </div>
-                  {draft.voice_id && <div className="flex items-center gap-2 text-xs text-[#8ee9e4]"><Check size={14} /> Persistent character voice assigned</div>}
+                  {draft.voice_sample_url && <div className="flex items-center gap-2 text-xs text-[#8ee9e4]"><Check size={14} /> Persistent Replicate voice sample assigned</div>}
                   {!readOnly && <button type="button" onClick={designCharacterVoice} disabled={voiceDesigning || !draft.voice_identity?.trim()} className="inline-flex items-center gap-2 border border-[#23c7be]/40 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-40">
                     {voiceDesigning ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                    {voiceDesigning ? 'Designing voice…' : draft.voice_id ? 'Redesign character voice' : 'Generate voice proposals'}
+                    {voiceDesigning ? 'Designing voice…' : draft.voice_sample_url ? 'Redesign character voice' : 'Generate voice proposals'}
                   </button>}
                   {!!voicePreviews.length && <div className="space-y-2">
                     <div className="text-[11px] font-bold text-white/65">Choose one of the generated voices</div>
-                    {voicePreviews.map((preview, index) => <label key={preview.generated_voice_id} className={`flex cursor-pointer items-center gap-3 border p-2 ${selectedVoicePreview === index ? 'border-[#23c7be] bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}>
+                    {voicePreviews.map((preview, index) => <label key={preview.audio_url} className={`flex cursor-pointer items-center gap-3 border p-2 ${selectedVoicePreview === index ? 'border-[#23c7be] bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}>
                       <input type="radio" name="character-voice-preview" checked={selectedVoicePreview === index} onChange={() => setSelectedVoicePreview(index)} />
                       <span className="flex-1 text-xs text-white/75">Voice proposal {index + 1}</span>
-                      <audio controls preload="none" className="h-8 max-w-[220px]" src={`data:${preview.media_type || 'audio/mpeg'};base64,${preview.audio_base_64}`} />
+                      <audio controls preload="none" className="h-8 max-w-[220px]" src={preview.audio_url} />
                     </label>)}
                     <button type="button" onClick={saveDesignedVoice} disabled={voiceSaving} className="inline-flex items-center gap-2 bg-[#23c7be] px-3 py-2 text-xs font-black text-black disabled:opacity-40">
                       {voiceSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Save selected voice
