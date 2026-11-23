@@ -26,7 +26,7 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
   const t = useStudioTranslation();
   const showContext = productionMethod && block;
   const textAreaRef = useRef(null);
-  const [voice, setVoice] = useState('Rachel');
+  const [voice, setVoice] = useState(character?.voice_id || 'Rachel');
   const [text, setText] = useState('');
   const [stability, setStability] = useState(0.5);
   const [style, setStyle] = useState(0);
@@ -39,7 +39,9 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
   const [isSaving, setIsSaving] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
 
-  const pricingInput = { text, voice, speed, stability, similarity_boost: 0.75, style, language_code: languageCode };
+  React.useEffect(() => { if (character?.voice_id) setVoice(character.voice_id); }, [character?.voice_id]);
+
+  const pricingInput = { text, voice, voice_id: character?.voice_id || undefined, speed, stability, similarity_boost: 0.75, style, language_code: languageCode };
   const { options: modelOptions, loading: modelsLoading } = useAiModelOptions({ service: 'generateSpeech', kind: 'speech', input: pricingInput });
   const effectiveModel = selectedModel || modelOptions.find(m => m.recommended)?.model_key || modelOptions[0]?.model_key || null;
   const activeModel = modelOptions.find(m => m.model_key === effectiveModel) || null;
@@ -79,6 +81,7 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
       const response = await base44.functions.invoke('generateSpeech', {
         text,
         voice,
+        voice_id: character?.voice_id && voice === character.voice_id ? character.voice_id : undefined,
         stability,
         similarity_boost: 0.75,
         style,
@@ -141,7 +144,7 @@ export default function TextToSpeech({ onComplete, onClose, productionMethod = n
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-4">
             <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4 text-white">
-              <VoicePicker value={voice} onChange={setVoice} language={languageCode} onLanguageChange={setLanguageCode} disabled={isGenerating} model={activeModel} />
+              <VoicePicker value={voice} onChange={setVoice} language={languageCode} onLanguageChange={setLanguageCode} disabled={isGenerating} model={activeModel} customVoiceId={character?.voice_id || ''} />
             </section>
 
             <section className="rounded-[4px] border border-white/10 bg-[#17191d] p-4">
