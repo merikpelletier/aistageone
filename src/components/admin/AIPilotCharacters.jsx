@@ -103,7 +103,9 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
   );
 
   React.useEffect(() => {
-    if (selected) setDraft({ ...selected, reference_images: Array.isArray(selected.reference_images) ? selected.reference_images : [] });
+    if (selected) setDraft((current) => current?.id === selected.id
+      ? current
+      : { ...selected, reference_images: Array.isArray(selected.reference_images) ? selected.reference_images : [] });
   }, [selected]);
 
   React.useEffect(() => {
@@ -530,12 +532,12 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <div className="text-xs font-bold text-white/75">Character voice</div>
-                      <div className="mt-1 text-[11px] text-white/40">{draft.voice_id ? 'A custom Replicate voice sample is saved for this character.' : 'Generate one voice from the Voice Prompt. Adjust the inputs and regenerate if needed.'}</div>
+                      <div className="mt-1 text-[11px] text-white/40">{draft.voice_id ? 'A custom Replicate voice sample is saved for this character.' : 'Generate one voice from the selected voice characteristics. Adjust the inputs and regenerate if needed.'}</div>
                     </div>
                     <span className="text-[10px] font-bold text-[#23c7be]">{draft.voice_sample_url ? 'VOICE SAVED' : 'NOT DESIGNED'}</span>
                   </div>
                   {draft.voice_sample_url && <div className="flex items-center gap-2 text-xs text-[#8ee9e4]"><Check size={14} /> Persistent Replicate voice sample assigned</div>}
-                  {!readOnly && <button type="button" onClick={designCharacterVoice} disabled={voiceDesigning || !draft.voice_identity?.trim()} className="inline-flex items-center gap-2 border border-[#23c7be]/40 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-40">
+                  {!readOnly && <button type="button" onClick={designCharacterVoice} disabled={voiceDesigning || ((draft.voice_mode || 'voice_design') === 'voice_design' && ![draft.voice_apparent_age, draft.voice_gender, draft.voice_accent, draft.voice_timbre_texture, draft.voice_pitch, draft.voice_personality_expressiveness].some((value) => value?.trim()))} className="inline-flex items-center gap-2 border border-[#23c7be]/40 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-40">
                     {voiceDesigning ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                     {voiceDesigning ? 'Designing voice…' : draft.voice_sample_url ? 'Redesign character voice' : 'Generate voice'}
                   </button>}
