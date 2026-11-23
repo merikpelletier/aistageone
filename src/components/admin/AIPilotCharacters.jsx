@@ -70,7 +70,6 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
   const [referenceUploading, setReferenceUploading] = useState(false);
   const [voiceDesigning, setVoiceDesigning] = useState(false);
   const [voicePreviews, setVoicePreviews] = useState([]);
-  const [selectedVoicePreview, setSelectedVoicePreview] = useState(0);
   const [voiceSaving, setVoiceSaving] = useState(false);
 
   const { data: characters = [] } = useQuery({
@@ -267,9 +266,8 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
         body: { action: 'design', character_id: character.id, language: character.voice_language || 'auto', style_instruction: character.voice_style_instruction || '', preview_text: character.voice_preview_text || '' },
       });
       if (error) throw error;
-      if (!Array.isArray(data?.previews) || data.previews.length !== 3) throw new Error(data?.error || 'Replicate did not return three voice proposals.');
-      setVoicePreviews(data.previews);
-      setSelectedVoicePreview(0);
+      if (!data?.preview?.audio_url) throw new Error(data?.error || 'Replicate did not return a voice sample.');
+      setVoicePreviews([data.preview]);
     } catch (error) {
       alert(error?.message || 'Unable to design character voice.');
     } finally {
@@ -278,7 +276,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
   };
 
   const saveDesignedVoice = async () => {
-    const preview = voicePreviews[selectedVoicePreview];
+    const preview = voicePreviews[0];
     if (!draft?.id || !preview?.audio_url || voiceSaving) return;
     setVoiceSaving(true);
     try {
@@ -478,24 +476,23 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <div className="text-xs font-bold text-white/75">Character voice</div>
-                      <div className="mt-1 text-[11px] text-white/40">{draft.voice_id ? 'A custom Replicate voice sample is saved for this character.' : 'Generate voice proposals from the Voice Prompt above, then save the voice once.'}</div>
+                      <div className="mt-1 text-[11px] text-white/40">{draft.voice_id ? 'A custom Replicate voice sample is saved for this character.' : 'Generate one voice from the Voice Prompt. Adjust the inputs and regenerate if needed.'}</div>
                     </div>
                     <span className="text-[10px] font-bold text-[#23c7be]">{draft.voice_sample_url ? 'VOICE SAVED' : 'NOT DESIGNED'}</span>
                   </div>
                   {draft.voice_sample_url && <div className="flex items-center gap-2 text-xs text-[#8ee9e4]"><Check size={14} /> Persistent Replicate voice sample assigned</div>}
                   {!readOnly && <button type="button" onClick={designCharacterVoice} disabled={voiceDesigning || !draft.voice_identity?.trim()} className="inline-flex items-center gap-2 border border-[#23c7be]/40 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-40">
                     {voiceDesigning ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                    {voiceDesigning ? 'Designing voice…' : draft.voice_sample_url ? 'Redesign character voice' : 'Generate voice proposals'}
+                    {voiceDesigning ? 'Designing voice…' : draft.voice_sample_url ? 'Redesign character voice' : 'Generate voice'}
                   </button>}
                   {!!voicePreviews.length && <div className="space-y-2">
-                    <div className="text-[11px] font-bold text-white/65">Choose one of the generated voices</div>
-                    {voicePreviews.map((preview, index) => <label key={preview.audio_url} className={`flex cursor-pointer items-center gap-3 border p-2 ${selectedVoicePreview === index ? 'border-[#23c7be] bg-[#23c7be]/10' : 'border-white/10 bg-black/20'}`}>
-                      <input type="radio" name="character-voice-preview" checked={selectedVoicePreview === index} onChange={() => setSelectedVoicePreview(index)} />
-                      <span className="flex-1 text-xs text-white/75">Voice proposal {index + 1}</span>
+                    <div className="text-[11px] font-bold text-white/65">Listen to the generated voice</div>
+                    {voicePreviews.map((preview) => <div key={preview.audio_url} className="flex items-center gap-3 border border-[#23c7be] bg-[#23c7be]/10 p-2">
+                      <span className="flex-1 text-xs text-white/75">Generated voice</span>
                       <audio controls preload="none" className="h-8 max-w-[220px]" src={preview.audio_url} />
-                    </label>)}
+                    </div>)}
                     <button type="button" onClick={saveDesignedVoice} disabled={voiceSaving} className="inline-flex items-center gap-2 bg-[#23c7be] px-3 py-2 text-xs font-black text-black disabled:opacity-40">
-                      {voiceSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Save selected voice
+                      {voiceSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Save voice
                     </button>
                   </div>}
                 </div>
