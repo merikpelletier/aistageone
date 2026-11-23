@@ -75,7 +75,6 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
   const [voiceDesigning, setVoiceDesigning] = useState(false);
   const [voicePreviews, setVoicePreviews] = useState([]);
   const [voiceSaving, setVoiceSaving] = useState(false);
-  const [qwenModeOpen, setQwenModeOpen] = useState(false);
 
   const { data: characters = [] } = useQuery({
     queryKey: ['admin-ai-pilot-characters', version?.id],
@@ -455,22 +454,27 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                   placeholder="Example: young British female voice, subtle London accent, warm but controlled, medium-low pitch, clear articulation, natural rhythm..."
                 />
 
-                <div className="space-y-2">
-                  <span className="text-xs text-white/60 block">Qwen Mode</span>
-                  <div className="relative">
-                    <button type="button" disabled={readOnly} aria-haspopup="listbox" aria-expanded={qwenModeOpen} onClick={() => setQwenModeOpen((open) => !open)} className={CONTROL_CLASS + ' w-full rounded px-3 py-3 flex items-center justify-between text-left'}>
-                      <span>{({ voice_design: 'Voice design', custom_voice: 'Custom voice (speaker)', voice_clone: 'Voice clone (reference audio)' })[draft.voice_mode || 'voice_design']}</span>
-                      <span aria-hidden="true">⌄</span>
-                    </button>
-                    {qwenModeOpen && <div role="listbox" aria-label="Qwen Mode" className="absolute z-50 mt-1 w-full overflow-hidden rounded border border-white/20 bg-[#101010] shadow-xl">
-                      {[
-                        ['voice_design', 'Voice design'],
-                        ['custom_voice', 'Custom voice (speaker)'],
-                        ['voice_clone', 'Voice clone (reference audio)'],
-                      ].map(([value, label]) => <button key={value} type="button" role="option" aria-selected={(draft.voice_mode || 'voice_design') === value} onClick={() => { setField('voice_mode', value); setQwenModeOpen(false); }} className={`block w-full px-3 py-3 text-left text-sm transition-colors ${(draft.voice_mode || 'voice_design') === value ? 'bg-[var(--studio-accent)]/20 text-[var(--studio-accent)]' : 'bg-[#101010] text-white hover:bg-white/10'}`}>
-                        {label}
-                      </button>)}
-                    </div>}
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-xs font-semibold text-white/75">Voice creation mode</div>
+                    <div className="mt-1 text-[11px] text-white/40">Choose how Qwen should create this character's voice.</div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    {[
+                      { value: 'voice_design', number: '01', title: 'Voice Design', detail: 'Create an original voice from the character description.' },
+                      { value: 'custom_voice', number: '02', title: 'Custom Voice', detail: 'Use one of Qwen’s built-in speaker voices.' },
+                      { value: 'voice_clone', number: '03', title: 'Voice Clone', detail: 'Reproduce a voice from a supplied audio reference.' },
+                    ].map((mode) => {
+                      const active = (draft.voice_mode || 'voice_design') === mode.value;
+                      return <button key={mode.value} type="button" disabled={readOnly} aria-pressed={active} onClick={() => setField('voice_mode', mode.value)} className={`min-h-[118px] rounded border p-3 text-left transition-colors ${active ? 'border-[#23c7be] bg-[#23c7be]/10 shadow-[inset_0_0_0_1px_rgba(35,199,190,0.12)]' : 'border-white/10 bg-white/[0.025] hover:border-white/25 hover:bg-white/[0.05]'} disabled:opacity-50`}>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[10px] font-bold tracking-[0.16em] ${active ? 'text-[#23c7be]' : 'text-white/35'}`}>{mode.number}</span>
+                          <span className={`h-2 w-2 rounded-full ${active ? 'bg-[#23c7be] shadow-[0_0_10px_rgba(35,199,190,0.7)]' : 'bg-white/20'}`} />
+                        </div>
+                        <div className={`mt-3 text-sm font-semibold ${active ? 'text-white' : 'text-white/75'}`}>{mode.title}</div>
+                        <div className="mt-1 text-[11px] leading-relaxed text-white/45">{mode.detail}</div>
+                      </button>;
+                    })}
                   </div>
                 </div>
                 <label className="space-y-2 block">
