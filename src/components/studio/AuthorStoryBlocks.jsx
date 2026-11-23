@@ -30,7 +30,7 @@ const pilotToFotoPlay = (project, pilot, version, blocks, actors, media, persona
     const refs = pilotImages(actor.reference_images);
     const extra = pilotImages(media.filter((item) => item.media_type === 'image' && item.component_type === 'character' && [actor.role_name, actor.id].includes(item.component_key)).map((item) => item.url));
     const images = [...new Set([...refs, ...extra])];
-    return { id: crypto.randomUUID(), source: 'ai_pilot', source_id: actor.id, name: actor.role_name, description: pilotText(actor.description, actor.narrative_function, actor.personality, actor.behavior, actor.visual_identity, actor.visual_continuity, actor.wardrobe_look, actor.continuity_locks, actor.production_notes), image_url: images[0] || '', reference_images: images, pilot_character_data: actor };
+    return { id: crypto.randomUUID(), source: 'ai_pilot', source_id: actor.id, name: actor.role_name, voice_id: actor.voice_id || '', description: pilotText(actor.description, actor.narrative_function, actor.personality, actor.behavior, actor.visual_identity, actor.visual_continuity, actor.wardrobe_look, actor.continuity_locks, actor.production_notes), image_url: images[0] || '', reference_images: images, pilot_character_data: actor };
   });
   const setEntries = Array.isArray(series.sets) ? series.sets : [];
   const locationEntries = Array.isArray(series.locations) ? series.locations : [];
