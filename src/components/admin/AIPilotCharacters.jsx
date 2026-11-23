@@ -29,6 +29,12 @@ const emptyCharacter = (versionId, sortOrder = 0) => ({
   continuity_locks: '',
   physical_performance: '',
   voice_identity: '',
+  voice_apparent_age: '',
+  voice_gender: '',
+  voice_accent: '',
+  voice_timbre_texture: '',
+  voice_pitch: '',
+  voice_personality_expressiveness: '',
   voice_mode: 'voice_design',
   voice_speaker: 'Serena',
   voice_reference_text: '',
@@ -129,6 +135,12 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
       continuity_locks: draft.continuity_locks || '',
       physical_performance: draft.physical_performance || '',
       voice_identity: draft.voice_identity || '',
+      voice_apparent_age: draft.voice_apparent_age || '',
+      voice_gender: draft.voice_gender || '',
+      voice_accent: draft.voice_accent || '',
+      voice_timbre_texture: draft.voice_timbre_texture || '',
+      voice_pitch: draft.voice_pitch || '',
+      voice_personality_expressiveness: draft.voice_personality_expressiveness || '',
       voice_mode: draft.voice_mode || 'voice_design',
       voice_speaker: draft.voice_speaker || 'Serena',
       voice_reference_text: draft.voice_reference_text || '',
@@ -454,6 +466,20 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                   placeholder="Example: young British female voice, subtle London accent, warm but controlled, medium-low pitch, clear articulation, natural rhythm..."
                 />
 
+                <div className="space-y-3 border border-white/10 bg-white/[0.025] p-3">
+                  <div>
+                    <div className="text-xs font-semibold text-white/75">Voice characteristics</div>
+                    <div className="mt-1 text-[11px] text-white/40">These descriptive details are combined into Qwen's native voice_description prompt. They are not separate model API controls.</div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Field label="Apparent age" helper="Perceived vocal age." value={draft.voice_apparent_age} onChange={(value) => setField('voice_apparent_age', value)} readOnly={readOnly} rows={2} placeholder="Example: young adult, mature, elderly…" />
+                    <Field label="Vocal gender" helper="Perceived gender presentation of the voice." value={draft.voice_gender} onChange={(value) => setField('voice_gender', value)} readOnly={readOnly} rows={2} placeholder="Example: feminine, masculine, androgynous…" />
+                    <Field label="Accent" helper="Language variety and regional pronunciation." value={draft.voice_accent} onChange={(value) => setField('voice_accent', value)} readOnly={readOnly} rows={2} placeholder="Example: French Canadian, Montréal…" />
+                    <Field label="Timbre & texture" helper="Vocal colour and texture." value={draft.voice_timbre_texture} onChange={(value) => setField('voice_timbre_texture', value)} readOnly={readOnly} rows={2} placeholder="Example: warm, breathy, raspy, clear…" />
+                    <Field label="Pitch / register" helper="Perceived vocal range." value={draft.voice_pitch} onChange={(value) => setField('voice_pitch', value)} readOnly={readOnly} rows={2} placeholder="Example: low, mid-low, high…" />
+                    <Field label="Personality & expressiveness" helper="Emotional presence and expressive character." value={draft.voice_personality_expressiveness} onChange={(value) => setField('voice_personality_expressiveness', value)} readOnly={readOnly} rows={2} placeholder="Example: confident, restrained, playful, expressive…" />
+                  </div>
+                </div>
                 <div className="space-y-3">
                   <div>
                     <div className="text-xs font-semibold text-white/75">Voice creation mode</div>
