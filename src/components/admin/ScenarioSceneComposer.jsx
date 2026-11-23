@@ -61,9 +61,6 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], ac
   const [error, setError] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [vaultOpen, setVaultOpen] = useState(false);
-  const [recoveryOpen, setRecoveryOpen] = useState(false);
-  const [recoveryPage, setRecoveryPage] = useState(0);
-  const [recoveryChoice, setRecoveryChoice] = useState(null);
   const [folderId, setFolderId] = useState('all');
   const [search, setSearch] = useState('');
   const [placingId, setPlacingId] = useState('');
@@ -99,43 +96,6 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], ac
     },
     enabled: vaultOpen,
   });
-  // Read-only inventory of previously uploaded/generated images. Never delete,
-  // move or regenerate stored files as part of shot recovery.
-  const { data: recoveryImages = [], isLoading: recoveryLoading, error: recoveryError } = useQuery({
-    queryKey: ['ai-pilot-shot-recovery-images'],
-    enabled: recoveryOpen,
-    queryFn: async () => {
-      const { data: auth, error: authError } = await supabase.auth.getUser();
-      if (authError) throw authError;
-      if (!auth?.user?.id) throw new Error('Sign in to view your stored images.');
-      const userId = auth.user.id;
-      const files = [];
-      for (let offset = 0; ; offset += 1000) {
-        const { data, error: listError } = await supabase.storage.from('media').list(userId, {
-          limit: 1000, offset, sortBy: { column: 'created_at', order: 'desc' },
-        });
-        if (listError) throw listError;
-        files.push(...(data || []));
-        if (!data || data.length < 1000) break;
-      }
-      const images = files.filter(file => /\.(jpg|jpeg|png|webp)$/i.test(file.name));
-      return images.map(file => ({
-        name: file.name,
-        date: file.created_at,
-        url: supabase.storage.from('media').getPublicUrl(userId + '/' + file.name).data.publicUrl,
-      }));
-    },
-  });
-  const recoveryPageSize = 24;
-  const recoveryVisible = recoveryImages.slice(recoveryPage * recoveryPageSize, (recoveryPage + 1) * recoveryPageSize);
-  const restoreStoredImage = (field, url) => {
-    if (!url || readOnly) return;
-    const existing = field === 'base_scene_url' ? shot.base_scene_url : shot.hero_preview_url;
-    if (existing && existing !== url && !window.confirm('This shot already has an image. Replace its saved reference? The original file stays in storage.')) return;
-    onShotChange({ [field]: url });
-    setRecoveryChoice(null);
-    setRecoveryOpen(false);
-  };
   const visibleAssets = vault.assets.filter(asset =>
     (folderId === 'all' || (folderId === 'unfiled' ? !asset.folder_id : asset.folder_id === folderId))
     && (!search.trim() || (asset.name || '').toLowerCase().includes(search.trim().toLowerCase()))
@@ -497,38 +457,6 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], ac
         {previewImage && !readOnly && <button type="button" className="border border-white/30 px-3 py-1.5 text-xs text-white" onClick={() => activeImageReference?.url === previewImage && activeImageReference?.shotId === shot.id ? clearReference() : selectReference(previewImage, 'preview')}>{activeImageReference?.url === previewImage && activeImageReference?.shotId === shot.id ? 'Clear' : 'Use as Reference'}</button>}
       </figure>
     </div>
-    {!readOnly && <section className="border border-white/15 px-2 py-2 space-y-2">
-      <button type="button" className="text-xs text-teal-200 underline underline-offset-2" onClick={() => { setRecoveryOpen(value => !value); setRecoveryPage(0); setRecoveryChoice(null); }}>
-        {recoveryOpen ? 'Close stored-image recovery' : 'Find / recover an existing shot image'}
-      </button>
-      {recoveryOpen && <>
-        <p className="text-xs text-white/60">Stored images from your media library, newest first. Inspect the image, choose it, then assign it to this shot. No files are moved, deleted or regenerated; Save All is still required.</p>
-        {recoveryLoading && <p className="text-xs text-white/60">Loading stored images…</p>}
-        {recoveryError && <p role="alert" className="text-xs text-red-300">Unable to load stored images: {recoveryError.message}</p>}
-        {!recoveryLoading && !recoveryError && <>
-          <p className="text-xs text-white/50">{recoveryImages.length} images found · page {recoveryPage + 1} / {Math.max(1, Math.ceil(recoveryImages.length / recoveryPageSize))}</p>
-          <div className="grid max-h-96 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 lg:grid-cols-6">
-            {recoveryVisible.map(item => <button type="button" key={item.name} onClick={() => setRecoveryChoice(item)}
-              aria-pressed={recoveryChoice?.name === item.name}
-              className={`border p-1 text-left ${recoveryChoice?.name === item.name ? 'border-teal-400' : 'border-white/20'}`}>
-              <img loading="lazy" src={item.url} alt="Saved image candidate" className="w-full aspect-video bg-black object-contain" />
-              <span className="block text-[10px] text-white/60">{new Date(item.date).toLocaleString()}</span>
-            </button>)}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" className="border border-white/30 px-2 py-1 text-xs disabled:opacity-30" disabled={!recoveryPage} onClick={() => { setRecoveryPage(p => p - 1); setRecoveryChoice(null); }}>Previous</button>
-            <button type="button" className="border border-white/30 px-2 py-1 text-xs disabled:opacity-30" disabled={(recoveryPage + 1) * recoveryPageSize >= recoveryImages.length} onClick={() => { setRecoveryPage(p => p + 1); setRecoveryChoice(null); }}>Next</button>
-          </div>
-          {recoveryChoice && <div className="space-y-2 border border-teal-400/50 p-2">
-            <img src={recoveryChoice.url} alt="Selected image for recovery" className="max-h-64 w-full bg-black object-contain" />
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="border border-teal-400 px-3 py-2 text-xs text-teal-200" onClick={() => restoreStoredImage('base_scene_url', recoveryChoice.url)}>Attach as Base Scene</button>
-              <button type="button" className="border border-teal-400 px-3 py-2 text-xs text-teal-200" onClick={() => restoreStoredImage('hero_preview_url', recoveryChoice.url)}>Attach as Hero Preview</button>
-            </div>
-          </div>}
-        </>}
-      </>}
-    </section>}
     <details className="border border-white/15 px-2 py-1">
       <summary className="cursor-pointer text-xs text-white/70">Advanced · Hero composition prompt</summary>
       <label className="block space-y-1 pt-2 text-xs text-white/70">Heroes · Composition / validation image prompt
