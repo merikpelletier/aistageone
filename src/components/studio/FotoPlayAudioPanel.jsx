@@ -141,11 +141,12 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
   const resolveCharacter = (box) => characters.find((item) => item.id === box.speaker_id) || null;
 
   const resolveVoice = (box) => {
-    if (box.voice) return box.voice;
-    if (box.type === 'narration') return segment.narrator_voice || VOICE_NAMES[0] || '';
+    if (box.type === 'narration') return box.voice || segment.narrator_voice || VOICE_NAMES[0] || '';
     const characterIndex = characters.findIndex((item) => item.id === box.speaker_id);
     const character = characters[characterIndex];
-    return character?.voice_id || box.voice || defaultCharacterVoice(character, Math.max(0, characterIndex));
+    if (character?.voice_id) return character.voice_id;
+    if (box.voice) return box.voice;
+    return defaultCharacterVoice(character, Math.max(0, characterIndex));
   };
 
   const resolveLanguage = (box) => box.language || language;
