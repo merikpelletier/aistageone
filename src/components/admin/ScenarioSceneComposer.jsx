@@ -109,12 +109,17 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], ac
       if (authError) throw authError;
       if (!auth?.user?.id) throw new Error('Sign in to view your stored images.');
       const userId = auth.user.id;
-      const { data, error: listError } = await supabase.storage.from('media').list(userId, {
-        limit: 1000, offset: 0, sortBy: { column: 'created_at', order: 'desc' },
-      });
-      if (listError) throw listError;
-      const images = (data || []).filter(file =>
-        /\\.(jpg|jpeg)$/i.test(file.name) &&
+      const files = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data, error: listError } = await supabase.storage.from('media').list(userId, {
+          limit: 1000, offset, sortBy: { column: 'created_at', order: 'desc' },
+        });
+        if (listError) throw listError;
+        files.push(...(data || []));
+        if (!data || data.length < 1000) break;
+      }
+      const images = files.filter(file =>
+        /\.(jpg|jpeg)$/i.test(file.name) &&
         file.created_at >= '2026-11-07' && file.created_at < '2026-11-12'
       );
       return images.map(file => ({
