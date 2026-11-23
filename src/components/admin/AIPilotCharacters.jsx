@@ -29,6 +29,10 @@ const emptyCharacter = (versionId, sortOrder = 0) => ({
   continuity_locks: '',
   physical_performance: '',
   voice_identity: '',
+  voice_mode: 'voice_design',
+  voice_speaker: 'Serena',
+  voice_reference_text: '',
+  voice_reference_audio: '',
   voice_delivery: '',
   voice_emotional_range: '',
   dialogue_style: '',
@@ -125,6 +129,10 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
       continuity_locks: draft.continuity_locks || '',
       physical_performance: draft.physical_performance || '',
       voice_identity: draft.voice_identity || '',
+      voice_mode: draft.voice_mode || 'voice_design',
+      voice_speaker: draft.voice_speaker || 'Serena',
+      voice_reference_text: draft.voice_reference_text || '',
+      voice_reference_audio: draft.voice_reference_audio || '',
       voice_language: draft.voice_language || 'auto',
       voice_style_instruction: draft.voice_style_instruction || '',
       voice_preview_text: draft.voice_preview_text || '',
@@ -263,7 +271,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
         character = await persistCharacter();
       }
       const { data, error } = await supabase.functions.invoke('designCharacterVoice', {
-        body: { action: 'design', character_id: character.id, language: character.voice_language || 'auto', style_instruction: character.voice_style_instruction || '', preview_text: character.voice_preview_text || '' },
+        body: { action: 'design', character_id: character.id, mode: character.voice_mode || 'voice_design', language: character.voice_language || 'auto', style_instruction: character.voice_style_instruction || '', preview_text: character.voice_preview_text || '', speaker: character.voice_speaker || 'Serena', reference_text: character.voice_reference_text || '', reference_audio: character.voice_reference_audio || '' },
       });
       if (error) throw error;
       if (!data?.preview?.audio_url) throw new Error(data?.error || 'Replicate did not return a voice sample.');
@@ -447,6 +455,14 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                 />
 
                 <label className="space-y-2 block">
+                  <span className="text-xs text-white/60">Qwen Mode</span>
+                  <select className={CONTROL_CLASS + ' w-full rounded px-3 py-2'} disabled={readOnly} value={draft.voice_mode || 'voice_design'} onChange={(e) => setField('voice_mode', e.target.value)}>
+                    <option value="voice_design">Voice design</option>
+                    <option value="custom_voice">Custom voice (speaker)</option>
+                    <option value="voice_clone">Voice clone (reference audio)</option>
+                  </select>
+                </label>
+                <label className="space-y-2 block">
                   <span className="text-xs text-white/60">Language</span>
                   <Input className={CONTROL_CLASS} disabled={readOnly} value={draft.voice_language || 'auto'} onChange={(e) => setField('voice_language', e.target.value)} placeholder="auto, English, French, Spanish…" />
                   <span className="text-[11px] text-white/30">Language value passed to the selected speech model.</span>
@@ -462,6 +478,19 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                   placeholder="Describe how the character should deliver the preview."
                 />
 
+                {(draft.voice_mode || 'voice_design') === 'custom_voice' && (
+                  <label className="space-y-2 block">
+                    <span className="text-xs text-white/60">Speaker</span>
+                    <Input className={CONTROL_CLASS} disabled={readOnly} value={draft.voice_speaker || 'Serena'} onChange={(e) => setField('voice_speaker', e.target.value)} placeholder="Qwen speaker name" />
+                  </label>
+                )}
+                {(draft.voice_mode || 'voice_design') === 'voice_clone' && <>
+                  <Field label="Reference text" helper="Exact transcript corresponding to the reference audio." value={draft.voice_reference_text} onChange={(value) => setField('voice_reference_text', value)} readOnly={readOnly} rows={2} />
+                  <label className="space-y-2 block">
+                    <span className="text-xs text-white/60">Reference audio URL</span>
+                    <Input className={CONTROL_CLASS} disabled={readOnly} value={draft.voice_reference_audio || ''} onChange={(e) => setField('voice_reference_audio', e.target.value)} placeholder="https://…" />
+                  </label>
+                </>}
                 <Field
                   label="Preview text"
                   helper="Exact text the model will speak in each generated proposal."
