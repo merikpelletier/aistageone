@@ -118,10 +118,7 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], ac
         files.push(...(data || []));
         if (!data || data.length < 1000) break;
       }
-      const images = files.filter(file =>
-        /\.(jpg|jpeg)$/i.test(file.name) &&
-        file.created_at >= '2026-11-07' && file.created_at < '2026-11-12'
-      );
+      const images = files.filter(file => /\.(jpg|jpeg|png|webp)$/i.test(file.name));
       return images.map(file => ({
         name: file.name,
         date: file.created_at,
@@ -505,7 +502,7 @@ export default function ScenarioSceneComposer({ shot, episode, episodes = [], ac
         {recoveryOpen ? 'Close stored-image recovery' : 'Find / recover an existing shot image'}
       </button>
       {recoveryOpen && <>
-        <p className="text-xs text-white/60">Stored JPEGs from November 7–11. Inspect the image, choose it, then assign it to this shot. No files are moved, deleted or regenerated; Save All is still required.</p>
+        <p className="text-xs text-white/60">Stored images from your media library, newest first. Inspect the image, choose it, then assign it to this shot. No files are moved, deleted or regenerated; Save All is still required.</p>
         {recoveryLoading && <p className="text-xs text-white/60">Loading stored images…</p>}
         {recoveryError && <p role="alert" className="text-xs text-red-300">Unable to load stored images: {recoveryError.message}</p>}
         {!recoveryLoading && !recoveryError && <>
