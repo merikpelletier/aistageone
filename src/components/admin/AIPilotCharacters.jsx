@@ -291,7 +291,17 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
       if (!data?.preview?.audio_url) throw new Error(data?.error || 'Replicate did not return a voice sample.');
       setVoicePreviews([data.preview]);
     } catch (error) {
-      alert(error?.message || 'Unable to design character voice.');
+      let message = error?.message || 'Unable to design character voice.';
+      const response = error?.context;
+      if (response && typeof response.clone === 'function') {
+        try {
+          const details = await response.clone().json();
+          if (details?.error) message = details.error;
+        } catch {
+          // Keep the original Supabase error when no JSON details are available.
+        }
+      }
+      alert(message);
     } finally {
       setVoiceDesigning(false);
     }
