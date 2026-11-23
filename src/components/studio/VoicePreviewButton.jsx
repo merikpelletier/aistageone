@@ -4,7 +4,7 @@ import { Volume2, Loader2, Square } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
-export default function VoicePreviewButton({ voiceId, modelKey, language = 'en', disabled = false }) {
+export default function VoicePreviewButton({ voiceId, customVoiceId = '', modelKey, language = 'en', disabled = false }) {
   const t = useStudioTranslation();
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -17,17 +17,18 @@ export default function VoicePreviewButton({ voiceId, modelKey, language = 'en',
     audioRef.current?.pause();
     setPlaying(false);
     return () => { requestId.current += 1; audioRef.current?.pause(); };
-  }, [voiceId, modelKey, language]);
+  }, [voiceId, customVoiceId, modelKey, language]);
 
   const handlePreview = async () => {
-    if (disabled || pending.current || !voiceId || !modelKey) return;
+    if (disabled || pending.current || (!voiceId && !customVoiceId) || !modelKey) return;
     if (playing) { audioRef.current?.pause(); setPlaying(false); return; }
     pending.current = true;
     const id = requestId.current;
     setLoading(true);
     try {
       const { data } = await base44.functions.invoke('generateSpeech', {
-        voice: voiceId,
+        voice: voiceId || undefined,
+        voice_id: customVoiceId || undefined,
         model_key: modelKey,
         language_code: language,
         preview: true,
@@ -49,7 +50,7 @@ export default function VoicePreviewButton({ voiceId, modelKey, language = 'en',
     }
   };
 
-  return <button type="button" disabled={disabled || loading || !modelKey} onClick={event => { event.stopPropagation(); handlePreview(); }} className="mt-4 flex shrink-0 items-center gap-1 rounded-xl border border-neutral-500 bg-white px-2 py-2 text-xs font-bold text-black disabled:opacity-40" title={t("Preview selected voice", "Preview selected voice")} aria-label={t("Preview {voice}", "Preview {voice}").replace("{voice}", voiceId)}>
+  return <button type="button" disabled={disabled || loading || !modelKey} onClick={event => { event.stopPropagation(); handlePreview(); }} className="mt-4 flex shrink-0 items-center gap-1 rounded-xl border border-neutral-500 bg-white px-2 py-2 text-xs font-bold text-black disabled:opacity-40" title={t("Preview selected voice", "Preview selected voice")} aria-label={t("Preview {voice}", "Preview {voice}").replace("{voice}", voiceId || 'Character voice')}>
     {loading ? <Loader2 size={14} className="animate-spin" /> : playing ? <Square size={14} /> : <Volume2 size={14} />} {playing ? t('Stop', 'Stop') : t('Preview', 'Preview')}
   </button>;
 }
