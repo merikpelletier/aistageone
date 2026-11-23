@@ -126,6 +126,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
       continuity_locks: draft.continuity_locks || '',
       physical_performance: draft.physical_performance || '',
       voice_identity: draft.voice_identity || '',
+      voice_id: draft.voice_id || null,
       voice_delivery: draft.voice_delivery || '',
       voice_emotional_range: draft.voice_emotional_range || '',
       dialogue_style: draft.dialogue_style || '',
