@@ -75,6 +75,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
   const [voiceDesigning, setVoiceDesigning] = useState(false);
   const [voicePreviews, setVoicePreviews] = useState([]);
   const [voiceSaving, setVoiceSaving] = useState(false);
+  const [qwenModeOpen, setQwenModeOpen] = useState(false);
 
   const { data: characters = [] } = useQuery({
     queryKey: ['admin-ai-pilot-characters', version?.id],
@@ -454,14 +455,24 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                   placeholder="Example: young British female voice, subtle London accent, warm but controlled, medium-low pitch, clear articulation, natural rhythm..."
                 />
 
-                <label className="space-y-2 block">
-                  <span className="text-xs text-white/60">Qwen Mode</span>
-                  <select className={CONTROL_CLASS + ' w-full rounded px-3 py-2'} disabled={readOnly} value={draft.voice_mode || 'voice_design'} onChange={(e) => setField('voice_mode', e.target.value)}>
-                    <option value="voice_design">Voice design</option>
-                    <option value="custom_voice">Custom voice (speaker)</option>
-                    <option value="voice_clone">Voice clone (reference audio)</option>
-                  </select>
-                </label>
+                <div className="space-y-2">
+                  <span className="text-xs text-white/60 block">Qwen Mode</span>
+                  <div className="relative">
+                    <button type="button" disabled={readOnly} aria-haspopup="listbox" aria-expanded={qwenModeOpen} onClick={() => setQwenModeOpen((open) => !open)} className={CONTROL_CLASS + ' w-full rounded px-3 py-3 flex items-center justify-between text-left'}>
+                      <span>{({ voice_design: 'Voice design', custom_voice: 'Custom voice (speaker)', voice_clone: 'Voice clone (reference audio)' })[draft.voice_mode || 'voice_design']}</span>
+                      <span aria-hidden="true">⌄</span>
+                    </button>
+                    {qwenModeOpen && <div role="listbox" aria-label="Qwen Mode" className="absolute z-50 mt-1 w-full overflow-hidden rounded border border-white/20 bg-[#101010] shadow-xl">
+                      {[
+                        ['voice_design', 'Voice design'],
+                        ['custom_voice', 'Custom voice (speaker)'],
+                        ['voice_clone', 'Voice clone (reference audio)'],
+                      ].map(([value, label]) => <button key={value} type="button" role="option" aria-selected={(draft.voice_mode || 'voice_design') === value} onClick={() => { setField('voice_mode', value); setQwenModeOpen(false); }} className={`block w-full px-3 py-3 text-left text-sm transition-colors ${(draft.voice_mode || 'voice_design') === value ? 'bg-[var(--studio-accent)]/20 text-[var(--studio-accent)]' : 'bg-[#101010] text-white hover:bg-white/10'}`}>
+                        {label}
+                      </button>)}
+                    </div>}
+                  </div>
+                </div>
                 <label className="space-y-2 block">
                   <span className="text-xs text-white/60">Language</span>
                   <Input className={CONTROL_CLASS} disabled={readOnly} value={draft.voice_language || 'auto'} onChange={(e) => setField('voice_language', e.target.value)} placeholder="auto, English, French, Spanish…" />
