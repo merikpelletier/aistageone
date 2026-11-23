@@ -50,18 +50,21 @@ function modelLanguages(model) {
   return values.map(code => [code, code === 'auto' ? 'Auto detect' : (labels.of(code) || code)]);
 }
 
-export default function VoicePicker({ value, onChange, language, onLanguageChange, disabled = false, preview = true, model = null }) {
+export default function VoicePicker({ value, onChange, language, onLanguageChange, disabled = false, preview = true, model = null, customVoiceId = '', customVoiceLabel = 'Character voice' }) {
   const t = useStudioTranslation();
   const locale = getPlatformLanguage();
   const voiceInfo = useMemo(() => modelVoiceInfo(model), [model]);
   const languages = useMemo(() => modelLanguages(model), [model]);
+  const customVoiceAvailable = Boolean(customVoiceId && model?.model_key?.startsWith('elevenlabs/'));
+  const availableVoices = customVoiceAvailable ? [customVoiceId, ...voiceInfo.voices] : voiceInfo.voices;
   const languageNames = useMemo(() => new Intl.DisplayNames([locale], { type: 'language' }), [locale]);
   const providerName = model?.model_key?.startsWith('inworld/') ? 'Inworld' : model?.model_key?.startsWith('elevenlabs/') ? 'ElevenLabs' : (model?.name || 'ElevenLabs');
 
   useEffect(() => {
-    if (!voiceInfo.voices.length) return;
-    if (!value || !voiceInfo.voices.includes(value)) onChange(voiceInfo.defaultVoice || voiceInfo.voices[0]);
-  }, [voiceInfo.voices.join('|'), voiceInfo.defaultVoice, value, onChange]);
+    if (!availableVoices.length) return;
+    if (customVoiceAvailable && value !== customVoiceId) onChange(customVoiceId);
+    else if (!value || !availableVoices.includes(value)) onChange(voiceInfo.defaultVoice || availableVoices[0]);
+  }, [availableVoices.join('|'), voiceInfo.defaultVoice, value, onChange, customVoiceAvailable, customVoiceId]);
 
   useEffect(() => {
     if (!onLanguageChange || !languages.length) return;
@@ -72,12 +75,12 @@ export default function VoicePicker({ value, onChange, language, onLanguageChang
   return <div className="w-full min-w-0 space-y-2" data-voice-catalog={model?.model_key || 'speech-model'}>
     <div className="flex items-center gap-2">
       <label className="min-w-0 flex-1 text-xs">{t('Voice · {count} choices', 'Voice · {count} choices').replace('{count}', String(voiceInfo.voices.length))}
-        <select aria-label={t('Voice', 'Voice')} value={voiceInfo.voices.includes(value) ? value : ''} onChange={event => onChange(event.target.value)} disabled={disabled || !voiceInfo.voices.length} className="mt-1 w-full rounded-xl border border-neutral-500 bg-white px-3 py-2 text-sm font-semibold text-black disabled:opacity-50">
-          {!voiceInfo.voices.length && <option value="">{t('No preset voices available', 'No preset voices available')}</option>}
-          {voiceInfo.voices.map(name => <option key={name} value={name}>{name}</option>)}
+        <select aria-label={t('Voice', 'Voice')} value={availableVoices.includes(value) ? value : ''} onChange={event => onChange(event.target.value)} disabled={disabled || !voiceInfo.voices.length} className="mt-1 w-full rounded-xl border border-neutral-500 bg-white px-3 py-2 text-sm font-semibold text-black disabled:opacity-50">
+          {!availableVoices.length && <option value="">{t('No preset voices available', 'No preset voices available')}</option>}
+          {availableVoices.map(name => <option key={name} value={name}>{customVoiceAvailable && name === customVoiceId ? customVoiceLabel : name}</option>)}
         </select>
       </label>
-      {preview && value && voiceInfo.voices.includes(value) && <VoicePreviewButton voiceId={value} modelKey={model?.model_key} language={language} disabled={disabled} />}
+      {preview && value && availableVoices.includes(value) && <VoicePreviewButton voiceId={customVoiceAvailable && value === customVoiceId ? '' : value} customVoiceId={customVoiceAvailable && value === customVoiceId ? customVoiceId : ''} modelKey={model?.model_key} language={language} disabled={disabled} />}
     </div>
     {onLanguageChange && <label className="block text-xs">{t('Speech language', 'Speech language')}
       <select aria-label={t('Speech language', 'Speech language')} value={language || languages[0]?.[0] || 'en'} onChange={event => onLanguageChange(event.target.value)} disabled={disabled} className="mt-1 w-full rounded-xl border border-neutral-500 bg-white px-3 py-2 text-sm text-black">
