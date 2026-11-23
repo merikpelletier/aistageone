@@ -196,7 +196,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
       const playable = next.filter((box) => box.text?.trim() && box.audio_url);
       const { file, timeline } = await combineToWav(playable);
       const uploaded = await base44.integrations.Core.UploadFile({ file });
-      const signature = JSON.stringify(next.map((box) => ({ id: box.id, order: box.order, text: box.text, voice: resolveVoice(box), characterVoiceId: resolveCharacter(box)?.voice_id || '', language: resolveLanguage(box), pause: box.pause_after ?? 0.35 })));
+      const signature = JSON.stringify(next.map((box) => ({ id: box.id, order: box.order, text: box.text, voice: resolveVoice(box), characterVoiceId: resolveCharacter(box)?.voice_id || resolveCharacter(box)?.voice_sample_url || '', language: resolveLanguage(box), pause: box.pause_after ?? 0.35 })));
       await onPersist({ text_boxes: next, narration_url: uploaded.file_url, audio_sequence: timeline, audio_source_text: signature, audio_voice: 'multi', audio_stale: false, status: 'draft' });
       toast.success(totalCharged > 0 ? `${t('fotoplay.audio.audio_generated', 'FotoPlay final audio generated')} · ${totalCharged} ${t('fotoplay.audio.credits', 'credits')} ${t('fotoplay.audio.charged', 'charged')}` : t('fotoplay.audio.audio_assembled', 'FotoPlay final audio assembled · no new credits charged'));
     } finally {
