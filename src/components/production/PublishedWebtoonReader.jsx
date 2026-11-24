@@ -172,8 +172,8 @@ export default function PublishedWebtoonReader({ blocks = [], coverUrl = '', onC
               </div>}
           </div>
         </div>
-        {step?.caption && <div key={blockIndex + '-' + stepIndex} className="pointer-events-none absolute z-20 w-max max-w-[min(78%,360px)] rounded bg-black/75 px-3 py-2 text-center font-medium leading-snug shadow-lg" style={{ left: clamp(position.x,10,90)+'%', top: clamp(position.y,10,90)+'%', transform:'translate(-50%,-50%)', fontSize:clamp(config.captionSize ?? 13,10,24)+'px' }}><TypeCaption value={step.caption} playing={playing}/></div>}
       </div>
+      {step?.caption && <div key={blockIndex + '-' + stepIndex} className="pointer-events-none absolute z-50 w-max max-w-[min(78%,360px)] rounded bg-black/75 px-3 py-2 text-center font-medium leading-snug shadow-lg" style={{ left: clamp(position.x,10,90)+'%', top: clamp(position.y,10,90)+'%', transform:'translate(-50%,-50%)', fontSize:clamp(config.captionSize ?? 13,10,24)+'px' }}><TypeCaption value={step.caption} playing={playing}/></div>}
     </div>
     {block.narration_audio && <audio ref={audio} key={block.id} src={block.narration_audio} preload="metadata" onLoadedMetadata={() => { setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0); updateAudioPosition(); }} onDurationChange={() => setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0)} onTimeUpdate={updateAudioPosition} onSeeking={updateAudioPosition} onEnded={() => { setAudioFinished(true); if (playing) nextBlock(); }} />}
     <div className="absolute left-3 right-3 top-3 z-30 flex items-center justify-between gap-2" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
