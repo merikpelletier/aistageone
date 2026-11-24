@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Pause, Play, X, Maximize2 } from 'lucide-react';
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, Number(n) || lo));
-const firstImage = (panel) => panel?.image_url || (panel?.split && (firstImage(panel.split.a) || firstImage(panel.split.b))) || '';
 function FrameImage({ panel }) {
   if (panel?.split) {
     const vertical = panel.split.direction === 'vertical';
@@ -57,7 +56,7 @@ function TypeCaption({ value, playing }) {
   }, [value, playing]);
   return <span aria-label={value}>{value.slice(0, length)}</span>;
 }
-export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic }) {
+export default function PublishedWebtoonReader({ blocks = [], coverUrl = '', onClose, onClassic }) {
   const sorted = useMemo(() => [...blocks].sort((a,b) => (a.order || 0) - (b.order || 0)), [blocks]);
   const [blockIndex, setBlockIndex] = useState(0);
   const [stepIndex, setStepIndex] = useState(-1);
@@ -70,8 +69,6 @@ export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic
   const config = block?.webtoon || {};
   const { frames, steps } = useMemo(() => block ? sequence(block) : { frames: [], steps: [] }, [block]);
   const step = stepIndex >= 0 ? steps[stepIndex] : null;
-  const frame = frames[step?.frameIndex || 0];
-  const frameUrl = step?.supportUrl || firstImage(frame);
   const ratio = String(config.image_aspect_ratio || block?.image_aspect_ratio || '16:9').split(':').map(Number);
   const portrait = (ratio[0] || 16) < (ratio[1] || 9);
   const zoom = step ? clamp(config.frameZooms?.[step.frameIndex] ?? config.cameraZoom ?? 1.05, 1, 3.5) : 1;
@@ -167,18 +164,20 @@ export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic
   useEffect(() => { setAudioFinished(false); }, [blockIndex]);
   if (!block) return null;
   return <div className="fixed inset-0 z-[320] overflow-hidden bg-black text-white" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-    {step && frameUrl && <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true"><img src={frameUrl} alt="" className="h-full w-full object-cover" style={{ filter: 'blur(24px) brightness(.6)', transform: 'scale(1.14)' }} /></div>}
-    <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-      <div className="relative flex h-full w-full items-center justify-center transition-transform duration-700 ease-in-out" style={{ transform }}>
-        {step?.supportUrl ? <img src={step.supportUrl} alt="" className="max-h-[90%] max-w-[90%] object-contain" />
-          : <div className="relative w-[min(94vw,1000px)] max-h-[90vh] overflow-hidden bg-black/60" style={{ aspectRatio: (ratio[0] || 16) + ' / ' + (ratio[1] || 9), maxWidth: 'min(94vw, calc(86vh * ' + ((ratio[0] || 16)/(ratio[1] || 9)) + '))' }}>
-            <div className="absolute inset-0 grid gap-[4px] p-[4px]" style={portrait ? { gridTemplateRows: 'repeat(' + count + ',minmax(0,1fr))' } : { gridTemplateColumns: 'repeat(' + count + ',minmax(0,1fr))' }}>
-              {frames.map((item,i) => <div key={item.id || i} className="min-h-0 min-w-0 overflow-hidden"><FrameImage panel={item}/></div>)}
-            </div>
-          </div>}
+    {coverUrl && <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true"><img src={coverUrl} alt="" className="h-full w-full object-cover object-center" /><div className="absolute inset-0 bg-black/75" /></div>}
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="relative isolate w-[min(92vw,1000px)] overflow-hidden bg-black shadow-2xl" style={{ aspectRatio: (ratio[0] || 16) + ' / ' + (ratio[1] || 9), maxWidth: 'min(92vw,1000px, calc(72dvh * ' + ((ratio[0] || 16)/(ratio[1] || 9)) + '))' }}>
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 transition-transform duration-700 ease-in-out" style={{ transform }}>
+            {step?.supportUrl ? <img src={step.supportUrl} alt="" className="h-full w-full object-contain" />
+              : <div className="absolute inset-0 grid gap-[4px] p-[4px]" style={portrait ? { gridTemplateRows: 'repeat(' + count + ',minmax(0,1fr))' } : { gridTemplateColumns: 'repeat(' + count + ',minmax(0,1fr))' }}>
+                {frames.map((item,i) => <div key={item.id || i} className="min-h-0 min-w-0 overflow-hidden"><FrameImage panel={item}/></div>)}
+              </div>}
+          </div>
+        </div>
+        {step?.caption && <div key={blockIndex + '-' + stepIndex} className="pointer-events-none absolute z-20 w-max max-w-[min(78%,360px)] rounded bg-black/75 px-3 py-2 text-center font-medium leading-snug shadow-lg" style={{ left: clamp(position.x,10,90)+'%', top: clamp(position.y,10,90)+'%', transform:'translate(-50%,-50%)', fontSize:clamp(config.captionSize ?? 13,10,24)+'px' }}><TypeCaption value={step.caption} playing={playing}/></div>}
       </div>
     </div>
-    {step?.caption && <div key={blockIndex + '-' + stepIndex} className="pointer-events-none absolute z-20 w-max max-w-[min(78%,360px)] rounded bg-black/75 px-3 py-2 text-center font-medium leading-snug shadow-lg" style={{ left: clamp(position.x,10,90)+'%', top: clamp(position.y,10,90)+'%', transform:'translate(-50%,-50%)', fontSize:clamp(config.captionSize ?? 13,10,24)+'px' }}><TypeCaption value={step.caption} playing={playing}/></div>}
     {block.narration_audio && <audio ref={audio} key={block.id} src={block.narration_audio} preload="metadata" onLoadedMetadata={() => { setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0); updateAudioPosition(); }} onDurationChange={() => setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0)} onTimeUpdate={updateAudioPosition} onSeeking={updateAudioPosition} onEnded={() => { setAudioFinished(true); if (playing) nextBlock(); }} />}
     <div className="absolute left-3 right-3 top-3 z-30 flex items-center justify-between gap-2" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="flex min-w-0 gap-2 rounded-full bg-black/70 p-1 text-xs font-bold"><button onClick={onClassic} className="rounded-full px-3 py-2 text-white/70">Classic</button><span className="rounded-full bg-white px-3 py-2 text-black">Webtoon</span></div>
