@@ -566,7 +566,7 @@ export default function Index() {
             ))}
           </div>
         </div>
-        <TopBanner dossiers={dossiers} />
+        <TopBanner dossiers={dossiers} dictionary={dictionary} language={language} />
         <div className="pt-4 px-4 columns-1 sm:columns-2 gap-4">
           {classSections.map(section => <ClassSection key={section.classLabel} classLabel={section.classLabel} dossiers={section.dossiers} categories={categories} dictionary={dictionary} language={language} />)}
           {noClass.length > 0 && <ClassSection classLabel="Others" dossiers={noClass} categories={categories} dictionary={dictionary} language={language} />}
