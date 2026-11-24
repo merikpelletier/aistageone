@@ -556,6 +556,16 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-black pb-24">
       <div className="lg:hidden">
+        <div className="flex justify-end px-4 py-2">
+          <div role="group" aria-label="Language / Langue" className="flex border border-white/20">
+            {['fr', 'en'].map(locale => (
+              <button type="button" key={locale} onClick={() => changeLanguage(locale)} aria-pressed={language === locale}
+                className={`min-h-11 px-4 text-xs font-bold ${language === locale ? 'bg-white text-black' : 'text-white/75'}`}>
+                {locale.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
         <TopBanner dossiers={dossiers} />
         <div className="pt-4 px-4 columns-1 sm:columns-2 gap-4">
           {classSections.map(section => <ClassSection key={section.classLabel} classLabel={section.classLabel} dossiers={section.dossiers} categories={categories} dictionary={dictionary} language={language} />)}
