@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { GripHorizontal, Search } from 'lucide-react';
+import { translatedLabel, normalizeLocale, normalizeSearchText, searchTerms } from '@/lib/translationDictionary';
 
 const FALLBACK_CLASS_ORDER = ['Videos', 'Story', 'Assets', 'Kits', 'Merchandise'];
 const SHEET_SNAPS = [28, 60, 100];
@@ -95,7 +96,7 @@ function languageLabel(dossier) {
   return ({ en: 'EN', fr: 'FR', es: 'ES', English: 'EN', French: 'FR', Français: 'FR', Spanish: 'ES', Español: 'ES' })[language] || String(language).toUpperCase();
 }
 
-function MobileMasonryCard({ dossier, featured = false }) {
+function MobileMasonryCard({ dossier, featured = false, dictionary, platformLanguage }) {
   const image = dossier.cover_image || dossier.cover_template_image || dossier.cover_image_landscape;
   const language = languageLabel(dossier);
 
@@ -115,7 +116,7 @@ function MobileMasonryCard({ dossier, featured = false }) {
       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-black/20" />
       {(dossier.content_rating || language) && (
         <div className="absolute right-2 top-2 flex gap-1">
-          {dossier.content_rating && <span className="border border-white/80 bg-black/80 px-1.5 py-0.5 text-[8px] font-black uppercase text-white">{dossier.content_rating === 'all' ? 'ALL' : dossier.content_rating}</span>}
+          {dossier.content_rating && <span className="border border-white/80 bg-black/80 px-1.5 py-0.5 text-[8px] font-black uppercase text-white">{dossier.content_rating === 'all' ? translatedLabel(dictionary, 'ui', 'All', platformLanguage) : dossier.content_rating}</span>}
           {language && <span className="border border-white/80 bg-black/80 px-1.5 py-0.5 text-[8px] font-black uppercase text-white">{language}</span>}
         </div>
       )}
@@ -156,7 +157,9 @@ function GalleryRow({ title, dossiers }) {
   );
 }
 
-export default function TopBanner({ dossiers }) {
+export default function TopBanner({ dossiers, dictionary = new Map(), language = 'en', onLanguageChange }) {
+  const t = (key) => translatedLabel(dictionary, 'ui', key, language);
+  const displayLabel = (key) => key === 'All' || key === 'Search results' ? t(key) : translatedLabel(dictionary, classOrder.includes(key) ? 'class' : 'category', key, language);
   const [sheetHeight, setSheetHeight] = useState(() => {
     const saved = Number(window.localStorage.getItem('aistage:mobile-browser-height'));
     return SHEET_SNAPS.includes(saved) ? saved : 28;
@@ -207,7 +210,10 @@ export default function TopBanner({ dossiers }) {
   }, [sheetHeight]);
 
   const popularityMap = useMemo(() => buildPopularityMap(ratings), [ratings]);
-  const masonry = useMemo(() => buildDailyMasonry(dossiers, dayKey), [dossiers, dayKey]);
+  const masonry = useMemo(() => {
+    const items = buildDailyMasonry(dossiers, dayKey);
+    return language === 'fr' ? [...items.filter(d => normalizeLocale(d.default_language || d.original_language) === 'fr'), ...items.filter(d => normalizeLocale(d.default_language || d.original_language) !== 'fr')] : items;
+  }, [dossiers, dayKey, language]);
 
   const selectorOptions = useMemo(() => {
     const classes = classOrder.filter(label => dossiers.some(d => d.class === label));
@@ -216,23 +222,24 @@ export default function TopBanner({ dossiers }) {
   }, [dossiers, classOrder]);
 
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizeSearchText(query);
     return dossiers.filter((dossier) => {
       const selectorMatch = selected === 'All' || dossier.class === selected || dossier.category === selected;
       if (!selectorMatch) return false;
       if (!q) return true;
-      return [dossier.title, dossier.subtitle, dossier.category, dossier.class, dossier.author_name, dossier.submitted_by_name]
+      return [dossier.title, dossier.subtitle, dossier.category, dossier.class, dossier.author_name, dossier.submitted_by_name, ...searchTerms(dictionary, 'class', dossier.class, language), ...searchTerms(dictionary, 'category', dossier.category, language)]
         .filter(Boolean)
-        .some(value => String(value).toLowerCase().includes(q));
+        .some(value => normalizeSearchText(value).includes(q));
     });
-  }, [dossiers, query, selected]);
+  }, [dossiers, query, selected, dictionary, language]);
 
   const rankRow = (items, seed) => {
     const sorted = [...items].sort((a, b) => (popularityMap.get(b.id) || 0) - (popularityMap.get(a.id) || 0));
     const featured = sorted.slice(0, 4);
     const featuredIds = new Set(featured.map(d => d.id));
     const rest = dailyShuffle(items.filter(d => !featuredIds.has(d.id)), `${dayKey}:mobile-row:${seed}`);
-    return [...featured, ...rest];
+    const ranked = [...featured, ...rest];
+    return language === 'fr' ? [...ranked.filter(d => normalizeLocale(d.default_language || d.original_language) === 'fr'), ...ranked.filter(d => normalizeLocale(d.default_language || d.original_language) !== 'fr')] : ranked;
   };
 
   const rows = useMemo(() => {
@@ -249,7 +256,7 @@ export default function TopBanner({ dossiers }) {
       if (items.length) result.push({ title: category, dossiers: rankRow(items, `category:${category}`) });
     });
     return result;
-  }, [visible, selected, query, popularityMap, dayKey, classOrder]);
+  }, [visible, selected, query, popularityMap, dayKey, classOrder, language]);
 
   const startDrag = (event) => {
     event.preventDefault();
@@ -268,7 +275,7 @@ export default function TopBanner({ dossiers }) {
 
       <section className="grid grid-cols-2 gap-2 p-2">
         {masonry.map((dossier, index) => (
-          <MobileMasonryCard key={dossier.id} dossier={dossier} featured={index % 9 === 0} />
+          <MobileMasonryCard key={dossier.id} dossier={dossier} featured={index % 9 === 0} dictionary={dictionary} platformLanguage={language} />
         ))}
       </section>
 
@@ -289,8 +296,8 @@ export default function TopBanner({ dossiers }) {
         <div className="flex-none border-b border-white/10 px-3 pb-3 pt-1">
           <div className="mb-2 flex items-center justify-between gap-3">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-white/35">Browse</p>
-              <h2 className="text-base font-black text-white">Content Library</h2>
+              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-white/35">{t('Browse')}</p>
+              <h2 className="text-base font-black text-white">{t('Content Library')}</h2>
             </div>
             <div className="flex gap-1">
               {SHEET_SNAPS.map(value => (
@@ -312,7 +319,7 @@ export default function TopBanner({ dossiers }) {
               type="search"
               value={query}
               onChange={event => setQuery(event.target.value)}
-              placeholder="Search content..."
+              placeholder={t('Search titles, creators, categories...')}
               className="w-full border border-white/15 bg-white/[0.04] py-2 pl-8 pr-3 text-xs text-white outline-none placeholder:text-white/30 focus:border-white/40"
             />
           </div>
@@ -325,14 +332,14 @@ export default function TopBanner({ dossiers }) {
                 onClick={() => setSelected(option)}
                 className={`whitespace-nowrap border px-2 py-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/50'}`}
               >
-                {option}
+                {displayLabel(option)}
               </button>
             ))}
           </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 overscroll-contain">
-          {rows.length ? rows.map(row => <GalleryRow key={row.title} title={row.title} dossiers={row.dossiers} />) : <div className="flex min-h-[180px] items-center justify-center text-xs text-white/35">No content found.</div>}
+          {rows.length ? rows.map(row => <GalleryRow key={row.title} title={displayLabel(row.title)} dossiers={row.dossiers} />) : <div className="flex min-h-[180px] items-center justify-center text-xs text-white/35">{t('No content found.')}</div>}
         </div>
       </aside>
     </div>
