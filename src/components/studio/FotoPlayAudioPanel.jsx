@@ -161,7 +161,8 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
   };
 
   const resolveLanguage = (box) => box.language || language;
-  const lineNeedsGeneration = (box) => !box.audio_url || box.audio_source_text !== box.text || box.audio_voice !== resolveVoice(box) || box.audio_language !== resolveLanguage(box);
+  const characterVoiceSignature = (box) => usesCharacterVoice(box) ? (savedVoiceSample(resolveCharacter(box)) || resolveCharacter(box)?.voice_id || '') : '';
+  const lineNeedsGeneration = (box) => !box.audio_url || box.audio_source_text !== box.text || box.audio_voice !== resolveVoice(box) || box.audio_language !== resolveLanguage(box) || (box.audio_character_voice_id || '') !== characterVoiceSignature(box);
 
   const generateLine = async (box, currentBoxes = ordered) => {
     if (!box.text?.trim()) throw new Error(`Line ${box.order} has no text`);
@@ -181,7 +182,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
       audio_url: url,
       audio_source_text: item.text,
       audio_voice: voice,
-      audio_character_voice_id: usesCharacterVoice(item) ? (resolveCharacter(item)?.voice_id || 'replicate-custom') : '',
+      audio_character_voice_id: characterVoiceSignature(item),
       audio_language: resolveLanguage(item),
       audio_credit_cost: Number.isFinite(creditCost) ? creditCost : 0,
       audio_balance_after: Number.isFinite(balanceAfter) ? balanceAfter : null,
@@ -270,7 +271,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
 
         <div className="grid grid-cols-2 gap-2">
           <label className="text-[10px] font-black uppercase text-white/50">{t('fotoplay.audio.voice', 'Voice')}
-            <select value={box.voice || (savedVoiceSample(character) ? 'custom:replicate' : character?.voice_id ? `custom:${character.voice_id}` : voice)} onChange={(e) => patchBox(box.id, { voice: e.target.value })} className={`${control} mt-1`}>
+            <select value={box.voice || (usesCharacterVoice(box, character) ? (savedVoiceSample(character) ? 'custom:replicate' : `custom:${character.voice_id}`) : voice)} onChange={(e) => patchBox(box.id, { voice: e.target.value })} className={`${control} mt-1`}>
               {savedVoiceSample(character) && <option value="custom:replicate" className="text-black">{character.name || character.role_name} · AI Pilots voice</option>}
               {character?.voice_id && <option value={`custom:${character.voice_id}`} className="text-black">{character.name || character.role_name} · AI Pilots voice</option>}
               {VOICE_NAMES.map((name) => <option key={name} value={name} className="text-black">{name}</option>)}
