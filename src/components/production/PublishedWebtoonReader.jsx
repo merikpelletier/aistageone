@@ -74,7 +74,10 @@ export default function PublishedWebtoonReader({ blocks = [], coverUrl = '', onC
   const zoom = step ? clamp(config.frameZooms?.[step.frameIndex] ?? config.cameraZoom ?? 1.05, 1, 3.5) : 1;
   const count = Math.max(1, frames.length);
   const maskRatio = 16 / 9;
-  const transform = step && !step.supportUrl ? 'scale(' + zoom + ')' : 'none';
+  const framePosition = config.framePositions?.[step?.frameIndex || 0] || { x: 50, y: 50 };
+  const panX = (50 - Math.max(0, Math.min(100, Number(framePosition.x ?? 50)))) * (zoom - 1);
+  const panY = (50 - Math.max(0, Math.min(100, Number(framePosition.y ?? 50)))) * (zoom - 1);
+  const transform = step && !step.supportUrl ? 'translate(' + panX + '%, ' + panY + '%) scale(' + zoom + ')' : 'none';
   const position = config.captionPositions?.[stepIndex] || { x: 50, y: 70 };
   // The saved narration is the master clock. Text-weighted cue positions are estimates
   // (the current production has no individual spoken-word timestamps).
