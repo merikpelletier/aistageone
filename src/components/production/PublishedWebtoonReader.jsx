@@ -153,15 +153,16 @@ export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic
     setPlaying(true);
     audio.current?.play().catch(() => setPlaying(false));
   };
-  const back = () => {
+  const navigateBlock = (delta) => {
+    const target = blockIndex + delta;
+    if (target < 0 || target >= sorted.length) return;
+    audio.current?.pause();
     setPlaying(false);
-    if (stepIndexRef.current > 0) seekToStep(stepIndexRef.current - 1);
-    else if (blockIndex > 0) {
-      stepIndexRef.current = 0;
-      setBlockIndex(n => n - 1);
-      setStepIndex(0);
-      setAudioDuration(0);
-    }
+    stepIndexRef.current = -1;
+    setStepIndex(-1);
+    setAudioFinished(false);
+    setAudioDuration(0);
+    setBlockIndex(target);
   };
   useEffect(() => { setAudioFinished(false); }, [blockIndex]);
   if (!block) return null;
@@ -184,9 +185,9 @@ export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic
       <button onClick={onClose} aria-label="Close reader" className="rounded-full bg-black/70 p-3"><X size={20}/></button>
     </div>
     <div className="absolute bottom-3 left-1/2 z-30 flex max-w-[95vw] -translate-x-1/2 items-center gap-2 rounded-full bg-black/75 px-2 py-2" style={{ marginBottom:'env(safe-area-inset-bottom)' }}>
-      <button onClick={back} aria-label="Previous caption" className="rounded-full p-2"><ChevronLeft size={20}/></button>
+      <button onClick={() => navigateBlock(-1)} disabled={blockIndex === 0} aria-label="Previous section" className="rounded-full p-2 disabled:opacity-35"><ChevronLeft size={20}/></button>
       <button onClick={() => playing ? setPlaying(false) : start()} aria-label={playing ? 'Pause' : 'Play'} className="rounded-full bg-white p-2 text-black">{playing ? <Pause size={19}/> : <Play size={19}/>}</button>
-      <button onClick={() => { setPlaying(false); advance(); }} aria-label="Next caption" className="rounded-full p-2"><ChevronRight size={20}/></button>
+      <button onClick={() => navigateBlock(1)} disabled={blockIndex >= sorted.length - 1} aria-label="Next section" className="rounded-full p-2 disabled:opacity-35"><ChevronRight size={20}/></button>
       <button onClick={() => { setPlaying(false); stepIndexRef.current = -1; setStepIndex(-1); if (audio.current) audio.current.currentTime = 0; }} aria-label="Show complete page" className="rounded-full p-2"><Maximize2 size={17}/></button>
       <span className="whitespace-nowrap pr-2 text-xs text-white/70">{blockIndex + 1}/{sorted.length} · {Math.max(0,stepIndex + 1)}/{steps.length}</span>
     </div>
