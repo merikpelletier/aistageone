@@ -263,40 +263,32 @@ function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playba
     return () => observer.disconnect();
   }, []);
   const [rw, rh] = String(ratio || '16:9').split(':').map(Number);
-  const pageWidth = viewport.width > 0 && viewport.height > 0
-    ? Math.max(60, Math.floor(Math.min(viewport.width - 16, (viewport.height - 16) * (rw || 16) / (rh || 9))))
-    : 0;
   const portrait = rw < rh;
   const count = Math.max(1, panels.length);
   const step = playback?.step;
-  const frameIndex = Math.max(0, Math.min(count - 1, step?.frameIndex ?? 0));
+  const frameIndex = Math.max(0, Math.min(count - 1, step?.frameIndex ?? selectedPanel ?? 0));
   const settings = playback?.settings || {};
   const cameraOn = Boolean(step);
-  // Keep the full page visible at 1x; apply only the author's explicitly selected zoom.
+  const pageRatio = (rw || 16) / (rh || 9);
+  const maskRatio = cameraOn ? (portrait ? pageRatio * count : pageRatio / count) : pageRatio;
+  const pageWidth = viewport.width > 0 && viewport.height > 0
+    ? Math.max(1, Math.floor(Math.min(viewport.width * .92, viewport.height * .72 * maskRatio))) : 0;
   const baseZoom = Math.max(1, Math.min(3.5, Number(settings.frameZooms?.[frameIndex] ?? settings.cameraZoom ?? 1.05) || 1.05));
   const movement = settings.movement || 'gentle';
-  const motionScale = movement === 'zoom-in' ? 1.015
-    : movement === 'zoom-out' ? 0.985
-    : movement === 'gentle' && playback?.index % 2 ? 1.01 : 1;
+  const motionScale = movement === 'zoom-in' ? 1.015 : movement === 'zoom-out' ? 0.985 : movement === 'gentle' && playback?.index % 2 ? 1.01 : 1;
   const scale = cameraOn ? Math.max(1, Math.min(3.5, baseZoom * motionScale)) : 1;
-  const centerX = portrait ? 0.5 : (frameIndex + 0.5) / count;
-  const centerY = portrait ? (frameIndex + 0.5) / count : 0.5;
-  // The page is translated within its own fitted viewport, never scaled by Classic zoom.
-  const dx = cameraOn ? (0.5 - centerX) * scale * 100 : 0;
-  const dy = cameraOn ? (0.5 - centerY) * scale * 100 : 0;
-  const transform = cameraOn ? `translate(${dx}%, ${dy}%) scale(${scale})` : 'translate(0%, 0%) scale(1)';
   const captionPosition = settings.captionPositions?.[playback?.index] || { x: 50, y: 70 };
   const captionX = Math.max(10, Math.min(90, Number(captionPosition.x) || 50));
   const captionY = Math.max(10, Math.min(90, Number(captionPosition.y) || 70));
   return <div ref={viewportRef} data-fotoplay-webtoon-camera="true" className="relative flex min-h-0 w-full min-w-0 flex-1 self-stretch items-center justify-center overflow-hidden bg-black">
     {coverUrl && <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><img src={coverUrl} alt="" className="h-full w-full object-cover object-center" /><div className="absolute inset-0 bg-black/75" /></div>}
-    {pageWidth > 0 && <div data-webtoon-fixed-mask="true" className="relative isolate z-10 overflow-hidden bg-black shadow-2xl shrink-0" style={{ width: pageWidth, height: pageWidth * (rh || 9) / (rw || 16) }}>
+    {pageWidth > 0 && <div data-webtoon-fixed-mask="true" className="relative isolate z-10 overflow-hidden bg-black shadow-2xl shrink-0" style={{ width: pageWidth, height: pageWidth / maskRatio }}>
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 transition-transform duration-700 ease-in-out" style={{ transform, transformOrigin: 'center center' }}>
-          <div className="absolute inset-0 grid gap-[6px] p-[6px]" style={portrait ? { gridTemplateRows: `repeat(${count},minmax(0,1fr))` } : { gridTemplateColumns: `repeat(${count},minmax(0,1fr))` }}>
-            {panels.map((panel, index) => <div key={panel.id || index} className="min-h-0 min-w-0 overflow-hidden"><PanelTreePreview panel={panel} /></div>)}
-          </div>
-        </div>
+        {cameraOn
+          ? <div className="absolute inset-0 overflow-hidden"><div className="absolute inset-0 transition-transform duration-700 ease-in-out" style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}><PanelTreePreview panel={panels[frameIndex]} /></div></div>
+          : <div className="absolute inset-0 grid gap-[6px] p-[6px]" style={portrait ? { gridTemplateRows: `repeat(${count},minmax(0,1fr))` } : { gridTemplateColumns: `repeat(${count},minmax(0,1fr))` }}>
+              {panels.map((panel, index) => <div key={panel.id || index} className="min-h-0 min-w-0 overflow-hidden"><PanelTreePreview panel={panel} /></div>)}
+            </div>}
       </div>
       {cameraOn && step?.caption && <WebtoonTypeOnCaption key={`${playback.index}-${step.caption}`} text={step.caption} playbackIndex={playback.index} x={captionX} y={captionY} fontSize={Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))} />}
     </div>}
