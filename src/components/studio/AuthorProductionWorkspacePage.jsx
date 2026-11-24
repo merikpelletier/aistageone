@@ -277,6 +277,9 @@ function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playba
   const movement = settings.movement || 'gentle';
   const motionScale = movement === 'zoom-in' ? 1.015 : movement === 'zoom-out' ? 0.985 : movement === 'gentle' && playback?.index % 2 ? 1.01 : 1;
   const scale = cameraOn ? Math.max(1, Math.min(3.5, baseZoom * motionScale)) : 1;
+  const framePosition = settings.framePositions?.[frameIndex] || { x: 50, y: 50 };
+  const panX = (50 - Math.max(0, Math.min(100, Number(framePosition.x ?? 50)))) * (scale - 1);
+  const panY = (50 - Math.max(0, Math.min(100, Number(framePosition.y ?? 50)))) * (scale - 1);
   const captionPosition = settings.captionPositions?.[playback?.index] || { x: 50, y: 70 };
   const captionX = Math.max(10, Math.min(90, Number(captionPosition.x) || 50));
   const captionY = Math.max(10, Math.min(90, Number(captionPosition.y) || 70));
@@ -285,7 +288,7 @@ function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playba
     {pageWidth > 0 && <div data-webtoon-fixed-mask="true" className="relative isolate z-10 overflow-hidden bg-black shadow-2xl shrink-0" style={{ width: pageWidth, height: pageWidth / maskRatio }}>
       <div className="absolute inset-0 overflow-hidden">
         {cameraOn
-          ? <div className="absolute inset-0 overflow-hidden"><div className="absolute inset-0 transition-transform duration-700 ease-in-out" style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}><PanelTreePreview panel={panels[frameIndex]} /></div></div>
+          ? <div className="absolute inset-0 overflow-hidden"><div className="absolute inset-0 transition-transform duration-700 ease-in-out" style={{ transform: `translate(${panX}%, ${panY}%) scale(${scale})`, transformOrigin: 'center center' }}><PanelTreePreview panel={panels[frameIndex]} /></div></div>
           : <div className="absolute inset-0 grid gap-[6px] p-[6px]" style={portrait ? { gridTemplateRows: `repeat(${count},minmax(0,1fr))` } : { gridTemplateColumns: `repeat(${count},minmax(0,1fr))` }}>
               {panels.map((panel, index) => <div key={panel.id || index} className="min-h-0 min-w-0 overflow-hidden"><PanelTreePreview panel={panel} /></div>)}
             </div>}
