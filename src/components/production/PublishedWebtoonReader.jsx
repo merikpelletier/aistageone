@@ -73,11 +73,8 @@ export default function PublishedWebtoonReader({ blocks = [], coverUrl = '', onC
   const portrait = (ratio[0] || 16) < (ratio[1] || 9);
   const zoom = step ? clamp(config.frameZooms?.[step.frameIndex] ?? config.cameraZoom ?? 1.05, 1, 3.5) : 1;
   const count = Math.max(1, frames.length);
-  const centerX = portrait ? 0.5 : ((step?.frameIndex || 0) + 0.5) / count;
-  const centerY = portrait ? ((step?.frameIndex || 0) + 0.5) / count : 0.5;
-  const transform = step && !step.supportUrl
-    ? 'translate(' + ((0.5-centerX)*zoom*100) + '%, ' + ((0.5-centerY)*zoom*100) + '%) scale(' + zoom + ')'
-    : 'none';
+  const maskRatio = 16 / 9;
+  const transform = step && !step.supportUrl ? 'scale(' + zoom + ')' : 'none';
   const position = config.captionPositions?.[stepIndex] || { x: 50, y: 70 };
   // The saved narration is the master clock. Text-weighted cue positions are estimates
   // (the current production has no individual spoken-word timestamps).
@@ -166,11 +163,11 @@ export default function PublishedWebtoonReader({ blocks = [], coverUrl = '', onC
   return <div className="fixed inset-0 z-[320] overflow-hidden bg-black text-white" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
     {coverUrl && <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true"><img src={coverUrl} alt="" className="h-full w-full object-cover object-center" /><div className="absolute inset-0 bg-black/75" /></div>}
     <div className="absolute inset-0 flex items-center justify-center">
-      <div className="relative isolate w-[min(92vw,1000px)] overflow-hidden bg-black shadow-2xl" style={{ aspectRatio: (ratio[0] || 16) + ' / ' + (ratio[1] || 9), maxWidth: 'min(92vw,1000px, calc(72dvh * ' + ((ratio[0] || 16)/(ratio[1] || 9)) + '))' }}>
+      <div className="relative isolate w-[min(92vw,1000px)] overflow-hidden bg-black shadow-2xl" style={{ aspectRatio: maskRatio, maxWidth: 'min(90vw,1000px, calc(72dvh * ' + maskRatio + '))' }}>
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 transition-transform duration-700 ease-in-out" style={{ transform }}>
             {step?.supportUrl ? <img src={step.supportUrl} alt="" className="h-full w-full object-contain" />
-              : <div className="absolute inset-0 grid gap-[4px] p-[4px]" style={portrait ? { gridTemplateRows: 'repeat(' + count + ',minmax(0,1fr))' } : { gridTemplateColumns: 'repeat(' + count + ',minmax(0,1fr))' }}>
+              : step ? <div className="absolute inset-0 overflow-hidden"><FrameImage panel={frames[step.frameIndex || 0]} /></div> : <div className="absolute inset-0 grid gap-[4px] p-[4px]" style={portrait ? { gridTemplateRows: 'repeat(' + count + ',minmax(0,1fr))' } : { gridTemplateColumns: 'repeat(' + count + ',minmax(0,1fr))' }}>
                 {frames.map((item,i) => <div key={item.id || i} className="min-h-0 min-w-0 overflow-hidden"><FrameImage panel={item}/></div>)}
               </div>}
           </div>
