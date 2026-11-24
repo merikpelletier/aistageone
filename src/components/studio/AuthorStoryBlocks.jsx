@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, Check, ChevronRight, Clock3, Film, Image as ImageIcon, Library, Loader2, MapPin, Pencil, Plus, Save, Sparkles, Trash2, UserRound, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -183,6 +184,8 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeChapterId, setActiveChapterId] = useState(null);
+  const [shopCharacters, setShopCharacters] = useState([]);
+  const [shopSets, setShopSets] = useState([]);
   const [availablePilots, setAvailablePilots] = useState([]);
   const [loadingPilot, setLoadingPilot] = useState(false);
 
@@ -193,6 +196,108 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
     finally { setLoading(false); }
   };
   useEffect(() => { loadProjects(); }, []);
+
+  useEffect(() => {
+    const loadShopSelections = async () => {
+      const { data: categories, error: categoryError } = await supabase
+        .from('asset_category')
+        .select('id,key,label_en,label_fr')
+        .eq('is_active', true);
+      if (categoryError) throw categoryError;
+
+      const { data: subcategories, error: subcategoryError } = await supabase
+        .from('asset_subcategory')
+        .select('id,category_id,key,label_en,label_fr')
+        .eq('is_active', true);
+      if (subcategoryError) throw subcategoryError;
+
+      const categoryText = (category) => `${category.key || ''} ${category.label_en || ''} ${category.label_fr || ''}`.toLowerCase();
+      const categoryById = new Map((categories || []).map((category) => [category.id, category]));
+      const subcategoryById = new Map((subcategories || []).map((subcategory) => [subcategory.id, subcategory]));
+      const characterCategoryIds = (categories || []).filter((category) => /\b(actor|character|acteur|personnage)s?\b/.test(categoryText(category))).map((category) => category.id);
+      const setCategoryIds = (categories || []).filter((category) => /\b(set|sets|décor|decor|lieu|location)s?\b/.test(categoryText(category))).map((category) => category.id);
+      const selectAssets = async (categoryIds) => {
+        if (!categoryIds.length) return [];
+        const { data, error } = await supabase
+          .from('catalog_asset')
+          .select('id,title,description,featured_image,preview_images,category_id,subcategory_id,creator_name')
+          .eq('status', 'published')
+          .in('category_id', categoryIds)
+          .order('title', { ascending: true })
+          .limit(300);
+        if (error) throw error;
+        return (data || []).map((asset) => {
+          const category = categoryById.get(asset.category_id);
+          const subcategory = subcategoryById.get(asset.subcategory_id);
+          return {
+            ...asset,
+            category_key: category?.key || '',
+            category_label: category?.label_en || category?.label_fr || category?.key || '',
+            subcategory_key: subcategory?.key || '',
+            subcategory_label: subcategory?.label_en || subcategory?.label_fr || subcategory?.key || '',
+          };
+        });
+      };
+      const [characters, sets] = await Promise.all([selectAssets(characterCategoryIds), selectAssets(setCategoryIds)]);
+      setShopCharacters(characters);
+      setShopSets(sets);
+    };
+
+    loadShopSelections().catch((error) => toast.error(error.message || 'Unable to load Assets Shop selections'));
+  }, []);
+
+
+  useEffect(() => {
+    let current = true;
+    const loadPilots = async () => {
+      const { data, error } = await supabase.from('ai_pilots')
+        .select('id,name,description,category,cover_url,current_published_version_id,status')
+        .eq('status', 'published').not('current_published_version_id', 'is', null).order('name');
+      if (error) throw error;
+      if (current) setAvailablePilots(data || []);
+    };
+    loadPilots().catch((error) => toast.error(error.message || 'Unable to load AI Pilots'));
+    return () => { current = false; };
+  }, []);
+
+  const loadPilot = async (pilotId) => {
+    const selected = availablePilots.find((item) => item.id === pilotId);
+    if (!selected || !project) return;
+    if ((project.characters.length || project.locations.length || project.story_description?.trim()) &&
+      !window.confirm('Load this AI Pilot? Existing story definition, characters and locations will be replaced.')) return;
+    setLoadingPilot(true);
+    try {
+      const versionId = selected.current_published_version_id;
+      const [versionResult, blocksResult, charactersResult, mediaResult] = await Promise.all([
+        supabase.from('ai_pilot_versions').select('*').eq('id', versionId).eq('is_published', true).single(),
+        supabase.from('ai_pilot_blocks').select('*').eq('version_id', versionId).eq('is_active', true),
+        supabase.from('ai_pilot_characters').select('*').eq('version_id', versionId).eq('is_active', true),
+        supabase.from('ai_pilot_media').select('*').eq('version_id', versionId).eq('is_active', true),
+      ]);
+      const failed = [versionResult, blocksResult, charactersResult, mediaResult].find((result) => result.error);
+      if (failed) throw failed.error;
+      // Load only extensions belonging to the currently signed-in member and selected Pilot.
+      const { data: ownedAccess, error: accessError } = await supabase.from('member_ai_pilots')
+        .select('id').eq('user_id', user.id).eq('ai_pilot_id', selected.id);
+      if (accessError) throw accessError;
+      let personalAdditions = [];
+      if (ownedAccess?.length) {
+        const { data, error } = await supabase.from('member_ai_pilot_extensions')
+          .select('*').eq('user_id', user.id).eq('is_active', true)
+          .in('member_ai_pilot_id', ownedAccess.map((row) => row.id))
+          .order('sort_order', { ascending: true });
+        if (error) throw error;
+        personalAdditions = data || [];
+      }
+      const { data: mySets, error: setsError } = await supabase.from('set_designer_project')
+        .select('id,name,description,images,reference_sheet')
+        .eq('created_by_id', user.id);
+      if (setsError) throw setsError;
+      setProject((current) => pilotToFotoPlay(current, selected, versionResult.data, blocksResult.data || [], charactersResult.data || [], mediaResult.data || [], personalAdditions, mySets || []));
+      toast.success('AI Pilot loaded into FotoPlay');
+    } catch (error) { toast.error(error.message || 'Unable to load AI Pilot'); }
+    finally { setLoadingPilot(false); }
+  };
 
   const openProject = (row) => {
     const complete = row.story_description && row.characters?.length && row.locations?.length;
@@ -259,7 +364,7 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
   />;
 
   if (view === 'setup' && project) return <ProjectSetup
-    user={user} project={project} setProject={setProject}
+    user={user} project={project} setProject={setProject} shopCharacters={shopCharacters} shopSets={shopSets}
     availablePilots={availablePilots} loadingPilot={loadingPilot} onLoadPilot={loadPilot} saving={saving} onBack={() => setView(project.id ? 'workspace' : 'dashboard')} onSave={(foundationComplete) => saveProject(foundationComplete ? 'workspace' : 'setup')}
   />;
 
@@ -374,7 +479,7 @@ function PackItemGroup({ title, items, selected, onToggle, imageFor }) {
   return <section className="rounded-3xl bg-black p-5 text-white"><div className="mb-4 flex items-center justify-between"><h3 className="font-black text-yellow-400">{title}</h3><span className="text-xs font-bold text-white/50">{selected.length}/{items.length} selected</span></div><div className="grid gap-2 sm:grid-cols-2">{items.map((item) => { const checked = selected.includes(item.id); const image = imageFor?.(item); return <button key={item.id} onClick={() => onToggle(item.id)} className={`flex items-center gap-3 rounded-2xl border p-3 text-left ${checked ? 'border-yellow-400 bg-yellow-400/10' : 'border-white/10 bg-white/5'}`}>{image && <img src={image} alt="" className="h-12 w-12 rounded-xl object-cover" />}<div className="min-w-0 flex-1"><p className="truncate text-sm font-black">{item.name || item.title}</p><p className="line-clamp-1 text-xs text-white/45">{item.description}</p></div><span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${checked ? 'bg-yellow-400 text-black' : 'bg-white/10'}`}>{checked && <Check size={14} />}</span></button>; })}</div></section>;
 }
 
-function ProjectSetup({ user, project, setProject, availablePilots, loadingPilot, onLoadPilot, saving, onBack, onSave }) {
+function ProjectSetup({ user, project, setProject, shopCharacters, shopSets, availablePilots, loadingPilot, onLoadPilot, saving, onBack, onSave }) {
   const t = useStudioTranslation();
   const [characterDraft, setCharacterDraft] = useState({ name: '', description: '', image_url: '', image_source: '', image_source_id: null, reference_images: [], voice: '' });
   const [locationDraft, setLocationDraft] = useState({ name: '', description: '', image_url: '', image_source: '', image_source_id: null, reference_images: [] });
@@ -409,6 +514,13 @@ function ProjectSetup({ user, project, setProject, availablePilots, loadingPilot
     setProject((current) => ({ ...current, [field]: current[field].filter((item) => item.id !== id) }));
     if ((kind === 'character' ? editingCharacterId : editingLocationId) === id) cancelEdit(kind);
   };
+  const selectLibraryImage = (kind, source, selectedImage) => {
+    const image = selectedImage || source.featured_image || source.preview_images?.[0] || '';
+    if (!image) { toast.error('This Assets Shop selection has no image'); return; }
+    const setDraft = kind === 'character' ? setCharacterDraft : setLocationDraft;
+    const referenceImages = [...new Set([source.featured_image, ...(Array.isArray(source.preview_images) ? source.preview_images : [])].filter(Boolean))];
+    setDraft((current) => ({ ...current, image_url: image, image_source: 'olo_shop', image_source_id: source.id, reference_images: referenceImages }));
+  };
   const complete = project.title.trim() && project.story_description.trim() && project.characters.length && project.locations.length;
   return <div className="mx-auto w-full max-w-[1500px] px-5 pb-28 lg:px-10">
     <div className="mb-8 flex items-center gap-3"><button onClick={onBack} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-black text-yellow-400"><ArrowLeft size={20} /></button><div className="min-w-0 flex-1"><p className="text-xs font-black uppercase tracking-widest text-black/55">{t('fotoplay.setup.author', 'FotoPlay Author')}</p><h2 className="truncate text-2xl font-black text-black lg:text-4xl">{t('fotoplay.setup.define', 'Define your story')}</h2></div><button onClick={() => onSave(complete)} disabled={saving || !project.title.trim()} className="flex items-center gap-2 rounded-2xl bg-black px-5 py-3 text-sm font-black text-yellow-400 disabled:opacity-35">{saving ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />} {complete ? t('fotoplay.setup.save_continue', 'Save & continue') : t('fotoplay.setup.save_draft', 'Save draft')}</button></div>
@@ -422,9 +534,9 @@ function ProjectSetup({ user, project, setProject, availablePilots, loadingPilot
               <option value="">{t('fotoplay.setup.choose_pilot', 'Choose an available AI Pilot')}</option>
               {availablePilots.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}
             </select>
-            <button type="button" disabled={loadingPilot} onClick={() => { const id = document.getElementById('fotoplay-ai-pilot-select')?.value; if (id) onLoadPilot(id); else toast.error(t('fotoplay.setup.pilot_required', 'Select an AI Pilot')); }} className="rounded-xl bg-yellow-400 px-4 py-3 text-sm font-black text-black disabled:opacity-50">{loadingPilot ? t('fotoplay.setup.loading', 'Loading…') : t('fotoplay.setup.load', 'Load')}</button>
+            <button type="button" disabled={loadingPilot} onClick={() => { const id = document.getElementById('fotoplay-ai-pilot-select')?.value; if (id) onLoadPilot(id); else toast.error(t('fotoplay.setup.pilot_required', 'Select an AI Pilot')); }} className="rounded-xl bg-[#23c7be] px-4 py-3 text-sm font-black text-black disabled:opacity-50">{loadingPilot ? t('fotoplay.setup.loading', 'Loading…') : t('fotoplay.setup.load', 'Load')}</button>
           </div>
-          {project.production_settings?.ai_pilot_name && <p className="mt-2 text-xs text-yellow-400">{t('fotoplay.setup.loaded', 'Loaded')}: {project.production_settings.ai_pilot_name}</p>}
+          {project.production_settings?.ai_pilot_name && <p className="mt-2 text-xs text-[#23c7be]">{t('fotoplay.setup.loaded', 'Loaded')}: {project.production_settings.ai_pilot_name}</p>}
         </div>
         <div><label className={labelClass}>{t('fotoplay.setup.story_title', 'Story title')} *</label><input className={fieldClass} value={project.title} onChange={(e) => setProject({ ...project, title: e.target.value })} placeholder={t('fotoplay.setup.title_placeholder', 'Title of your story')} /></div>
         <ProjectCreditsFields
@@ -438,25 +550,59 @@ function ProjectSetup({ user, project, setProject, availablePilots, loadingPilot
         <div className="grid gap-4 md:grid-cols-2"><div><label className={labelClass}>{t('fotoplay.setup.tone', 'Tone and atmosphere')}</label><textarea className={`${fieldClass} min-h-28`} value={project.tone_rules || ''} onChange={(e) => setProject({ ...project, tone_rules: e.target.value })} /></div><div><label className={labelClass}>{t('fotoplay.setup.story_rules', 'Story rules')}</label><textarea className={`${fieldClass} min-h-28`} value={project.story_rules || ''} onChange={(e) => setProject({ ...project, story_rules: e.target.value })} /></div></div>
         <div><label className={labelClass}>{t('fotoplay.setup.cover', 'Cover image')}</label><button onClick={() => setVaultTarget('cover')} className="flex aspect-video w-full max-w-sm items-center justify-center overflow-hidden rounded-2xl bg-black text-yellow-400">{project.cover_image ? <img src={project.cover_image} alt="" className="h-full w-full object-contain" /> : <><ImageIcon size={20} /><span className="ml-2 text-xs font-black">{t('fotoplay.setup.choose_vault', 'Choose from Vault')}</span></>}</button></div>
       </section>
-      <section className="rounded-2xl bg-black p-5 text-white lg:p-7"><div className="mb-6 flex items-center gap-4"><Users size={27} className="text-yellow-400" /><div><h3 className="text-xl font-bold">{t('fotoplay.setup.foundation', 'Project foundation')}</h3><p className="text-sm text-white/55">{t('fotoplay.setup.required', 'Required before the first chapter')}</p></div></div>
-        <AssetBuilder title={t('fotoplay.setup.characters', 'Characters')} kind="character" icon={UserRound} items={project.characters} draft={characterDraft} setDraft={setCharacterDraft} editingId={editingCharacterId} onAdd={() => addCustom('character')} onEdit={(item) => editAsset('character', item)} onCancelEdit={() => cancelEdit('character')} onRemove={(id) => removeAsset('character', id)} onVault={() => setVaultTarget('character')}  />
+      <section className="rounded-2xl bg-[#101317] p-5 text-white lg:p-7"><div className="mb-6 flex items-center gap-4"><Users size={27} className="text-[#23c7be]" /><div><h3 className="text-xl font-bold">{t('fotoplay.setup.foundation', 'Project foundation')}</h3><p className="text-sm text-white/55">{t('fotoplay.setup.required', 'Required before the first chapter')}</p></div></div>
+        <AssetBuilder title={t('fotoplay.setup.characters', 'Characters')} kind="character" icon={UserRound} items={project.characters} draft={characterDraft} setDraft={setCharacterDraft} editingId={editingCharacterId} onAdd={() => addCustom('character')} onEdit={(item) => editAsset('character', item)} onCancelEdit={() => cancelEdit('character')} onRemove={(id) => removeAsset('character', id)} onVault={() => setVaultTarget('character')} library={shopCharacters} onSelectImage={(item, imageUrl) => selectLibraryImage('character', item, imageUrl)} selected={(item, imageUrl) => characterDraft.image_source === 'olo_shop' && characterDraft.image_source_id === item.id && characterDraft.image_url === imageUrl} />
         <div className="my-7 h-px bg-white/10" />
-        <AssetBuilder title={t('fotoplay.setup.locations', 'Locations')} kind="location" icon={MapPin} items={project.locations} draft={locationDraft} setDraft={setLocationDraft} editingId={editingLocationId} onAdd={() => addCustom('location')} onEdit={(item) => editAsset('location', item)} onCancelEdit={() => cancelEdit('location')} onRemove={(id) => removeAsset('location', id)} onVault={() => setVaultTarget('location')}  />
+        <AssetBuilder title={t('fotoplay.setup.locations', 'Locations')} kind="location" icon={MapPin} items={project.locations} draft={locationDraft} setDraft={setLocationDraft} editingId={editingLocationId} onAdd={() => addCustom('location')} onEdit={(item) => editAsset('location', item)} onCancelEdit={() => cancelEdit('location')} onRemove={(id) => removeAsset('location', id)} onVault={() => setVaultTarget('location')} library={shopSets} onSelectImage={(item, imageUrl) => selectLibraryImage('location', item, imageUrl)} selected={(item, imageUrl) => locationDraft.image_source === 'olo_shop' && locationDraft.image_source_id === item.id && locationDraft.image_url === imageUrl} />
       </section>
     </div>
     {vaultTarget && <VaultPickerModal allowUpload userEmail={user?.email} onClose={() => setVaultTarget(null)} onSelect={(url) => { if (vaultTarget === 'cover') setProject((p) => ({ ...p, cover_image: url })); if (vaultTarget === 'character') setCharacterDraft((p) => ({ ...p, image_url: url, image_source: 'vault', image_source_id: null })); if (vaultTarget === 'location') setLocationDraft((p) => ({ ...p, image_url: url, image_source: 'vault', image_source_id: null })); setVaultTarget(null); }} />}
   </div>;
 }
 
-function AssetBuilder({ title, kind, icon: Icon, items, draft, setDraft, editingId, onAdd, onEdit, onCancelEdit, onRemove, onVault }) {
+function AssetBuilder({ title, kind, icon: Icon, items, draft, setDraft, editingId, onAdd, onEdit, onCancelEdit, onRemove, onVault, library, onSelectImage, selected }) {
   const t = useStudioTranslation();
   const itemName = t(kind === 'character' ? 'fotoplay.setup.character' : 'fotoplay.setup.location', kind === 'character' ? 'character' : 'location');
   const displayedName = editingId ? t('fotoplay.setup.edit', 'Edit') : t('fotoplay.setup.new', 'New');
   const assetName = `${displayedName} ${itemName} ${t('fotoplay.setup.name', 'name')}`;
-  return <div><div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><Icon size={17} className="text-[ #facc15]" /><h4 className="text-base font-bold">{title} *</h4></div><span className="rounded-full bg-[ #facc15] px-3 py-1 text-xs font-bold text-black">{items.length}</span></div>
-    <div className="space-y-2">{items.map((item) => <div key={item.id} className={`flex items-center gap-3 rounded-2xl p-2.5 ${editingId === item.id ? 'bg-[ #facc15]/15 ring-1 ring-[ #facc15]' : 'bg-[#20242a]'}`}><div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#20242a] text-white">{item.image_url ? <img src={item.image_url} alt="" className="h-full w-full object-cover" /> : <Icon size={18} />}</div><div className="min-w-0 flex-1"><p className="truncate text-base font-bold">{item.name}</p>{kind === 'character' && (item.voice || item.voice_id) && <p className="truncate text-xs font-semibold text-[ #facc15]">{item.voice || t('fotoplay.setup.pilot_voice', 'AI Pilot voice')}</p>}<p className="text-xs font-semibold text-white/50">{item.source === 'story_pack' ? `Story Pack · ${item.source_pack_title || t('fotoplay.setup.imported', 'Imported')}` : t('fotoplay.setup.author_asset', 'Author asset')}</p></div><button onClick={() => onEdit(item)} className="p-2 text-[ #facc15]" aria-label={`${t('fotoplay.setup.edit', 'Edit')} ${item.name}`} title={t('fotoplay.setup.edit', 'Edit')}><Pencil size={15} /></button><button onClick={() => onRemove(item.id)} className="p-2 text-red-400" aria-label={`${t('fotoplay.setup.remove', 'Remove')} ${item.name}`} title={t('fotoplay.setup.remove', 'Remove')}><X size={15} /></button></div>)}</div>
-    <div className="mt-3 space-y-2 rounded-2xl bg-white/5 p-3">{editingId && <div className="flex items-center justify-between rounded-xl bg-yellow-400/15 px-3 py-2"><span className="text-xs font-black uppercase tracking-wider text-yellow-400">{t('fotoplay.setup.editing', 'Editing')} {itemName}</span><button onClick={onCancelEdit} className="text-xs font-black text-white/70">{t('fotoplay.setup.cancel', 'Cancel')}</button></div>}<input className="w-full rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-black" placeholder={assetName} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /><textarea className="w-full rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-black" rows={2} placeholder={t('fotoplay.setup.description', 'Description')} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />{kind === 'character' && <label className="block text-xs font-semibold text-white/75">{t('fotoplay.setup.voice', 'Character voice')}<select className="mt-1 w-full rounded-lg border border-white/15 bg-[#20242a] px-3 py-2.5 text-sm text-white" value={draft.voice || ''} onChange={(event) => setDraft({ ...draft, voice: event.target.value })}><option value="">{t('fotoplay.setup.voice_default', 'Select a voice')}</option>{draft.voice && !FOTOPLAY_VOICE_OPTIONS.includes(draft.voice) && <option value={draft.voice}>{draft.voice}</option>}{FOTOPLAY_VOICE_OPTIONS.map((voice) => <option key={voice} value={voice}>{voice}</option>)}</select></label>}{draft.image_url && <div className="flex items-center gap-3 rounded-xl border border-yellow-400/30 bg-black/30 p-2"><img src={draft.image_url} alt={t('fotoplay.setup.selected_reference', 'Selected reference')} className="h-14 w-14 rounded-lg object-cover" /><div className="min-w-0 flex-1"><p className="text-xs font-black text-yellow-400">{t('fotoplay.setup.selected_image', 'Selected image')}</p><p className="truncate text-[11px] font-semibold text-white/50">{draft.image_source === 'olo_shop' ? 'OLO Shop' : 'Vault'}</p></div><button onClick={() => setDraft({ ...draft, image_url: '', image_source: '', image_source_id: null })} className="p-2 text-red-400" aria-label={t('fotoplay.setup.remove_image', 'Remove selected image')}><X size={15} /></button></div>}<div className="flex gap-2"><button onClick={onVault} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-xs font-black text-yellow-400"><Library size={14} /> {t('fotoplay.setup.select_vault', 'Select image from Vault')}</button><button onClick={onAdd} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black">{editingId ? <Save size={14} /> : <Plus size={14} />} {editingId ? t('fotoplay.setup.save_changes', 'Save changes') : t('fotoplay.setup.add', 'Add')}</button></div></div>
-
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [librarySearch, setLibrarySearch] = useState('');
+  const [libraryCreator, setLibraryCreator] = useState('all');
+  const [libraryCategory, setLibraryCategory] = useState('all');
+  const [librarySubcategory, setLibrarySubcategory] = useState('all');
+  const libraryCreators = useMemo(() => [...new Set(library.map((item) => item.creator_name).filter(Boolean))].sort(), [library]);
+  const libraryCategories = useMemo(() => [...new Set(library.map((item) => item.category_label).filter(Boolean))].sort(), [library]);
+  const librarySubcategories = useMemo(() => [...new Set(library.filter((item) => libraryCategory === 'all' || item.category_label === libraryCategory).map((item) => item.subcategory_label).filter(Boolean))].sort(), [library, libraryCategory]);
+  const filteredLibrary = useMemo(() => {
+    const term = librarySearch.trim().toLowerCase();
+    return library.filter((item) => {
+      if (libraryCreator !== 'all' && item.creator_name !== libraryCreator) return false;
+      if (libraryCategory !== 'all' && item.category_label !== libraryCategory) return false;
+      if (librarySubcategory !== 'all' && item.subcategory_label !== librarySubcategory) return false;
+      if (!term) return true;
+      return [item.title, item.description, item.creator_name, item.category_label, item.subcategory_label]
+        .some((value) => String(value || '').toLowerCase().includes(term));
+    });
+  }, [library, librarySearch, libraryCreator, libraryCategory, librarySubcategory]);
+  const filteredLibraryImages = useMemo(() => filteredLibrary.flatMap((item) => {
+    const images = [...new Set([item.featured_image, ...(Array.isArray(item.preview_images) ? item.preview_images : [])].filter(Boolean))];
+    return images.map((imageUrl, imageIndex) => ({ item, imageUrl, imageIndex }));
+  }), [filteredLibrary]);
+  const clearLibraryFilters = () => { setLibrarySearch(''); setLibraryCreator('all'); setLibraryCategory('all'); setLibrarySubcategory('all'); };
+  return <div><div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><Icon size={17} className="text-[#23c7be]" /><h4 className="text-base font-bold">{title} *</h4></div><span className="rounded-full bg-[#23c7be] px-3 py-1 text-xs font-bold text-black">{items.length}</span></div>
+    <div className="space-y-2">{items.map((item) => <div key={item.id} className={`flex items-center gap-3 rounded-2xl p-2.5 ${editingId === item.id ? 'bg-[#23c7be]/15 ring-1 ring-[#23c7be]' : 'bg-[#20242a]'}`}><div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#20242a] text-white">{item.image_url ? <img src={item.image_url} alt="" className="h-full w-full object-cover" /> : <Icon size={18} />}</div><div className="min-w-0 flex-1"><p className="truncate text-base font-bold">{item.name}</p>{kind === 'character' && (item.voice || item.voice_id) && <p className="truncate text-xs font-semibold text-[#23c7be]">{item.voice || t('fotoplay.setup.pilot_voice', 'AI Pilot voice')}</p>}<p className="text-xs font-semibold text-white/50">{item.source === 'olo_shop' ? t('fotoplay.setup.shop_selection', 'Assets Shop selection') : item.source === 'story_pack' ? `Story Pack · ${item.source_pack_title || t('fotoplay.setup.imported', 'Imported')}` : t('fotoplay.setup.author_asset', 'Author asset')}</p></div><button onClick={() => onEdit(item)} className="p-2 text-[#23c7be]" aria-label={`${t('fotoplay.setup.edit', 'Edit')} ${item.name}`} title={t('fotoplay.setup.edit', 'Edit')}><Pencil size={15} /></button><button onClick={() => onRemove(item.id)} className="p-2 text-red-400" aria-label={`${t('fotoplay.setup.remove', 'Remove')} ${item.name}`} title={t('fotoplay.setup.remove', 'Remove')}><X size={15} /></button></div>)}</div>
+    <div className="mt-3 space-y-2 rounded-2xl bg-white/5 p-3">{editingId && <div className="flex items-center justify-between rounded-xl bg-yellow-400/15 px-3 py-2"><span className="text-xs font-black uppercase tracking-wider text-yellow-400">{t('fotoplay.setup.editing', 'Editing')} {itemName}</span><button onClick={onCancelEdit} className="text-xs font-black text-white/70">{t('fotoplay.setup.cancel', 'Cancel')}</button></div>}<input className="w-full rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-black" placeholder={assetName} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /><textarea className="w-full rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-black" rows={2} placeholder={t('fotoplay.setup.description', 'Description')} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />{kind === 'character' && <label className="block text-xs font-semibold text-white/75">{t('fotoplay.setup.voice', 'Character voice')}<select className="mt-1 w-full rounded-lg border border-white/15 bg-[#20242a] px-3 py-2.5 text-sm text-white" value={draft.voice || ''} onChange={(event) => setDraft({ ...draft, voice: event.target.value })}><option value="">{t('fotoplay.setup.voice_default', 'Select a voice')}</option>{draft.voice && !FOTOPLAY_VOICE_OPTIONS.includes(draft.voice) && <option value={draft.voice}>{draft.voice}</option>}{FOTOPLAY_VOICE_OPTIONS.map((voice) => <option key={voice} value={voice}>{voice}</option>)}</select></label>}{draft.image_url && <div className="flex items-center gap-3 rounded-xl border border-yellow-400/30 bg-black/30 p-2"><img src={draft.image_url} alt={t('fotoplay.setup.selected_reference', 'Selected reference')} className="h-14 w-14 rounded-lg object-cover" /><div className="min-w-0 flex-1"><p className="text-xs font-black text-yellow-400">{t('fotoplay.setup.selected_image', 'Selected image')}</p><p className="truncate text-[11px] font-semibold text-white/50">{draft.image_source === 'olo_shop' ? 'Assets Shop' : 'Vault'}</p></div><button onClick={() => setDraft({ ...draft, image_url: '', image_source: '', image_source_id: null })} className="p-2 text-red-400" aria-label={t('fotoplay.setup.remove_image', 'Remove selected image')}><X size={15} /></button></div>}<div className="flex gap-2"><button onClick={onVault} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-xs font-black text-yellow-400"><Library size={14} /> {t('fotoplay.setup.select_vault', 'Select image from Vault')}</button><button onClick={onAdd} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black">{editingId ? <Save size={14} /> : <Plus size={14} />} {editingId ? t('fotoplay.setup.save_changes', 'Save changes') : t('fotoplay.setup.add', 'Add')}</button></div></div>
+    <button onClick={() => setShowLibrary(!showLibrary)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-yellow-400/40 py-2.5 text-xs font-black text-yellow-400"><Library size={14} /> {showLibrary ? t('fotoplay.setup.hide_shop', 'Hide Assets Shop images') : t('fotoplay.setup.select_shop', 'Select image from Assets Shop')}</button>
+    {showLibrary && <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <input value={librarySearch} onChange={(event) => setLibrarySearch(event.target.value)} placeholder={t('fotoplay.setup.search_shop', 'Search Assets Shop')} className="rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-black placeholder:text-black/40" />
+        <select value={libraryCategory} onChange={(event) => { setLibraryCategory(event.target.value); setLibrarySubcategory('all'); }} className="rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-black"><option value="all">{t('fotoplay.setup.all_categories', 'All categories')}</option>{libraryCategories.map((category) => <option key={category} value={category}>{category}</option>)}</select>
+        <select value={librarySubcategory} onChange={(event) => setLibrarySubcategory(event.target.value)} className="rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-black"><option value="all">{t('fotoplay.setup.all_subcategories', 'All subcategories')}</option>{librarySubcategories.map((subcategory) => <option key={subcategory} value={subcategory}>{subcategory}</option>)}</select>
+        <select value={libraryCreator} onChange={(event) => setLibraryCreator(event.target.value)} className="rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-black"><option value="all">{t('fotoplay.setup.all_creators', 'All creators')}</option>{libraryCreators.map((creator) => <option key={creator} value={creator}>{creator}</option>)}</select>
+      </div>
+      <div className="my-3 flex items-center justify-between text-xs font-bold text-white/55"><span>{filteredLibraryImages.length} {t('fotoplay.setup.images_from', 'images from')} {filteredLibrary.length} {t('fotoplay.setup.assets', 'assets')}</span>{(librarySearch || libraryCategory !== 'all' || librarySubcategory !== 'all' || libraryCreator !== 'all') && <button onClick={clearLibraryFilters} className="text-yellow-400">{t('fotoplay.setup.clear_filters', 'Clear filters')}</button>}</div>
+      <div className="grid grid-cols-2 gap-2">{filteredLibraryImages.map(({ item, imageUrl, imageIndex }) => <button key={`${item.id}-${imageIndex}`} onClick={() => onSelectImage(item, imageUrl)} className={`rounded-xl border p-2 text-left ${selected(item, imageUrl) ? 'border-yellow-400 bg-yellow-400/15' : 'border-white/10 bg-white/5'}`}><div className="mb-2 aspect-video overflow-hidden rounded-lg bg-white/5"><img src={imageUrl} alt={`${item.title} ${t('fotoplay.setup.reference', 'reference')} ${imageIndex + 1}`} className="h-full w-full object-contain" /></div><div className="flex items-center justify-between gap-2"><div className="min-w-0"><span className="block truncate text-xs font-black">{item.title}</span><span className="block truncate text-[10px] text-white/45">Image {imageIndex + 1} · {item.category_label}{item.subcategory_label ? ` · ${item.subcategory_label}` : ''}{item.creator_name ? ` · ${item.creator_name}` : ''}</span></div>{selected(item, imageUrl) && <Check size={14} className="shrink-0 text-yellow-400" />}</div></button>)}</div>
+    </div>}
   </div>;
 }
 
