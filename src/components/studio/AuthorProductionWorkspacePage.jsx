@@ -248,7 +248,7 @@ function webtoonBackdropImage(panel) {
   return '';
 }
 
-function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playback }) {
+function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playback, coverUrl }) {
   const viewportRef = useRef(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   useEffect(() => {
@@ -288,14 +288,18 @@ function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playba
   const captionPosition = settings.captionPositions?.[playback?.index] || { x: 50, y: 70 };
   const captionX = Math.max(10, Math.min(90, Number(captionPosition.x) || 50));
   const captionY = Math.max(10, Math.min(90, Number(captionPosition.y) || 70));
-  const backdropUrl = webtoonBackdropImage(panels[frameIndex]);
-  return <div ref={viewportRef} data-fotoplay-webtoon-camera="true" className="relative flex min-h-0 w-full min-w-0 flex-1 self-stretch items-center justify-center overflow-hidden">
-    {cameraOn && backdropUrl && <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><img src={backdropUrl} alt="" className="h-full w-full object-cover" style={{ filter: 'blur(24px) brightness(0.6)', transform: 'scale(1.14)' }} /></div>}
-    <div className="relative z-10 flex h-full w-full min-w-0 items-center justify-center transition-transform duration-700 ease-in-out" style={{ transform, transformOrigin: 'center center' }}>
-      {pageWidth > 0 && <PageCanvas panels={panels} ratio={ratio} selectedPanel={selectedPanel} onSelectPanel={onSelectPanel} boxes={[]} textMode={false} onBoxesChange={() => {}} webtoonWidth={pageWidth} />}
-    </div>
-    {cameraOn && step?.caption && <WebtoonTypeOnCaption key={`${playback.index}-${step.caption}`} text={step.caption} playbackIndex={playback.index} x={captionX} y={captionY} fontSize={Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))} />}
-    {!cameraOn && <div className="pointer-events-none absolute bottom-3 rounded bg-black/75 px-3 py-1 text-xs font-semibold text-white/80">Complete page</div>}
+  return <div ref={viewportRef} data-fotoplay-webtoon-camera="true" className="relative flex min-h-0 w-full min-w-0 flex-1 self-stretch items-center justify-center overflow-hidden bg-black">
+    {coverUrl && <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><img src={coverUrl} alt="" className="h-full w-full object-cover object-center" /><div className="absolute inset-0 bg-black/75" /></div>}
+    {pageWidth > 0 && <div data-webtoon-fixed-mask="true" className="relative isolate z-10 overflow-hidden bg-black shadow-2xl shrink-0" style={{ width: pageWidth, height: pageWidth * (rh || 9) / (rw || 16) }}>
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 transition-transform duration-700 ease-in-out" style={{ transform, transformOrigin: 'center center' }}>
+          <div className="absolute inset-0 grid gap-[6px] p-[6px]" style={portrait ? { gridTemplateRows: `repeat(${count},minmax(0,1fr))` } : { gridTemplateColumns: `repeat(${count},minmax(0,1fr))` }}>
+            {panels.map((panel, index) => <div key={panel.id || index} className="min-h-0 min-w-0 overflow-hidden"><PanelTreePreview panel={panel} /></div>)}
+          </div>
+        </div>
+      </div>
+      {cameraOn && step?.caption && <WebtoonTypeOnCaption key={`${playback.index}-${step.caption}`} text={step.caption} playbackIndex={playback.index} x={captionX} y={captionY} fontSize={Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))} />}
+    </div>}
   </div>;
 }
 
@@ -429,7 +433,7 @@ function ComicPageWorkspace({ user, project, setProject, activeChapterId, setAct
     <div className="relative h-[calc(100vh-230px)] min-h-[520px] overflow-hidden border border-white/10 bg-[#0d1013] text-white">
       <div className="grid h-full grid-cols-[62px_minmax(0,1fr)_62px]">
         <aside className="z-30 flex flex-col items-center gap-2 border-r border-white/10 bg-[#0b0d10] py-3">{leftTools.map((item) => <ToolButton key={item.key} tool={{ ...item, label: translateTool(item) }} active={tool === item.key} onClick={() => setToolOpen(item.key)} />)}</aside>
-        <main className="flex min-w-0 flex-col items-center justify-center overflow-hidden p-4"><div className="mb-3 flex w-full max-w-[1100px] items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#23c7be]">{t('fotoplay.page.working', 'Working page')}</p><p className="text-xs text-white/45">{t('fotoplay.page.instruction', 'Click a frame, then choose a tool. The whole page stays visible while you work.')}</p></div><span className="border border-white/10 bg-[#16191d] px-2 py-1 text-[10px] font-black text-white/50">{active.image_aspect_ratio || '16:9'} · {panelCount} {t('fotoplay.page.frames', 'frames')}</span></div>{tool === 'webtoon' ? <WebtoonPageCamera panels={panels} ratio={active.image_aspect_ratio || '16:9'} selectedPanel={selectedPanel} onSelectPanel={setSelectedPanel} playback={webtoonPlayback} /> : <PageCanvas key={segment.id} panels={panels} ratio={active.image_aspect_ratio || '16:9'} selectedPanel={selectedPanel} onSelectPanel={(index) => { setSelectedPanel(index); if (!tool) setTool('panel'); }} boxes={boxes} textMode={tool === 'text'} onBoxesChange={(next) => change({ text_boxes: next })} t={t} />}</main>
+        <main className="flex min-w-0 flex-col items-center justify-center overflow-hidden p-4"><div className="mb-3 flex w-full max-w-[1100px] items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#23c7be]">{t('fotoplay.page.working', 'Working page')}</p><p className="text-xs text-white/45">{t('fotoplay.page.instruction', 'Click a frame, then choose a tool. The whole page stays visible while you work.')}</p></div><span className="border border-white/10 bg-[#16191d] px-2 py-1 text-[10px] font-black text-white/50">{active.image_aspect_ratio || '16:9'} · {panelCount} {t('fotoplay.page.frames', 'frames')}</span></div>{tool === 'webtoon' ? <WebtoonPageCamera panels={panels} ratio={active.image_aspect_ratio || '16:9'} selectedPanel={selectedPanel} onSelectPanel={setSelectedPanel} playback={webtoonPlayback} coverUrl={project.cover_image || ""} /> : <PageCanvas key={segment.id} panels={panels} ratio={active.image_aspect_ratio || '16:9'} selectedPanel={selectedPanel} onSelectPanel={(index) => { setSelectedPanel(index); if (!tool) setTool('panel'); }} boxes={boxes} textMode={tool === 'text'} onBoxesChange={(next) => change({ text_boxes: next })} t={t} />}</main>
         <aside className="z-30 flex flex-col items-center gap-2 border-l border-white/10 bg-[#0b0d10] py-3">{rightTools.map((item) => <ToolButton key={item.key} tool={{ ...item, label: translateTool(item) }} active={tool === item.key} onClick={() => setToolOpen(item.key)} />)}</aside>
       </div>{drawer}
     </div>
