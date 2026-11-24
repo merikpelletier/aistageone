@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import ConfigurableBottomNav from '@/components/ConfigurableBottomNav';
 import InstallPrompt from '@/components/InstallPrompt';
@@ -10,26 +10,12 @@ import { useQuery } from '@tanstack/react-query';
 export default function Layout({ children, currentPageName }) {
   const { setAppContext } = useAppContext();
   const { isAuthenticated } = useAuth();
-  const [isLandscape, setIsLandscape] = useState(false);
   const { data: runtime } = useQuery({
     queryKey: ['admin-surface-runtime'],
     queryFn: async () => (await base44.functions.invoke('admin-pages-tools', { action: 'runtime' })).data,
     staleTime: 60_000,
     retry: false,
   });
-
-  useEffect(() => {
-    const checkOrientation = () => {
-      setIsLandscape(window.innerWidth > window.innerHeight);
-    };
-    checkOrientation();
-    window.addEventListener('resize', checkOrientation);
-    window.addEventListener('orientationchange', checkOrientation);
-    return () => {
-      window.removeEventListener('resize', checkOrientation);
-      window.removeEventListener('orientationchange', checkOrientation);
-    };
-  }, []);
 
   useEffect(() => {
     const deviceId = localStorage.getItem('cochon_device_id');
@@ -73,8 +59,6 @@ export default function Layout({ children, currentPageName }) {
   const isSponsorRequestPage = currentPageName === 'SponsorRequest';
   const isAccountPage = currentPageName === 'MemberDashboard';
   const isGiftShopPage = currentPageName === 'Boutique';
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const showLandscapeBlock = isLandscape && !isAdminPage && isMobile;
 
   const settings = runtime?.settings || [];
   const pageSetting = settings.find((item) => item.surface_type === 'page' && item.surface_key === currentPageName);
@@ -110,15 +94,6 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <div className={`min-h-screen ${(isStudioPage || isSponsorRequestPage) ? 'bg-[#202328]' : (isIndexPage || isAccountPage || isGiftShopPage || isMagazinePageWrapper) ? 'bg-black' : 'bg-yellow-400'}`} style={pageStyle} data-admin-spacing={pageSpacing}>
-      {showLandscapeBlock && (
-        <div className="fixed inset-0 bg-yellow-400 z-[9999] flex flex-col items-center justify-center">
-          <div className="text-black text-center px-8">
-            <div className="text-6xl mb-6">📱</div>
-            <p className="text-xl font-light tracking-wide">Portrait mode only</p>
-            <p className="text-black text-sm mt-2">Rotate your phone</p>
-          </div>
-        </div>
-      )}
       <style>{`
         :root {
           ${(isMagazinePageWrapper || isAdminPage) ? `
