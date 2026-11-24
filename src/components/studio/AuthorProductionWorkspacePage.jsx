@@ -236,7 +236,7 @@ function WebtoonTypeOnCaption({ text, playbackIndex, fontSize, x, y }) {
     }, intervalMs);
     return () => window.clearInterval(timer);
   }, [content, playbackIndex]);
-  return <div className="pointer-events-none absolute z-20 w-max max-w-[min(78%,360px)] max-h-[32%] overflow-hidden break-words rounded bg-black/70 px-3 py-2 text-center font-medium leading-snug text-white shadow-lg" style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)', fontSize: `${fontSize}px` }} aria-label={content}>
+  return <div className="pointer-events-none absolute z-20 w-max max-w-[min(78%,360px)] overflow-visible break-words rounded bg-black/70 px-3 py-2 text-center font-medium leading-snug text-white shadow-lg" style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)', fontSize: `${fontSize}px` }} aria-label={content}>
     <span>{content.slice(0, visibleCount)}</span>
   </div>;
 }
@@ -291,7 +291,7 @@ function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playba
             </div>}
       </div>
     </div>}
-    {pageWidth > 0 && cameraOn && step?.caption && <div className="pointer-events-none absolute z-50" style={{ width: pageWidth, height: pageWidth / maskRatio, left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
+    {cameraOn && step?.caption && <div className="pointer-events-none absolute inset-0 z-[60] overflow-visible" data-webtoon-caption-layer="true">
       <WebtoonTypeOnCaption key={`${playback.index}-${step.caption}`} text={step.caption} playbackIndex={playback.index} x={captionX} y={captionY} fontSize={Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))} />
     </div>}
   </div>;
