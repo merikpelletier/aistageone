@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { supabase } from '@/api/supabaseClient';
 import { motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, Check, ChevronRight, Clock3, Film, Image as ImageIcon, Library, Loader2, MapPin, Pencil, Plus, Save, Sparkles, Trash2, UserRound, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -184,8 +183,6 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeChapterId, setActiveChapterId] = useState(null);
-  const [shopCharacters, setShopCharacters] = useState([]);
-  const [shopSets, setShopSets] = useState([]);
   const [availablePilots, setAvailablePilots] = useState([]);
   const [loadingPilot, setLoadingPilot] = useState(false);
 
@@ -196,108 +193,6 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
     finally { setLoading(false); }
   };
   useEffect(() => { loadProjects(); }, []);
-
-  useEffect(() => {
-    const loadShopSelections = async () => {
-      const { data: categories, error: categoryError } = await supabase
-        .from('asset_category')
-        .select('id,key,label_en,label_fr')
-        .eq('is_active', true);
-      if (categoryError) throw categoryError;
-
-      const { data: subcategories, error: subcategoryError } = await supabase
-        .from('asset_subcategory')
-        .select('id,category_id,key,label_en,label_fr')
-        .eq('is_active', true);
-      if (subcategoryError) throw subcategoryError;
-
-      const categoryText = (category) => `${category.key || ''} ${category.label_en || ''} ${category.label_fr || ''}`.toLowerCase();
-      const categoryById = new Map((categories || []).map((category) => [category.id, category]));
-      const subcategoryById = new Map((subcategories || []).map((subcategory) => [subcategory.id, subcategory]));
-      const characterCategoryIds = (categories || []).filter((category) => /\b(actor|character|acteur|personnage)s?\b/.test(categoryText(category))).map((category) => category.id);
-      const setCategoryIds = (categories || []).filter((category) => /\b(set|sets|décor|decor|lieu|location)s?\b/.test(categoryText(category))).map((category) => category.id);
-      const selectAssets = async (categoryIds) => {
-        if (!categoryIds.length) return [];
-        const { data, error } = await supabase
-          .from('catalog_asset')
-          .select('id,title,description,featured_image,preview_images,category_id,subcategory_id,creator_name')
-          .eq('status', 'published')
-          .in('category_id', categoryIds)
-          .order('title', { ascending: true })
-          .limit(300);
-        if (error) throw error;
-        return (data || []).map((asset) => {
-          const category = categoryById.get(asset.category_id);
-          const subcategory = subcategoryById.get(asset.subcategory_id);
-          return {
-            ...asset,
-            category_key: category?.key || '',
-            category_label: category?.label_en || category?.label_fr || category?.key || '',
-            subcategory_key: subcategory?.key || '',
-            subcategory_label: subcategory?.label_en || subcategory?.label_fr || subcategory?.key || '',
-          };
-        });
-      };
-      const [characters, sets] = await Promise.all([selectAssets(characterCategoryIds), selectAssets(setCategoryIds)]);
-      setShopCharacters(characters);
-      setShopSets(sets);
-    };
-
-    loadShopSelections().catch((error) => toast.error(error.message || 'Unable to load OLO Shop selections'));
-  }, []);
-
-
-  useEffect(() => {
-    let current = true;
-    const loadPilots = async () => {
-      const { data, error } = await supabase.from('ai_pilots')
-        .select('id,name,description,category,cover_url,current_published_version_id,status')
-        .eq('status', 'published').not('current_published_version_id', 'is', null).order('name');
-      if (error) throw error;
-      if (current) setAvailablePilots(data || []);
-    };
-    loadPilots().catch((error) => toast.error(error.message || 'Unable to load AI Pilots'));
-    return () => { current = false; };
-  }, []);
-
-  const loadPilot = async (pilotId) => {
-    const selected = availablePilots.find((item) => item.id === pilotId);
-    if (!selected || !project) return;
-    if ((project.characters.length || project.locations.length || project.story_description?.trim()) &&
-      !window.confirm('Load this AI Pilot? Existing story definition, characters and locations will be replaced.')) return;
-    setLoadingPilot(true);
-    try {
-      const versionId = selected.current_published_version_id;
-      const [versionResult, blocksResult, charactersResult, mediaResult] = await Promise.all([
-        supabase.from('ai_pilot_versions').select('*').eq('id', versionId).eq('is_published', true).single(),
-        supabase.from('ai_pilot_blocks').select('*').eq('version_id', versionId).eq('is_active', true),
-        supabase.from('ai_pilot_characters').select('*').eq('version_id', versionId).eq('is_active', true),
-        supabase.from('ai_pilot_media').select('*').eq('version_id', versionId).eq('is_active', true),
-      ]);
-      const failed = [versionResult, blocksResult, charactersResult, mediaResult].find((result) => result.error);
-      if (failed) throw failed.error;
-      // Load only extensions belonging to the currently signed-in member and selected Pilot.
-      const { data: ownedAccess, error: accessError } = await supabase.from('member_ai_pilots')
-        .select('id').eq('user_id', user.id).eq('ai_pilot_id', selected.id);
-      if (accessError) throw accessError;
-      let personalAdditions = [];
-      if (ownedAccess?.length) {
-        const { data, error } = await supabase.from('member_ai_pilot_extensions')
-          .select('*').eq('user_id', user.id).eq('is_active', true)
-          .in('member_ai_pilot_id', ownedAccess.map((row) => row.id))
-          .order('sort_order', { ascending: true });
-        if (error) throw error;
-        personalAdditions = data || [];
-      }
-      const { data: mySets, error: setsError } = await supabase.from('set_designer_project')
-        .select('id,name,description,images,reference_sheet')
-        .eq('created_by_id', user.id);
-      if (setsError) throw setsError;
-      setProject((current) => pilotToFotoPlay(current, selected, versionResult.data, blocksResult.data || [], charactersResult.data || [], mediaResult.data || [], personalAdditions, mySets || []));
-      toast.success('AI Pilot loaded into FotoPlay');
-    } catch (error) { toast.error(error.message || 'Unable to load AI Pilot'); }
-    finally { setLoadingPilot(false); }
-  };
 
   const openProject = (row) => {
     const complete = row.story_description && row.characters?.length && row.locations?.length;
@@ -364,7 +259,7 @@ export default function AuthorStoryBlocks({ user, onBack, storyPacks = [], packC
   />;
 
   if (view === 'setup' && project) return <ProjectSetup
-    user={user} project={project} setProject={setProject} shopCharacters={shopCharacters} shopSets={shopSets}
+    user={user} project={project} setProject={setProject}
     availablePilots={availablePilots} loadingPilot={loadingPilot} onLoadPilot={loadPilot} saving={saving} onBack={() => setView(project.id ? 'workspace' : 'dashboard')} onSave={(foundationComplete) => saveProject(foundationComplete ? 'workspace' : 'setup')}
   />;
 
