@@ -964,7 +964,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
     {blockPlayerData && (
       <>
         {publishedReadingMode === 'webtoon'
-          ? <PublishedWebtoonReader blocks={blockPlayerData.blocks} onClose={() => { setBlockPlayerData(null); setPublishedReadingMode('classic'); onClose?.(); }} onClassic={() => setPublishedReadingMode('classic')} />
+          ? <PublishedWebtoonReader blocks={blockPlayerData.blocks} coverUrl={dossier.cover_image || dossier.cover_template_image || dossier.cover_image_landscape || ''} onClose={() => { setBlockPlayerData(null); setPublishedReadingMode('classic'); onClose?.(); }} onClassic={() => setPublishedReadingMode('classic')} />
           : <BlockPlayer blocks={blockPlayerData.blocks} characters={blockPlayerData.characters} onClose={() => { setBlockPlayerData(null); setPublishedReadingMode('classic'); onClose?.(); }} />}
         {publishedReadingMode === 'classic' && blockPlayerData.blocks.some(item => item.webtoon) && (
           <button type="button" onClick={() => setPublishedReadingMode('webtoon')} className="fixed left-3 top-[calc(52px+env(safe-area-inset-top)+8px)] z-[340] rounded-full border border-white/25 bg-black/85 px-4 py-2 text-xs font-bold text-white shadow-lg" aria-label="Read in Webtoon mode">Webtoon · Mobile</button>
