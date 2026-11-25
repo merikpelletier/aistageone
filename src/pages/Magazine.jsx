@@ -221,7 +221,7 @@ export default function Magazine() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className={`magazine-cover bg-black ${resolveAppearance(currentDossier?.appearance)?'dossier-themed':''}`}
-          style={{}}
+          style={appearanceStyle(resolveAppearance(currentDossier?.appearance))}
           onClick={() => openDossier(currentDossier)}
         >
           {/* Cover Image/Video */}
