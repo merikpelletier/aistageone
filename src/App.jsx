@@ -23,6 +23,7 @@ import CampaignSubscribePage from './pages/CampaignSubscribe';
 import LoginPage from './pages/Login';
 import ResetPasswordPage from './pages/ResetPassword';
 import PitchDeckSharePage from './pages/PitchDeckShare';
+import MobileDossierPlayer from './components/mobile/MobileDossierPlayer';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { AppContextProvider } from '@/lib/AppContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -191,6 +192,7 @@ const AuthenticatedApp = () => {
       <Route path="/Login" element={<LoginPage />} />
       <Route path="/ResetPassword" element={<ResetPasswordPage />} />
       <Route path="/PitchDeckShare" element={<PitchDeckSharePage />} />
+      <Route path="/mobile/:mobileId" element={<MobileDossierPlayer />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
