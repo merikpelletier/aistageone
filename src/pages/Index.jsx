@@ -458,7 +458,7 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
           </div>
         </div>
 
-        <div className="grid grid-cols-[minmax(280px,420px)_1fr] gap-3">
+        <div className="grid min-w-0 grid-cols-[minmax(0,420px)_minmax(0,1fr)] gap-3">
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35" />
             <input
@@ -470,13 +470,13 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
             />
           </div>
 
-          <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 pb-1">
             {selectorOptions.map(option => (
               <button
                 key={option}
                 type="button"
                 onClick={() => setSelected(option)}
-                className={`whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
+                className={`shrink-0 whitespace-nowrap border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] transition ${selected === option ? 'border-white bg-white text-black' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'}`}
               >
                 {displayLabel(option)}
               </button>
@@ -485,7 +485,7 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4 xl:px-7">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 xl:px-7">
         {rows.length ? rows.map(row => <GalleryRow key={row.title} title={displayLabel(row.title)} dossiers={row.dossiers} />) : <div className="flex min-h-[180px] items-center justify-center text-sm text-white/35">{t("ui", "No content found.")}</div>}
       </div>
     </aside>
