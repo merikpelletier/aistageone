@@ -417,7 +417,7 @@ export default function SlideTool() {
             const elapsed = Math.min(total, (performance.now() - start) / 1000);
             renderFrame(ctx, slides, images, elapsed, WIDTH, HEIGHT);
             const percent = Math.floor(100 * elapsed / total);
-            if (target && percent !== lastPercent) { lastPercent = percent; setStatus(dt('slide.rendering', 'Création de la vidéo : ', 'Rendering video: ') + percent + '%'); }
+            if (percent !== lastPercent) { lastPercent = percent; setStatus(dt('slide.rendering', 'Création de la vidéo : ', 'Rendering video: ') + percent + '%'); }
             if (elapsed >= total) resolve(); else setTimeout(tick, 1000 / FPS);
           } catch (error) { reject(error); }
         };
@@ -487,6 +487,19 @@ export default function SlideTool() {
           <button disabled={!slides.length || exporting || dossierLoading} onClick={openDossiers} className="bg-white/10 disabled:opacity-40 px-3 py-2">{dt('slide.add_existing_dossier', 'Ajouter à un dossier existant', 'Add to existing dossier')}</button>
         </div>
       </div>
+      {!!status && <div role="status" aria-live="polite" className="sticky top-0 z-30 border border-teal-400/40 bg-[#16181c] px-4 py-3 text-sm font-semibold text-teal-300 shadow-lg">
+        <div className="flex items-center gap-3">
+          {exporting && <span aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-teal-400/30 border-t-teal-300"/>}
+          <span>{status}</span>
+        </div>
+        {exporting && (() => {
+          const percent = status.match(/(\d+(?:\.\d+)?)%/);
+          const value = percent ? Math.min(100, Math.max(0, Number(percent[1]))) : null;
+          return <div role="progressbar" aria-label={status} aria-valuemin={0} aria-valuemax={100} aria-valuenow={value ?? undefined} className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
+            <div className={`h-full rounded-full bg-teal-400 transition-all duration-300 ${value === null ? 'w-1/3 animate-pulse' : ''}`} style={value === null ? undefined : {width: value + '%'}}/>
+          </div>;
+        })()}
+      </div>}
       {dossierOptions !== null && <div className="flex flex-wrap gap-2 items-center bg-[#16181c] border border-white/10 p-2">
         <select disabled={exporting} aria-label={dt('slide.select_dossier', 'Choisir un dossier', 'Select a dossier')} className="bg-[#25282e] px-2 py-2 max-w-full" value={dossierTarget} onChange={e => setDossierTarget(e.target.value)}><option value="">{dt('slide.select_dossier', 'Choisir un dossier', 'Select a dossier')}</option>{dossierOptions.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}</select>
         <button disabled={!dossierTarget || exporting || !slides.length} onClick={() => exportVideo(dossierTarget)} className="bg-teal-600 disabled:opacity-40 px-3 py-2">{dt('slide.add_to_dossier', 'Ajouter au dossier', 'Add to dossier')}</button>
@@ -528,7 +541,7 @@ export default function SlideTool() {
           <p className="text-white/45 leading-relaxed">{tr('Les projets et leurs médias sont sauvegardés dans votre compte. Les originaux ne sont pas modifiés. L’export MP4 dépend du navigateur ; sinon WebM est utilisé.')}</p>
         </aside>
       </div>
-      {!!status && <div role="status" className="text-teal-300">{status}</div>}
+
     </div>
   );
 }
