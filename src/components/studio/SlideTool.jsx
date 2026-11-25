@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
+import { base44 } from '@/api/base44Client';
+import { useQueryClient } from '@tanstack/react-query';
 import { getPlatformLanguage } from '@/lib/translationDictionary';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { Upload, Music, Play, Pause, Download, Save, Trash2, ArrowLeft, ArrowRight, ImagePlus, RefreshCw } from 'lucide-react';
@@ -132,6 +134,22 @@ export default function SlideTool() {
   useEffect(() => { const sync = () => setLanguage(getPlatformLanguage()); window.addEventListener('aistage-language-change', sync); window.addEventListener('storage', sync); return () => { window.removeEventListener('aistage-language-change', sync); window.removeEventListener('storage', sync); }; }, []);
   const tr = (fr) => translateSlide(fr, language);
   const t = useStudioTranslation();
+  const qc = useQueryClient();
+  const [dossierOptions, setDossierOptions] = useState(null);
+  const [dossierTarget, setDossierTarget] = useState('');
+  const [dossierLoading, setDossierLoading] = useState(false);
+  const dt = (key, fr, en) => t(key, language === 'fr' ? fr : en);
+  const openDossiers = async () => {
+    setDossierLoading(true);
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user?.email) throw new Error(tr('Connexion requise pour enregistrer un projet.'));
+      const list = await base44.entities.Dossier.filter({ submitted_by_email: data.user.email }, 'title');
+      setDossierOptions(list || []);
+      setDossierTarget('');
+    } catch (error) { setStatus(tr('Export échoué : ') + error.message); }
+    finally { setDossierLoading(false); }
+  };
   const [slides, setSlides] = useState([]);
   const [audio, setAudio] = useState(null);
   const [audioUrl, setAudioUrl] = useState('');
@@ -351,7 +369,7 @@ export default function SlideTool() {
     if (!n || !Number.isFinite(seconds) || seconds <= 0) { setStatus(tr('Chargez une piste audio valide pour ajuster les durées.')); return; }
     setSlides((old) => old.map((s) => ({ ...s, duration: Math.round((seconds / n) * 10) / 10 })));
   };
-  const exportVideo = async () => {
+  const exportVideo = async (target = null) => {
     if (!slides.length || exporting) return;
     if (!window.MediaRecorder || !canvasRef.current?.captureStream) { setStatus(tr('Export vidéo non pris en charge par ce navigateur.')); return; }
     const mimeType = chooseMime();
@@ -397,6 +415,23 @@ export default function SlideTool() {
       recorder.stop();
       const blob = await completion;
       const extension = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+      if (target) {
+        const { data, error } = await supabase.auth.getUser();
+        if (error || !data.user?.email) throw new Error(tr('Connexion requise pour enregistrer un projet.'));
+        const owned = await base44.entities.Dossier.filter({ id: target, submitted_by_email: data.user.email });
+        if (!owned.length) throw new Error(dt('slide.dossier_unavailable', 'Dossier inaccessible.', 'Dossier unavailable.'));
+        const file = new File([blob], (title.trim() || 'slide') + '.' + extension, { type: mimeType });
+        const { file_url } = await base44.integrations.Core.UploadFile({ file, dossierId: target });
+        if (!file_url) throw new Error(dt('slide.upload_failed', 'Vidéo non enregistrée.', 'Video upload failed.'));
+        const pages = await base44.entities.DossierPage.filter({ dossier_id: target });
+        const order = Math.max(0, ...pages.map(p => Number(p.order) || 0)) + 1;
+        await base44.entities.DossierPage.create({ dossier_id: target, page_type: 'video', title: title.trim() || tr('Nouveau Slide'), order, media_url: file_url, media_url_landscape: file_url, is_hidden_from_public: false, hide_title: false });
+        qc.invalidateQueries({ queryKey: ['memberDossierPages', target] });
+        setDossierOptions(null);
+        setDossierTarget('');
+        setStatus(dt('slide.dossier_added', 'Slide ajouté au dossier.', 'Slide added to dossier.'));
+        return;
+      }
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url; link.download = (title.trim() || 'slide').replace(/[^a-z0-9_-]/gi, '_') + '.' + extension;
@@ -421,9 +456,15 @@ export default function SlideTool() {
           <select aria-label={tr('Ouvrir un Slide enregistré')} className="bg-[#25282e] px-2 py-2 max-w-52" value={projectId || ''} onChange={(e) => openProject(e.target.value)}><option value="">{tr('Projets enregistrés')}</option>{projects.map((p) => <option value={p.id} key={p.id}>{p.title}</option>)}</select>
           <button onClick={newProject} className="bg-white/10 px-3 py-2">{tr('Nouveau')}</button>
           <button onClick={loadLocalBackup} className="bg-white/10 px-3 py-2">{tr('Récupérer sauvegarde locale')}</button>
-          <button disabled={!slides.length || exporting} onClick={exportVideo} className="bg-teal-600 disabled:opacity-40 px-3 py-2 flex gap-2 items-center"><Download size={14} /> {exporting ? tr('Export…') : tr('Exporter vidéo')}</button>
+          <button disabled={!slides.length || exporting} onClick={() => exportVideo()} className="bg-teal-600 disabled:opacity-40 px-3 py-2 flex gap-2 items-center"><Download size={14} /> {exporting ? tr('Export…') : tr('Exporter vidéo')}</button>
+          <button disabled={!slides.length || exporting || dossierLoading} onClick={openDossiers} className="bg-white/10 disabled:opacity-40 px-3 py-2">{dt('slide.add_existing_dossier', 'Ajouter à un dossier existant', 'Add to existing dossier')}</button>
         </div>
       </div>
+      {dossierOptions !== null && <div className="flex flex-wrap gap-2 items-center bg-[#16181c] border border-white/10 p-2">
+        <select disabled={exporting} aria-label={dt('slide.select_dossier', 'Choisir un dossier', 'Select a dossier')} className="bg-[#25282e] px-2 py-2 max-w-full" value={dossierTarget} onChange={e => setDossierTarget(e.target.value)}><option value="">{dt('slide.select_dossier', 'Choisir un dossier', 'Select a dossier')}</option>{dossierOptions.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}</select>
+        <button disabled={!dossierTarget || exporting || !slides.length} onClick={() => exportVideo(dossierTarget)} className="bg-teal-600 disabled:opacity-40 px-3 py-2">{dt('slide.add_to_dossier', 'Ajouter au dossier', 'Add to dossier')}</button>
+        <button disabled={exporting} onClick={() => { setDossierOptions(null); setDossierTarget(''); }} className="px-3 py-2">{dt('Cancel', 'Annuler', 'Cancel')}</button>
+      </div>}
       <div className="grid lg:grid-cols-[minmax(0,1fr)_300px] gap-3">
         <section className="min-w-0 space-y-3">
           <div className="bg-black border border-white/10 flex justify-center"><canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="w-full max-h-[56vh] object-contain aspect-video" /></div>
