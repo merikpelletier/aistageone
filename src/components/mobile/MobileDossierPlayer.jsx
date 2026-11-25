@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
+import { resolveAppearance,appearanceStyle } from '@/lib/dossierAppearance';
 import DossierViewer from '@/components/DossierViewer';
 
 function escapeAudioUrl(value = '') {
@@ -35,7 +36,7 @@ function addPageAudioToViewer(pages = []) {
 
 async function loadDossier(id) {
   const { data: dossier, error } = await supabase.from('dossier')
-    .select('id,title,subtitle,description,author_name,cover_image,cover_image_landscape,cover_video,cover_video_landscape,hide_text_on_cover,content_rating,access_level,access_model,default_language,original_language,product_placements')
+    .select('id,title,subtitle,description,author_name,cover_image,cover_image_landscape,cover_video,cover_video_landscape,hide_text_on_cover,content_rating,access_level,access_model,default_language,original_language,product_placements,appearance')
     .eq('mobile_public_id', id).eq('mobile_enabled', true).eq('status', 'published')
     .or('publish_until.is.null,publish_until.gt.' + new Date().toISOString()).maybeSingle();
   if (error) throw error;
@@ -88,15 +89,16 @@ export default function MobileDossierPlayer() {
   if(isLoadingAuth||isLoading)return <main className="min-h-[100dvh] bg-black text-white grid place-items-center"><Loader2 className="animate-spin" /></main>;
   if(error||!data?.dossier)return <main className="min-h-[100dvh] bg-black text-white grid place-items-center p-6 text-center"><div><h1 className="text-xl font-bold">{t('Dossier mobile indisponible','Mobile dossier unavailable')}</h1>{!isAuthenticated&&<Link className="mt-5 inline-block underline" to={'/Login?returnTo='+encodeURIComponent(window.location.pathname+window.location.search)}>{t('Sign in','Sign in')}</Link>}</div></main>;
   const currentDossier=data.dossier;
+  const appearance=resolveAppearance(currentDossier.appearance);
   const activeCoverVideo=isLandscape?(currentDossier.cover_video_landscape||currentDossier.cover_video):currentDossier.cover_video;
   const activeCoverImage=isLandscape?(currentDossier.cover_image_landscape||currentDossier.cover_image):currentDossier.cover_image;
   const openDossier=()=>{if(data.pages.length)setReading(true);};
-  return <main className="fixed inset-0 bg-black text-white">
+  return <main className={`fixed inset-0 bg-black text-white ${appearance ? 'dossier-themed' : ''}`} style={appearanceStyle(appearance)}>
     {!reading && !installed && <div className="absolute top-3 left-3 z-[70] max-w-[min(320px,85vw)]">
       <button type="button" onClick={install} className="rounded-md bg-black/80 border border-white/30 px-3 py-2 text-xs">{t('Install application','Install application')}</button>
       {installHelp&&<p className="mt-2 rounded-md bg-black/90 p-3 text-sm">{t('Install application instructions','In your browser menu, choose Add to Home Screen or Install app.')}</p>}
     </div>}
-    {!reading && <motion.div key={currentDossier.id} initial={{opacity:0}} animate={{opacity:1}} className="absolute inset-0 bg-black" onClick={openDossier}>
+    {!reading && <motion.div key={currentDossier.id} initial={{opacity:0}} animate={{opacity:1}} className="absolute inset-0 bg-black" style={appearanceStyle(appearance)} onClick={openDossier}>
       {activeCoverVideo?<video src={activeCoverVideo} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-contain"/>:activeCoverImage?<img src={activeCoverImage} alt="" className="absolute inset-0 w-full h-full object-contain"/>:null}
       {(currentDossier.content_rating||currentDossier.default_language||currentDossier.original_language)&&<div className="absolute top-[60px] right-4 z-[60] flex items-center gap-2 lg:top-5 lg:right-[calc(50%-330px)] lg:gap-1.5">
         {currentDossier.content_rating&&<div className="min-w-[52px] h-9 px-3 flex items-center justify-center border border-white bg-black text-white text-xs font-black tracking-[0.12em] uppercase lg:min-w-[44px] lg:h-8 lg:px-2 lg:text-[10px]">{currentDossier.content_rating==='all'?t('All','ALL'):currentDossier.content_rating}</div>}
@@ -107,7 +109,7 @@ export default function MobileDossierPlayer() {
         {currentDossier.subtitle&&<motion.p initial={{y:20,opacity:0}} animate={{y:0,opacity:1}} transition={{delay:0.3}} className="text-white text-lg font-light lg:text-sm">{currentDossier.subtitle}</motion.p>}
         {currentDossier.author_name&&<motion.p initial={{y:20,opacity:0}} animate={{y:0,opacity:1}} transition={{delay:0.4}} className="text-white text-sm mt-4 tracking-wide lg:text-xs lg:mt-2">{currentDossier.author_name}</motion.p>}
       </div>}
-      {data.pages.length>0&&<div className="absolute bottom-8 left-1/2 -translate-x-1/2 lg:bottom-5"><motion.button initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{delay:0.5}} onClick={e=>{e.stopPropagation();openDossier();}} className="group flex items-center gap-3 rounded-full px-7 py-3.5 transition-all lg:gap-2 lg:px-5 lg:py-2.5" style={{background:'rgba(255,255,255,0.90)',color:'#111',border:'1px solid rgba(0,0,0,0.18)',boxShadow:'0 4px 18px rgba(0,0,0,0.30)',backdropFilter:'blur(10px)',fontWeight:700}}><span className="text-sm tracking-[0.2em] uppercase lg:text-xs">{t('Ouvrir le dossier','Open dossier')}</span><span>→</span></motion.button></div>}
+      {data.pages.length>0&&<div className="absolute bottom-8 left-1/2 -translate-x-1/2 lg:bottom-5"><motion.button initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{delay:0.5}} onClick={e=>{e.stopPropagation();openDossier();}} className="group flex items-center gap-3 rounded-full px-7 py-3.5 transition-all lg:gap-2 lg:px-5 lg:py-2.5" style={{background:appearance?.accent||'rgba(255,255,255,0.90)',color:appearance?'var(--dossier-accent-text)':'#111',border:'1px solid rgba(0,0,0,0.18)',boxShadow:'0 4px 18px rgba(0,0,0,0.30)',backdropFilter:'blur(10px)',fontWeight:700}}><span className="text-sm tracking-[0.2em] uppercase lg:text-xs">{t('Ouvrir le dossier','Open dossier')}</span><span>→</span></motion.button></div>}
     </motion.div>}
     {reading&&data.pages.length>0&&<DossierViewer external key={currentDossier.id} pages={addPageAudioToViewer(data.pages)} dossier={currentDossier} onClose={()=>setReading(false)}/>}
   </main>;

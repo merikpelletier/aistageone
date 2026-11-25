@@ -1,0 +1,8 @@
+.dossier-themed {font-family:var(--dossier-body-font);color:var(--dossier-text);}
+.dossier-themed :is(h1,h2,h3,h4) {font-family:var(--dossier-title-font);}
+.dossier-themed :is(h1,h2,h3,h4,p,div).text-white {color:var(--dossier-text);}
+.dossier-themed :is(.text-white\\/60,.text-white\\/70,.text-white\\/75,.text-white\\/90) {color:var(--dossier-text);opacity:.85;}
+.dossier-themed .dossier-nav,.dossier-themed .dossier-action {background:var(--dossier-accent);color:var(--dossier-accent-text);border-radius:var(--dossier-radius);}
+.dossier-themed .dossier-action {font-weight:700;padding:12px 20px;}
+.dossier-quiz .dossier-choice {font-size:1.05rem;min-height:52px;border-color:color-mix(in srgb,var(--dossier-text) 22%,transparent);}
+.dossier-quiz h2 {font-weight:700;}

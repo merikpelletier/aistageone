@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AtelierAssetPicker from '@/components/atelier/AtelierAssetPicker';
 import { toast } from 'sonner';
+import DossierAppearanceEditor from '@/components/DossierAppearanceEditor';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
 
 export default function MemberDossierEditor({ dossier = null, userEmail, onClose, onSaved, embedded = false }) {
@@ -46,6 +47,7 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
     hide_text_on_cover: Boolean(dossier?.hide_text_on_cover),
     mobile_enabled: Boolean(dossier?.mobile_enabled),
     mobile_public_id: dossier?.mobile_public_id || null,
+    appearance: dossier?.appearance || null,
     mobile_app_name: dossier?.mobile_app_name || '',
     mobile_icon_192: dossier?.mobile_icon_192 || '',
     mobile_icon_512: dossier?.mobile_icon_512 || '',
@@ -164,6 +166,13 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
       setUploading(false);
     }
   };
+  const uploadAppearanceBackground = async event => {
+    const file=event.target.files?.[0]; if(!file)return;
+    setUploading(true);
+    try {const {file_url}=await base44.integrations.Core.UploadFile({file});if(!file_url)throw Error('Upload');setForm(prev=>({...prev,appearance:{...prev.appearance,backgroundImage:file_url}}));}
+    catch {toast.error(t('Unable to upload background','Unable to upload background'));}
+    finally {setUploading(false);event.target.value='';}
+  };
   const isPublishing = form.status === 'published';
 
   const fieldStyle = "h-10 border-white/15 bg-[#181a1e] text-white placeholder:text-white/35 focus-visible:ring-1 focus-visible:ring-teal-400";
@@ -280,6 +289,7 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
               </div>
             </section>
 
+            <DossierAppearanceEditor value={form.appearance} onChange={value=>set('appearance',value)} title={form.title} uploading={uploading} onUpload={uploadAppearanceBackground}/>
             <section className="mt-6 border-t border-white/10 pt-5">
               <h3 className={sectionTitle}>{t('Dossier publication','Access and publication')}</h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -464,6 +474,7 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
               </div>
             </section>
 
+            <DossierAppearanceEditor value={form.appearance} onChange={value=>set('appearance',value)} title={form.title} uploading={uploading} onUpload={uploadAppearanceBackground}/>
             <section className="mt-6 border-t border-white/10 pt-5">
               <h3 className={sectionTitle}>{t('Dossier publication','Access and publication')}</h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

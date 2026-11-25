@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { resolveAppearance,appearanceStyle } from '@/lib/dossierAppearance';
 import DossierViewer from '@/components/DossierViewer';
 import DossierCoverActions from '@/components/DossierCoverActions';
 import { ChevronDown, ChevronUp, LayoutGrid } from 'lucide-react';
@@ -219,7 +220,7 @@ export default function Magazine() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="magazine-cover bg-black"
+          className={`magazine-cover bg-black ${resolveAppearance(currentDossier?.appearance)?'dossier-themed':''}`}
           style={{}}
           onClick={() => openDossier(currentDossier)}
         >

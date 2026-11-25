@@ -16,6 +16,8 @@ import MemberEpisodesPage from '@/components/MemberEpisodesPage';
 import BlockPlayer from '@/components/production/BlockPlayer';
 import PublishedWebtoonReader from '@/components/production/PublishedWebtoonReader';
 import SponsorContentPlacement from '@/components/SponsorContentPlacement';
+import { resolveAppearance,appearanceStyle } from '@/lib/dossierAppearance';
+import '@/styles/dossier-appearance.css';
 import DossierIndexPage from '@/components/DossierIndexPage';
 import DossierContestPage from '@/components/DossierContestPage';
 import DossierCreditsPage from '@/components/DossierCreditsPage';
@@ -247,6 +249,7 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
     ? page.media_url_landscape
     : (page?.media_url || page?.media_url_landscape);
 
+  const appearance = resolveAppearance(dossier?.appearance);
   const externalMediaOnly = external && !page?.is_product && (page?.page_type === 'video' || page?.page_type === 'image') && !page?.content && (!page?.title || page?.hide_title);
   const textPositionClass = {
     top: 'items-start pt-20',
@@ -290,8 +293,8 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
     <>
     <div
       ref={containerRef}
-      className={`fixed bg-black z-30 ${isLandscape ? 'inset-0 flex items-center justify-center' : 'inset-x-0 top-0'}`}
-      style={isLandscape ? {} : { bottom: external ? 'env(safe-area-inset-bottom)' : 'calc(56px + env(safe-area-inset-bottom))' }}
+      className={`fixed bg-black z-30 ${appearance ? 'dossier-themed' : ''} ${isLandscape ? 'inset-0 flex items-center justify-center' : 'inset-x-0 top-0'}`}
+      style={{...appearanceStyle(appearance),...(isLandscape ? {} : { bottom: external ? 'env(safe-area-inset-bottom)' : 'calc(56px + env(safe-area-inset-bottom))' })}}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -545,7 +548,7 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
 
           {/* Interactive question game page */}
           {page?.page_type === 'quiz' && (
-            <DossierQuizPage key={page.id} page={page} external={external} />
+            <DossierQuizPage key={page.id} page={page} external={external} appearance={appearance} />
           )}
 
           {/* Credits page */}
@@ -634,7 +637,7 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
       {/* Left nav: go back a page, or close if on first page */}
       <button
         onClick={() => currentPage > 0 ? setCurrentPage(currentPage - 1) : onClose?.()}
-        className="absolute left-3 bottom-3 md:left-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 p-2 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors z-40 pointer-events-auto"
+        className="dossier-nav absolute left-3 bottom-3 md:left-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 p-2 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors z-40 pointer-events-auto"
       >
         <ChevronLeft size={32} />
       </button>
@@ -643,7 +646,7 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
       {currentPage < pages.length - 1 && (
         <button
           onClick={() => setCurrentPage(currentPage + 1)}
-          className="absolute right-3 bottom-3 md:right-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 p-2 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors z-40 pointer-events-auto"
+          className="dossier-nav absolute right-3 bottom-3 md:right-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 p-2 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors z-40 pointer-events-auto"
         >
           <ChevronRight size={32} />
         </button>
@@ -694,7 +697,7 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
       {/* Index toggle button (menu) */}
       <button
         onClick={() => setShowIndex(v => !v)}
-        className="absolute right-4 z-40 bg-white text-black rounded-full w-12 h-12 flex items-center justify-center transition-colors pointer-events-auto shadow-lg" style={{ top: 'calc(52px + env(safe-area-inset-top) + 8px)' }}
+        className="dossier-nav absolute right-4 z-40 bg-white text-black rounded-full w-12 h-12 flex items-center justify-center transition-colors pointer-events-auto shadow-lg" style={{ top: 'calc(52px + env(safe-area-inset-top) + 8px)' }}
       >
         {showIndex ? <X size={20} /> : <List size={20} />}
       </button>

@@ -1,4 +1,6 @@
 import React from 'react';
+import { resolveAppearance,appearanceStyle } from '@/lib/dossierAppearance';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import DossierAssociatedMember from '@/components/DossierAssociatedMember';
 
 function isVideoUrl(url = '') {
@@ -26,6 +28,8 @@ function plainText(value = '') {
 }
 
 export default function DossierIndexPage({ page, pages, dossier, onNavigate, external = false }) {
+  const t=useStudioTranslation();
+  const appearance=resolveAppearance(dossier?.appearance);
   const entries = Array.from(
     new Map(
       (pages || [])
@@ -34,6 +38,35 @@ export default function DossierIndexPage({ page, pages, dossier, onNavigate, ext
     ).values()
   );
 
+  if(appearance) return <div className="dossier-themed absolute inset-0 overflow-y-auto pointer-events-auto flex flex-col" style={appearanceStyle(appearance)}>
+    <div className="mx-auto my-auto shrink-0 w-full max-w-5xl px-5 sm:px-10 py-20">
+      <header className="mb-6">
+        <p className="text-sm font-bold opacity-75">{dossier?.title}</p>
+        <h2 className="mt-2 text-4xl md:text-5xl font-bold">{page?.title||t('Contents','Contents')}</h2>
+        {page?.content&&<div className="mt-3 max-w-2xl" dangerouslySetInnerHTML={{__html:page.content}}/>}
+        <div className="mt-3"><DossierAssociatedMember dossier={dossier}/></div>
+      </header>
+      <div className={appearance.indexStyle==='mosaic'?'grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-5':appearance.indexStyle==='cards'?'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4':'grid gap-3'}>
+       {entries.map((item,index)=>{
+        const media=item.media_url_landscape||item.media_url||'';
+        const video=item.page_type==='video'||isVideoUrl(media);
+        const thumb=video?(item.images||[]).find(url=>url&&!isVideoUrl(url))||dossier?.cover_image_landscape||dossier?.cover_image:media||(item.images||[]).find(url=>url&&!isVideoUrl(url));
+        const action=item.page_type==='quiz'?'Play':video?'Watch':'Open';
+        const list=appearance.indexStyle==='list';
+        return <button key={item.id} type="button" onClick={()=>onNavigate?.(item)} className={`group overflow-hidden text-left transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 ${list?'flex items-center gap-3':'flex flex-col'}`} style={{background:appearance.secondary,color:appearance.text,borderRadius:appearance.radius,border:'1px solid color-mix(in srgb, var(--dossier-text) 14%, transparent)',boxShadow:'0 5px 16px #00000012'}}>
+          <div className={`relative overflow-hidden grid place-items-center ${list?'w-24 sm:w-36 aspect-square shrink-0':'w-full aspect-video'}`} style={{background:'color-mix(in srgb, var(--dossier-accent) 18%, var(--dossier-secondary))'}}>
+           {thumb?<img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover"/>:<span className="text-5xl font-bold" style={{color:appearance.accent}}>{item.page_type==='quiz'?'?':String(index+1).padStart(2,'0')}</span>}
+           {video&&<span className="absolute inset-0 grid place-items-center"><span className="grid place-items-center rounded-full w-12 h-12 bg-black/65 text-white">▶</span></span>}
+          </div>
+          <div className="flex flex-col items-start flex-1 p-3 sm:p-4 gap-2 min-w-0">
+            <h3 className="text-base sm:text-xl font-bold leading-tight break-words">{item.episode_title||item.title||t(PAGE_LABELS[item.page_type]||'Open',PAGE_LABELS[item.page_type]||'Open')}</h3>
+            <span className="mt-auto inline-flex gap-2 items-center px-3 py-1.5 text-sm font-bold" style={{background:appearance.accent,color:'var(--dossier-accent-text)',borderRadius:appearance.radius}}>{t(action,action)} →</span>
+          </div>
+        </button>;
+       })}
+      </div>
+    </div>
+  </div>;
   return (
     <div className={`absolute inset-0 bg-black overflow-y-auto pointer-events-auto ${external ? 'flex flex-col' : ''}`}>
       <div className={`mx-auto w-full max-w-6xl px-5 sm:px-8 md:px-10 lg:px-14 ${external ? 'my-auto shrink-0 py-20' : 'pt-20 md:pt-24 pb-28 md:pb-32'}`}>
