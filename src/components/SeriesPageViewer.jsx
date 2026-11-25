@@ -161,13 +161,13 @@ export default function SeriesPageViewer({ page, onImageClick, dossierId = '', a
                             onClick={() => onImageClick?.(url)}
                           />
                         )}
-                        {!url.match(/\.(mp4|webm|ogg)$/i) && (
-                          {!external && <button
+                        {!external && !url.match(/\.(mp4|webm|ogg)$/i) && (
+                          <button
                             onClick={() => saveToVault(url, 'image', dossierId, 'costume')}
                             className={`absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center transition-all ${savedUrls.has(url) ? 'bg-red-600' : 'bg-black/60'}`}
                           >
                             <Bookmark size={10} className="text-white" fill={savedUrls.has(url) ? 'white' : 'none'} />
-                          </button>}
+                          </button>
                         )}
                       </div>
                     ))}
@@ -213,13 +213,13 @@ export default function SeriesPageViewer({ page, onImageClick, dossierId = '', a
                             onClick={() => onImageClick?.(url)}
                           />
                         )}
-                        {!url.match(/\.(mp4|webm|ogg)$/i) && (
-                          {!external && <button
+                        {!external && !url.match(/\.(mp4|webm|ogg)$/i) && (
+                          <button
                             onClick={() => saveToVault(url, 'image', dossierId, 'set')}
                             className={`absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center transition-all ${savedUrls.has(url) ? 'bg-red-600' : 'bg-black/60'}`}
                           >
                             <Bookmark size={10} className="text-white" fill={savedUrls.has(url) ? 'white' : 'none'} />
-                          </button>}
+                          </button>
                         )}
                       </div>
                     ))}
