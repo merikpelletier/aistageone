@@ -7,6 +7,29 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png?v=6" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="manifest" href="/manifest.json?v=11" />
+    <script>
+      (() => {
+        const match = location.pathname.match(/^\/mobile\/(MOB-[A-F0-9]+)\/?$/);
+        if (!match) return;
+        const href = '/api/mobile-manifest?id=' + encodeURIComponent(match[1]);
+        document.querySelector('link[rel="manifest"]').href = href;
+        document.querySelectorAll('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(el=>el.remove());
+        window.addEventListener('beforeinstallprompt',event=>{
+          event.preventDefault();
+          window.dossierInstallPrompt=event;
+          window.dispatchEvent(new Event('dossier-install-ready'));
+        });
+        fetch(href).then(r=>r.ok?r.json():null).then(manifest=>{
+          if(!manifest)return;
+          document.title=manifest.name;
+          document.querySelector('meta[name="apple-mobile-web-app-title"]').content=manifest.name;
+          const icon=manifest.icons.find(i=>i.sizes==='192x192')||manifest.icons[0];
+          if(icon)for(const rel of ['icon','apple-touch-icon']){
+            const link=document.createElement('link');link.rel=rel;link.href=icon.src;document.head.appendChild(link);
+          }
+        }).catch(()=>{});
+      })();
+    </script>
     <link rel="stylesheet" href="/shoot-desktop.css?v=1" />
     <meta name="theme-color" content="#070b0d" />
     <meta name="mobile-web-app-capable" content="yes" />

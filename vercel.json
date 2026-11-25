@@ -23,6 +23,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/mobile-manifest",
+      "destination": "/api/mobile-manifest.js"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

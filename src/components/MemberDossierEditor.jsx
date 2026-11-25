@@ -45,7 +45,10 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
     public_promo_confirmed: Boolean(dossier?.public_promo_confirmed),
     hide_text_on_cover: Boolean(dossier?.hide_text_on_cover),
     mobile_enabled: Boolean(dossier?.mobile_enabled),
-    mobile_public_id: dossier?.mobile_public_id || '',
+    mobile_public_id: dossier?.mobile_public_id || null,
+    mobile_app_name: dossier?.mobile_app_name || '',
+    mobile_icon_192: dossier?.mobile_icon_192 || '',
+    mobile_icon_512: dossier?.mobile_icon_512 || '',
   }));
 
   const { data: categories = [] } = useQuery({
@@ -131,6 +134,36 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
     }
   };
 
+  const handleIconUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const url = URL.createObjectURL(file);
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      const side = Math.min(image.naturalWidth, image.naturalHeight);
+      const upload = async size => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        canvas.getContext('2d').drawImage(image, (image.naturalWidth-side)/2, (image.naturalHeight-side)/2, side, side, 0, 0, size, size);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        if (!blob) throw new Error('PNG');
+        const { file_url } = await base44.integrations.Core.UploadFile({ file: new File([blob], 'app-icon-'+size+'.png', {type:'image/png'}) });
+        if (!file_url) throw new Error('Upload');
+        return file_url;
+      };
+      const [small,large] = await Promise.all([upload(192),upload(512)]);
+      setForm(prev=>({...prev,mobile_icon_192:small,mobile_icon_512:large}));
+    } catch {
+      toast.error(t('Unable to upload application icon','Unable to upload application icon.'));
+    } finally {
+      URL.revokeObjectURL(url);
+      event.target.value='';
+      setUploading(false);
+    }
+  };
   const isPublishing = form.status === 'published';
 
   const fieldStyle = "h-10 border-white/15 bg-[#181a1e] text-white placeholder:text-white/35 focus-visible:ring-1 focus-visible:ring-teal-400";
@@ -289,6 +322,20 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
                   </span>
                 </label>
               </div>
+              {form.mobile_enabled && <div className="mt-3 flex flex-wrap items-start gap-4 border border-white/10 p-3">
+                <div className="w-16 h-16 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-black">
+                  {form.mobile_icon_512 && <img src={form.mobile_icon_512} alt="" className="w-full h-full object-cover"/>}
+                </div>
+                <div className="flex-1 min-w-[180px] space-y-2">
+                  <label className={fieldLabel}>{t('Mobile application name','Mobile application name')}</label>
+                  <Input value={form.mobile_app_name} placeholder={form.title} onChange={event=>set('mobile_app_name',event.target.value)} className={fieldStyle}/>
+                  <label className="inline-flex cursor-pointer items-center gap-2 border border-white/25 px-3 py-2 text-xs">
+                    <Upload size={14}/>{t('Upload application icon','Upload application icon')}
+                    <input type="file" accept="image/*" onChange={handleIconUpload} disabled={uploading} className="hidden"/>
+                  </label>
+                  <p className="text-xs text-white/50">{t('Square icon recommended','Square 512 × 512 pixel image recommended.')}</p>
+                </div>
+              </div>}
               <button type="button" onClick={() => setShowAdvanced(value => !value)} className="mt-4 text-xs font-semibold text-teal-300 hover:text-teal-200" aria-expanded={showAdvanced}>
                 {showAdvanced ? '−' : '+'} {t('Publication details','Additional publication details')}
               </button>
@@ -459,6 +506,20 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
                   </span>
                 </label>
               </div>
+              {form.mobile_enabled && <div className="mt-3 flex flex-wrap items-start gap-4 border border-white/10 p-3">
+                <div className="w-16 h-16 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-black">
+                  {form.mobile_icon_512 && <img src={form.mobile_icon_512} alt="" className="w-full h-full object-cover"/>}
+                </div>
+                <div className="flex-1 min-w-[180px] space-y-2">
+                  <label className={fieldLabel}>{t('Mobile application name','Mobile application name')}</label>
+                  <Input value={form.mobile_app_name} placeholder={form.title} onChange={event=>set('mobile_app_name',event.target.value)} className={fieldStyle}/>
+                  <label className="inline-flex cursor-pointer items-center gap-2 border border-white/25 px-3 py-2 text-xs">
+                    <Upload size={14}/>{t('Upload application icon','Upload application icon')}
+                    <input type="file" accept="image/*" onChange={handleIconUpload} disabled={uploading} className="hidden"/>
+                  </label>
+                  <p className="text-xs text-white/50">{t('Square icon recommended','Square 512 × 512 pixel image recommended.')}</p>
+                </div>
+              </div>}
               <button type="button" onClick={() => setShowAdvanced(value => !value)} className="mt-4 text-xs font-semibold text-teal-300 hover:text-teal-200" aria-expanded={showAdvanced}>
                 {showAdvanced ? '−' : '+'} {t('Publication details','Additional publication details')}
               </button>

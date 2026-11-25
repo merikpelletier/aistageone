@@ -56,6 +56,20 @@ export default function MobileDossierPlayer() {
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
   const t = useStudioTranslation();
   const [reading,setReading] = useState(false);
+  const [installed,setInstalled] = useState(()=>window.matchMedia('(display-mode: standalone)').matches || navigator.standalone===true);
+  const [installHelp,setInstallHelp] = useState(false);
+  useEffect(()=>{
+    const done=()=>{setInstalled(true);setInstallHelp(false);window.dossierInstallPrompt=null;};
+    window.addEventListener('appinstalled',done);
+    return()=>window.removeEventListener('appinstalled',done);
+  },[]);
+  const install=async event=>{
+    event.stopPropagation();
+    const prompt=window.dossierInstallPrompt;
+    if(!prompt){setInstallHelp(v=>!v);return;}
+    window.dossierInstallPrompt=null;
+    try { await prompt.prompt(); const choice=await prompt.userChoice;if(choice.outcome==='accepted')setInstallHelp(false); } catch {setInstallHelp(true);}
+  };
   const [isLandscape,setIsLandscape] = useState(() => window.innerWidth / window.innerHeight > 1.2);
   const { data, isLoading, error } = useQuery({
     queryKey:['mobile-dossier-original',mobileId,user?.id,isAuthenticated],
@@ -78,6 +92,10 @@ export default function MobileDossierPlayer() {
   const activeCoverImage=isLandscape?(currentDossier.cover_image_landscape||currentDossier.cover_image):currentDossier.cover_image;
   const openDossier=()=>{if(data.pages.length)setReading(true);};
   return <main className="fixed inset-0 bg-black text-white">
+    {!reading && !installed && <div className="absolute top-3 left-3 z-[70] max-w-[min(320px,85vw)]">
+      <button type="button" onClick={install} className="rounded-md bg-black/80 border border-white/30 px-3 py-2 text-xs">{t('Install application','Install application')}</button>
+      {installHelp&&<p className="mt-2 rounded-md bg-black/90 p-3 text-sm">{t('Install application instructions','In your browser menu, choose Add to Home Screen or Install app.')}</p>}
+    </div>}
     {!reading && <motion.div key={currentDossier.id} initial={{opacity:0}} animate={{opacity:1}} className="magazine-cover bg-black" onClick={openDossier}>
       {activeCoverVideo?<video src={activeCoverVideo} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover"/>:activeCoverImage?<img src={activeCoverImage} alt="" className="absolute inset-0 w-full h-full object-contain"/>:null}
       {(currentDossier.content_rating||currentDossier.default_language||currentDossier.original_language)&&<div className="absolute top-[60px] right-4 z-[60] flex items-center gap-2 lg:top-5 lg:right-[calc(50%-330px)] lg:gap-1.5">
