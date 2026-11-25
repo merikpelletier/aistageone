@@ -19,10 +19,12 @@ async function loadDossier(id) {
   const { data: dossier, error } = await supabase.from('dossier')
     .select('id,title,subtitle,description,author_name,cover_image,cover_image_landscape,cover_video,cover_video_landscape,hide_text_on_cover,content_rating,access_level,access_model,default_language')
     .eq('mobile_public_id', id).eq('mobile_enabled', true).eq('status', 'published')
-    .eq('access_level', 'public').eq('access_model', 'free').in('content_rating', ['all','13+'])
     .or('publish_until.is.null,publish_until.gt.' + new Date().toISOString()).maybeSingle();
   if (error) throw error;
   if (!dossier) return null;
+  const { data: allowed, error: accessError } = await supabase.rpc('can_access_dossier', { target_dossier_id: dossier.id });
+  if (accessError) throw accessError;
+  if (!allowed) return null;
   const { data: pages, error: pageError } = await supabase.from('dossier_page')
     .select('id,page_type,title,content,media_url,media_url_landscape,images,audio_url,episode_title,episode_description,hide_title,order')
     .eq('dossier_id', dossier.id).or('is_hidden_from_public.is.null,is_hidden_from_public.eq.false')
