@@ -277,6 +277,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
     }
   };
 
+  const frenchReferenceText = draft?.voice_preview_text_fr || t('aipilots.voice.default_french_reference', 'Je suis {name}. Voici ma voix. Chaque mot exprime ma personnalité, mon histoire et mes intentions. Écoutez attentivement le son, le rythme et le caractère de ma voix.').replace('{name}', draft?.role_name || '');
   const designCharacterVoice = async () => {
     if (!draft || readOnly || voiceDesigning) return;
     setVoiceDesigning(true);
@@ -293,7 +294,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
         character = await persistCharacter();
       }
       const { data, error } = await supabase.functions.invoke('designCharacterVoice', {
-        body: { action: 'design', character_id: character.id, mode: 'voice_design', language: french ? 'fr' : 'en', preview_text: french ? character.voice_preview_text_fr : character.voice_preview_text || '' },
+        body: { action: 'design', character_id: character.id, mode: 'voice_design', language: french ? 'fr' : 'en', preview_text: french ? frenchReferenceText : character.voice_preview_text || '' },
       });
       if (error) throw error;
       if (!data?.preview?.audio_url) throw new Error(data?.error || 'Replicate did not return a voice sample.');
@@ -485,13 +486,13 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Field label="Apparent age" helper="How old the voice should sound." value={draft.voice_apparent_age} onChange={(value) => setField('voice_apparent_age', value)} readOnly={readOnly} rows={2} placeholder="Mature adult…" />
                     <Field label="Vocal gender" helper="Vocal presentation." value={draft.voice_gender} onChange={(value) => setField('voice_gender', value)} readOnly={readOnly} rows={2} placeholder="Feminine, masculine, androgynous…" />
-                    <Field label={t('aipilots.voice.accent', 'Accent')} helper="Accent and pronunciation, not spoken language." value={french ? draft.voice_accent_fr : draft.voice_accent} onChange={(value) => setField(french ? 'voice_accent_fr' : 'voice_accent', value)} readOnly={readOnly} rows={2} placeholder="Native Italian accent when speaking English…" />
+                    <Field label={t('aipilots.voice.accent', 'Accent')} helper="Accent and pronunciation, not spoken language." value={french ? (draft.voice_accent_fr || draft.voice_accent || '') : draft.voice_accent} onChange={(value) => setField(french ? 'voice_accent_fr' : 'voice_accent', value)} readOnly={readOnly} rows={2} placeholder="Native Italian accent when speaking English…" />
                     <Field label="Timbre & texture" helper="The sound and texture of the voice." value={draft.voice_timbre_texture} onChange={(value) => setField('voice_timbre_texture', value)} readOnly={readOnly} rows={2} placeholder="Warm, rich, slightly husky…" />
                     <Field label="Pitch / register" helper="Natural vocal range." value={draft.voice_pitch} onChange={(value) => setField('voice_pitch', value)} readOnly={readOnly} rows={2} placeholder="Low, mid-low, high…" />
                     <Field label="Personality & expressiveness" helper="Stable vocal character, not scene emotion." value={draft.voice_personality_expressiveness} onChange={(value) => setField('voice_personality_expressiveness', value)} readOnly={readOnly} rows={2} placeholder="Confident, elegant, measured…" />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <Field label={t('aipilots.voice.reference_text', 'Voice reference dialogue')} value={french ? draft.voice_preview_text_fr : draft.voice_preview_text} onChange={(value) => setField(french ? 'voice_preview_text_fr' : 'voice_preview_text', value)} readOnly={readOnly} rows={3} placeholder={french ? t('aipilots.voice.french_text', 'Write the exact French dialogue to read.') : t('aipilots.voice.english_text', 'Write the exact English dialogue to read.')} />
+                    <Field label={t('aipilots.voice.reference_text', 'Voice reference dialogue')} value={french ? frenchReferenceText : draft.voice_preview_text} onChange={(value) => setField(french ? 'voice_preview_text_fr' : 'voice_preview_text', value)} readOnly={readOnly} rows={3} placeholder={french ? t('aipilots.voice.french_text', 'Write the exact French dialogue to read.') : t('aipilots.voice.english_text', 'Write the exact English dialogue to read.')} />
                   </div>
                   <div className="border border-white/10 bg-white/[0.025] p-3 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -502,7 +503,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                       <span className="text-[10px] font-bold text-[#23c7be]">{(french ? draft.voice_sample_url_fr : draft.voice_sample_url) ? 'SAMPLE SAVED' : 'AWAITING APPROVAL'}</span>
                     </div>
                     {(french ? draft.voice_sample_url_fr : draft.voice_sample_url) && <audio controls preload="none" className="h-8 max-w-full" src={french ? draft.voice_sample_url_fr : draft.voice_sample_url} />}
-                    {!readOnly && <button type="button" onClick={designCharacterVoice} disabled={voiceDesigning || voiceSaving || (french && !draft.voice_preview_text_fr?.trim()) || ![draft.voice_apparent_age, draft.voice_gender, draft.voice_accent, draft.voice_timbre_texture, draft.voice_pitch, draft.voice_personality_expressiveness].some((value) => value?.trim())} className="inline-flex items-center gap-2 border border-[#23c7be]/40 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-40">
+                    {!readOnly && <button type="button" onClick={designCharacterVoice} disabled={voiceDesigning || voiceSaving || ![draft.voice_apparent_age, draft.voice_gender, draft.voice_accent, draft.voice_timbre_texture, draft.voice_pitch, draft.voice_personality_expressiveness].some((value) => value?.trim())} className="inline-flex items-center gap-2 border border-[#23c7be]/40 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-40">
                       {voiceDesigning ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                       {voiceDesigning ? 'Generating preview…' : 'Generate voice preview'}
                     </button>}
