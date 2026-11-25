@@ -25,7 +25,7 @@ function plainText(value = '') {
   return String(value).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-export default function DossierIndexPage({ page, pages, dossier, onNavigate }) {
+export default function DossierIndexPage({ page, pages, dossier, onNavigate, external = false }) {
   const entries = Array.from(
     new Map(
       (pages || [])
@@ -35,8 +35,8 @@ export default function DossierIndexPage({ page, pages, dossier, onNavigate }) {
   );
 
   return (
-    <div className="absolute inset-0 bg-black overflow-y-auto pointer-events-auto">
-      <div className="mx-auto w-full max-w-6xl px-5 sm:px-8 md:px-10 lg:px-14 pt-20 md:pt-24 pb-28 md:pb-32">
+    <div className={`absolute inset-0 bg-black overflow-y-auto pointer-events-auto ${external ? 'flex flex-col' : ''}`}>
+      <div className={`mx-auto w-full max-w-6xl px-5 sm:px-8 md:px-10 lg:px-14 ${external ? 'my-auto shrink-0 py-20' : 'pt-20 md:pt-24 pb-28 md:pb-32'}`}>
         <header className="mb-10 md:mb-14">
           <div className="flex items-end justify-between gap-6 border-b border-white/20 pb-6 md:pb-8">
             <div>

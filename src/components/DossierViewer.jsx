@@ -247,6 +247,7 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
     ? page.media_url_landscape
     : (page?.media_url || page?.media_url_landscape);
 
+  const externalMediaOnly = external && !page?.is_product && (page?.page_type === 'video' || page?.page_type === 'image') && !page?.content && (!page?.title || page?.hide_title);
   const textPositionClass = {
     top: 'items-start pt-20',
     center: 'items-center',
@@ -304,14 +305,14 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
            exit={{ opacity: 0 }}
            transition={{ duration: 0.3 }}
            className={isLandscape
-             ? "relative w-full max-w-5xl mx-auto flex h-screen pointer-events-auto"
+             ? `relative w-full max-w-5xl mx-auto flex ${external ? 'h-full' : 'h-screen'} pointer-events-auto`
              : "absolute inset-0 pointer-events-auto"
            }
          >
           {/* Background Media — only when NOT stacked layout and NOT a product */}
           {page?.page_type === 'video' && activeMediaUrl && !page?.is_product && (
-            <div className={isLandscape ? 'absolute inset-y-0 left-0 w-1/2 pointer-events-auto' : 'absolute inset-0 pointer-events-auto'}>
-              {isCloudflareStreamUrl(activeMediaUrl) ? <CloudflareStreamVideo src={activeMediaUrl} controls className="w-full h-full" /> : <video src={activeMediaUrl} autoPlay loop playsInline controls className="w-full h-full object-cover" />}
+            <div className={isLandscape && !externalMediaOnly ? 'absolute inset-y-0 left-0 w-1/2 pointer-events-auto' : 'absolute inset-0 pointer-events-auto'}>
+              {isCloudflareStreamUrl(activeMediaUrl) ? <CloudflareStreamVideo src={activeMediaUrl} controls className="w-full h-full" /> : <video src={activeMediaUrl} autoPlay loop playsInline controls className={`w-full h-full ${external ? 'object-contain' : 'object-cover'}`} />}
               <button onClick={e => { e.stopPropagation(); setFullscreenImage(activeMediaUrl); }} onTouchStart={e=>e.stopPropagation()} onTouchEnd={e=>e.stopPropagation()} className="absolute top-4 right-4 z-20 bg-black/60 text-white rounded-full w-12 h-12 flex items-center justify-center text-2xl">⛶</button>
             </div>
           )}
@@ -407,20 +408,20 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
 
 
           {/* Landscape layout: image left, text right */}
-          {isLandscape && (
-            <div className="flex w-full h-full">
+          {isLandscape && !(externalMediaOnly && page?.page_type === 'video') && (
+            <div className={`flex w-full h-full ${externalMediaOnly ? 'justify-center' : ''}`}>
               {activeMediaUrl && (
-                <div className="w-1/2 h-full flex-shrink-0 overflow-hidden pointer-events-auto">
+                <div className={`${externalMediaOnly ? 'w-full' : 'w-1/2'} h-full flex-shrink-0 overflow-hidden pointer-events-auto`}>
                   {page?.page_type !== 'video' && (
                     <img
                       src={activeMediaUrl}
                       alt=""
-                      className="w-full h-full object-cover"
+                      className={`w-full h-full ${external ? 'object-contain' : 'object-cover'}`}
                     />
                   )}
                 </div>
               )}
-              <div className={`flex flex-col justify-center px-10 py-12 overflow-y-auto ${page?.media_url ? 'w-1/2' : 'w-full'}`}>
+              <div className={`${externalMediaOnly ? 'hidden' : 'flex'} flex-col justify-center px-10 py-12 overflow-y-auto ${activeMediaUrl ? 'w-1/2' : 'w-full'}`}>
                 {page?.title && !page?.hide_title && (
                   <h2 className="text-3xl md:text-4xl font-extralight tracking-widest mb-6 text-white">
                     {page.title}
@@ -526,6 +527,7 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
           {/* Visual Index page */}
           {page?.page_type === 'index' && (
             <DossierIndexPage
+              external={external}
               page={page}
               pages={filteredPages}
               dossier={dossier}
@@ -543,7 +545,7 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
 
           {/* Interactive question game page */}
           {page?.page_type === 'quiz' && (
-            <DossierQuizPage key={page.id} page={page} />
+            <DossierQuizPage key={page.id} page={page} external={external} />
           )}
 
           {/* Credits page */}

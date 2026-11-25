@@ -3,7 +3,7 @@ import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { parseDossierQuiz } from '@/components/DossierQuizEditor';
 import { playQuizSound } from '@/components/DossierQuizSounds';
 
-export default function DossierQuizPage({ page }) {
+export default function DossierQuizPage({ page, external = false }) {
   const t = useStudioTranslation();
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -20,8 +20,8 @@ export default function DossierQuizPage({ page }) {
     else { setIndex(value => value + 1); setSelected(null); }
   };
   const restart = () => { setIndex(0); setSelected(null); setScore(0); setFinished(false); };
-  return <div className="absolute inset-0 overflow-y-auto bg-neutral-950 px-4 py-12 text-white pointer-events-auto" onTouchStart={e => e.stopPropagation()}>
-    <div className="mx-auto w-full max-w-2xl space-y-5">
+  return <div className={`absolute inset-0 overflow-y-auto bg-neutral-950 px-4 text-white pointer-events-auto ${external ? 'flex flex-col py-20' : 'py-12'}`} onTouchStart={e => e.stopPropagation()}>
+    <div className={`mx-auto w-full max-w-2xl space-y-5 ${external ? 'my-auto shrink-0' : ''}`}>
       {page?.title && <h2 className="text-2xl font-light md:text-3xl">{page.title}</h2>}
       {!questions.length ? <p className="text-white/60">{t('No questions available yet', 'No questions available yet')}</p> : finished ? (
         <div className="space-y-5 border border-white/15 p-6 text-center">
