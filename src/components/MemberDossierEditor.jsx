@@ -284,7 +284,7 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
                     <span className="block text-sm font-semibold text-white">{t('Créer une version mobile','Create a mobile version')}</span>
                     <span className="mt-1 block text-xs leading-relaxed text-white/50">{t('Préparer ce dossier pour le player mobile externe AISTAGE.ONE. La version mobile reste liée à ce dossier et réutilise son contenu existant.','Prepare this dossier for the external AISTAGE.ONE mobile player. The mobile version remains linked to this dossier and reuses its existing content.')}</span>
                     {form.mobile_public_id && (
-                      <span className="mt-2 block text-[11px] text-teal-300">{t('Identifiant de publication mobile','Mobile publication ID')}: {form.mobile_public_id}</span>
+                      <span className="mt-2 block text-[11px] text-teal-300">{t('Identifiant de publication mobile','Mobile publication ID')}: {form.mobile_public_id}{dossier?.mobile_enabled && dossier?.status === 'published' && form.mobile_enabled && form.status === 'published' && <a href={`/mobile/${encodeURIComponent(form.mobile_public_id)}`} target="_blank" rel="noopener noreferrer" className="ml-3 underline text-white">{t('Ouvrir le player mobile','Open mobile player')}</a>}</span>
                     )}
                   </span>
                 </label>
@@ -454,7 +454,7 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
                     <span className="block text-sm font-semibold text-white">{t('Créer une version mobile','Create a mobile version')}</span>
                     <span className="mt-1 block text-xs leading-relaxed text-white/50">{t('Préparer ce dossier pour le player mobile externe AISTAGE.ONE. La version mobile reste liée à ce dossier et réutilise son contenu existant.','Prepare this dossier for the external AISTAGE.ONE mobile player. The mobile version remains linked to this dossier and reuses its existing content.')}</span>
                     {form.mobile_public_id && (
-                      <span className="mt-2 block text-[11px] text-teal-300">{t('Identifiant de publication mobile','Mobile publication ID')}: {form.mobile_public_id}</span>
+                      <span className="mt-2 block text-[11px] text-teal-300">{t('Identifiant de publication mobile','Mobile publication ID')}: {form.mobile_public_id}{dossier?.mobile_enabled && dossier?.status === 'published' && form.mobile_enabled && form.status === 'published' && <a href={`/mobile/${encodeURIComponent(form.mobile_public_id)}`} target="_blank" rel="noopener noreferrer" className="ml-3 underline text-white">{t('Ouvrir le player mobile','Open mobile player')}</a>}</span>
                     )}
                   </span>
                 </label>
