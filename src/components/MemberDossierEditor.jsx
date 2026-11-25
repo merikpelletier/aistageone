@@ -44,6 +44,8 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
     default_language: dossier?.default_language || '',
     public_promo_confirmed: Boolean(dossier?.public_promo_confirmed),
     hide_text_on_cover: Boolean(dossier?.hide_text_on_cover),
+    mobile_enabled: Boolean(dossier?.mobile_enabled),
+    mobile_public_id: dossier?.mobile_public_id || '',
   }));
 
   const { data: categories = [] } = useQuery({
@@ -78,6 +80,10 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
 
       if (!data.title) throw new Error(t('Enter a title.','Enter a title.'));
       if (!data.cover_image) throw new Error(t('Choose a cover image.','Choose a cover image.'));
+
+      if (data.status === 'published' && data.mobile_enabled && !data.mobile_public_id) {
+        data.mobile_public_id = `MOB-${crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`;
+      }
 
       if (data.status === 'published') {
         if (!data.content_rating) throw new Error(t('Choose a content rating before publishing.','Choose a content rating before publishing.'));
@@ -266,6 +272,23 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
                   </Select>
                 </div>
               </div>
+              <div className="mt-4 border-t border-white/10 pt-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(form.mobile_enabled)}
+                    onChange={event => set('mobile_enabled', event.target.checked)}
+                    className="mt-1 h-4 w-4 accent-teal-400"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-white">{t('Créer une version mobile','Create a mobile version')}</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-white/50">{t('Préparer ce dossier pour le player mobile externe AISTAGE.ONE. La version mobile reste liée à ce dossier et réutilise son contenu existant.','Prepare this dossier for the external AISTAGE.ONE mobile player. The mobile version remains linked to this dossier and reuses its existing content.')}</span>
+                    {form.mobile_public_id && (
+                      <span className="mt-2 block text-[11px] text-teal-300">{t('Identifiant de publication mobile','Mobile publication ID')}: {form.mobile_public_id}</span>
+                    )}
+                  </span>
+                </label>
+              </div>
               <button type="button" onClick={() => setShowAdvanced(value => !value)} className="mt-4 text-xs font-semibold text-teal-300 hover:text-teal-200" aria-expanded={showAdvanced}>
                 {showAdvanced ? '−' : '+'} {t('Publication details','Additional publication details')}
               </button>
@@ -418,6 +441,23 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
                     <SelectContent><SelectItem value="draft">{t('Draft','Draft')}</SelectItem><SelectItem value="published">{t('Published','Published')}</SelectItem><SelectItem value="unpublished">{t('Unpublished','Unpublished')}</SelectItem></SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="mt-4 border-t border-white/10 pt-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(form.mobile_enabled)}
+                    onChange={event => set('mobile_enabled', event.target.checked)}
+                    className="mt-1 h-4 w-4 accent-teal-400"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-white">{t('Créer une version mobile','Create a mobile version')}</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-white/50">{t('Préparer ce dossier pour le player mobile externe AISTAGE.ONE. La version mobile reste liée à ce dossier et réutilise son contenu existant.','Prepare this dossier for the external AISTAGE.ONE mobile player. The mobile version remains linked to this dossier and reuses its existing content.')}</span>
+                    {form.mobile_public_id && (
+                      <span className="mt-2 block text-[11px] text-teal-300">{t('Identifiant de publication mobile','Mobile publication ID')}: {form.mobile_public_id}</span>
+                    )}
+                  </span>
+                </label>
               </div>
               <button type="button" onClick={() => setShowAdvanced(value => !value)} className="mt-4 text-xs font-semibold text-teal-300 hover:text-teal-200" aria-expanded={showAdvanced}>
                 {showAdvanced ? '−' : '+'} {t('Publication details','Additional publication details')}
