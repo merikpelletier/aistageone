@@ -153,7 +153,6 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
   useEffect(() => {
     const handleResize = () => {
       setIsLandscape(window.innerWidth > window.innerHeight);
-      setCurrentPage(0);
     };
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
@@ -310,7 +309,13 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
            }
          >
           {/* Background Media — only when NOT stacked layout and NOT a product */}
-          {!isLandscape && !page?.is_product && page?.page_type !== 'series' && activeMediaUrl && !(page?.page_type === 'mixed' && page?.image_layout !== 'background') && (
+          {page?.page_type === 'video' && activeMediaUrl && !page?.is_product && (
+            <div className={isLandscape ? 'absolute inset-y-0 left-0 w-1/2 pointer-events-auto' : 'absolute inset-0 pointer-events-auto'}>
+              {isCloudflareStreamUrl(activeMediaUrl) ? <CloudflareStreamVideo src={activeMediaUrl} controls className="w-full h-full" /> : <video src={activeMediaUrl} autoPlay loop playsInline controls className="w-full h-full object-cover" />}
+              <button onClick={e => { e.stopPropagation(); setFullscreenImage(activeMediaUrl); }} onTouchStart={e=>e.stopPropagation()} onTouchEnd={e=>e.stopPropagation()} className="absolute top-4 right-4 z-20 bg-black/60 text-white rounded-full w-12 h-12 flex items-center justify-center text-2xl">⛶</button>
+            </div>
+          )}
+          {!isLandscape && page?.page_type !== 'video' && !page?.is_product && page?.page_type !== 'series' && activeMediaUrl && !(page?.page_type === 'mixed' && page?.image_layout !== 'background') && (
             page?.page_type === 'video' ? (
               <div className="absolute inset-0 pointer-events-auto">
                 {isCloudflareStreamUrl(activeMediaUrl) ? (
@@ -406,26 +411,7 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
             <div className="flex w-full h-full">
               {activeMediaUrl && (
                 <div className="w-1/2 h-full flex-shrink-0 overflow-hidden pointer-events-auto">
-                  {page?.page_type === 'video' ? (
-                    isCloudflareStreamUrl(activeMediaUrl) ? (
-                      <CloudflareStreamVideo
-                        key={currentPage}
-                        src={activeMediaUrl}
-                        controls
-                        className="w-full h-full pointer-events-auto"
-                      />
-                    ) : (
-                      <video
-                        key={currentPage}
-                        src={activeMediaUrl}
-                        autoPlay
-                        loop
-                        playsInline
-                        controls
-                        className="w-full h-full object-cover pointer-events-auto"
-                      />
-                    )
-                  ) : (
+                  {page?.page_type !== 'video' && (
                     <img
                       src={activeMediaUrl}
                       alt=""
@@ -933,7 +919,9 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
 
         {/* Image */}
         <div className="flex-1 flex items-center justify-center overflow-hidden" onClick={() => setFullscreenImage(null)}>
-          {fullscreenImage.match(/\.(mp4|webm|ogg)$/i) ? (
+          {isCloudflareStreamUrl(fullscreenImage) ? (
+            <CloudflareStreamVideo src={fullscreenImage} autoPlay controls className="w-full h-full" />
+          ) : fullscreenImage.match(/\.(mp4|webm|ogg)$/i) ? (
             <video src={fullscreenImage} controls autoPlay playsInline className="w-full h-full object-contain" onClick={(e) => e.stopPropagation()} />
           ) : (
             <img src={fullscreenImage} alt="" className="w-full h-full object-contain" />
