@@ -76,7 +76,7 @@ const Field = ({ label, helper, value, onChange, readOnly, rows = 4, placeholder
 
 const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readOnly = false }, ref) {
   const queryClient = useQueryClient();
-  const { t } = useStudioTranslation();
+  const t = useStudioTranslation();
   const [voiceLanguage, setVoiceLanguage] = useState('en');
   const french = voiceLanguage === 'fr';
   const [editingId, setEditingId] = useState(null);
