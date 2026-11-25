@@ -632,7 +632,7 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
       {/* Left nav: go back a page, or close if on first page */}
       <button
         onClick={() => currentPage > 0 ? setCurrentPage(currentPage - 1) : onClose?.()}
-        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors z-40 pointer-events-auto"
+        className="absolute left-3 bottom-3 md:left-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 p-2 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors z-40 pointer-events-auto"
       >
         <ChevronLeft size={32} />
       </button>
@@ -641,7 +641,7 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
       {currentPage < pages.length - 1 && (
         <button
           onClick={() => setCurrentPage(currentPage + 1)}
-          className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors z-40 pointer-events-auto"
+          className="absolute right-3 bottom-3 md:right-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 p-2 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors z-40 pointer-events-auto"
         >
           <ChevronRight size={32} />
         </button>
