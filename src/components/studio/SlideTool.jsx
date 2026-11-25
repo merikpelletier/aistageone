@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { base44 } from '@/api/base44Client';
+import { uploadVideoToCloudflareStream } from '@/lib/cloudflareStreamUpload';
 import { useQueryClient } from '@tanstack/react-query';
 import { getPlatformLanguage } from '@/lib/translationDictionary';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
@@ -381,12 +382,16 @@ export default function SlideTool() {
     canvas.width = WIDTH; canvas.height = HEIGHT;
     const ctx = canvas.getContext('2d');
     let stream, recorder, audioElement, audioContext, audioSource;
+    const bounded = (promise, ms, message) => {
+      let timer;
+      return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms); })]).finally(() => clearTimeout(timer));
+    };
     try {
       stream = canvas.captureStream(FPS);
       if (audio && audioUrl) {
         audioElement = new Audio(audioUrl);
         audioElement.preload = 'auto';
-        await new Promise((resolve, reject) => { audioElement.oncanplay = resolve; audioElement.onerror = reject; audioElement.load(); });
+        await bounded(new Promise((resolve, reject) => { audioElement.oncanplay = resolve; audioElement.onerror = reject; audioElement.load(); if (audioElement.readyState >= 3) resolve(); }), 20000, dt('slide.audio_timeout', 'Chargement audio trop long.', 'Audio loading timed out.'));
         audioContext = new AudioContext();
         audioSource = audioContext.createMediaElementSource(audioElement);
         const dest = audioContext.createMediaStreamDestination();
@@ -404,16 +409,23 @@ export default function SlideTool() {
       recorder.start(1000);
       const start = performance.now();
       audioElement?.play().catch(() => {});
-      await new Promise((resolve) => {
+      await new Promise((resolve, reject) => {
+        let lastPercent = -1;
         const tick = () => {
-          const t = Math.min(total, (performance.now() - start) / 1000);
-          renderFrame(ctx, slides, images, t, WIDTH, HEIGHT);
-          if (t >= total) resolve(); else requestAnimationFrame(tick);
+          try {
+            if (recorder.state !== 'recording') throw new Error(dt('slide.recording_stopped', 'Enregistrement interrompu.', 'Recording interrupted.'));
+            const elapsed = Math.min(total, (performance.now() - start) / 1000);
+            renderFrame(ctx, slides, images, elapsed, WIDTH, HEIGHT);
+            const percent = Math.floor(100 * elapsed / total);
+            if (target && percent !== lastPercent) { lastPercent = percent; setStatus(dt('slide.rendering', 'Création de la vidéo : ', 'Rendering video: ') + percent + '%'); }
+            if (elapsed >= total) resolve(); else setTimeout(tick, 1000 / FPS);
+          } catch (error) { reject(error); }
         };
-        requestAnimationFrame(tick);
+        tick();
       });
       recorder.stop();
-      const blob = await completion;
+      const blob = await bounded(completion, 20000, dt('slide.recording_timeout', 'Finalisation vidéo trop longue.', 'Video finalization timed out.'));
+      if (!blob.size) throw new Error(dt('slide.empty_video', 'La vidéo générée est vide.', 'Generated video is empty.'));
       const extension = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
       if (target) {
         const { data, error } = await supabase.auth.getUser();
@@ -421,8 +433,23 @@ export default function SlideTool() {
         const owned = await base44.entities.Dossier.filter({ id: target, submitted_by_email: data.user.email });
         if (!owned.length) throw new Error(dt('slide.dossier_unavailable', 'Dossier inaccessible.', 'Dossier unavailable.'));
         const file = new File([blob], (title.trim() || 'slide') + '.' + extension, { type: mimeType });
-        const { file_url } = await base44.integrations.Core.UploadFile({ file, dossierId: target });
+        setStatus(dt('slide.upload_preparing', 'Préparation de l’envoi…', 'Preparing upload…'));
+        let previousProgress = -1, unchanged = 0, cancelled = false;
+        const asset = await bounded(uploadVideoToCloudflareStream(file, {
+          dossierId: target,
+          isCancelled: () => cancelled,
+          onProgress: (progress, phase) => {
+            if (phase === 'uploading') {
+              unchanged = progress <= previousProgress ? unchanged + 1 : 0;
+              previousProgress = progress;
+              if (unchanged >= 3) { cancelled = true; throw new Error(dt('slide.upload_stalled', 'Envoi bloqué : aucun progrès.', 'Upload stalled: no progress.')); }
+              setStatus(dt('slide.upload_progress', 'Envoi de la vidéo : ', 'Uploading video: ') + progress + '%');
+            } else setStatus(dt('slide.processing', 'Traitement de la vidéo par Cloudflare…', 'Cloudflare is processing the video…'));
+          },
+        }), 12 * 60 * 1000, dt('slide.upload_timeout', 'Envoi ou traitement trop long.', 'Upload or processing timed out.')).finally(() => { cancelled = true; });
+        const file_url = asset?.playback_url;
         if (!file_url) throw new Error(dt('slide.upload_failed', 'Vidéo non enregistrée.', 'Video upload failed.'));
+        setStatus(dt('slide.saving_page', 'Ajout de la page au dossier…', 'Adding page to dossier…'));
         const pages = await base44.entities.DossierPage.filter({ dossier_id: target });
         const order = Math.max(0, ...pages.map(p => Number(p.order) || 0)) + 1;
         await base44.entities.DossierPage.create({ dossier_id: target, page_type: 'video', title: title.trim() || tr('Nouveau Slide'), order, media_url: file_url, media_url_landscape: file_url, is_hidden_from_public: false, hide_title: false });
