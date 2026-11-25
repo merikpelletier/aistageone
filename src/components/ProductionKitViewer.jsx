@@ -144,13 +144,13 @@ export default function ProductionKitViewer({ page, onImageClick, onOpenProducti
                   {char.photo_url && (
                     <div className="relative flex-shrink-0">
                       <img src={char.photo_url} alt="" className="w-12 h-12 rounded-full object-cover cursor-pointer" onClick={() => onImageClick?.(char.photo_url)} />
-                      {userEmail && (
-                        {!external && <button
+                      {!external && userEmail && (
+                        <button
                           onClick={() => saveToVault(char.photo_url, 'image', 'character')}
                           className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center transition-all ${savedUrls.has(char.photo_url) ? 'bg-red-600' : 'bg-black/70'}`}
                         >
                           <Bookmark size={8} className="text-white" fill={savedUrls.has(char.photo_url) ? 'white' : 'none'} />
-                        </button>}
+                        </button>
                       )}
                     </div>
                   )}
