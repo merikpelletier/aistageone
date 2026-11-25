@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Pause, Play, X, Maximize2 } from 'lucide-react';
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, Number(n) || lo));
-const firstImage = (panel) => panel?.image_url || (panel?.split && (firstImage(panel.split.a) || firstImage(panel.split.b))) || '';
 function FrameImage({ panel }) {
   if (panel?.split) {
     const vertical = panel.split.direction === 'vertical';
@@ -57,7 +56,7 @@ function TypeCaption({ value, playing }) {
   }, [value, playing]);
   return <span aria-label={value}>{value.slice(0, length)}</span>;
 }
-export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic }) {
+export default function PublishedWebtoonReader({ blocks = [], coverUrl = '', onClose, onClassic }) {
   const sorted = useMemo(() => [...blocks].sort((a,b) => (a.order || 0) - (b.order || 0)), [blocks]);
   const [blockIndex, setBlockIndex] = useState(0);
   const [stepIndex, setStepIndex] = useState(-1);
@@ -70,17 +69,16 @@ export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic
   const config = block?.webtoon || {};
   const { frames, steps } = useMemo(() => block ? sequence(block) : { frames: [], steps: [] }, [block]);
   const step = stepIndex >= 0 ? steps[stepIndex] : null;
-  const frame = frames[step?.frameIndex || 0];
-  const frameUrl = step?.supportUrl || firstImage(frame);
   const ratio = String(config.image_aspect_ratio || block?.image_aspect_ratio || '16:9').split(':').map(Number);
   const portrait = (ratio[0] || 16) < (ratio[1] || 9);
-  const zoom = step ? clamp(config.frameZooms?.[step.frameIndex] ?? config.cameraZoom ?? 1.05, 1, 3.5) : 1;
+  const stepCamera = config.stepCamera?.[stepIndex] || {};
+  const zoom = step ? clamp(stepCamera.zoom ?? config.frameZooms?.[step.frameIndex] ?? config.cameraZoom ?? 1.05, 1, 3.5) : 1;
   const count = Math.max(1, frames.length);
-  const centerX = portrait ? 0.5 : ((step?.frameIndex || 0) + 0.5) / count;
-  const centerY = portrait ? ((step?.frameIndex || 0) + 0.5) / count : 0.5;
-  const transform = step && !step.supportUrl
-    ? 'translate(' + ((0.5-centerX)*zoom*100) + '%, ' + ((0.5-centerY)*zoom*100) + '%) scale(' + zoom + ')'
-    : 'none';
+  const maskRatio = 16 / 9;
+  const framePosition = { ...(config.framePositions?.[step?.frameIndex || 0] || { x: 50, y: 50 }), ...stepCamera };
+  const panX = (50 - Math.max(0, Math.min(100, Number(framePosition.x ?? 50)))) * (zoom - 1);
+  const panY = (50 - Math.max(0, Math.min(100, Number(framePosition.y ?? 50)))) * (zoom - 1);
+  const transform = step && !step.supportUrl ? 'translate(' + panX + '%, ' + panY + '%) scale(' + zoom + ')' : 'none';
   const position = config.captionPositions?.[stepIndex] || { x: 50, y: 70 };
   // The saved narration is the master clock. Text-weighted cue positions are estimates
   // (the current production has no individual spoken-word timestamps).
@@ -153,40 +151,43 @@ export default function PublishedWebtoonReader({ blocks = [], onClose, onClassic
     setPlaying(true);
     audio.current?.play().catch(() => setPlaying(false));
   };
-  const back = () => {
+  const navigateBlock = (delta) => {
+    const target = blockIndex + delta;
+    if (target < 0 || target >= sorted.length) return;
+    audio.current?.pause();
     setPlaying(false);
-    if (stepIndexRef.current > 0) seekToStep(stepIndexRef.current - 1);
-    else if (blockIndex > 0) {
-      stepIndexRef.current = 0;
-      setBlockIndex(n => n - 1);
-      setStepIndex(0);
-      setAudioDuration(0);
-    }
+    stepIndexRef.current = -1;
+    setStepIndex(-1);
+    setAudioFinished(false);
+    setAudioDuration(0);
+    setBlockIndex(target);
   };
   useEffect(() => { setAudioFinished(false); }, [blockIndex]);
   if (!block) return null;
   return <div className="fixed inset-0 z-[320] overflow-hidden bg-black text-white" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-    {step && frameUrl && <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true"><img src={frameUrl} alt="" className="h-full w-full object-cover" style={{ filter: 'blur(24px) brightness(.6)', transform: 'scale(1.14)' }} /></div>}
-    <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-      <div className="relative flex h-full w-full items-center justify-center transition-transform duration-700 ease-in-out" style={{ transform }}>
-        {step?.supportUrl ? <img src={step.supportUrl} alt="" className="max-h-[90%] max-w-[90%] object-contain" />
-          : <div className="relative w-[min(94vw,1000px)] max-h-[90vh] overflow-hidden bg-black/60" style={{ aspectRatio: (ratio[0] || 16) + ' / ' + (ratio[1] || 9), maxWidth: 'min(94vw, calc(86vh * ' + ((ratio[0] || 16)/(ratio[1] || 9)) + '))' }}>
-            <div className="absolute inset-0 grid gap-[4px] p-[4px]" style={portrait ? { gridTemplateRows: 'repeat(' + count + ',minmax(0,1fr))' } : { gridTemplateColumns: 'repeat(' + count + ',minmax(0,1fr))' }}>
-              {frames.map((item,i) => <div key={item.id || i} className="min-h-0 min-w-0 overflow-hidden"><FrameImage panel={item}/></div>)}
-            </div>
-          </div>}
+    {coverUrl && <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true"><img src={coverUrl} alt="" className="h-full w-full object-cover object-center" /><div className="absolute inset-0 bg-black/75" /></div>}
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="relative isolate w-[min(92vw,1000px)] overflow-hidden bg-black shadow-2xl" style={{ aspectRatio: maskRatio, maxWidth: 'min(90vw,1000px, calc(72dvh * ' + maskRatio + '))' }}>
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 transition-transform duration-700 ease-in-out" style={{ transform }}>
+            {step?.supportUrl ? <img src={step.supportUrl} alt="" className="h-full w-full object-contain" />
+              : step ? <div className="absolute inset-0 overflow-hidden"><FrameImage panel={frames[step.frameIndex || 0]} /></div> : <div className="absolute inset-0 grid gap-[4px] p-[4px]" style={portrait ? { gridTemplateRows: 'repeat(' + count + ',minmax(0,1fr))' } : { gridTemplateColumns: 'repeat(' + count + ',minmax(0,1fr))' }}>
+                {frames.map((item,i) => <div key={item.id || i} className="min-h-0 min-w-0 overflow-hidden"><FrameImage panel={item}/></div>)}
+              </div>}
+          </div>
+        </div>
       </div>
+      {step?.caption && <div key={blockIndex + '-' + stepIndex} className="pointer-events-none absolute z-50 w-max max-w-[min(78%,360px)] rounded bg-black/75 px-3 py-2 text-center font-medium leading-snug shadow-lg" style={{ left: clamp(position.x,10,90)+'%', top: clamp(position.y,10,90)+'%', transform:'translate(-50%,-50%)', fontSize:clamp(config.captionSize ?? 13,10,24)+'px' }}><TypeCaption value={step.caption} playing={playing}/></div>}
     </div>
-    {step?.caption && <div key={blockIndex + '-' + stepIndex} className="pointer-events-none absolute z-20 w-max max-w-[min(78%,360px)] rounded bg-black/75 px-3 py-2 text-center font-medium leading-snug shadow-lg" style={{ left: clamp(position.x,10,90)+'%', top: clamp(position.y,10,90)+'%', transform:'translate(-50%,-50%)', fontSize:clamp(config.captionSize ?? 13,10,24)+'px' }}><TypeCaption value={step.caption} playing={playing}/></div>}
     {block.narration_audio && <audio ref={audio} key={block.id} src={block.narration_audio} preload="metadata" onLoadedMetadata={() => { setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0); updateAudioPosition(); }} onDurationChange={() => setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0)} onTimeUpdate={updateAudioPosition} onSeeking={updateAudioPosition} onEnded={() => { setAudioFinished(true); if (playing) nextBlock(); }} />}
     <div className="absolute left-3 right-3 top-3 z-30 flex items-center justify-between gap-2" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="flex min-w-0 gap-2 rounded-full bg-black/70 p-1 text-xs font-bold"><button onClick={onClassic} className="rounded-full px-3 py-2 text-white/70">Classic</button><span className="rounded-full bg-white px-3 py-2 text-black">Webtoon</span></div>
       <button onClick={onClose} aria-label="Close reader" className="rounded-full bg-black/70 p-3"><X size={20}/></button>
     </div>
     <div className="absolute bottom-3 left-1/2 z-30 flex max-w-[95vw] -translate-x-1/2 items-center gap-2 rounded-full bg-black/75 px-2 py-2" style={{ marginBottom:'env(safe-area-inset-bottom)' }}>
-      <button onClick={back} aria-label="Previous caption" className="rounded-full p-2"><ChevronLeft size={20}/></button>
+      <button onClick={() => navigateBlock(-1)} disabled={blockIndex === 0} aria-label="Previous section" className="rounded-full p-2 disabled:opacity-35"><ChevronLeft size={20}/></button>
       <button onClick={() => playing ? setPlaying(false) : start()} aria-label={playing ? 'Pause' : 'Play'} className="rounded-full bg-white p-2 text-black">{playing ? <Pause size={19}/> : <Play size={19}/>}</button>
-      <button onClick={() => { setPlaying(false); advance(); }} aria-label="Next caption" className="rounded-full p-2"><ChevronRight size={20}/></button>
+      <button onClick={() => navigateBlock(1)} disabled={blockIndex >= sorted.length - 1} aria-label="Next section" className="rounded-full p-2 disabled:opacity-35"><ChevronRight size={20}/></button>
       <button onClick={() => { setPlaying(false); stepIndexRef.current = -1; setStepIndex(-1); if (audio.current) audio.current.currentTime = 0; }} aria-label="Show complete page" className="rounded-full p-2"><Maximize2 size={17}/></button>
       <span className="whitespace-nowrap pr-2 text-xs text-white/70">{blockIndex + 1}/{sorted.length} · {Math.max(0,stepIndex + 1)}/{steps.length}</span>
     </div>

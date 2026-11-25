@@ -236,7 +236,7 @@ function WebtoonTypeOnCaption({ text, playbackIndex, fontSize, x, y }) {
     }, intervalMs);
     return () => window.clearInterval(timer);
   }, [content, playbackIndex]);
-  return <div className="pointer-events-none absolute z-20 w-max max-w-[min(78%,360px)] max-h-[32%] overflow-hidden break-words rounded bg-black/70 px-3 py-2 text-center font-medium leading-snug text-white shadow-lg" style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)', fontSize: `${fontSize}px` }} aria-label={content}>
+  return <div className="pointer-events-none absolute z-20 w-max max-w-[min(78%,360px)] overflow-visible break-words rounded bg-black/70 px-3 py-2 text-center font-medium leading-snug text-white shadow-lg" style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)', fontSize: `${fontSize}px` }} aria-label={content}>
     <span>{content.slice(0, visibleCount)}</span>
   </div>;
 }
@@ -248,7 +248,7 @@ function webtoonBackdropImage(panel) {
   return '';
 }
 
-function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playback }) {
+function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playback, coverUrl }) {
   const viewportRef = useRef(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   useEffect(() => {
@@ -263,39 +263,41 @@ function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playba
     return () => observer.disconnect();
   }, []);
   const [rw, rh] = String(ratio || '16:9').split(':').map(Number);
-  const pageWidth = viewport.width > 0 && viewport.height > 0
-    ? Math.max(60, Math.floor(Math.min(viewport.width - 16, (viewport.height - 16) * (rw || 16) / (rh || 9))))
-    : 0;
   const portrait = rw < rh;
   const count = Math.max(1, panels.length);
   const step = playback?.step;
-  const frameIndex = Math.max(0, Math.min(count - 1, step?.frameIndex ?? 0));
+  const frameIndex = Math.max(0, Math.min(count - 1, step?.frameIndex ?? selectedPanel ?? 0));
   const settings = playback?.settings || {};
   const cameraOn = Boolean(step);
-  // Keep the full page visible at 1x; apply only the author's explicitly selected zoom.
-  const baseZoom = Math.max(1, Math.min(3.5, Number(settings.frameZooms?.[frameIndex] ?? settings.cameraZoom ?? 1.05) || 1.05));
+  const pageRatio = (rw || 16) / (rh || 9);
+  const maskRatio = cameraOn ? (portrait ? pageRatio * count : pageRatio / count) : pageRatio;
+  const pageWidth = viewport.width > 0 && viewport.height > 0
+    ? Math.max(1, Math.floor(Math.min(viewport.width * .92, viewport.height * .72 * maskRatio))) : 0;
+  const stepCamera = settings.stepCamera?.[playback?.index] || {};
+  const baseZoom = Math.max(1, Math.min(3.5, Number(stepCamera.zoom ?? settings.frameZooms?.[frameIndex] ?? settings.cameraZoom ?? 1.05) || 1.05));
   const movement = settings.movement || 'gentle';
-  const motionScale = movement === 'zoom-in' ? 1.015
-    : movement === 'zoom-out' ? 0.985
-    : movement === 'gentle' && playback?.index % 2 ? 1.01 : 1;
+  const motionScale = movement === 'zoom-in' ? 1.015 : movement === 'zoom-out' ? 0.985 : movement === 'gentle' && playback?.index % 2 ? 1.01 : 1;
   const scale = cameraOn ? Math.max(1, Math.min(3.5, baseZoom * motionScale)) : 1;
-  const centerX = portrait ? 0.5 : (frameIndex + 0.5) / count;
-  const centerY = portrait ? (frameIndex + 0.5) / count : 0.5;
-  // The page is translated within its own fitted viewport, never scaled by Classic zoom.
-  const dx = cameraOn ? (0.5 - centerX) * scale * 100 : 0;
-  const dy = cameraOn ? (0.5 - centerY) * scale * 100 : 0;
-  const transform = cameraOn ? `translate(${dx}%, ${dy}%) scale(${scale})` : 'translate(0%, 0%) scale(1)';
+  const framePosition = { ...(settings.framePositions?.[frameIndex] || { x: 50, y: 50 }), ...stepCamera };
+  const panX = (50 - Math.max(0, Math.min(100, Number(framePosition.x ?? 50)))) * (scale - 1);
+  const panY = (50 - Math.max(0, Math.min(100, Number(framePosition.y ?? 50)))) * (scale - 1);
   const captionPosition = settings.captionPositions?.[playback?.index] || { x: 50, y: 70 };
   const captionX = Math.max(10, Math.min(90, Number(captionPosition.x) || 50));
   const captionY = Math.max(10, Math.min(90, Number(captionPosition.y) || 70));
-  const backdropUrl = webtoonBackdropImage(panels[frameIndex]);
-  return <div ref={viewportRef} data-fotoplay-webtoon-camera="true" className="relative flex min-h-0 w-full min-w-0 flex-1 self-stretch items-center justify-center overflow-hidden">
-    {cameraOn && backdropUrl && <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><img src={backdropUrl} alt="" className="h-full w-full object-cover" style={{ filter: 'blur(24px) brightness(0.6)', transform: 'scale(1.14)' }} /></div>}
-    <div className="relative z-10 flex h-full w-full min-w-0 items-center justify-center transition-transform duration-700 ease-in-out" style={{ transform, transformOrigin: 'center center' }}>
-      {pageWidth > 0 && <PageCanvas panels={panels} ratio={ratio} selectedPanel={selectedPanel} onSelectPanel={onSelectPanel} boxes={[]} textMode={false} onBoxesChange={() => {}} webtoonWidth={pageWidth} />}
-    </div>
-    {cameraOn && step?.caption && <WebtoonTypeOnCaption key={`${playback.index}-${step.caption}`} text={step.caption} playbackIndex={playback.index} x={captionX} y={captionY} fontSize={Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))} />}
-    {!cameraOn && <div className="pointer-events-none absolute bottom-3 rounded bg-black/75 px-3 py-1 text-xs font-semibold text-white/80">Complete page</div>}
+  return <div ref={viewportRef} data-fotoplay-webtoon-camera="true" className="relative flex min-h-0 w-full min-w-0 flex-1 self-stretch items-center justify-center overflow-hidden bg-black">
+    {coverUrl && <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><img src={coverUrl} alt="" className="h-full w-full object-cover object-center" /><div className="absolute inset-0 bg-black/75" /></div>}
+    {pageWidth > 0 && <div data-webtoon-fixed-mask="true" className="relative isolate z-10 overflow-hidden bg-black shadow-2xl shrink-0" style={{ width: pageWidth, height: pageWidth / maskRatio }}>
+      <div className="absolute inset-0 overflow-hidden">
+        {cameraOn
+          ? <div className="absolute inset-0 overflow-hidden"><div className="absolute inset-0 transition-transform duration-700 ease-in-out" style={{ transform: `translate(${panX}%, ${panY}%) scale(${scale})`, transformOrigin: 'center center' }}><PanelTreePreview panel={panels[frameIndex]} /></div></div>
+          : <div className="absolute inset-0 grid gap-[6px] p-[6px]" style={portrait ? { gridTemplateRows: `repeat(${count},minmax(0,1fr))` } : { gridTemplateColumns: `repeat(${count},minmax(0,1fr))` }}>
+              {panels.map((panel, index) => <div key={panel.id || index} className="min-h-0 min-w-0 overflow-hidden"><PanelTreePreview panel={panel} /></div>)}
+            </div>}
+      </div>
+    </div>}
+    {cameraOn && step?.caption && <div className="pointer-events-none absolute inset-0 z-[60] overflow-visible" data-webtoon-caption-layer="true">
+      <WebtoonTypeOnCaption key={`${playback.index}-${step.caption}`} text={step.caption} playbackIndex={playback.index} x={captionX} y={captionY} fontSize={Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))} />
+    </div>}
   </div>;
 }
 
@@ -406,7 +408,7 @@ function ComicPageWorkspace({ user, project, setProject, activeChapterId, setAct
   const updateTextBox = (id, values) => change({ text_boxes: boxes.map((box) => box.id === id ? { ...box, ...values } : box) });
   const deleteTextBox = (id) => change({ text_boxes: boxes.filter((box) => box.id !== id) });
 
-  const drawer = tool ? <div className={`absolute top-0 z-40 h-full w-[430px] max-w-[calc(100%-130px)] overflow-y-auto border-white/10 shadow-2xl ${selectedSide === 'left' ? 'left-[62px] border-r' : 'right-[62px] border-l'}`} style={{ backgroundColor: '#111418' }}><div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 px-4 py-3" style={{ backgroundColor: '#111418' }}><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#23c7be]">{t('fotoplay.page.tool', 'FotoPlay tool')}</p><p className="font-black">{translateTool([...leftTools, ...rightTools].find((item) => item.key === tool) || {key: tool, label: tool})}</p></div><button onClick={() => setTool('')} className="p-2 text-white/70"><X size={18} /></button></div><div className="space-y-5 p-4" style={{ backgroundColor: '#111418' }}>
+  const drawer = tool ? <div className={`absolute top-0 z-40 h-full w-[430px] max-w-[calc(100%-130px)] overflow-y-auto border-white/10 shadow-2xl ${selectedSide === 'left' ? 'left-[62px] border-r' : 'right-[62px] border-l'}`} style={{ backgroundColor: '#111418' }}><div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 px-4 py-3" style={{ backgroundColor: '#111418' }}><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#23c7be]">{t('fotoplay.page.tool', 'FotoPlay tool')}</p><p className="font-black">{translateTool([...leftTools, ...rightTools].find((item) => item.key === tool) || {key: tool, label: tool})}</p>{tool === 'webtoon' && <p className="mt-1 text-sm font-bold text-[#23c7be]">{t('fotoplay.approve.segment', 'Segment')} {segment.number ?? selectedIndex + 1} / {active.segments.length}</p>}</div><button onClick={() => setTool('')} className="p-2 text-white/70"><X size={18} /></button></div><div className="space-y-5 p-4" style={{ backgroundColor: '#111418' }}>
     {tool === 'story' && <><textarea value={segment.summary || ''} onChange={(event) => change({ summary: event.target.value })} rows={3} className={dark} placeholder={t('fotoplay.story.summary_placeholder', 'What happens in this segment?')} /><textarea value={segment.narration_text || ''} onChange={(event) => change({ narration_text: event.target.value, audio_stale: Boolean(segment.narration_url) })} rows={8} className={dark} placeholder={t('fotoplay.story.narration_placeholder', 'Narration and dialogue')} /></>}
     {tool === 'cast' && <><ChoiceGrid title={t('fotoplay.cast.set', 'Set')} icon={MapPin} items={project.locations} selected={segment.location_ids} onToggle={(id) => toggle('location_ids', id)} /><ChoiceGrid title={t('fotoplay.page.characters', 'Characters')} icon={Users} items={project.characters} selected={segment.character_ids} onToggle={(id) => toggle('character_ids', id)} /><div className="flex flex-wrap gap-2">{TIME_OPTIONS.map((time) => <button type="button" key={time} onClick={() => toggle('time_periods', time)} className={`border px-3 py-2 text-xs font-black ${segment.time_periods.includes(time) ? 'border-[#23c7be] bg-[#23c7be] text-black' : 'border-white/10 bg-[#1b1f24]'}`}><Clock3 size={12} className="mr-1 inline" />{t(`fotoplay.cast.time.${time.toLowerCase().replaceAll(' ', '_')}`, time)}</button>)}</div></>}
     {tool === 'references' && <><div className="space-y-3">{locations.map((location) => <div key={location.id} className="space-y-2"><ReferencePicker title={`${location.name} · ${t('fotoplay.references.set', 'set references')}`} images={assetGallery(location, catalogGalleries)} selected={selectedRefs(location, 'location_reference_images')} onChange={(images) => change({ location_reference_images: { ...segment.location_reference_images, [location.id]: images }, comic_page_source: '' })} /><input className={dark} value={segment.location_changes?.[location.id] || ''} onChange={(e) => change({ location_changes: { ...(segment.location_changes || {}), [location.id]: e.target.value }, comic_page_source: '' })} placeholder={t('fotoplay.references.additions', 'Set additions / changes (clients, props, temporary elements)')} /></div>)}</div>{characters.map((character) => { const value = { ...(active.appearance_continuity?.[character.id] || {}), ...(segment.character_directions?.[character.id] || {}) }; const set = (field, next) => change({ character_directions: { ...segment.character_directions, [character.id]: { ...(segment.character_directions?.[character.id] || {}), [field]: next } } }); return <div key={character.id} className="border border-white/10 bg-[#181c21] p-3"><div className="mb-3 flex items-center gap-3"><img src={character.active_look_reference_url || character.image_url} alt="" className="h-12 w-12 object-cover" /><div><p className="font-black">{character.name}</p><p className="text-[10px] text-white/40">{t('fotoplay.references.active', 'Active reference')}</p></div></div><ReferencePicker title={t('fotoplay.references.identity', 'Identity references')} images={assetGallery(character, catalogGalleries)} selected={selectedRefs(character, 'character_reference_images')} onChange={(images) => change({ character_reference_images: { ...segment.character_reference_images, [character.id]: images }, comic_page_source: '' })} /><div className="mt-3 grid grid-cols-2 gap-2"><input className={dark} value={value.look || ''} onChange={(e) => set('look', e.target.value)} placeholder={t('fotoplay.references.appearance', 'Appearance')} /><input className={dark} value={value.position || ''} onChange={(e) => set('position', e.target.value)} placeholder={t('fotoplay.references.position', 'Position')} /><input className={dark} value={value.expression || ''} onChange={(e) => set('expression', e.target.value)} placeholder={t('fotoplay.references.expression', 'Expression')} /></div><button onClick={() => createLook(character)} disabled={busy === `look-${character.id}`} className={`${action} mt-3 w-full bg-[#23c7be] text-black`}>{busy === `look-${character.id}` ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} {t('fotoplay.references.create', 'Create & use look')} · {pricing.compose_scene ?? '—'}</button></div>; })}</>}
@@ -424,12 +426,12 @@ function ComicPageWorkspace({ user, project, setProject, activeChapterId, setAct
   return <div className="mx-auto w-full max-w-[1900px] px-3 pb-6 lg:px-4">
     <header className="mb-3 flex items-center gap-3 border-b border-black/10 bg-white px-2 py-2 text-black"><button onClick={onBack} className="flex h-10 w-10 items-center justify-center bg-black text-white"><ArrowLeft size={18} /></button><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-[.16em] text-black/45" >{t('fotoplay.editor.page_editor', 'FotoPlay page editor')}</p><h2 className="truncate text-lg font-black">{project.title} · {t('fotoplay.editor.chapter', 'Chapter')} {active.number} · Segment {segment.number}</h2></div><button onClick={onEditSetup} className="border border-black/15 px-3 py-2 text-xs font-black" >{t('fotoplay.editor.story_cast', 'Story / cast')}</button><button onClick={onClassic} title={t('fotoplay.editor.project', 'Project')} className="flex items-center gap-2 border border-black/15 px-3 py-2 text-xs font-black"><Settings2 size={15} /> {t('fotoplay.editor.project', 'Project')}</button><button onClick={() => onSave(project)} disabled={saving} className="flex items-center gap-2 bg-black px-3 py-2 text-xs font-black text-white">{saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} {t('fotoplay.editor.save', 'Save')}</button></header>
     <div className="mb-3 flex gap-2 overflow-x-auto bg-black/5 p-2">{project.chapters.map((chapter) => <button key={chapter.id} onClick={() => setActiveChapterId(chapter.id)} className={`shrink-0 border px-3 py-2 text-xs font-black ${chapter.id === activeChapterId ? 'border-black bg-black text-white' : 'border-black/10 bg-white'}`} >{t('fotoplay.editor.chapter', 'Chapter')} {chapter.number}</button>)}</div>
-    <div className="mb-3 grid grid-cols-9 gap-1 bg-[#111418] p-2">{active.segments.map((item, index) => <button key={item.id} disabled={index > currentIndex} onClick={() => setSelectedId(item.id)} className={`h-8 border text-xs font-black ${item.status === 'approved' ? 'border-emerald-400 bg-emerald-400 text-black' : item.id === segment.id ? 'border-[#23c7be] bg-[#23c7be] text-black' : index > currentIndex ? 'border-white/5 text-white/20' : 'border-white/15 text-white/70'}`}>{item.status === 'approved' ? <Check size={13} className="mx-auto" /> : item.number}</button>)}</div>
+    <div className="mb-3 grid grid-cols-9 gap-1 bg-[#111418] p-2">{active.segments.map((item, index) => <button key={item.id} disabled={index > currentIndex} onClick={() => setSelectedId(item.id)} className={`h-8 border text-xs font-black ${item.status === 'approved' ? 'border-emerald-400 bg-emerald-400 text-black' : item.id === segment.id ? 'border-[#23c7be] bg-[#23c7be] text-black' : index > currentIndex ? 'border-white/5 text-white/20' : 'border-white/15 text-white/70'}`}><span className="inline-flex items-center justify-center gap-1.5">{item.number ?? index + 1}{item.status === 'approved' && <Check size={13} />}</span></button>)}</div>
     {notice && <div className="mb-3 flex items-center justify-between border border-[#23c7be]/30 bg-[#102826] px-3 py-2 text-xs font-bold text-[#bffaf5]"><span>{notice}</span><button onClick={() => setNotice('')}><X size={14} /></button></div>}
     <div className="relative h-[calc(100vh-230px)] min-h-[520px] overflow-hidden border border-white/10 bg-[#0d1013] text-white">
       <div className="grid h-full grid-cols-[62px_minmax(0,1fr)_62px]">
         <aside className="z-30 flex flex-col items-center gap-2 border-r border-white/10 bg-[#0b0d10] py-3">{leftTools.map((item) => <ToolButton key={item.key} tool={{ ...item, label: translateTool(item) }} active={tool === item.key} onClick={() => setToolOpen(item.key)} />)}</aside>
-        <main className="flex min-w-0 flex-col items-center justify-center overflow-hidden p-4"><div className="mb-3 flex w-full max-w-[1100px] items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#23c7be]">{t('fotoplay.page.working', 'Working page')}</p><p className="text-xs text-white/45">{t('fotoplay.page.instruction', 'Click a frame, then choose a tool. The whole page stays visible while you work.')}</p></div><span className="border border-white/10 bg-[#16191d] px-2 py-1 text-[10px] font-black text-white/50">{active.image_aspect_ratio || '16:9'} · {panelCount} {t('fotoplay.page.frames', 'frames')}</span></div>{tool === 'webtoon' ? <WebtoonPageCamera panels={panels} ratio={active.image_aspect_ratio || '16:9'} selectedPanel={selectedPanel} onSelectPanel={setSelectedPanel} playback={webtoonPlayback} /> : <PageCanvas key={segment.id} panels={panels} ratio={active.image_aspect_ratio || '16:9'} selectedPanel={selectedPanel} onSelectPanel={(index) => { setSelectedPanel(index); if (!tool) setTool('panel'); }} boxes={boxes} textMode={tool === 'text'} onBoxesChange={(next) => change({ text_boxes: next })} t={t} />}</main>
+        <main className="flex min-w-0 flex-col items-center justify-center overflow-hidden p-4"><div className="mb-3 flex w-full max-w-[1100px] items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#23c7be]">{t('fotoplay.page.working', 'Working page')}</p><p className="text-xs text-white/45">{t('fotoplay.page.instruction', 'Click a frame, then choose a tool. The whole page stays visible while you work.')}</p></div><span className="border border-white/10 bg-[#16191d] px-2 py-1 text-[10px] font-black text-white/50">{active.image_aspect_ratio || '16:9'} · {panelCount} {t('fotoplay.page.frames', 'frames')}</span></div>{tool === 'webtoon' ? <WebtoonPageCamera panels={panels} ratio={active.image_aspect_ratio || '16:9'} selectedPanel={selectedPanel} onSelectPanel={setSelectedPanel} playback={webtoonPlayback} coverUrl={project.cover_image || ""} /> : <PageCanvas key={segment.id} panels={panels} ratio={active.image_aspect_ratio || '16:9'} selectedPanel={selectedPanel} onSelectPanel={(index) => { setSelectedPanel(index); if (!tool) setTool('panel'); }} boxes={boxes} textMode={tool === 'text'} onBoxesChange={(next) => change({ text_boxes: next })} t={t} />}</main>
         <aside className="z-30 flex flex-col items-center gap-2 border-l border-white/10 bg-[#0b0d10] py-3">{rightTools.map((item) => <ToolButton key={item.key} tool={{ ...item, label: translateTool(item) }} active={tool === item.key} onClick={() => setToolOpen(item.key)} />)}</aside>
       </div>{drawer}
     </div>

@@ -15,6 +15,8 @@ function orderBoxes(boxes) {
     .map((box, index) => ({ ...box, order: index + 1 }));
 }
 
+function savedVoiceSample(character) { return character?.voice_sample_url || character?.pilot_character_data?.voice_sample_url || ''; }
+function sourceCharacterId(character) { return character?.source === 'ai_pilot' ? (character.source_id || character.pilot_character_data?.id || '') : ''; }
 function defaultCharacterVoice(character, index) {
   return character?.voice_id || character?.voice || character?.tts_voice || VOICE_NAMES[(index + 1) % VOICE_NAMES.length] || VOICE_NAMES[0] || '';
 }
@@ -143,7 +145,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
   const usesCharacterVoice = (box, character = resolveCharacter(box)) => box.type === 'dialogue' && Boolean(character) && (
     box.voice === 'custom:replicate' ||
     (character.voice_id && box.voice === `custom:${character.voice_id}`) ||
-    (!box.voice && Boolean(character.voice_sample_url || character.voice_id))
+    (!box.voice && (!character.voice || character.voice === 'custom:replicate') && Boolean(savedVoiceSample(character) || character.voice_id))
   );
 
   const resolveVoice = (box) => {
@@ -152,13 +154,15 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
     const character = characters[characterIndex];
     if (box.voice?.startsWith('custom:')) return character?.voice_id || 'Custom voice';
     if (box.voice) return box.voice;
-    if (character?.voice_sample_url) return 'Custom voice';
+    if (character?.voice && character.voice !== 'custom:replicate') return character.voice;
+    if (savedVoiceSample(character)) return 'Custom voice';
     if (character?.voice_id) return character.voice_id;
     return defaultCharacterVoice(character, Math.max(0, characterIndex));
   };
 
   const resolveLanguage = (box) => box.language || language;
-  const lineNeedsGeneration = (box) => !box.audio_url || box.audio_source_text !== box.text || box.audio_voice !== resolveVoice(box) || box.audio_language !== resolveLanguage(box);
+  const characterVoiceSignature = (box) => usesCharacterVoice(box) ? (savedVoiceSample(resolveCharacter(box)) || resolveCharacter(box)?.voice_id || '') : '';
+  const lineNeedsGeneration = (box) => !box.audio_url || box.audio_source_text !== box.text || box.audio_voice !== resolveVoice(box) || box.audio_language !== resolveLanguage(box) || (box.audio_character_voice_id || '') !== characterVoiceSignature(box);
 
   const generateLine = async (box, currentBoxes = ordered) => {
     if (!box.text?.trim()) throw new Error(`Line ${box.order} has no text`);
@@ -166,7 +170,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
     if (!voice) throw new Error(`Choose a voice for line ${box.order}`);
     const character = box.type === 'dialogue' ? resolveCharacter(box) : null;
     const useCustomCharacterVoice = usesCharacterVoice(box, character);
-    const response = await base44.functions.invoke('generateSpeech', { text: box.text, voice, voice_id: useCustomCharacterVoice ? (character?.voice_id || undefined) : undefined, character_id: useCustomCharacterVoice ? (character?.id || undefined) : undefined, language_code: resolveLanguage(box) });
+    const response = await base44.functions.invoke('generateSpeech', { text: box.text, voice: useCustomCharacterVoice ? undefined : voice, voice_id: useCustomCharacterVoice ? (character?.voice_id || undefined) : undefined, character_id: useCustomCharacterVoice ? (sourceCharacterId(character) || undefined) : undefined, language_code: resolveLanguage(box) });
     const data = response?.data || {};
     const url = data.file_url;
     if (!url) throw new Error(`No audio returned for line ${box.order}`);
@@ -174,11 +178,11 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
     const balanceAfter = Number(data.balance_after);
     const nextBoxes = currentBoxes.map((item) => item.id === box.id ? {
       ...item,
-      voice,
+      voice: useCustomCharacterVoice ? (savedVoiceSample(character) ? 'custom:replicate' : `custom:${character?.voice_id}`) : voice,
       audio_url: url,
       audio_source_text: item.text,
       audio_voice: voice,
-      audio_character_voice_id: usesCharacterVoice(item) ? (resolveCharacter(item)?.voice_id || 'replicate-custom') : '',
+      audio_character_voice_id: characterVoiceSignature(item),
       audio_language: resolveLanguage(item),
       audio_credit_cost: Number.isFinite(creditCost) ? creditCost : 0,
       audio_balance_after: Number.isFinite(balanceAfter) ? balanceAfter : null,
@@ -204,7 +208,7 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
       const playable = next.filter((box) => box.text?.trim() && box.audio_url);
       const { file, timeline } = await combineToWav(playable);
       const uploaded = await base44.integrations.Core.UploadFile({ file });
-      const signature = JSON.stringify(next.map((box) => ({ id: box.id, order: box.order, text: box.text, voice: resolveVoice(box), characterVoiceId: usesCharacterVoice(box) ? (resolveCharacter(box)?.voice_id || resolveCharacter(box)?.voice_sample_url || '') : '', language: resolveLanguage(box), pause: box.pause_after ?? 0.35 })));
+      const signature = JSON.stringify(next.map((box) => ({ id: box.id, order: box.order, text: box.text, voice: resolveVoice(box), characterVoiceId: usesCharacterVoice(box) ? (resolveCharacter(box)?.voice_id || savedVoiceSample(resolveCharacter(box)) || '') : '', language: resolveLanguage(box), pause: box.pause_after ?? 0.35 })));
       await onPersist({ text_boxes: next, narration_url: uploaded.file_url, audio_sequence: timeline, audio_source_text: signature, audio_voice: 'multi', audio_stale: false, status: 'draft' });
       toast.success(totalCharged > 0 ? `${t('fotoplay.audio.audio_generated', 'FotoPlay final audio generated')} · ${totalCharged} ${t('fotoplay.audio.credits', 'credits')} ${t('fotoplay.audio.charged', 'charged')}` : t('fotoplay.audio.audio_assembled', 'FotoPlay final audio assembled · no new credits charged'));
     } finally {
@@ -267,8 +271,8 @@ export default function FotoPlayAudioPanel({ boxes, characters = [], segment, pr
 
         <div className="grid grid-cols-2 gap-2">
           <label className="text-[10px] font-black uppercase text-white/50">{t('fotoplay.audio.voice', 'Voice')}
-            <select value={box.voice || (character?.voice_sample_url ? 'custom:replicate' : character?.voice_id ? `custom:${character.voice_id}` : voice)} onChange={(e) => patchBox(box.id, { voice: e.target.value })} className={`${control} mt-1`}>
-              {character?.voice_sample_url && <option value="custom:replicate" className="text-black">{character.name || character.role_name} · AI Pilots voice</option>}
+            <select value={box.voice || (usesCharacterVoice(box, character) ? (savedVoiceSample(character) ? 'custom:replicate' : `custom:${character.voice_id}`) : voice)} onChange={(e) => patchBox(box.id, { voice: e.target.value })} className={`${control} mt-1`}>
+              {savedVoiceSample(character) && <option value="custom:replicate" className="text-black">{character.name || character.role_name} · AI Pilots voice</option>}
               {character?.voice_id && <option value={`custom:${character.voice_id}`} className="text-black">{character.name || character.role_name} · AI Pilots voice</option>}
               {VOICE_NAMES.map((name) => <option key={name} value={name} className="text-black">{name}</option>)}
             </select>

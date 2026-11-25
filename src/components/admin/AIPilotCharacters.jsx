@@ -2,6 +2,7 @@ import React, { forwardRef, useImperativeHandle, useMemo, useState } from 'react
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Save, Trash2, Upload, X, Sparkles, Loader2, Volume2, Check } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
+import { useStudioTranslation } from '@/lib/useStudioTranslation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -75,6 +76,9 @@ const Field = ({ label, helper, value, onChange, readOnly, rows = 4, placeholder
 
 const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readOnly = false }, ref) {
   const queryClient = useQueryClient();
+  const t = useStudioTranslation();
+  const [voiceLanguage, setVoiceLanguage] = useState('en');
+  const french = voiceLanguage === 'fr';
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
   const [referenceUploading, setReferenceUploading] = useState(false);
@@ -152,6 +156,10 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
       voice_preview_text: draft.voice_preview_text || '',
       voice_sample_url: draft.voice_sample_url || null,
       voice_sample_text: draft.voice_sample_text || null,
+      voice_sample_url_fr: draft.voice_sample_url_fr || null,
+      voice_sample_text_fr: draft.voice_sample_text_fr || null,
+      voice_preview_text_fr: draft.voice_preview_text_fr || '',
+      voice_accent_fr: draft.voice_accent_fr || '',
       voice_id: draft.voice_id || null,
       voice_delivery: draft.voice_delivery || '',
       voice_emotional_range: draft.voice_emotional_range || '',
@@ -269,6 +277,7 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
     }
   };
 
+  const frenchReferenceText = draft?.voice_preview_text_fr || t('aipilots.voice.default_french_reference', 'Je suis {name}. Voici ma voix. Chaque mot exprime ma personnalité, mon histoire et mes intentions. Écoutez attentivement le son, le rythme et le caractère de ma voix.').replace('{name}', draft?.role_name || '');
   const designCharacterVoice = async () => {
     if (!draft || readOnly || voiceDesigning) return;
     setVoiceDesigning(true);
@@ -285,11 +294,11 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
         character = await persistCharacter();
       }
       const { data, error } = await supabase.functions.invoke('designCharacterVoice', {
-        body: { action: 'design', character_id: character.id, mode: 'voice_design', language: character.voice_language || 'auto', preview_text: character.voice_preview_text || '' },
+        body: { action: 'design', character_id: character.id, mode: 'voice_design', language: french ? 'fr' : 'en', preview_text: french ? frenchReferenceText : character.voice_preview_text || '' },
       });
       if (error) throw error;
       if (!data?.preview?.audio_url) throw new Error(data?.error || 'Replicate did not return a voice sample.');
-      setVoicePreviews([data.preview]);
+      setVoicePreviews([{ ...data.preview, language: voiceLanguage, characterId: character.id }]);
     } catch (error) {
       let message = error?.message || 'Unable to design character voice.';
       const response = error?.context;
@@ -309,15 +318,15 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
 
   const saveDesignedVoice = async () => {
     const preview = voicePreviews[0];
-    if (!draft?.id || !preview?.audio_url || voiceSaving) return;
+    if (!draft?.id || !preview?.audio_url || preview.characterId !== draft.id || voiceSaving) return;
     setVoiceSaving(true);
     try {
       const { data, error } = await supabase.functions.invoke('designCharacterVoice', {
-        body: { action: 'save', character_id: draft.id, audio_url: preview.audio_url, preview_text: preview.preview_text },
+        body: { action: 'save', character_id: draft.id, audio_url: preview.audio_url, preview_text: preview.preview_text, language: preview.language },
       });
       if (error) throw error;
       if (!data?.voice_sample_url) throw new Error(data?.error || 'Replicate voice sample was not saved.');
-      setDraft((current) => ({ ...current, voice_sample_url: data.voice_sample_url, voice_sample_text: preview.preview_text, voice_id: null }));
+      setDraft((current) => current?.id !== preview.characterId ? current : ({ ...current, ...(preview.language === 'fr' ? { voice_sample_url_fr: data.voice_sample_url, voice_sample_text_fr: preview.preview_text } : { voice_sample_url: data.voice_sample_url, voice_sample_text: preview.preview_text, voice_id: null }) }));
       setVoicePreviews([]);
       await queryClient.invalidateQueries({ queryKey: ['admin-ai-pilot-characters', version?.id] });
       alert('Character voice saved. It will be reused automatically in FotoPlay and compatible Shoot speech generation.');
@@ -471,35 +480,34 @@ const AIPilotCharacters = forwardRef(function AIPilotCharacters({ version, readO
                 
 
                 <Section eyebrow="VOICE STUDIO" title="Character Voice" description="Define the character's permanent vocal identity. Emotional direction belongs to individual dialogue in FotoPlay and Shoot.">
+                  <div className="flex gap-2">
+                    {['en', 'fr'].map(lang => <button key={lang} type="button" disabled={voiceDesigning || voiceSaving} onClick={() => { setVoiceLanguage(lang); setVoicePreviews([]); }} className={`px-3 py-2 text-xs border ${voiceLanguage === lang ? 'border-[#23c7be] text-[#23c7be]' : 'border-white/15 text-white/60'}`}>{lang === 'en' ? t('aipilots.voice.english', 'English') : t('aipilots.voice.french', 'French')}</button>)}
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Field label="Apparent age" helper="How old the voice should sound." value={draft.voice_apparent_age} onChange={(value) => setField('voice_apparent_age', value)} readOnly={readOnly} rows={2} placeholder="Mature adult…" />
                     <Field label="Vocal gender" helper="Vocal presentation." value={draft.voice_gender} onChange={(value) => setField('voice_gender', value)} readOnly={readOnly} rows={2} placeholder="Feminine, masculine, androgynous…" />
-                    <Field label="Accent" helper="Accent and pronunciation, not spoken language." value={draft.voice_accent} onChange={(value) => setField('voice_accent', value)} readOnly={readOnly} rows={2} placeholder="Native Italian accent when speaking English…" />
+                    <Field label={t('aipilots.voice.accent', 'Accent')} helper="Accent and pronunciation, not spoken language." value={draft.voice_accent} onChange={(value) => setField('voice_accent', value)} readOnly={readOnly} rows={2} placeholder="Native Italian accent when speaking English…" />
                     <Field label="Timbre & texture" helper="The sound and texture of the voice." value={draft.voice_timbre_texture} onChange={(value) => setField('voice_timbre_texture', value)} readOnly={readOnly} rows={2} placeholder="Warm, rich, slightly husky…" />
                     <Field label="Pitch / register" helper="Natural vocal range." value={draft.voice_pitch} onChange={(value) => setField('voice_pitch', value)} readOnly={readOnly} rows={2} placeholder="Low, mid-low, high…" />
                     <Field label="Personality & expressiveness" helper="Stable vocal character, not scene emotion." value={draft.voice_personality_expressiveness} onChange={(value) => setField('voice_personality_expressiveness', value)} readOnly={readOnly} rows={2} placeholder="Confident, elegant, measured…" />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <label className="space-y-2 block">
-                      <span className="text-xs text-white/60">Spoken language</span>
-                      <Input className={CONTROL_CLASS} disabled={readOnly} value={draft.voice_language || 'auto'} onChange={(e) => setField('voice_language', e.target.value)} placeholder="auto, English, French…" />
-                      <span className="text-[11px] text-white/30">The language the character speaks. Accent is defined separately.</span>
-                    </label>
-                    <Field label="Voice preview dialogue" helper="A short neutral line used to audition the voice. No scene emotion here." value={draft.voice_preview_text} onChange={(value) => setField('voice_preview_text', value)} readOnly={readOnly} rows={3} placeholder="Write a short line that reveals the character's natural voice…" />
+                    <Field label={t('aipilots.voice.reference_text', 'Voice reference dialogue')} value={french ? frenchReferenceText : draft.voice_preview_text} onChange={(value) => setField(french ? 'voice_preview_text_fr' : 'voice_preview_text', value)} readOnly={readOnly} rows={3} placeholder={french ? t('aipilots.voice.french_text', 'Write the exact French dialogue to read.') : t('aipilots.voice.english_text', 'Write the exact English dialogue to read.')} />
                   </div>
                   <div className="border border-white/10 bg-white/[0.025] p-3 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <div className="text-xs font-bold text-white/75">Voice preview</div>
-                        <div className="mt-1 text-[11px] text-white/40">{draft.voice_sample_url ? 'A voice sample is saved for this character.' : 'Generate a preview, listen, refine the description, then approve it.'}</div>
+                        <div className="mt-1 text-[11px] text-white/40">{(french ? draft.voice_sample_url_fr : draft.voice_sample_url) ? 'A voice sample is saved for this character.' : 'Generate a preview, listen, refine the description, then approve it.'}</div>
                       </div>
-                      <span className="text-[10px] font-bold text-[#23c7be]">{draft.voice_sample_url ? 'SAMPLE SAVED' : 'AWAITING APPROVAL'}</span>
+                      <span className="text-[10px] font-bold text-[#23c7be]">{(french ? draft.voice_sample_url_fr : draft.voice_sample_url) ? 'SAMPLE SAVED' : 'AWAITING APPROVAL'}</span>
                     </div>
-                    {!readOnly && <button type="button" onClick={designCharacterVoice} disabled={voiceDesigning || ![draft.voice_apparent_age, draft.voice_gender, draft.voice_accent, draft.voice_timbre_texture, draft.voice_pitch, draft.voice_personality_expressiveness].some((value) => value?.trim())} className="inline-flex items-center gap-2 border border-[#23c7be]/40 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-40">
+                    {(french ? draft.voice_sample_url_fr : draft.voice_sample_url) && <audio controls preload="none" className="h-8 max-w-full" src={french ? draft.voice_sample_url_fr : draft.voice_sample_url} />}
+                    {!readOnly && <button type="button" onClick={designCharacterVoice} disabled={voiceDesigning || voiceSaving || ![draft.voice_apparent_age, draft.voice_gender, draft.voice_accent, draft.voice_timbre_texture, draft.voice_pitch, draft.voice_personality_expressiveness].some((value) => value?.trim())} className="inline-flex items-center gap-2 border border-[#23c7be]/40 bg-[#23c7be]/10 px-3 py-2 text-xs font-bold text-[#8ee9e4] disabled:opacity-40">
                       {voiceDesigning ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                       {voiceDesigning ? 'Generating preview…' : 'Generate voice preview'}
                     </button>}
-                    {!!voicePreviews.length && <div className="space-y-2">
+                    {!!voicePreviews.length && voicePreviews[0].characterId === draft.id && voicePreviews[0].language === voiceLanguage && <div className="space-y-2">
                       <div className="text-[11px] font-bold text-white/65">Listen to the proposed voice</div>
                       {voicePreviews.map((preview) => <div key={preview.audio_url} className="flex items-center gap-3 border border-[#23c7be] bg-[#23c7be]/10 p-2">
                         <span className="flex-1 text-xs text-white/75">Voice preview</span>

@@ -126,9 +126,10 @@ const pitchEditor = read('src/pages/PitchDeckEditor.jsx');
 for (const marker of ["supabase.functions.invoke('generateSpeech'", 'voice: narrationVoice', 'narration_audio_url: audioUrl']) requireMarker('Pitch Deck editor narration generation', pitchEditor, marker);
 
 const authorStoryBlocks = read('src/components/studio/AuthorStoryBlocks.jsx');
-// Define Your Story intentionally uses the Vault picker, not the legacy OLO Shop picker.
+// Define Your Story uses Vault and the validated Assets Shop selector, not the old OLO labels.
 requireMarker('Story Blocks Author Vault selection', authorStoryBlocks, 'Select image from Vault');
-for (const marker of ["source: 'olo_shop'", 'Select image from OLO Shop', 'Search OLO Shop']) forbidMarker('Story Blocks Author legacy picker', authorStoryBlocks, marker);
+for (const marker of ["from '@/api/supabaseClient'", ".from('catalog_asset')", ".from('asset_category')", "source: 'olo_shop'", 'Select image from Assets Shop', 'Search Assets Shop', 'All categories', 'All creators', 'Clear filters']) requireMarker('Story Blocks Author shop selection', authorStoryBlocks, marker);
+for (const marker of ['Select image from OLO Shop', 'Search OLO Shop']) forbidMarker('Story Blocks Author legacy picker', authorStoryBlocks, marker);
 for (const marker of ['platformCharacters', 'platformSets', "source: 'aistage'"]) forbidMarker('Story Blocks Author pack isolation', authorStoryBlocks, marker);
 const authorProduction = read('src/components/studio/AuthorProductionWorkspace.jsx');
 for (const marker of [

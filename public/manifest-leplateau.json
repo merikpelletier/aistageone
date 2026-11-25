@@ -13,7 +13,7 @@
   ],
   "background_color": "#080a0c",
   "theme_color": "#080a0c",
-  "orientation": "portrait",
+  "orientation": "any",
   "categories": [
     "entertainment",
     "photo",
