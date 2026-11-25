@@ -322,8 +322,8 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('All');
   const t = (namespace, key) => translatedLabel(dictionary, namespace, key, language);
-  const categoryLabels = new Set(categories.map(item => item.name));
-  const classLabels = new Set(dossierClasses.map(item => item.name));
+  const categoryLabels = new Set([...categories.map(item => item.name), ...dossiers.map(d => d.category).filter(Boolean)]);
+  const classLabels = new Set([...dossierClasses.map(item => item.name), ...dossiers.map(d => d.class).filter(Boolean)]);
   const displayLabel = key => {
     if (key === 'All' || key === 'Others' || key === 'Search results') return t('ui', key);
     if (classLabels.has(key) || CLASS_ORDER.includes(key)) return t('class', key);
@@ -358,11 +358,9 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
   const selectorOptions = useMemo(() => {
     const usedClasses = new Set(dossiers.map(d => d.class).filter(Boolean));
     const usedCategories = new Set(dossiers.map(d => d.category).filter(Boolean));
-    const classNames = dossierClasses.map(item => item.name).filter(name => usedClasses.has(name) && name !== 'FotoPlay');
-    if (usedClasses.has('Story') && !classNames.includes('Story')) classNames.push('Story');
-    const showFotoPlay = usedClasses.has('FotoPlay') || usedCategories.has('FotoPlay');
-    const categoryNames = categories.map(item => item.name).filter(name => usedCategories.has(name) && name !== 'FotoPlay' && !classNames.includes(name));
-    return ['All', ...classNames, ...(showFotoPlay ? ['FotoPlay'] : []), ...categoryNames];
+    const classNames = [...new Set([...dossierClasses.map(item => item.name).filter(name => usedClasses.has(name)), ...usedClasses])];
+    const categoryNames = [...new Set([...categories.map(item => item.name).filter(name => usedCategories.has(name)), ...usedCategories])];
+    return [...new Set(['All', ...classNames, ...categoryNames])];
   }, [categories, dossierClasses, dossiers]);
 
   const visible = useMemo(() => {
@@ -458,8 +456,8 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
           </div>
         </div>
 
-        <div className="grid min-w-0 grid-cols-[minmax(0,420px)_minmax(0,1fr)] gap-3">
-          <div className="relative">
+        <div className="grid min-w-0 grid-cols-1 gap-2">
+          <div className="relative max-w-[420px]">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35" />
             <input
               type="search"
@@ -470,7 +468,7 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
             />
           </div>
 
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5 pb-1">
+          <div className="flex min-w-0 max-h-[14vh] flex-wrap items-center content-start gap-1.5 overflow-y-auto pb-1 [scrollbar-width:thin]">
             {selectorOptions.map(option => (
               <button
                 key={option}
