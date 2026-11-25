@@ -71,10 +71,11 @@ export default function PublishedWebtoonReader({ blocks = [], coverUrl = '', onC
   const step = stepIndex >= 0 ? steps[stepIndex] : null;
   const ratio = String(config.image_aspect_ratio || block?.image_aspect_ratio || '16:9').split(':').map(Number);
   const portrait = (ratio[0] || 16) < (ratio[1] || 9);
-  const zoom = step ? clamp(config.frameZooms?.[step.frameIndex] ?? config.cameraZoom ?? 1.05, 1, 3.5) : 1;
+  const stepCamera = config.stepCamera?.[stepIndex] || {};
+  const zoom = step ? clamp(stepCamera.zoom ?? config.frameZooms?.[step.frameIndex] ?? config.cameraZoom ?? 1.05, 1, 3.5) : 1;
   const count = Math.max(1, frames.length);
   const maskRatio = 16 / 9;
-  const framePosition = config.framePositions?.[step?.frameIndex || 0] || { x: 50, y: 50 };
+  const framePosition = { ...(config.framePositions?.[step?.frameIndex || 0] || { x: 50, y: 50 }), ...stepCamera };
   const panX = (50 - Math.max(0, Math.min(100, Number(framePosition.x ?? 50)))) * (zoom - 1);
   const panY = (50 - Math.max(0, Math.min(100, Number(framePosition.y ?? 50)))) * (zoom - 1);
   const transform = step && !step.supportUrl ? 'translate(' + panX + '%, ' + panY + '%) scale(' + zoom + ')' : 'none';
