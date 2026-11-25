@@ -273,11 +273,12 @@ function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playba
   const maskRatio = cameraOn ? (portrait ? pageRatio * count : pageRatio / count) : pageRatio;
   const pageWidth = viewport.width > 0 && viewport.height > 0
     ? Math.max(1, Math.floor(Math.min(viewport.width * .92, viewport.height * .72 * maskRatio))) : 0;
-  const baseZoom = Math.max(1, Math.min(3.5, Number(settings.frameZooms?.[frameIndex] ?? settings.cameraZoom ?? 1.05) || 1.05));
+  const stepCamera = settings.stepCamera?.[playback?.index] || {};
+  const baseZoom = Math.max(1, Math.min(3.5, Number(stepCamera.zoom ?? settings.frameZooms?.[frameIndex] ?? settings.cameraZoom ?? 1.05) || 1.05));
   const movement = settings.movement || 'gentle';
   const motionScale = movement === 'zoom-in' ? 1.015 : movement === 'zoom-out' ? 0.985 : movement === 'gentle' && playback?.index % 2 ? 1.01 : 1;
   const scale = cameraOn ? Math.max(1, Math.min(3.5, baseZoom * motionScale)) : 1;
-  const framePosition = settings.framePositions?.[frameIndex] || { x: 50, y: 50 };
+  const framePosition = { ...(settings.framePositions?.[frameIndex] || { x: 50, y: 50 }), ...stepCamera };
   const panX = (50 - Math.max(0, Math.min(100, Number(framePosition.x ?? 50)))) * (scale - 1);
   const panY = (50 - Math.max(0, Math.min(100, Number(framePosition.y ?? 50)))) * (scale - 1);
   const captionPosition = settings.captionPositions?.[playback?.index] || { x: 50, y: 70 };
