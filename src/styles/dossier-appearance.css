@@ -6,3 +6,5 @@
 .dossier-themed .dossier-action {font-weight:700;padding:12px 20px;}
 .dossier-quiz .dossier-choice {font-size:1.05rem;min-height:52px;border-color:color-mix(in srgb,var(--dossier-text) 22%,transparent);}
 .dossier-quiz h2 {font-weight:700;}
+
+.dossier-themed .dossier-cover-badge {background:var(--dossier-accent);color:var(--dossier-accent-text);border-color:transparent;border-radius:var(--dossier-radius);}

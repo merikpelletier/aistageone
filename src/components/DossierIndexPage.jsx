@@ -50,7 +50,7 @@ export default function DossierIndexPage({ page, pages, dossier, onNavigate, ext
        {entries.map((item,index)=>{
         const media=item.media_url_landscape||item.media_url||'';
         const video=item.page_type==='video'||isVideoUrl(media);
-        const thumb=video?(item.images||[]).find(url=>url&&!isVideoUrl(url))||dossier?.cover_image_landscape||dossier?.cover_image:media||(item.images||[]).find(url=>url&&!isVideoUrl(url));
+        const thumb=item.index_thumbnail_url||(video?(item.images||[]).find(url=>url&&!isVideoUrl(url))||dossier?.cover_image_landscape||dossier?.cover_image:media||(item.images||[]).find(url=>url&&!isVideoUrl(url)));
         const action=item.page_type==='quiz'?'Play':video?'Watch':'Open';
         const list=appearance.indexStyle==='list';
         return <button key={item.id} type="button" onClick={()=>onNavigate?.(item)} className={`group overflow-hidden text-left transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 ${list?'flex items-center gap-3':'flex flex-col'}`} style={{background:appearance.secondary,color:appearance.text,borderRadius:appearance.radius,border:'1px solid color-mix(in srgb, var(--dossier-text) 14%, transparent)',boxShadow:'0 5px 16px #00000012'}}>
@@ -105,9 +105,9 @@ export default function DossierIndexPage({ page, pages, dossier, onNavigate, ext
               || dossier?.cover_image_landscape
               || dossier?.cover_image
               || '';
-            const thumb = sourceIsVideo
+            const thumb = item.index_thumbnail_url || (sourceIsVideo
               ? fallbackPoster
-              : (sourceMedia || (item.page_type === 'cover' ? dossier?.cover_image_landscape || dossier?.cover_image : ''));
+              : (sourceMedia || (item.page_type === 'cover' ? dossier?.cover_image_landscape || dossier?.cover_image : '')));
             const title = item.episode_title || item.title || PAGE_LABELS[item.page_type] || 'Untitled';
             const typeLabel = PAGE_LABELS[item.page_type] || item.page_type || 'Page';
             const description = plainText(item.episode_description || item.content || '');

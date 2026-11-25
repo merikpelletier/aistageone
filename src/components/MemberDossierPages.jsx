@@ -174,6 +174,18 @@ export default function MemberDossierPages({ dossier, onClose, userEmail }) {
                 </div>
 
  
+                {editingPage.page_type !== 'index' && <div className="flex items-start gap-3 border border-white/10 p-3">
+                  {editingPage.index_thumbnail_url && <img src={editingPage.index_thumbnail_url} alt="" className="w-24 aspect-video object-cover rounded border border-white/10"/>}
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <p className="text-xs font-semibold">{t('Index thumbnail','Index thumbnail')}</p>
+                    <p className="text-xs text-white/50">{t('Index thumbnail description','Image displayed in the table of contents, independently of the page media.')}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 border border-white/20 px-2 py-1.5 text-xs"><Upload size={14}/>{uploading==='index_thumbnail_url'?t('Uploading…','Uploading…'):t('Upload thumbnail','Upload thumbnail')}<input type="file" accept="image/*" disabled={!!uploading} className="hidden" onChange={e=>upload(e.target.files?.[0],'index_thumbnail_url')}/></label>
+                      {vaultButtons('index_thumbnail_url',[['image','Vault images']])}
+                      {editingPage.index_thumbnail_url && <button type="button" onClick={()=>update('index_thumbnail_url',null)} className="text-xs underline text-white/60">{t('Remove thumbnail','Remove thumbnail')}</button>}
+                    </div>
+                  </div>
+                </div>}
                 {editingPage.page_type === 'quiz' && <DossierQuizEditor value={editingPage.content} onChange={value => update('content', value)} />}
 
                 <div className="flex flex-wrap gap-1 border-b border-white/10 pb-2">
