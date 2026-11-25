@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Bookmark } from 'lucide-react';
 import { useVault } from '@/hooks/useVault';
 
-export default function SeriesPageViewer({ page, onImageClick, dossierId = '', allPages = [], onNavigateToPage }) {
+export default function SeriesPageViewer({ page, onImageClick, dossierId = '', allPages = [], onNavigateToPage, external = false }) {
   const { userEmail, savedUrls, saveToVault } = useVault();
   const characters = page.series_characters || [];
   const sets = page.series_sets || [];
@@ -32,12 +32,12 @@ export default function SeriesPageViewer({ page, onImageClick, dossierId = '', a
               style={{ aspectRatio: '9/16', maxHeight: '70vh' }}
               onClick={() => onImageClick?.(url)}
             />
-            <button
+            {!external && <button
               onClick={() => saveToVault(url, 'image', dossierId, 'reference')}
               className={`absolute bottom-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-all ${savedUrls.has(url) ? 'bg-red-600' : 'bg-black/60'}`}
             >
               <Bookmark size={16} className="text-white" fill={savedUrls.has(url) ? 'white' : 'none'} />
-            </button>
+            </button>}
           </div>
         );
       })()}
@@ -50,7 +50,7 @@ export default function SeriesPageViewer({ page, onImageClick, dossierId = '', a
       )}
 
       {/* Studio Banner */}
-      {page.show_studio_banner && (
+      {!external && page.show_studio_banner && (
         <div className="px-6 pb-4 flex-shrink-0">
           <div className="bg-amber-600/20 border border-amber-500/30 rounded-lg px-4 py-3">
             <p className="text-amber-400 text-xs font-bold uppercase tracking-widest text-center">
@@ -85,12 +85,12 @@ export default function SeriesPageViewer({ page, onImageClick, dossierId = '', a
                       className="w-16 h-16 rounded-full object-cover cursor-pointer"
                       onClick={() => onImageClick?.(char.photo_url)}
                     />
-                    <button
+                    {!external && <button
                       onClick={() => saveToVault(char.photo_url, 'image', dossierId, 'character')}
                       className={`absolute bottom-0 right-0 w-5 h-5 rounded-full flex items-center justify-center transition-all ${savedUrls.has(char.photo_url) ? 'bg-red-600' : 'bg-black/70'}`}
                     >
                       <Bookmark size={8} className="text-white" fill={savedUrls.has(char.photo_url) ? 'white' : 'none'} />
-                    </button>
+                    </button>}
                   </div>
                 ) : (
                   <div className="w-16 h-16 rounded-full bg-neutral-800 flex-shrink-0 flex items-center justify-center">
@@ -110,12 +110,12 @@ export default function SeriesPageViewer({ page, onImageClick, dossierId = '', a
                             className="w-12 h-12 object-cover rounded cursor-pointer"
                             onClick={() => onImageClick?.(url)}
                           />
-                          <button
+                          {!external && <button
                             onClick={() => saveToVault(url, 'image', dossierId, 'character')}
                             className={`absolute top-0.5 right-0.5 w-4 h-4 rounded-full flex items-center justify-center transition-all ${savedUrls.has(url) ? 'bg-red-600' : 'bg-black/60'}`}
                           >
                             <Bookmark size={7} className="text-white" fill={savedUrls.has(url) ? 'white' : 'none'} />
-                          </button>
+                          </button>}
                         </div>
                       ))}
                     </div>
@@ -162,12 +162,12 @@ export default function SeriesPageViewer({ page, onImageClick, dossierId = '', a
                           />
                         )}
                         {!url.match(/\.(mp4|webm|ogg)$/i) && (
-                          <button
+                          {!external && <button
                             onClick={() => saveToVault(url, 'image', dossierId, 'costume')}
                             className={`absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center transition-all ${savedUrls.has(url) ? 'bg-red-600' : 'bg-black/60'}`}
                           >
                             <Bookmark size={10} className="text-white" fill={savedUrls.has(url) ? 'white' : 'none'} />
-                          </button>
+                          </button>}
                         )}
                       </div>
                     ))}
@@ -214,12 +214,12 @@ export default function SeriesPageViewer({ page, onImageClick, dossierId = '', a
                           />
                         )}
                         {!url.match(/\.(mp4|webm|ogg)$/i) && (
-                          <button
+                          {!external && <button
                             onClick={() => saveToVault(url, 'image', dossierId, 'set')}
                             className={`absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center transition-all ${savedUrls.has(url) ? 'bg-red-600' : 'bg-black/60'}`}
                           >
                             <Bookmark size={10} className="text-white" fill={savedUrls.has(url) ? 'white' : 'none'} />
-                          </button>
+                          </button>}
                         )}
                       </div>
                     ))}

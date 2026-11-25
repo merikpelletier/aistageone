@@ -136,7 +136,7 @@ function BlockPlayerLoader({ episodePageId, dossierId, onPlay, blockIds }) {
   return null;
 }
 
-export default function DossierViewer({ pages, onClose, dossier }) {
+export default function DossierViewer({ pages, onClose, dossier, external = false }) {
   const { userEmail, savedUrls, saveToVault } = useVault();
   const { setAppContext } = useAppContext();
   const [productionEpisode, setProductionEpisode] = useState(null);
@@ -291,7 +291,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
     <div
       ref={containerRef}
       className={`fixed bg-black z-30 ${isLandscape ? 'inset-0 flex items-center justify-center' : 'inset-x-0 top-0'}`}
-      style={isLandscape ? {} : { bottom: 'calc(56px + env(safe-area-inset-bottom))' }}
+      style={isLandscape ? {} : { bottom: external ? 'env(safe-area-inset-bottom)' : 'calc(56px + env(safe-area-inset-bottom))' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -382,7 +382,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
                     ) : (
                       <div key={idx} className="relative rounded-lg" style={{ height: '45vw' }}>
                         <img src={img} alt="" className="w-full h-full object-cover cursor-pointer rounded-lg" onClick={() => setFullscreenImage(img)} />
-                        <button
+                        {!external && <button
                           onClick={(e) => {
                             e.stopPropagation();
                             saveToVault(img, 'image', dossier?.id || '', 'reference');
@@ -390,7 +390,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
                           className={`absolute bottom-2 right-2 z-10 w-9 h-9 flex items-center justify-center rounded-full shadow-lg ${savedUrls.has(img) ? 'bg-red-600 text-white' : 'bg-black/60 text-white'}`}
                         >
                           <Bookmark size={16} fill={savedUrls.has(img) ? 'white' : 'none'} />
-                        </button>
+                        </button>}
                       </div>
                     )
                   ))}
@@ -453,6 +453,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
           {/* Series page */}
           {page?.page_type === 'series' && (
             <SeriesPageViewer
+              external={external}
               page={page}
               onImageClick={setFullscreenImage}
               dossierId={dossier?.id || ''}
@@ -464,7 +465,8 @@ export default function DossierViewer({ pages, onClose, dossier }) {
             />
           )}
           {/* Production Kit page — show spinner, production room opens via overlay */}
-          {page?.page_type === 'production_kit' && !kitProductionPage && (() => {
+          {external && page?.page_type === 'production_kit' && <ProductionKitViewer page={page} onImageClick={setFullscreenImage} external />}
+          {!external && page?.page_type === 'production_kit' && !kitProductionPage && (() => {
             if (!kitProductionDismissed.current) {
               kitProductionDismissed.current = true;
               setTimeout(() => setKitProductionPage(page), 0);
@@ -517,12 +519,12 @@ export default function DossierViewer({ pages, onClose, dossier }) {
                           {ep.episode_role && <p className="text-red-400 text-sm mb-1">Role: {ep.episode_role}</p>}
                           {ep.episode_description && <p className="text-white text-xs leading-relaxed mb-2 line-clamp-3">{ep.episode_description}</p>}
                           {ep.episode_tools_hint && <p className="text-white text-xs mb-3">🛠 {ep.episode_tools_hint}</p>}
-                          <button
+                          {!external && <button
                             onClick={() => setProductionEpisode(ep)}
                             className="w-full py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-light tracking-widest rounded-lg transition-colors"
                           >
                             JOIN →
-                          </button>
+                          </button>}
                         </div>
                       </div>
                     );
@@ -550,7 +552,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
 
           {/* Contest page */}
           {page?.page_type === 'contest' && (
-            <DossierContestPage page={page} dossier={dossier} />
+            <DossierContestPage page={page} dossier={dossier} external={external} />
           )}
 
           {/* Interactive question game page */}
@@ -683,7 +685,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
       )}
 
       {/* Save to Vault button */}
-      {activeMediaUrl && !page?.is_product && (
+      {!external && activeMediaUrl && !page?.is_product && (
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -710,14 +712,14 @@ export default function DossierViewer({ pages, onClose, dossier }) {
       </button>
 
       {/* Persistent program grid button — on all dossier pages */}
-      <Link
+      {!external && <Link
         to="/Index"
         onClick={(e) => e.stopPropagation()}
         className="absolute left-4 z-40 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center hover:bg-yellow-300 transition-colors pointer-events-auto shadow-lg"
         style={{ top: 'calc(52px + env(safe-area-inset-top) + 8px)' }}
       >
         <LayoutGrid size={20} className="text-black" />
-      </Link>
+      </Link>}
 
 
 
@@ -885,7 +887,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
           </div>
 
             {/* Add to Cart Button */}
-            <Button
+            {!external && <Button
               onClick={addToCart}
               className="w-full bg-white text-black hover:bg-white/90 font-light tracking-wide shadow-2xl py-6 text-base"
               disabled={added}
@@ -896,7 +898,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
                   Add to cart
                 </>
               )}
-            </Button>
+            </Button>}
           </div>
         </div>
       )}
@@ -912,7 +914,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
       >
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-          {!fullscreenImage.match(/\.(mp4|webm|ogg)$/i) ? (
+          {!external && !fullscreenImage.match(/\.(mp4|webm|ogg)$/i) ? (
             <button
               onClick={() => {
                 if (!userEmail) { base44.auth.redirectToLogin(window.location.href); return; }
@@ -943,7 +945,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
     )}
 
     {/* Production Room (episode-based) */}
-    {productionEpisode && (
+    {!external && productionEpisode && (
       <ProductionRoom
         episodePage={productionEpisode}
         dossier={dossier}
@@ -952,7 +954,7 @@ export default function DossierViewer({ pages, onClose, dossier }) {
     )}
 
     {/* Kit Production Room (free-form) */}
-    {kitProductionPage && (
+    {!external && kitProductionPage && (
       <KitProductionRoom
         kitPage={kitProductionPage}
         dossier={dossier}

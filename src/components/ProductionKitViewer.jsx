@@ -64,7 +64,7 @@ function Section({ icon, title, children, defaultOpen = false }) {
   );
 }
 
-export default function ProductionKitViewer({ page, onImageClick, onOpenProductionRoom, autoOpen }) {
+export default function ProductionKitViewer({ page, onImageClick, onOpenProductionRoom, autoOpen, external = false }) {
   const sets = page.kit_sets || [];
   const chars = page.kit_characters || [];
   const costumes = page.kit_costumes || [];
@@ -129,7 +129,7 @@ export default function ProductionKitViewer({ page, onImageClick, onOpenProducti
               <div key={idx} className="space-y-1">
                 {set.name && <p className="text-white font-medium text-sm">{set.name}</p>}
                 {set.description && <p className="text-white text-xs leading-relaxed">{set.description}</p>}
-                <MediaGrid items={set.media} onImageClick={onImageClick} onSaveToVault={userEmail ? saveToVault : null} savedUrls={savedUrls} category="set" />
+                <MediaGrid items={set.media} onImageClick={onImageClick} onSaveToVault={!external && userEmail ? saveToVault : null} savedUrls={savedUrls} category="set" />
               </div>
             ))}
           </Section>
@@ -145,12 +145,12 @@ export default function ProductionKitViewer({ page, onImageClick, onOpenProducti
                     <div className="relative flex-shrink-0">
                       <img src={char.photo_url} alt="" className="w-12 h-12 rounded-full object-cover cursor-pointer" onClick={() => onImageClick?.(char.photo_url)} />
                       {userEmail && (
-                        <button
+                        {!external && <button
                           onClick={() => saveToVault(char.photo_url, 'image', 'character')}
                           className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center transition-all ${savedUrls.has(char.photo_url) ? 'bg-red-600' : 'bg-black/70'}`}
                         >
                           <Bookmark size={8} className="text-white" fill={savedUrls.has(char.photo_url) ? 'white' : 'none'} />
-                        </button>
+                        </button>}
                       )}
                     </div>
                   )}
@@ -159,7 +159,7 @@ export default function ProductionKitViewer({ page, onImageClick, onOpenProducti
                     {char.description && <p className="text-white text-xs leading-relaxed">{char.description}</p>}
                   </div>
                 </div>
-                <MediaGrid items={char.media} onImageClick={onImageClick} onSaveToVault={userEmail ? saveToVault : null} savedUrls={savedUrls} category="character" />
+                <MediaGrid items={char.media} onImageClick={onImageClick} onSaveToVault={!external && userEmail ? saveToVault : null} savedUrls={savedUrls} category="character" />
                 {idx < chars.length - 1 && <div className="border-t border-white/5 mt-2" />}
               </div>
             ))}
@@ -173,7 +173,7 @@ export default function ProductionKitViewer({ page, onImageClick, onOpenProducti
               <div key={idx} className="space-y-1">
                 {costume.name && <p className="text-white font-medium text-sm">{costume.name}</p>}
                 {costume.description && <p className="text-white text-xs leading-relaxed">{costume.description}</p>}
-                <MediaGrid items={costume.media} onImageClick={onImageClick} onSaveToVault={userEmail ? saveToVault : null} savedUrls={savedUrls} category="costume" />
+                <MediaGrid items={costume.media} onImageClick={onImageClick} onSaveToVault={!external && userEmail ? saveToVault : null} savedUrls={savedUrls} category="costume" />
               </div>
             ))}
           </Section>
@@ -182,7 +182,7 @@ export default function ProductionKitViewer({ page, onImageClick, onOpenProducti
         {/* REFERENCE MEDIA */}
         {refMedia.length > 0 && (
           <Section icon={<Image size={15} className="text-white" />} title="Reference media">
-            <MediaGrid items={refMedia} onImageClick={onImageClick} onSaveToVault={userEmail ? saveToVault : null} savedUrls={savedUrls} category="reference" />
+            <MediaGrid items={refMedia} onImageClick={onImageClick} onSaveToVault={!external && userEmail ? saveToVault : null} savedUrls={savedUrls} category="reference" />
           </Section>
         )}
 

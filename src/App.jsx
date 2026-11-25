@@ -198,6 +198,12 @@ const AuthenticatedApp = () => {
   );
 };
 
+function PlatformUtilities() {
+  const { pathname } = useLocation();
+  if (/^\/mobile(?:\/|$)/i.test(pathname)) return null;
+  return <><PwaBrandTitlebar /><StudioRecorderLauncher /><StudioAIAssistant /><StudioMobileUtilities /></>;
+}
+
 function App() {
   return (
     <AppContextProvider>
@@ -205,10 +211,7 @@ function App() {
         <QueryClientProvider client={queryClientInstance}>
           <Router>
             <NavigationTracker />
-            <PwaBrandTitlebar />
-            <StudioRecorderLauncher />
-            <StudioAIAssistant />
-            <StudioMobileUtilities />
+            <PlatformUtilities />
             <AuthenticatedApp />
           </Router>
           <Toaster />

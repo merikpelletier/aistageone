@@ -91,6 +91,6 @@ export default function MobileDossierPlayer() {
       </div>}
       {data.pages.length>0&&<div className="absolute bottom-8 left-1/2 -translate-x-1/2 lg:bottom-5"><motion.button initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{delay:0.5}} onClick={e=>{e.stopPropagation();openDossier();}} className="group flex items-center gap-3 rounded-full px-7 py-3.5 transition-all lg:gap-2 lg:px-5 lg:py-2.5" style={{background:'rgba(255,255,255,0.90)',color:'#111',border:'1px solid rgba(0,0,0,0.18)',boxShadow:'0 4px 18px rgba(0,0,0,0.30)',backdropFilter:'blur(10px)',fontWeight:700}}><span className="text-sm tracking-[0.2em] uppercase lg:text-xs">{t('Ouvrir le dossier','Open dossier')}</span><span>→</span></motion.button></div>}
     </motion.div>}
-    {reading&&data.pages.length>0&&<DossierViewer key={currentDossier.id} pages={addPageAudioToViewer(data.pages)} dossier={currentDossier} onClose={()=>setReading(false)}/>}
+    {reading&&data.pages.length>0&&<DossierViewer external key={currentDossier.id} pages={addPageAudioToViewer(data.pages)} dossier={currentDossier} onClose={()=>setReading(false)}/>}
   </main>;
 }

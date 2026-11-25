@@ -12,7 +12,7 @@ function formatDeadline(value) {
   return new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
 }
 
-export default function DossierContestPage({ page, dossier }) {
+export default function DossierContestPage({ page, dossier, external = false }) {
   const [form, setForm] = useState({ name: '', email: '', portfolio: '', message: '' });
   const [mediaFile, setMediaFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -139,7 +139,7 @@ export default function DossierContestPage({ page, dossier }) {
           </div>
         )}
 
-        <div className="mt-9 border-t border-white/20 pt-7 max-w-3xl">
+        {!external && <div className="mt-9 border-t border-white/20 pt-7 max-w-3xl">
           <p className="text-white/50 text-xs uppercase tracking-[0.24em] mb-3">Submit your entry</p>
 
           {submitted ? (
@@ -214,7 +214,7 @@ export default function DossierContestPage({ page, dossier }) {
               <p className="text-white/35 text-xs">A member account is required to submit an entry.</p>
             </form>
           )}
-        </div>
+        </div>}
       </div>
     </div>
   );
