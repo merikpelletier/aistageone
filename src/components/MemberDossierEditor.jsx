@@ -281,10 +281,10 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
                     className="mt-1 h-4 w-4 accent-teal-400"
                   />
                   <span className="min-w-0">
-                    <span className="block text-sm font-semibold text-white">{t('Create a mobile version','Create a mobile version')}</span>
-                    <span className="mt-1 block text-xs leading-relaxed text-white/50">{t('Prepare this dossier for the external AISTAGE.ONE mobile player. The mobile version remains linked to this dossier and reuses its existing content.','Prepare this dossier for the external AISTAGE.ONE mobile player. The mobile version remains linked to this dossier and reuses its existing content.')}</span>
+                    <span className="block text-sm font-semibold text-white">{t('Créer une version mobile','Create a mobile version')}</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-white/50">{t('Préparer ce dossier pour le player mobile externe AISTAGE.ONE. La version mobile reste liée à ce dossier et réutilise son contenu existant.','Prepare this dossier for the external AISTAGE.ONE mobile player. The mobile version remains linked to this dossier and reuses its existing content.')}</span>
                     {form.mobile_public_id && (
-                      <span className="mt-2 block text-[11px] text-teal-300">{t('Mobile publication ID','Mobile publication ID')}: {form.mobile_public_id}</span>
+                      <span className="mt-2 block text-[11px] text-teal-300">{t('Identifiant de publication mobile','Mobile publication ID')}: {form.mobile_public_id}</span>
                     )}
                   </span>
                 </label>
@@ -451,10 +451,10 @@ export default function MemberDossierEditor({ dossier = null, userEmail, onClose
                     className="mt-1 h-4 w-4 accent-teal-400"
                   />
                   <span className="min-w-0">
-                    <span className="block text-sm font-semibold text-white">{t('Create a mobile version','Create a mobile version')}</span>
-                    <span className="mt-1 block text-xs leading-relaxed text-white/50">{t('Prepare this dossier for the external AISTAGE.ONE mobile player. The mobile version remains linked to this dossier and reuses its existing content.','Prepare this dossier for the external AISTAGE.ONE mobile player. The mobile version remains linked to this dossier and reuses its existing content.')}</span>
+                    <span className="block text-sm font-semibold text-white">{t('Créer une version mobile','Create a mobile version')}</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-white/50">{t('Préparer ce dossier pour le player mobile externe AISTAGE.ONE. La version mobile reste liée à ce dossier et réutilise son contenu existant.','Prepare this dossier for the external AISTAGE.ONE mobile player. The mobile version remains linked to this dossier and reuses its existing content.')}</span>
                     {form.mobile_public_id && (
-                      <span className="mt-2 block text-[11px] text-teal-300">{t('Mobile publication ID','Mobile publication ID')}: {form.mobile_public_id}</span>
+                      <span className="mt-2 block text-[11px] text-teal-300">{t('Identifiant de publication mobile','Mobile publication ID')}: {form.mobile_public_id}</span>
                     )}
                   </span>
                 </label>
