@@ -261,7 +261,7 @@ export default function Magazine() {
             >
               {currentDossier?.content_rating && (
                 <div
-                  className="min-w-[52px] h-9 px-3 flex items-center justify-center border border-white bg-black text-white text-xs font-black tracking-[0.12em] uppercase lg:min-w-[44px] lg:h-8 lg:px-2 lg:text-[10px]"
+                  className="dossier-cover-badge min-w-[52px] h-9 px-3 flex items-center justify-center border border-white bg-black text-white text-xs font-black tracking-[0.12em] uppercase lg:min-w-[44px] lg:h-8 lg:px-2 lg:text-[10px]"
                   aria-label={`Content rating ${currentDossier.content_rating}`}
                 >
                   {currentDossier.content_rating === 'all' ? 'ALL' : currentDossier.content_rating}
@@ -269,7 +269,7 @@ export default function Magazine() {
               )}
               {(currentDossier?.default_language || currentDossier?.original_language) && (
                 <div
-                  className="h-9 px-3 flex items-center justify-center border border-white bg-black text-white text-xs font-black tracking-[0.12em] uppercase lg:h-8 lg:px-2 lg:text-[10px]"
+                  className="dossier-cover-badge h-9 px-3 flex items-center justify-center border border-white bg-black text-white text-xs font-black tracking-[0.12em] uppercase lg:h-8 lg:px-2 lg:text-[10px]"
                   aria-label={`Language ${currentDossier.default_language || currentDossier.original_language}`}
                 >
                   {({

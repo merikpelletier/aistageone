@@ -749,7 +749,7 @@ export default function DossierViewer({ pages, onClose, dossier, external = fals
                       isActive ? 'bg-white/10 text-white' : 'text-white hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    <span className="text-base flex-shrink-0">{pageTypeIcon}</span>
+                    {p.index_thumbnail_url ? <img src={p.index_thumbnail_url} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0"/> : <span className="text-base flex-shrink-0">{pageTypeIcon}</span>}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-light truncate">{label}</p>
                       {p.episode_description && (
