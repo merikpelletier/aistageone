@@ -195,34 +195,14 @@ const fotoPlayWorkspace = read('src/components/studio/AuthorProductionWorkspaceP
 for (const marker of [
   "mediaType=\"audio\"",
   "voice_sample_url",
-  "voice_sample_text",
+  "voice_sample_text_fr",
+  "voice_sample_url_fr",
   "model_key: 'qwen/qwen3-tts'",
   "voice_mode = 'voice_clone'",
   "reference_audio",
   "reference_text",
   "generateDialogueAudio",
   "AI Pilot voice connection is preserved",
-]) requireMarker('FotoPlay character voice cloning', fotoPlayWorkspace, marker);
-const speechCloneEndpoint = read('supabase/functions/generateSpeech/index.ts');
-for (const marker of [
-  "if (props.mode) input.mode = body.voice_mode",
-  "if (props.reference_audio && body.reference_audio)",
-  "if (props.reference_text && body.reference_text)",
-  "if (body.character_id && !body.reference_audio)",
-  "body.model_key = 'qwen/qwen3-tts'",
-]) requireMarker('Qwen voice clone endpoint', speechCloneEndpoint, marker);
-
-const fotoPlayWorkspace = read('src/components/studio/AuthorProductionWorkspacePage.jsx');
-for (const marker of [
-  'mediaType="audio"',
-  'voice_sample_url_fr',
-  'voice_sample_text_fr',
-  "model_key: 'qwen/qwen3-tts'",
-  "voice_mode = 'voice_clone'",
-  'reference_audio',
-  'reference_text',
-  'generateDialogueAudio',
-  'AI Pilot voice connection is preserved',
 ]) requireMarker('FotoPlay character voice cloning', fotoPlayWorkspace, marker);
 const speechCloneEndpoint = read('supabase/functions/generateSpeech/index.ts');
 for (const marker of [
