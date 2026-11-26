@@ -165,10 +165,10 @@ export default function PublishedWebtoonReader({ blocks = [], coverUrl = '', onC
   return <div className="fixed inset-0 z-[320] overflow-hidden bg-black text-white" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
     {coverUrl && <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true"><img src={coverUrl} alt="" className="h-full w-full object-cover object-center" /><div className="absolute inset-0 bg-black/75" /></div>}
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 pb-20 pt-16">
-      {step?.caption && <div key={blockIndex + '-' + stepIndex} data-webtoon-caption-zone="true" className="max-h-[20dvh] w-[min(92vw,1000px,calc(58dvh*1.7778))] overflow-y-auto rounded-md bg-black/75 px-5 py-3 text-center font-semibold leading-snug shadow-lg" style={{ fontSize: clamp(config.captionSize ?? 17,14,24)+'px' }}>
+      {step?.caption && <div key={blockIndex + '-' + stepIndex} data-webtoon-caption-zone="true" className="max-h-[20dvh] w-[min(92vw,1000px,103dvh)] overflow-y-auto rounded-md bg-black/75 px-5 py-3 text-center font-semibold leading-snug shadow-lg" style={{ fontSize: clamp(config.captionSize ?? 17,14,24)+'px' }}>
         <TypeCaption value={step.caption} playing={playing}/>
       </div>}
-      <div className="relative isolate w-[min(92vw,1000px,calc(58dvh*1.7778))] shrink-0 overflow-hidden bg-black shadow-2xl" style={{ aspectRatio: maskRatio }}>
+      <div className="relative isolate w-[min(92vw,1000px,103dvh)] shrink-0 overflow-hidden bg-black shadow-2xl" style={{ aspectRatio: maskRatio }}>
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 transition-transform duration-700 ease-in-out" style={{ transform }}>
             {step?.supportUrl ? <img src={step.supportUrl} alt="" className="h-full w-full object-contain" />
