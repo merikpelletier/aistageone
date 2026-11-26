@@ -172,6 +172,30 @@ const vaultDrawer = read('src/components/VaultDrawer.jsx');
 requireMarker('Vault page', vaultSection, "asset.media_type === 'audio'");
 requireMarker('Vault drawer', vaultDrawer, "asset.media_type === 'audio'");
 
+const voiceCreator = read('src/components/studio/VoiceCreator.jsx');
+for (const marker of [
+  "supabase.functions.invoke('designCharacterVoice'",
+  "standalone: true",
+  "model_key: effectiveModel",
+  "service: 'designCharacterVoice'",
+  "kind: 'speech'",
+  "Save to Vault",
+]) requireMarker('Voice Creator UI', voiceCreator, marker);
+const voiceCreatorServer = read('supabase/functions/designCharacterVoice/index.ts');
+for (const marker of [
+  "installModelControl('designCharacterVoice')",
+  "quoteAiService(billing.service, 'designCharacterVoice'",
+  'withCreditCharge(',
+  "billing.service.storage.from('media').upload",
+  "billing.service.from('vault_asset').insert",
+  "provider: 'replicate'",
+]) requireMarker('Voice Creator server', voiceCreatorServer, marker);
+
+const voiceCreator = read('src/components/studio/VoiceCreator.jsx');
+for (const marker of ["supabase.functions.invoke('designCharacterVoice'", 'standalone: true', 'model_key: effectiveModel', "service: 'designCharacterVoice'", "kind: 'speech'", 'Save to Vault']) requireMarker('Voice Creator UI', voiceCreator, marker);
+const voiceCreatorServer = read('supabase/functions/designCharacterVoice/index.ts');
+for (const marker of ["installModelControl('designCharacterVoice')", "quoteAiService(billing.service, 'designCharacterVoice'", 'withCreditCharge(', "billing.service.storage.from('media').upload", "billing.service.from('vault_asset').insert", "provider: 'replicate'"]) requireMarker('Voice Creator server', voiceCreatorServer, marker);
+
 const activeRoots = ['src', 'supabase/functions'];
 const activeExtensions = new Set(['.js', '.jsx', '.ts', '.tsx', '.json']);
 const forbiddenBase44Endpoints = ['base44.app', 'base44.com', 'api.base44', 'base44cdn'];
@@ -187,7 +211,7 @@ const visit = (directoryUrl) => {
 };
 for (const directory of activeRoots) visit(new URL(`${directory}/`, root));
 
-for (const slug of ["generateDubbing","agent-conversations","checkStoryBlockPlan","generate-image","generate-speech","generateBlockVideos","generateCharacterSheet","generatePitchSpeech","generateSpeech","generateStoryBlock","generateVideo","invoke-llm","mixAudioVideo","proposeStoryArc","regenerateNarration","regenerateSegment","replicateGenerate","replicateWebhook","transcribe-audio"]) { requireMarker('Owner model control '+slug,read('supabase/functions/'+slug+'/index.ts'),"installModelControl('"+slug+"')"); }
+for (const slug of ["generateDubbing","designCharacterVoice","agent-conversations","checkStoryBlockPlan","generate-image","generate-speech","generateBlockVideos","generateCharacterSheet","generatePitchSpeech","generateSpeech","generateStoryBlock","generateVideo","invoke-llm","mixAudioVideo","proposeStoryArc","regenerateNarration","regenerateSegment","replicateGenerate","replicateWebhook","transcribe-audio"]) { requireMarker('Owner model control '+slug,read('supabase/functions/'+slug+'/index.ts'),"installModelControl('"+slug+"')"); }
 const modelPolicy=read('supabase/functions/_shared/modelControlPolicy.ts');
 requireMarker('Blocked model policy',modelPolicy,"BLOCKED_MODEL='bytedance/seedream-4.5'");
 requireMarker('No automatic replacement',read('supabase/functions/_shared/modelControlRuntime.ts'),'if(context.failed)');

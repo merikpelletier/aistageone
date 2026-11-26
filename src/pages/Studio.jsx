@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useAppContext } from '@/lib/AppContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Layers, Camera, ChevronRight, ChevronLeft, ChevronDown, Film, Plus, X, Mic, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench, PanelLeft, FolderOpen, Video, ListVideo, Wand2, Presentation, ShoppingBag, LayoutTemplate, MoreHorizontal, Volume2, Plug, Bot } from 'lucide-react';
+import { Users, Layers, Camera, ChevronRight, ChevronLeft, ChevronDown, Film, Plus, X, Mic, Mic2, Upload, Music, Type, Sparkles, BookOpen, Home, Clapperboard, Theater, Wrench, PanelLeft, FolderOpen, Video, ListVideo, Wand2, Presentation, ShoppingBag, LayoutTemplate, MoreHorizontal, Volume2, Plug, Bot } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getPlatformLanguage, fetchTranslationDictionary, translationLookup, translatedLabel } from '@/lib/translationDictionary';
 import { useStudioTranslation } from '@/lib/useStudioTranslation';
@@ -27,6 +27,7 @@ import VoiceRecorder from '@/components/studio/VoiceRecorder';
 import AudioUploader from '@/components/studio/AudioUploader';
 import DubbingStudio from '@/components/studio/DubbingStudio';
 import TextToSpeech from '@/components/studio/TextToSpeech';
+import VoiceCreator from '@/components/studio/VoiceCreator';
 import VideoTools from '@/components/studio/VideoTools';
 import LipSync from '@/components/studio/LipSync';
 import AnimateImage from '@/components/studio/AnimateImage';
@@ -87,6 +88,7 @@ const STUDIO_TOOL_SECTIONS = [
     key: 'sound',
     label: 'Sound & Voice',
     tools: [
+      { key: 'voice_creator', label: 'Voice Creator', icon: Mic2, action: 'voice_creator' },
       { key: 'voice', label: 'Record Voice', icon: Mic, action: 'voice' },
       { key: 'dubbing', label: 'Dubbing Studio', icon: Video, action: 'dubbing' },
       { key: 'tts', label: 'Text to Speech', icon: Type, action: 'tts' },
@@ -480,6 +482,7 @@ export default function Studio() {
   const [showAudioUploader, setShowAudioUploader] = useState(false);
   const [showDubbingStudio, setShowDubbingStudio] = useState(false);
   const [showTextToSpeech, setShowTextToSpeech] = useState(false);
+  const [showVoiceCreator, setShowVoiceCreator] = useState(false);
   const [showVideoTools, setShowVideoTools] = useState(false);
   const [videoInitialMode, setVideoInitialMode] = useState(null);
   const [producedMedia, setProducedMedia] = useState(null);
@@ -674,6 +677,7 @@ export default function Studio() {
     if (showAudioUploader) openTools.push('Audio Uploader');
     if (showDubbingStudio) openTools.push('Dubbing Studio');
     if (showTextToSpeech) openTools.push('Text to Speech');
+    if (showVoiceCreator) openTools.push('Voice Creator');
     if (showVideoTools) openTools.push('AI Video');
     if (showLipSync) openTools.push('Sync');
     if (showAnimateImage) openTools.push('Animate Image');
@@ -682,7 +686,7 @@ export default function Studio() {
       section: activeToolPanel ? (sectionLabels[activeToolPanel] || activeToolPanel) : (sectionLabels[activeTab] || activeTab),
       detail: openTools.length > 0 ? `Tool open: ${openTools.join(', ')}` : (editingActor !== null ? 'Actor editor open' : editingSet !== null ? 'Set editor open' : null),
     });
-  }, [activeTab, activeToolPanel, showVoiceRecorder, showAudioUploader, showDubbingStudio, showTextToSpeech, showVideoTools, showLipSync, showAnimateImage, editingActor, editingSet]);
+  }, [activeTab, activeToolPanel, showVoiceRecorder, showAudioUploader, showDubbingStudio, showTextToSpeech, showVoiceCreator, showVideoTools, showLipSync, showAnimateImage, editingActor, editingSet]);
 
   const DEFAULT_STUDIO_TABS = [
     { key: 'home', label: 'Home', icon: 'Home', visible: true, order: 0 },
@@ -727,9 +731,11 @@ export default function Studio() {
     return <KitAssetViewer kitPage={activeKit} dossier={null} onClose={() => setActiveKit(null)} />;
   }
 
-  const activeShellKey = editingActor !== null
-    ? 'actor'
-    : editingSet !== null
+  const activeShellKey = showVoiceCreator
+    ? 'voice_creator'
+    : editingActor !== null
+      ? 'actor'
+      : editingSet !== null
       ? 'set'
       : activeToolPanel?.startsWith?.('lab:')
         ? activeToolPanel.slice(4)
@@ -747,6 +753,7 @@ export default function Studio() {
     setShowAudioUploader(false);
     setShowDubbingStudio(false);
     setShowTextToSpeech(false);
+    setShowVoiceCreator(false);
     setShowVideoTools(false);
     setVideoInitialMode(null);
     setShowLipSync(false);
@@ -768,6 +775,7 @@ export default function Studio() {
     if (tool.action === 'voice') { setShowVoiceRecorder(true); return; }
     if (tool.action === 'dubbing') { setShowDubbingStudio(true); return; }
     if (tool.action === 'tts') { setShowTextToSpeech(true); return; }
+    if (tool.action === 'voice_creator') { setShowVoiceCreator(true); return; }
     if (tool.action === 'lip_sync') { setShowLipSync(true); return; }
     if (tool.action === 'animate') { setVideoInitialMode('image'); setShowVideoTools(true); return; }
     if (tool.action === 'ai_video') { setVideoInitialMode(null); setShowVideoTools(true); return; }
@@ -821,6 +829,8 @@ export default function Studio() {
       {showDubbingStudio && (
         <DubbingStudio embedded onComplete={(file_url) => { setProducedMedia({ url: file_url, type: 'video' }); setShowDubbingStudio(false); }} onClose={() => setShowDubbingStudio(false)} block={isInProductionContext ? blockDetails?.block : null} productionMethod={isInProductionContext ? productionMethod : null} character={isInProductionContext ? blockDetails?.character : null} episodePageId={kitPage?.id} blockId={blockDetails?.block?.id} user={user} />
       )}
+
+      {showVoiceCreator && <VoiceCreator onClose={() => setShowVoiceCreator(false)} />}
 
       {showTextToSpeech && (
         <TextToSpeech embedded onComplete={(file_url) => { setProducedMedia({ url: file_url, type: 'audio' }); setShowTextToSpeech(false); }} onClose={() => setShowTextToSpeech(false)} productionMethod={isInProductionContext ? productionMethod : null} block={isInProductionContext ? blockDetails?.block : null} character={isInProductionContext ? blockDetails?.character : null} episodePageId={kitPage?.id} blockId={blockDetails?.block?.id} user={user} />
