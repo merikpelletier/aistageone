@@ -21,9 +21,11 @@ function sequence(block) {
     ? info.frames : [{ id: block.id, image_url: info.source_image_url || block.reference_media?.[0] }];
   const boxes = Array.isArray(info.text_boxes) ? info.text_boxes.filter(b => typeof b.text === 'string' && b.text.trim()) : [];
   const captions = boxes.length ? boxes : info.narration_text?.trim() ? [{ text: info.narration_text }] : [];
+  const ratio = String(info.image_aspect_ratio || block.image_aspect_ratio || '16:9').split(':').map(Number);
+  const portrait = (ratio[0] || 16) < (ratio[1] || 9);
   const grouped = frames.map(() => []);
   captions.forEach((box) => {
-    const center = info.portrait ? Number(box.y || 0) + Number(box.height || 0) / 2 : Number(box.x || 0) + Number(box.width || 0) / 2;
+    const center = portrait ? Number(box.y || 0) + Number(box.height || 0) / 2 : Number(box.x || 0) + Number(box.width || 0) / 2;
     const idx = boxes.length ? clamp(Math.floor(center / 100 * frames.length), 0, frames.length - 1) : 0;
     const words = box.text.trim().split(/\s+/);
     let part = '';
