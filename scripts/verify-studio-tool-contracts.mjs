@@ -222,7 +222,7 @@ for (const marker of [
   "payload.version = versionId",
   "https://api.replicate.com/v1/predictions",
 ]) requireMarker('Replicate version-based model routing', modelControlRuntime, marker);
-const voiceCreator = read('src/components/studio/VoiceCreator.jsx');
+
 for (const marker of [
   "useState('Hello. It is a pleasure to meet you.",
   "voice_creator.reference_sample.fr",
