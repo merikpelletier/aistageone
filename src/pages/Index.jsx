@@ -435,8 +435,8 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
         <GripVertical size={16} className="rotate-90" />
       </button>
 
-      <div className="border-b border-white/10 px-5 pb-3 pt-4 xl:px-7">
-        <div className="mb-3 flex items-center justify-between gap-4">
+      <div className="shrink-0 border-b border-white/10 px-5 pb-1 pt-2 xl:px-7">
+        <div className="mb-1 flex items-center justify-between gap-2">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/35">{t("ui", "Browse")}</p>
             <h2 className="text-lg font-black text-white">{t("ui", "Content Library")}</h2>
@@ -456,7 +456,7 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
           </div>
         </div>
 
-        <div className="grid min-w-0 grid-cols-1 gap-2">
+        <div className="grid min-w-0 grid-cols-[minmax(100px,22%)_minmax(0,1fr)] items-center gap-2">
           <div className="relative max-w-[420px]">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35" />
             <input
@@ -468,7 +468,7 @@ function DesktopClassicBrowser({ dossiers, categories, dossierClasses, popularit
             />
           </div>
 
-          <div className="flex min-w-0 max-h-[14vh] flex-wrap items-center content-start gap-1.5 overflow-y-auto pb-1 [scrollbar-width:thin]">
+          <div className="flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-scroll pb-2 [scrollbar-width:auto] [scrollbar-color:rgba(255,255,255,.55)_rgba(255,255,255,.1)]">
             {selectorOptions.map(option => (
               <button
                 key={option}
