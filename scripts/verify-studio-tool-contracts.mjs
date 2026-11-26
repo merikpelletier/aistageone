@@ -214,6 +214,14 @@ for (const marker of [
 ]) requireMarker('Qwen voice clone endpoint', speechCloneEndpoint, marker);
 forbidMarker('Speech endpoint provider routing', speechCloneEndpoint, 'api.elevenlabs.io');
 
+const modelControlRuntime = read('supabase/functions/_shared/modelControlRuntime.ts');
+for (const marker of [
+  "const requestedVersion = String(body.version || '')",
+  "requestedVersion.startsWith(`${model.model_key}:`)",
+  "const useVersionRoute = !useNamedRoute && Boolean(versionId)",
+  "payload.version = versionId",
+  "https://api.replicate.com/v1/predictions",
+]) requireMarker('Replicate version-based model routing', modelControlRuntime, marker);
 const activeRoots = ['src', 'supabase/functions'];
 const activeExtensions = new Set(['.js', '.jsx', '.ts', '.tsx', '.json']);
 const forbiddenBase44Endpoints = ['base44.app', 'base44.com', 'api.base44', 'base44cdn'];

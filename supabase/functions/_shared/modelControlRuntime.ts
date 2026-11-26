@@ -94,8 +94,18 @@ export function installModelControl(slug:string){
   // The text assistant selects official Replicate models by their stable owner/name route.
   // Other tools keep their existing version-based routing unchanged.
   const useNamedRoute = slug==='invoke-llm';
-  const target=!useNamedRoute&&model.version_id?'https://api.replicate.com/v1/predictions':`https://api.replicate.com/v1/models/${model.model_key}/predictions`;
-  const payload={...body,input:providerInput};delete payload.version;if(!useNamedRoute&&model.version_id)payload.version=model.version_id;
+  const requestedVersion = String(body.version || '');
+  const requestedModelVersion = requestedVersion.startsWith(`${model.model_key}:`)
+    ? requestedVersion.slice(model.model_key.length + 1)
+    : '';
+  const versionId = model.version_id || (/^[a-f0-9]{64}$/i.test(requestedModelVersion) ? requestedModelVersion : null);
+  const useVersionRoute = !useNamedRoute && Boolean(versionId);
+  const target = useVersionRoute
+    ? 'https://api.replicate.com/v1/predictions'
+    : `https://api.replicate.com/v1/models/${model.model_key}/predictions`;
+  const payload = { ...body, input: providerInput };
+  delete payload.version;
+  if (useVersionRoute) payload.version = versionId;
   try{
    const response=await nativeFetch(target,{method:'POST',headers:request.headers,body:JSON.stringify(payload),signal:request.signal});
    const prediction=await response.clone().json().catch(()=>({}));
