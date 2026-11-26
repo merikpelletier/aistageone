@@ -21,7 +21,7 @@ function sequence(block) {
     ? info.frames : [{ id: block.id, image_url: info.source_image_url || block.reference_media?.[0] }];
   const boxes = Array.isArray(info.text_boxes) ? info.text_boxes.filter(b => typeof b.text === 'string' && b.text.trim()) : [];
   const captions = boxes.length ? boxes : info.narration_text?.trim() ? [{ text: info.narration_text }] : [];
-  const portrait = false;
+  const portrait = Boolean(info.portrait);
   const grouped = frames.map(() => []);
   captions.forEach((box) => {
     const center = portrait ? Number(box.y || 0) + Number(box.height || 0) / 2 : Number(box.x || 0) + Number(box.width || 0) / 2;
