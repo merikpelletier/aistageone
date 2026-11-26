@@ -48,7 +48,6 @@ export default function FotoPlayWebtoonPanel({ segment, frameCount = 1, portrait
   const stepCamera = settings.stepCamera?.[index] || {};
   const frameZoom = Number(stepCamera.zoom ?? settings.frameZooms?.[activeFrame] ?? settings.cameraZoom ?? 1.05);
   const framePosition = { ...(settings.framePositions?.[activeFrame] || { x: 50, y: 50 }), ...stepCamera };
-  const captionPlacement = settings.captionPositions?.[index] || { x: 50, y: 70 };
   useEffect(() => { setSettings({ ...defaults, ...(segment.webtoon || {}) }); }, [segment.id, segment.webtoon]);
   useEffect(() => {
     if (!active || !steps.length) return undefined;
@@ -64,7 +63,7 @@ export default function FotoPlayWebtoonPanel({ segment, frameCount = 1, portrait
     // Update the parent only from the user's event, never inside React's state updater.
     // Show the first frame when adjusting camera or caption controls before playback.
     const preview = playback?.step || steps[0] || null;
-    if (preview && ['movement', 'cameraZoom', 'frameZooms', 'framePositions', 'stepCamera', 'captionSize', 'captionPosition', 'captionPositions'].includes(name)) {
+    if (preview && ['movement', 'cameraZoom', 'frameZooms', 'framePositions', 'stepCamera', 'captionSize'].includes(name)) {
       onPlaybackChange({ playing: false, index: playback?.step ? index : 0, step: preview, settings: next });
     } else if (playback?.step) {
       onPlaybackChange({ ...playback, settings: next });
@@ -73,7 +72,6 @@ export default function FotoPlayWebtoonPanel({ segment, frameCount = 1, portrait
   const editStepCamera = (axis, value) => edit('stepCamera', { ...(settings.stepCamera || {}), [index]: { ...stepCamera, [axis]: Number(value) } });
   const editFrameZoom = (value) => editStepCamera('zoom', value);
   const editFramePosition = (axis, value) => editStepCamera(axis, value);
-  const editCaptionPosition = (field, value) => edit('captionPositions', { ...(settings.captionPositions || {}), [index]: { ...captionPlacement, [field]: Number(value) } });
   const showStep = (i, playing = false) => {
     const next = Math.max(0, Math.min(steps.length - 1, i));
     onPlaybackChange({ playing, index: next, step: steps[next], settings });
@@ -123,13 +121,6 @@ export default function FotoPlayWebtoonPanel({ segment, frameCount = 1, portrait
       {['x', 'y'].map(axis => <label key={axis} className="block text-xs text-white/70">{t('fotoplay.webtoon.image', 'Image')} · {axis === 'x' ? t('fotoplay.webtoon.horizontal', 'Horizontal') : t('fotoplay.webtoon.vertical', 'Vertical')} · {Math.round(framePosition[axis] ?? 50)}%<input aria-label={t('fotoplay.webtoon.image', 'Image') + ' · ' + (axis === 'x' ? t('fotoplay.webtoon.horizontal', 'Horizontal') : t('fotoplay.webtoon.vertical', 'Vertical'))} className="mt-2 w-full accent-[#23c7be]" type="range" min="0" max="100" step="1" value={framePosition[axis] ?? 50} onChange={e => editFramePosition(axis, e.target.value)}/></label>)}
       <label className="block text-xs text-white/70">{t('fotoplay.webtoon.caption_size', 'Caption size')} · {settings.captionSize ?? 13}px<input aria-label={t('fotoplay.webtoon.caption_size', 'Caption size')} className="mt-2 w-full accent-[#23c7be]" type="range" min="10" max="24" step="1" value={settings.captionSize ?? 13} onChange={e => edit('captionSize', Number(e.target.value))}/></label>
       <label className="block text-xs text-white/70">{t('fotoplay.webtoon.seconds', 'Seconds per caption')}<input className={field} type="number" min="2" max="30" value={settings.duration} onChange={e => edit('duration', clamp(e.target.value, 2, 30))}/></label>
-      <div className="space-y-2 rounded border border-white/10 bg-white/5 p-3">
-        <p className="text-xs font-semibold text-white">{t('fotoplay.webtoon.caption', 'Caption')} {index + 1} · {t('fotoplay.webtoon.position_anywhere', 'Position anywhere on screen')}</p>
-        <p className="text-[11px] text-white/50">{t('fotoplay.webtoon.caption_help', 'Keep clear of app controls at the top or bottom. Each caption has an independent position.')}</p>
-        <label className="block text-xs text-white/70">{t('fotoplay.webtoon.horizontal', 'Horizontal')} · {Math.round(captionPlacement.x)}%<input aria-label={t('fotoplay.webtoon.caption_horizontal', 'Caption horizontal position')} className="mt-2 w-full accent-[#23c7be]" type="range" min="10" max="90" step="1" value={captionPlacement.x} onChange={e => editCaptionPosition('x', e.target.value)}/></label>
-        <label className="block text-xs text-white/70">{t('fotoplay.webtoon.vertical', 'Vertical')} · {Math.round(captionPlacement.y)}%<input aria-label={t('fotoplay.webtoon.caption_vertical', 'Caption vertical position')} className="mt-2 w-full accent-[#23c7be]" type="range" min="10" max="90" step="1" value={captionPlacement.y} onChange={e => editCaptionPosition('y', e.target.value)}/></label>
-        <button type="button" className={button} onClick={() => edit('captionPositions', { ...(settings.captionPositions || {}), [index]: { x: 50, y: 70 } })}>{t('fotoplay.webtoon.reset_caption', 'Reset caption position')}</button>
-      </div>
     </div>
     <div className="space-y-2 border-t border-white/10 pt-3">
       <p className="text-[11px] font-bold uppercase text-white/50">{t('fotoplay.webtoon.section_images', '3 · Additional images (optional)')}</p>
