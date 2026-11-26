@@ -124,61 +124,6 @@ serveWithCors(async (req) => {
 
     const voices = propsVoices(model);
     const voice = String(body.voice || defaultVoice(model));
-    const customVoiceId = String(body.voice_id || '').trim();
-    if (customVoiceId) {
-      if (!model.model_key.startsWith('elevenlabs/')) {
-        return Response.json({ error: 'Saved custom character voices require an ElevenLabs speech model.' }, { status: 400 });
-      }
-      const elevenKey = Deno.env.get('ELEVENLABS_API_KEY');
-      if (!elevenKey) return Response.json({ error: 'ELEVENLABS_API_KEY is not configured' }, { status: 503 });
-      const sourceText = String(body.text || (body.preview === true ? PREVIEW_TEXT : '')).trim();
-      if (!sourceText) return Response.json({ error: 'Text is required' }, { status: 400 });
-      if (sourceText.length > 5000) return Response.json({ error: 'ElevenLabs supports a maximum of 5,000 characters per generation.' }, { status: 400 });
-
-      const generateCustomAudio = async () => {
-        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(customVoiceId)}?output_format=mp3_44100_128`, {
-          method: 'POST',
-          headers: { 'xi-api-key': elevenKey, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
-          body: JSON.stringify({
-            text: sourceText,
-            model_id: 'eleven_v3',
-            language_code: String(body.language_code || 'en'),
-            voice_settings: {
-              stability: Math.min(1, Math.max(0, Number(body.stability ?? 0.5))),
-              similarity_boost: Math.min(1, Math.max(0, Number(body.similarity_boost ?? 0.75))),
-              style: Math.min(1, Math.max(0, Number(body.style ?? 0))),
-              speed: Math.min(1.2, Math.max(0.7, Number(body.speed ?? 1))),
-              use_speaker_boost: true,
-            },
-          }),
-        });
-        if (!response.ok) {
-          const detail = await response.text();
-          throw new Error(`ElevenLabs custom voice error (${response.status}): ${detail.slice(0, 500)}`);
-        }
-        return await response.blob();
-      };
-
-      if (body.preview === true) {
-        const blob = await generateCustomAudio();
-        const path = `voice-previews/custom/${user.id}/${crypto.randomUUID()}.mp3`;
-        const { error: uploadError } = await billing.service.storage.from('media').upload(path, blob, { contentType: 'audio/mpeg', cacheControl: '3600' });
-        if (uploadError) throw uploadError;
-        const url = billing.service.storage.from('media').getPublicUrl(path).data.publicUrl;
-        return Response.json({ file_url: url, model_key: model.model_key, voice_id: customVoiceId, credit_cost: 0 });
-      }
-
-      const dynamicQuote = await quoteAiService(billing.service, 'generateSpeech', { ...body, text: sourceText, voice }, model.model_key, 'speech');
-      const { result: publicUrl, charge } = await withCreditCharge({ ...billing, toolId: 'tts', provider: 'elevenlabs', relatedEntity: 'generateSpeech', explicitCost: dynamicQuote.credits }, async () => {
-        const blob = await generateCustomAudio();
-        const path = `tts/${user.id}/${crypto.randomUUID()}.mp3`;
-        const { error: uploadError } = await billing.service.storage.from('media').upload(path, blob, { contentType: 'audio/mpeg', cacheControl: '31536000' });
-        if (uploadError) throw uploadError;
-        return billing.service.storage.from('media').getPublicUrl(path).data.publicUrl;
-      });
-      return Response.json({ file_url: publicUrl, url: publicUrl, model_key: model.model_key, model_name: model.name || model.model_key, voice_id: customVoiceId, credit_cost: charge.cost, balance_after: charge.balanceAfter });
-    }
-
     if (voices.length && !voices.includes(voice)) return Response.json({ error: `Unsupported voice for ${model.name || model.model_key}` }, { status: 400 });
 
     if (body.preview === true) {
