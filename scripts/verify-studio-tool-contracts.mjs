@@ -191,11 +191,6 @@ for (const marker of [
   "provider: 'replicate'",
 ]) requireMarker('Voice Creator server', voiceCreatorServer, marker);
 
-const voiceCreator = read('src/components/studio/VoiceCreator.jsx');
-for (const marker of ["supabase.functions.invoke('designCharacterVoice'", 'standalone: true', 'model_key: effectiveModel', "service: 'designCharacterVoice'", "kind: 'speech'", 'Save to Vault']) requireMarker('Voice Creator UI', voiceCreator, marker);
-const voiceCreatorServer = read('supabase/functions/designCharacterVoice/index.ts');
-for (const marker of ["installModelControl('designCharacterVoice')", "quoteAiService(billing.service, 'designCharacterVoice'", 'withCreditCharge(', "billing.service.storage.from('media').upload", "billing.service.from('vault_asset').insert", "provider: 'replicate'"]) requireMarker('Voice Creator server', voiceCreatorServer, marker);
-
 const activeRoots = ['src', 'supabase/functions'];
 const activeExtensions = new Set(['.js', '.jsx', '.ts', '.tsx', '.json']);
 const forbiddenBase44Endpoints = ['base44.app', 'base44.com', 'api.base44', 'base44cdn'];
