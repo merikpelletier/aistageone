@@ -53,6 +53,9 @@ function buildTtsInput(model: any, body: any, sourceText: string) {
   if (props.prompt) input.prompt = text;
   else if (props.text) input.text = text;
   else throw new Error(`The selected model ${model.model_key} has no supported text input.`);
+  if (props.mode) input.mode = body.voice_mode || defaultFromSchema(model, 'mode', 'custom_voice');
+  if (props.reference_audio && body.reference_audio) input.reference_audio = body.reference_audio;
+  if (props.reference_text && body.reference_text) input.reference_text = body.reference_text;
   if (props.voice) input.voice = body.voice || defaultFromSchema(model, 'voice', 'Rachel');
   if (props.voice_id) input.voice_id = body.voice || defaultFromSchema(model, 'voice_id', 'Ashley');
   const requestedLanguage = typeof body.language_code === 'string' && body.language_code.trim() ? body.language_code.trim() : 'en';
@@ -100,6 +103,20 @@ serveWithCors(async (req) => {
     const billing = await createCreditBillingContext(req);
     const user = billing.user;
     const body = await req.json();
+    if (body.character_id && !body.reference_audio) {
+      const { data: character, error: characterError } = await billing.service.from('ai_pilot_characters')
+        .select('voice_sample_url, voice_sample_text, voice_sample_url_fr, voice_sample_text_fr').eq('id', String(body.character_id)).maybeSingle();
+      if (characterError) throw characterError;
+      const french = /^fr(?:[-_]|$)/i.test(String(body.language_code || ''));
+      if (french && character?.voice_sample_url && !character.voice_sample_url_fr) return Response.json({error:'Créez et approuvez la voix française du personnage dans AI Pilots Admin.'}, {status:400});
+      const sampleUrl = french ? character?.voice_sample_url_fr : character?.voice_sample_url;
+      if (sampleUrl) {
+        body.reference_audio = sampleUrl;
+        body.reference_text = (french ? character.voice_sample_text_fr : character.voice_sample_text) || '';
+        body.model_key = 'qwen/qwen3-tts';
+        body.voice_mode = 'voice_clone';
+      }
+    }
     const modelKey = String(body.model_key || 'elevenlabs/v3').trim();
     const { data: model, error: modelError } = await billing.service.from('ai_model_catalog').select('model_key,name,kind,enabled,schema,capabilities').eq('model_key', modelKey).eq('kind', 'speech').eq('enabled', true).maybeSingle();
     if (modelError) throw modelError;
