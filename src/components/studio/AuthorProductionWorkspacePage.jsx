@@ -405,7 +405,19 @@ function ComicPageWorkspace({ user, project, setProject, activeChapterId, setAct
   const updateTextBox = (id, values) => change({ text_boxes: boxes.map((box) => box.id === id ? { ...box, ...values } : box) });
   const deleteTextBox = (id) => change({ text_boxes: boxes.filter((box) => box.id !== id) });
   const saveCharacterVoice = async (characterId, values) => {
-    const next = { ...project, characters: project.characters.map((character) => character.id === characterId ? { ...character, ...values } : character) };
+    const next = {
+      ...project,
+      characters: project.characters.map((character) => character.id === characterId ? { ...character, ...values } : character),
+      chapters: project.chapters.map((chapter) => ({
+        ...chapter,
+        segments: (chapter.segments || []).map((item) => ({
+          ...item,
+          text_boxes: (item.text_boxes || []).map((box) => box.speaker_id === characterId && box.audio_url
+            ? { ...box, audio_stale: true }
+            : box),
+        })),
+      })),
+    };
     setProject(next);
     await onSave(next, { silent: true });
   };
@@ -436,7 +448,7 @@ function ComicPageWorkspace({ user, project, setProject, activeChapterId, setAct
       const response = await base44.functions.invoke('generateSpeech', payload);
       const audioUrl = response?.data?.file_url;
       if (!audioUrl) throw new Error(response?.data?.error || t('fotoplay.voice.no_audio', 'No dialogue audio was returned.'));
-      const nextBoxes = boxes.map((item) => item.id === box.id ? { ...item, audio_url: audioUrl, audio_source_text: item.text, audio_voice_sample_url: referenceAudio, audio_language: language, audio_model_key: response.data.model_key || 'qwen/qwen3-tts' } : item);
+      const nextBoxes = boxes.map((item) => item.id === box.id ? { ...item, audio_url: audioUrl, audio_source_text: item.text, audio_voice_sample_url: referenceAudio, audio_reference_text: referenceText.trim(), audio_language: language, audio_model_key: response.data.model_key || 'qwen/qwen3-tts', audio_stale: false } : item);
       await persist({ text_boxes: nextBoxes, status: 'draft' });
       toast.success(t('fotoplay.voice.dialogue_generated', 'Character dialogue generated with Qwen.'));
     } catch (error) { toast.error(error.message || t('fotoplay.voice.dialogue_failed', 'Dialogue voice generation failed.')); }
