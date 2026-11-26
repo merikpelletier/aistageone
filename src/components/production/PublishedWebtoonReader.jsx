@@ -74,7 +74,8 @@ export default function PublishedWebtoonReader({ blocks = [], coverUrl = '', onC
   const stepCamera = config.stepCamera?.[stepIndex] || {};
   const zoom = step ? clamp(stepCamera.zoom ?? config.frameZooms?.[step.frameIndex] ?? config.cameraZoom ?? 1.05, 1, 3.5) : 1;
   const count = Math.max(1, frames.length);
-  const maskRatio = 16 / 9;
+  const pageRatio = (ratio[0] || 16) / (ratio[1] || 9);
+  const maskRatio = step ? (portrait ? pageRatio * count : pageRatio / count) : pageRatio;
   const framePosition = { ...(config.framePositions?.[step?.frameIndex || 0] || { x: 50, y: 50 }), ...stepCamera };
   const panX = (50 - Math.max(0, Math.min(100, Number(framePosition.x ?? 50)))) * (zoom - 1);
   const panY = (50 - Math.max(0, Math.min(100, Number(framePosition.y ?? 50)))) * (zoom - 1);
@@ -176,8 +177,8 @@ export default function PublishedWebtoonReader({ blocks = [], coverUrl = '', onC
               </div>}
           </div>
         </div>
+        {step?.caption && <div key={blockIndex + '-' + stepIndex} className="pointer-events-none absolute z-50 w-max max-w-[min(78%,360px)] rounded bg-black/75 px-3 py-2 text-center font-medium leading-snug shadow-lg" style={{ left: clamp(position.x,10,90)+'%', top: clamp(position.y,10,90)+'%', transform:'translate(-50%,-50%)', fontSize:clamp(config.captionSize ?? 13,10,24)+'px' }}><TypeCaption value={step.caption} playing={playing}/></div>}
       </div>
-      {step?.caption && <div key={blockIndex + '-' + stepIndex} className="pointer-events-none absolute z-50 w-max max-w-[min(78%,360px)] rounded bg-black/75 px-3 py-2 text-center font-medium leading-snug shadow-lg" style={{ left: clamp(position.x,10,90)+'%', top: clamp(position.y,10,90)+'%', transform:'translate(-50%,-50%)', fontSize:clamp(config.captionSize ?? 13,10,24)+'px' }}><TypeCaption value={step.caption} playing={playing}/></div>}
     </div>
     {block.narration_audio && <audio ref={audio} key={block.id} src={block.narration_audio} preload="metadata" onLoadedMetadata={() => { setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0); updateAudioPosition(); }} onDurationChange={() => setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0)} onTimeUpdate={updateAudioPosition} onSeeking={updateAudioPosition} onEnded={() => { setAudioFinished(true); if (playing) nextBlock(); }} />}
     <div className="absolute left-3 right-3 top-3 z-30 flex items-center justify-between gap-2" style={{ paddingTop: 'env(safe-area-inset-top)' }}>

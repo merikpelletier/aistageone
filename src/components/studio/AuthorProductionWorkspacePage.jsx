@@ -294,9 +294,9 @@ function WebtoonPageCamera({ panels, ratio, selectedPanel, onSelectPanel, playba
               {panels.map((panel, index) => <div key={panel.id || index} className="min-h-0 min-w-0 overflow-hidden"><PanelTreePreview panel={panel} /></div>)}
             </div>}
       </div>
-    </div>}
-    {cameraOn && step?.caption && <div className="pointer-events-none absolute inset-0 z-[60] overflow-visible" data-webtoon-caption-layer="true">
-      <WebtoonTypeOnCaption key={`${playback.index}-${step.caption}`} text={step.caption} playbackIndex={playback.index} x={captionX} y={captionY} fontSize={Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))} />
+      {cameraOn && step?.caption && <div className="pointer-events-none absolute inset-0 z-[60] overflow-hidden" data-webtoon-caption-layer="true">
+        <WebtoonTypeOnCaption key={`${playback.index}-${step.caption}`} text={step.caption} playbackIndex={playback.index} x={captionX} y={captionY} fontSize={Math.max(10, Math.min(24, Number(settings.captionSize ?? 13) || 13))} />
+      </div>}
     </div>}
   </div>;
 }
