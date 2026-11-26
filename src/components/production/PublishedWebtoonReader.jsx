@@ -21,8 +21,7 @@ function sequence(block) {
     ? info.frames : [{ id: block.id, image_url: info.source_image_url || block.reference_media?.[0] }];
   const boxes = Array.isArray(info.text_boxes) ? info.text_boxes.filter(b => typeof b.text === 'string' && b.text.trim()) : [];
   const captions = boxes.length ? boxes : info.narration_text?.trim() ? [{ text: info.narration_text }] : [];
-  const ratio = String(info.image_aspect_ratio || block.image_aspect_ratio || '16:9').split(':').map(Number);
-  const portrait = (ratio[0] || 16) < (ratio[1] || 9);
+  const portrait = false;
   const grouped = frames.map(() => []);
   captions.forEach((box) => {
     const center = portrait ? Number(box.y || 0) + Number(box.height || 0) / 2 : Number(box.x || 0) + Number(box.width || 0) / 2;
@@ -71,18 +70,14 @@ export default function PublishedWebtoonReader({ blocks = [], coverUrl = '', onC
   const config = block?.webtoon || {};
   const { frames, steps } = useMemo(() => block ? sequence(block) : { frames: [], steps: [] }, [block]);
   const step = stepIndex >= 0 ? steps[stepIndex] : null;
-  const ratio = String(config.image_aspect_ratio || block?.image_aspect_ratio || '16:9').split(':').map(Number);
-  const portrait = (ratio[0] || 16) < (ratio[1] || 9);
   const stepCamera = config.stepCamera?.[stepIndex] || {};
   const zoom = step ? clamp(stepCamera.zoom ?? config.frameZooms?.[step.frameIndex] ?? config.cameraZoom ?? 1.05, 1, 3.5) : 1;
   const count = Math.max(1, frames.length);
-  const pageRatio = (ratio[0] || 16) / (ratio[1] || 9);
-  const maskRatio = step ? (portrait ? pageRatio * count : pageRatio / count) : pageRatio;
+  const maskRatio = 16 / 9;
   const framePosition = { ...(config.framePositions?.[step?.frameIndex || 0] || { x: 50, y: 50 }), ...stepCamera };
   const panX = (50 - Math.max(0, Math.min(100, Number(framePosition.x ?? 50)))) * (zoom - 1);
   const panY = (50 - Math.max(0, Math.min(100, Number(framePosition.y ?? 50)))) * (zoom - 1);
   const transform = step && !step.supportUrl ? 'translate(' + panX + '%, ' + panY + '%) scale(' + zoom + ')' : 'none';
-  const position = config.captionPositions?.[stepIndex] || { x: 50, y: 70 };
   // The saved narration is the master clock. Text-weighted cue positions are estimates
   // (the current production has no individual spoken-word timestamps).
   const audioCues = useMemo(() => {
@@ -169,17 +164,19 @@ export default function PublishedWebtoonReader({ blocks = [], coverUrl = '', onC
   if (!block) return null;
   return <div className="fixed inset-0 z-[320] overflow-hidden bg-black text-white" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
     {coverUrl && <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true"><img src={coverUrl} alt="" className="h-full w-full object-cover object-center" /><div className="absolute inset-0 bg-black/75" /></div>}
-    <div className="absolute inset-0 flex items-center justify-center">
-      <div className="relative isolate w-[min(92vw,1000px)] overflow-hidden bg-black shadow-2xl" style={{ aspectRatio: maskRatio, maxWidth: 'min(90vw,1000px, calc(72dvh * ' + maskRatio + '))' }}>
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 pb-20 pt-16">
+      {step?.caption && <div key={blockIndex + '-' + stepIndex} data-webtoon-caption-zone="true" className="max-h-[20dvh] w-[min(92vw,1000px,calc(58dvh*1.7778))] overflow-y-auto rounded-md bg-black/75 px-5 py-3 text-center font-semibold leading-snug shadow-lg" style={{ fontSize: clamp(config.captionSize ?? 17,14,24)+'px' }}>
+        <TypeCaption value={step.caption} playing={playing}/>
+      </div>}
+      <div className="relative isolate w-[min(92vw,1000px,calc(58dvh*1.7778))] shrink-0 overflow-hidden bg-black shadow-2xl" style={{ aspectRatio: maskRatio }}>
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 transition-transform duration-700 ease-in-out" style={{ transform }}>
             {step?.supportUrl ? <img src={step.supportUrl} alt="" className="h-full w-full object-contain" />
-              : step ? <div className="absolute inset-0 overflow-hidden"><FrameImage panel={frames[step.frameIndex || 0]} /></div> : <div className="absolute inset-0 grid gap-[4px] p-[4px]" style={portrait ? { gridTemplateRows: 'repeat(' + count + ',minmax(0,1fr))' } : { gridTemplateColumns: 'repeat(' + count + ',minmax(0,1fr))' }}>
+              : step ? <div className="absolute inset-0 overflow-hidden"><FrameImage panel={frames[step.frameIndex || 0]} /></div> : <div className="absolute inset-0 grid grid-cols-1 gap-[4px] p-[4px]" style={{ gridTemplateColumns: 'repeat(' + count + ',minmax(0,1fr))' }}>
                 {frames.map((item,i) => <div key={item.id || i} className="min-h-0 min-w-0 overflow-hidden"><FrameImage panel={item}/></div>)}
               </div>}
           </div>
         </div>
-        {step?.caption && <div key={blockIndex + '-' + stepIndex} className="pointer-events-none absolute z-50 w-max max-w-[min(78%,360px)] rounded bg-black/75 px-3 py-2 text-center font-medium leading-snug shadow-lg" style={{ left: clamp(position.x,10,90)+'%', top: clamp(position.y,10,90)+'%', transform:'translate(-50%,-50%)', fontSize:clamp(config.captionSize ?? 13,10,24)+'px' }}><TypeCaption value={step.caption} playing={playing}/></div>}
       </div>
     </div>
     {block.narration_audio && <audio ref={audio} key={block.id} src={block.narration_audio} preload="metadata" onLoadedMetadata={() => { setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0); updateAudioPosition(); }} onDurationChange={() => setAudioDuration(Number.isFinite(audio.current?.duration) ? audio.current.duration : 0)} onTimeUpdate={updateAudioPosition} onSeeking={updateAudioPosition} onEnded={() => { setAudioFinished(true); if (playing) nextBlock(); }} />}
