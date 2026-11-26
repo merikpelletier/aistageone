@@ -222,6 +222,14 @@ for (const marker of [
   "payload.version = versionId",
   "https://api.replicate.com/v1/predictions",
 ]) requireMarker('Replicate version-based model routing', modelControlRuntime, marker);
+const voiceCreator = read('src/components/studio/VoiceCreator.jsx');
+for (const marker of [
+  "useState('Hello. It is a pleasure to meet you.",
+  "voice_creator.reference_sample.fr",
+  "voice_creator.reference_sample.en",
+  "voice_creator.insert_suggested_text",
+  "current === currentSuggestion ? nextSuggestion : current",
+]) requireMarker('Voice Creator suggested reference dialogue', voiceCreator, marker);
 const activeRoots = ['src', 'supabase/functions'];
 const activeExtensions = new Set(['.js', '.jsx', '.ts', '.tsx', '.json']);
 const forbiddenBase44Endpoints = ['base44.app', 'base44.com', 'api.base44', 'base44cdn'];
