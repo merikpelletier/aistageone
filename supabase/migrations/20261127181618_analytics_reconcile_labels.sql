@@ -1,0 +1,1 @@
+insert into public.translation_dictionary(namespace,source_key,translations) values ('ui','Check Replicate statuses','{"en":"Check Replicate statuses","fr":"Vérifier les statuts Replicate"}'),('ui','Verification errors','{"en":"Verification errors","fr":"Erreurs de vérification"}') on conflict(namespace,source_key) do nothing;

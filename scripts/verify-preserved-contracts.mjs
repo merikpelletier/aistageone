@@ -120,3 +120,6 @@ if (!analytics.includes("['ai','AI Usage']") || !analytics.includes("['commerce'
 const aiAnalyticsSchema=readFileSync(new URL('../supabase/migrations/20261127180952_analytics_ai_provider_observations.sql',import.meta.url),'utf8');
 for(const [source,marker] of [[analytics,"supabase.rpc('admin_ai_analytics_snapshot',{p_range:range})"],[analytics,"ai?.recorded_cost_cad"],[analytics,"ai?.succeeded"],[aiAnalyticsSchema,"from public.ai_model_call"],[aiAnalyticsSchema,"select sum(cost_cad)"],[aiAnalyticsSchema,"if not public.is_admin()"]])if(!source.includes(marker))throw new Error('AI analytics source contract missing: '+marker);
 console.log('AI analytics source contract check passed.');
+
+const reconcileSource=readFileSync(new URL('../supabase/functions/analytics-replicate-reconcile/index.ts',import.meta.url),'utf8');
+for(const [source,marker] of [[analytics,"supabase.functions.invoke('analytics-replicate-reconcile'"],[reconcileSource,"data.user?.app_metadata?.role!=='admin'"],[reconcileSource,"method:'GET'"],[reconcileSource,"analytics_ai_prediction_observation"],[reconcileSource,"analytics_pending_predictions"]])if(!source.includes(marker))throw new Error('AI reconciliation contract missing: '+marker);
