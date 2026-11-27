@@ -132,3 +132,6 @@ for(const marker of ['data-analytics-model-ledger','overflow-x-auto','table-fixe
 const marketingSocial=readFileSync(new URL('../src/components/admin/AdminMarketingSocialAccounts.jsx',import.meta.url),'utf8');
 const marketingSocialSchema=readFileSync(new URL('../supabase/migrations/20261127194753_marketing_social_secure_config.sql',import.meta.url),'utf8');
 for(const [source,marker] of [[marketingSocial,"marketing_social_save_config"],[marketingSocial,"marketing_social_list_config"],[marketingSocial,'type="password"'],[marketingSocialSchema,'vault.create_secret'],[marketingSocialSchema,'if not public.is_admin()'],[marketingSocialSchema,'revoke all on public.marketing_social_config']])if(!source.includes(marker))throw new Error('Marketing social security contract missing: '+marker);
+
+const socialOAuth=readFileSync(new URL('../supabase/functions/marketing-social-oauth/index.ts',import.meta.url),'utf8');
+for(const [source,marker] of [[marketingSocial,"marketing-social-oauth"],[marketingSocial,"e.source!==popup.current"],[socialOAuth,"auth.user?.app_metadata?.role!=='admin'"],[socialOAuth,"code_challenge_method='S256'"],[socialOAuth,".eq('admin_id',auth.user.id)"],[socialOAuth,"marketing_oauth_store"],[socialOAuth,"marketing_oauth_delete"]])if(!source.includes(marker))throw new Error('Marketing OAuth contract missing: '+marker);
