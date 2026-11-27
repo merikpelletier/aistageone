@@ -135,3 +135,7 @@ for(const [source,marker] of [[marketingSocial,"marketing_social_save_config"],[
 
 const socialOAuth=readFileSync(new URL('../supabase/functions/marketing-social-oauth/index.ts',import.meta.url),'utf8');
 for(const [source,marker] of [[marketingSocial,"marketing-social-oauth"],[marketingSocial,"e.source!==popup.current"],[socialOAuth,"auth.user?.app_metadata?.role!=='admin'"],[socialOAuth,"code_challenge_method='S256'"],[socialOAuth,".eq('admin_id',auth.user.id)"],[socialOAuth,"marketing_oauth_store"],[socialOAuth,"marketing_oauth_delete"]])if(!source.includes(marker))throw new Error('Marketing OAuth contract missing: '+marker);
+
+const publishingStudio=readFileSync(new URL('../src/components/admin/AdminMarketingPublishingStudio.jsx',import.meta.url),'utf8');
+const publishingSchema=readFileSync(new URL('../supabase/migrations/20261127215951_marketing_publishing_drafts.sql',import.meta.url),'utf8');
+for(const [source,marker] of [[publishingStudio,'data-marketing-publishing-studio'],[publishingStudio,"url.searchParams.set('utm_source'"],[publishingStudio,'a.authorized&&!a.archived'],[publishingSchema,'enable row level security'],[publishingSchema,'public.is_admin()'],[publishingSchema,'invalid_media']])if(!source.includes(marker))throw new Error('Publishing Studio contract missing: '+marker);

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/base44Client';
 import { fetchTranslationDictionary, translationLookup, translatedLabel, getPlatformLanguage } from '@/lib/translationDictionary';
+import AdminMarketingPublishingStudio from './AdminMarketingPublishingStudio';
 import AdminMarketingSocialAccounts from './AdminMarketingSocialAccounts';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -56,8 +57,8 @@ export default function AdminMarketing() {
   const input = (key,label,type='text',extra={}) => <label className="block space-y-1 text-xs text-white/70">{t(label)}<input className={field} type={type} value={form[key]} onChange={e=>change(key,e.target.value)} {...extra}/></label>;
   const area = (key,label) => <label className="block space-y-1 text-xs text-white/70">{t(label)}<textarea className={field} rows={3} value={form[key]} onChange={e=>change(key,e.target.value)}/></label>;
   return <section className="space-y-5" data-admin-marketing="true">
-    <nav className="flex flex-wrap gap-2">{[['campaigns','Campaigns'],['social','Social Accounts']].map(([v,l])=><button key={v} className={tab===v?primary:button} onClick={()=>setTab(v)}>{t(l)}</button>)}</nav>
-    {tab==='social'?<AdminMarketingSocialAccounts t={t}/>:<>
+    <nav className="flex flex-wrap gap-2">{[['campaigns','Campaigns'],['social','Social Accounts'],['publishing','Publishing Studio']].map(([v,l])=><button key={v} className={tab===v?primary:button} onClick={()=>setTab(v)}>{t(l)}</button>)}</nav>
+    {tab==='publishing'?<AdminMarketingPublishingStudio t={t} campaigns={campaigns.data||[]}/>:tab==='social'?<AdminMarketingSocialAccounts t={t}/>:<>
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><h2 className="text-xl font-medium">{t('Campaigns')}</h2><p className="mt-1 text-xs text-white/60">{t('Campaign planning only — no automatic publication or spending.')}</p></div>
       <button type="button" className={primary} disabled={!!form} onClick={()=>open(null)}>{t('New campaign')}</button>
