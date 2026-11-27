@@ -147,3 +147,7 @@ for(const [source,marker] of [[publishingCalendar,'data-marketing-publishing-cal
 const marketingDirector=readFileSync(new URL('../src/components/admin/AdminMarketingDirector.jsx',import.meta.url),'utf8');
 const directorSchema=readFileSync(new URL('../supabase/migrations/20261127221431_marketing_director_atomic_plan.sql',import.meta.url),'utf8');
 for(const [source,marker] of [[marketingDirector,"base44.functions.invoke('invoke-llm'"],[marketingDirector,".eq('public_promo_confirmed',true)"],[marketingDirector,".eq('authorized',true)"],[directorSchema,"public.is_admin()"],[directorSchema,"0,'draft'"],[directorSchema,"marketing_publication_drafts"]])if(!source.includes(marker))throw new Error('Marketing director contract missing: '+marker);
+
+const directorSchedule=readFileSync(new URL('../supabase/migrations/20261127223302_marketing_director_autonomous_schedule.sql',import.meta.url),'utf8');
+if(marketingDirector.includes('setCount')||marketingDirector.includes('raw.posts.length>count')||directorSchedule.includes('between 1 and 7')||directorSchedule.includes("interval '32 days'"))throw new Error('Arbitrary director quota reintroduced');
+for(const marker of ['starts_on,ends_on','public.is_admin()'])if(!directorSchedule.includes(marker))throw new Error('Autonomous schedule contract missing: '+marker);
