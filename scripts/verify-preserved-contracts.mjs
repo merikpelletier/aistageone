@@ -65,3 +65,13 @@ console.log('Marketing library contract check passed.');
 if (/file\.size\s*(?:[<>]=?)\s*\d/.test(marketingLibrary)) throw new Error('Marketing uploads must not have an artificial file size cap');
 const marketingUnlimited = readFileSync(new URL('../supabase/migrations/20261127174034_remove_marketing_upload_size_limit.sql', import.meta.url), 'utf8');
 if (!marketingUnlimited.includes("file_size_limit = null where id = 'marketing-private'")) throw new Error('Marketing bucket must inherit infrastructure limits');
+
+const centralUpload = readFileSync(new URL('../src/api/base44Client.js', import.meta.url), 'utf8');
+for (const [source, marker] of [
+  [marketingLibrary, "if(form.media_type==='video')"],
+  [marketingLibrary, 'base44.integrations.Core.UploadFile({file,saveToVault:true})'],
+  [marketingLibrary, 'payload.vault_asset_id=asset.vault_asset_id'],
+  [marketingLibrary, "url.origin+'/'+id+'/iframe'"],
+  [centralUpload, 'uploadVideoToCloudflareStream(file, { dossierId })'],
+]) if (!source.includes(marker)) throw new Error('Marketing Stream contract missing: ' + marker);
+console.log('Marketing Stream routing contract check passed.');
