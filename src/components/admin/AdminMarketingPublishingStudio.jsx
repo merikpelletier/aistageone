@@ -1,7 +1,7 @@
 import React,{useState} from 'react';
 import {useQuery,useMutation,useQueryClient} from '@tanstack/react-query';
 import {supabase} from '@/api/base44Client';
-const empty=()=>({brand:'aistage',campaign_id:'',network:'facebook',title:'',caption:'',hashtags:'',destination_path:'/',media_ids:[]});
+const empty=()=>({brand:'aistage',campaign_id:'',network:'facebook',title:'',caption:'',hashtags:'',production_notes:'',destination_path:'/',media_ids:[]});
 const brands={aistage:'AISTAGE.ONE',leplateau:'LEPLATEAU.AI'};
 const networks={facebook:'Facebook',instagram:'Instagram',youtube:'YouTube'};
 const field='w-full min-w-0 border border-white/20 bg-neutral-950 px-3 py-2 text-sm text-white';
@@ -50,6 +50,7 @@ export default function AdminMarketingPublishingStudio({t,campaigns=[]}){
  <div className="max-h-48 overflow-y-auto border border-white/10">{eligible.filter(a=>a.name.toLowerCase().includes(search.toLowerCase())).map(a=><label key={a.id} className="flex items-center gap-2 border-b border-white/10 p-2 text-sm"><input type="checkbox" checked={form.media_ids.includes(a.id)} onChange={()=>pick(a.id)}/><span className="break-all">{a.name} · {t(a.media_type==='video'?'Video':'Image')}</span></label>)}</div>
  {form.media_ids.length!==selected.length&&<p className="text-red-300 text-xs">{t('Some selected media are no longer eligible.')} <button type="button" className="underline" onClick={()=>change('media_ids',selected.map(a=>a.id))}>{t('Remove unavailable media')}</button></p>}
  </div>
+ <label className="block space-y-1 text-xs text-white/70">{t('Production notes')}<textarea maxLength={2000} rows={2} className={field} value={form.production_notes||''} onChange={e=>change('production_notes',e.target.value)}/></label>
  <div className="border border-white/15 p-3 space-y-2"><h3 className="text-sm font-medium">{t('Publication preview')} · {networks[form.network]}</h3><div className="text-sm font-medium break-words">{form.title}</div><p className="text-sm whitespace-pre-wrap break-words">{form.caption}</p><p className="text-xs break-words text-white/70">{form.hashtags}</p><div className="grid grid-cols-2 gap-2">{selected.map(a=><MediaPreview key={a.id} row={a} t={t}/>)}</div><p className="text-xs break-all text-sky-300">{link}</p></div>
  {save.error&&<p role="alert" className="text-red-300 text-xs">{save.error.message}</p>}{save.isSuccess&&<p role="status" className="text-xs text-white/70">{t('Draft saved')}</p>}
  <div className="flex gap-2"><button className={primary} disabled={!valid||save.isPending}>{t('Save draft')}</button><button type="button" className={btn} disabled={save.isPending} onClick={()=>{setForm(null);save.reset();}}>{t('Close')}</button></div>

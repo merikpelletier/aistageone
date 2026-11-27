@@ -143,3 +143,7 @@ for(const [source,marker] of [[publishingStudio,'data-marketing-publishing-studi
 const publishingCalendar=readFileSync(new URL('../src/components/admin/AdminMarketingPublishingCalendar.jsx',import.meta.url),'utf8');
 const calendarSchema=readFileSync(new URL('../supabase/migrations/20261127220347_marketing_publication_calendar.sql',import.meta.url),'utf8');
 for(const [source,marker] of [[publishingCalendar,'data-marketing-publishing-calendar'],[publishingCalendar,'Approve publication'],[publishingCalendar,".eq('updated_at',row.updated_at)"],[calendarSchema,'new.approved_at=null;new.approved_by=null'],[calendarSchema,'auth.uid()'],[publishingStudio,'planned_at,approved_at,approved_by']])if(!source.includes(marker))throw new Error('Publishing Calendar contract missing: '+marker);
+
+const marketingDirector=readFileSync(new URL('../src/components/admin/AdminMarketingDirector.jsx',import.meta.url),'utf8');
+const directorSchema=readFileSync(new URL('../supabase/migrations/20261127221431_marketing_director_atomic_plan.sql',import.meta.url),'utf8');
+for(const [source,marker] of [[marketingDirector,"base44.functions.invoke('invoke-llm'"],[marketingDirector,".eq('public_promo_confirmed',true)"],[marketingDirector,".eq('authorized',true)"],[directorSchema,"public.is_admin()"],[directorSchema,"0,'draft'"],[directorSchema,"marketing_publication_drafts"]])if(!source.includes(marker))throw new Error('Marketing director contract missing: '+marker);
