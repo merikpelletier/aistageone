@@ -67,6 +67,7 @@ import Admin3DLibrary from '@/components/admin/Admin3DLibrary';
 import AdminPrelaunch from '@/components/admin/AdminPrelaunch';
 import AdminSetDesignerImages from '@/components/admin/AdminSetDesignerImages';
 import AdminAnalytics from '@/components/admin/AdminAnalytics';
+import AdminMarketing from '@/components/admin/AdminMarketing';
 import AdminTranslations from '@/components/admin/AdminTranslations';
 
 const groups = [
@@ -76,6 +77,14 @@ const groups = [
     icon: BarChart3,
     items: [
       ['analytics', 'Analytics', BarChart3, <AdminAnalytics />],
+    ],
+  },
+  {
+    id: 'marketing',
+    label: 'Marketing',
+    icon: Megaphone,
+    items: [
+      ['marketing-campaigns', 'Marketing', Megaphone, <AdminMarketing />],
     ],
   },
   {
