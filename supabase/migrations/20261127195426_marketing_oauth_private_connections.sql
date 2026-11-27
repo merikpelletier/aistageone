@@ -1,0 +1,15 @@
+create table public.marketing_oauth_attempts(state uuid primary key default gen_random_uuid(),brand text not null,provider text not null,admin_id uuid not null,verifier text not null,created_at timestamptz not null default now(),config_updated_at timestamptz not null);
+create table public.marketing_social_connections(brand text not null,provider text not null,account_id text not null,account_name text not null,network text not null,token_id uuid not null,expires_at timestamptz,scopes text,verified_at timestamptz not null default now(),primary key(brand,provider,network,account_id));
+alter table public.marketing_oauth_attempts enable row level security;
+alter table public.marketing_social_connections enable row level security;
+revoke all on public.marketing_oauth_attempts,public.marketing_social_connections from public,anon,authenticated;
+grant select,insert,update,delete on public.marketing_oauth_attempts,public.marketing_social_connections to service_role;
+create function public.marketing_oauth_secret(p_id uuid) returns text language sql security definer set search_path='' as $$select decrypted_secret from vault.decrypted_secrets where id=p_id$$;
+revoke all on function public.marketing_oauth_secret(uuid) from public,anon,authenticated;
+grant execute on function public.marketing_oauth_secret(uuid) to service_role;
+create function public.marketing_oauth_store(p_secret text) returns uuid language sql security definer set search_path='' as $$select vault.create_secret(p_secret)$$;
+revoke all on function public.marketing_oauth_store(text) from public,anon,authenticated;
+grant execute on function public.marketing_oauth_store(text) to service_role;
+create function public.marketing_oauth_delete(p_id uuid) returns void language sql security definer set search_path='' as $$delete from vault.secrets where id=p_id$$;
+revoke all on function public.marketing_oauth_delete(uuid) from public,anon,authenticated;
+grant execute on function public.marketing_oauth_delete(uuid) to service_role;
