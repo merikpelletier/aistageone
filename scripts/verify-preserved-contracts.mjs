@@ -116,3 +116,7 @@ console.log('Traffic analytics contract check passed.');
 const analyticsMenu = analytics.match(/<div className="([^"]+)" data-analytics-section-menu>/);
 if (!analyticsMenu || !analyticsMenu[1].split(' ').includes('flex-wrap') || analyticsMenu[1].includes('overflow-x-auto')) throw new Error('Analytics tabs must wrap instead of clipping horizontally');
 if (!analytics.includes("['ai','AI Usage']") || !analytics.includes("['commerce','Shop / 3D']")) throw new Error('Analytics final tabs must remain accessible');
+
+const aiAnalyticsSchema=readFileSync(new URL('../supabase/migrations/20261127180952_analytics_ai_provider_observations.sql',import.meta.url),'utf8');
+for(const [source,marker] of [[analytics,"supabase.rpc('admin_ai_analytics_snapshot',{p_range:range})"],[analytics,"ai?.recorded_cost_cad"],[analytics,"ai?.succeeded"],[aiAnalyticsSchema,"from public.ai_model_call"],[aiAnalyticsSchema,"select sum(cost_cad)"],[aiAnalyticsSchema,"if not public.is_admin()"]])if(!source.includes(marker))throw new Error('AI analytics source contract missing: '+marker);
+console.log('AI analytics source contract check passed.');
