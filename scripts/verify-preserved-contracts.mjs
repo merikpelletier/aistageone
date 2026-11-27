@@ -128,3 +128,7 @@ const analyticsCostSchema=readFileSync(new URL('../supabase/migrations/202611271
 for(const [source,marker] of [[analytics,"supabase.rpc('admin_ai_cost_estimates',{p_range:range})"],[analytics,"data-analytics-cost-report"],[analytics,"cost?.estimated_usd"],[analytics,"min-w-0 max-w-full w-full"],[analyticsCostSchema,"if not public.is_admin()"],[analyticsCostSchema,"sum(estimated_usd)"]])if(!source.includes(marker))throw new Error('Analytics cost contract missing: '+marker);
 
 for(const marker of ['data-analytics-model-ledger','overflow-x-auto','table-fixed','r.calls,r.succeeded,r.failed,r.unresolved,r.canceled,cost?.priced_calls','usd(cost?.estimated_usd)'])if(!analytics.includes(marker))throw new Error('Compact AI ledger contract missing: '+marker);
+
+const marketingSocial=readFileSync(new URL('../src/components/admin/AdminMarketingSocialAccounts.jsx',import.meta.url),'utf8');
+const marketingSocialSchema=readFileSync(new URL('../supabase/migrations/20261127194753_marketing_social_secure_config.sql',import.meta.url),'utf8');
+for(const [source,marker] of [[marketingSocial,"marketing_social_save_config"],[marketingSocial,"marketing_social_list_config"],[marketingSocial,'type="password"'],[marketingSocialSchema,'vault.create_secret'],[marketingSocialSchema,'if not public.is_admin()'],[marketingSocialSchema,'revoke all on public.marketing_social_config']])if(!source.includes(marker))throw new Error('Marketing social security contract missing: '+marker);
