@@ -112,3 +112,7 @@ for(const [source,marker] of [
  [analytics,"supabase.rpc('admin_traffic_snapshot',{p_range:range})"],
 ]) if(!source.includes(marker)) throw new Error('Traffic analytics contract missing: '+marker);
 console.log('Traffic analytics contract check passed.');
+
+const analyticsMenu = analytics.match(/<div className="([^"]+)" data-analytics-section-menu>/);
+if (!analyticsMenu || !analyticsMenu[1].split(' ').includes('flex-wrap') || analyticsMenu[1].includes('overflow-x-auto')) throw new Error('Analytics tabs must wrap instead of clipping horizontally');
+if (!analytics.includes("['ai','AI Usage']") || !analytics.includes("['commerce','Shop / 3D']")) throw new Error('Analytics final tabs must remain accessible');
