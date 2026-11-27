@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/base44Client';
+import { base44, supabase } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { fetchTranslationDictionary, translationLookup, translatedLabel, getPlatformLanguage } from '@/lib/translationDictionary';
 
@@ -24,7 +24,16 @@ function Preview({row,t}){
  const query=useQuery({queryKey:['marketing-preview',row.id,row.storage_path,row.vault_asset_id],queryFn:()=>previewUrl(row),staleTime:300000});
  if(!query.data)return <p className="text-xs text-white/50">{t(query.isPending?'Loading':'No preview available')}</p>;
  if(row.media_type==='image')return <img src={query.data} alt={row.name} className="w-full max-h-44 object-contain bg-black" loading="lazy"/>;
- if(row.media_type==='video')return <video src={query.data} controls preload="metadata" className="w-full max-h-44 bg-black"/>;
+ if(row.media_type==='video'){
+  let streamPlayer=null;
+  try{
+   const url=new URL(query.data);
+   const id=url.pathname.split('/')[1];
+   if(url.protocol==='https:'&&/^customer-[a-z0-9]+\.cloudflarestream\.com$/i.test(url.hostname)&&/^[a-z0-9_-]+$/i.test(id))streamPlayer=url.origin+'/'+id+'/iframe';
+  }catch{}
+  if(streamPlayer)return <iframe src={streamPlayer} title={row.name} allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen loading="lazy" className="w-full aspect-video bg-black border-0"/>;
+  return <video src={query.data} controls preload="metadata" className="w-full max-h-44 bg-black"/>;
+ }
  return <audio src={query.data} controls preload="none" className="w-full"/>;
 }
 export default function AdminMarketingLibrary({section='media'}){
@@ -56,10 +65,16 @@ export default function AdminMarketingLibrary({section='media'}){
     if(source==='vault'){if(!selected||selected.media_type!==form.media_type)throw Error(t('File required'));payload.vault_asset_id=selected.id;}
     else{
      if(!file||!file.type.startsWith(form.media_type+'/'))throw Error(t('File required'));
-     const ext=file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,8)||'bin';
-     uploaded=crypto.randomUUID()+'.'+ext;
-     const {error}=await supabase.storage.from('marketing-private').upload(uploaded,file,{contentType:file.type,upsert:false});if(error)throw error;
-     payload.storage_path=uploaded;
+     if(form.media_type==='video'){
+      const asset=await base44.integrations.Core.UploadFile({file,saveToVault:true});
+      if(!asset?.vault_asset_id)throw Error(t('No preview available'));
+      payload.vault_asset_id=asset.vault_asset_id;
+     }else{
+      const ext=file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,8)||'bin';
+      uploaded=crypto.randomUUID()+'.'+ext;
+      const {error}=await supabase.storage.from('marketing-private').upload(uploaded,file,{contentType:file.type,upsert:false});if(error)throw error;
+      payload.storage_path=uploaded;
+     }
     }
    }
   }
@@ -95,7 +110,7 @@ export default function AdminMarketingLibrary({section='media'}){
    </div>}
    {!isSpeaker&&<label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={form.authorized} onChange={e=>change('authorized',e.target.checked)}/>{t('Authorized for promotion')}</label>}
    {save.error&&<p role="alert" className="text-red-300 text-sm">{save.error.message}</p>}
-   <div className="flex gap-2"><button className={primary} disabled={!valid||save.isPending}>{t('Save')}</button><button type="button" className={btn} disabled={save.isPending} onClick={()=>{setForm(null);setEditing(null);}}>{t('Cancel')}</button></div>
+   <div className="flex gap-2"><button className={primary} disabled={!valid||save.isPending}>{t(save.isPending?'Loading':'Save')}</button><button type="button" className={btn} disabled={save.isPending} onClick={()=>{setForm(null);setEditing(null);}}>{t('Cancel')}</button></div>
   </form>}
   {(activeQuery.isPending||speakers.isPending||media.isPending)&&<p>{t('Loading')}</p>}
   {[speakers.error,media.error].filter(Boolean).map((e,i)=><p key={i} role="alert" className="text-red-300">{e.message}</p>)}
