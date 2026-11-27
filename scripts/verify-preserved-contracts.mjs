@@ -61,3 +61,7 @@ for (const [source, marker] of [
   [marketingLibrarySchema, "bucket_id='marketing-private' and (select public.is_admin())"],
 ]) if (!source.includes(marker)) throw new Error('Marketing library contract missing: ' + marker);
 console.log('Marketing library contract check passed.');
+
+if (/file\.size\s*(?:[<>]=?)\s*\d/.test(marketingLibrary)) throw new Error('Marketing uploads must not have an artificial file size cap');
+const marketingUnlimited = readFileSync(new URL('../supabase/migrations/20261127174034_remove_marketing_upload_size_limit.sql', import.meta.url), 'utf8');
+if (!marketingUnlimited.includes("file_size_limit = null where id = 'marketing-private'")) throw new Error('Marketing bucket must inherit infrastructure limits');
