@@ -45,3 +45,19 @@ for (const [source, marker] of marketingContracts) {
   if (!source.includes(marker)) throw new Error('Marketing contract missing: ' + marker);
 }
 console.log('Admin Marketing contract check passed.');
+
+const marketingLibrary = readFileSync(new URL('../src/components/admin/AdminMarketingLibrary.jsx', import.meta.url), 'utf8');
+const marketingLibrarySchema = readFileSync(new URL('../supabase/migrations/20261127173643_admin_marketing_library.sql', import.meta.url), 'utf8');
+for (const [source, marker] of [
+  [admin, 'section="speakers"'], [admin, 'section="media"'],
+  [marketingLibrary, "user?.role==='admin'"],
+  [marketingLibrary, "readRows('marketing_spokespersons')"],
+  [marketingLibrary, "readRows('marketing_media')"],
+  [marketingLibrary, "from('vault_asset')"],
+  [marketingLibrary, "from('marketing-private').upload"],
+  [marketingLibrary, 'fetchTranslationDictionary'],
+  [marketingLibrarySchema, 'alter table public.marketing_spokespersons enable row level security'],
+  [marketingLibrarySchema, 'alter table public.marketing_media enable row level security'],
+  [marketingLibrarySchema, "bucket_id='marketing-private' and (select public.is_admin())"],
+]) if (!source.includes(marker)) throw new Error('Marketing library contract missing: ' + marker);
+console.log('Marketing library contract check passed.');
