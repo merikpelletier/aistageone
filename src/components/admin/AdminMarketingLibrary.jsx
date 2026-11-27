@@ -80,7 +80,7 @@ export default function AdminMarketingLibrary({section='media'}){
   {form&&<form className="border border-white/15 bg-neutral-950 p-4 space-y-3" onSubmit={e=>{e.preventDefault();if(valid&&!save.isPending)save.mutate();}}>
    <div className="grid gap-3 md:grid-cols-2">{input('name','Name')}{select('brand','Brand',brands)}
    {isSpeaker?<>{input('description','Description',true)}{input('appearance','Appearance',true)}{input('wardrobe','Wardrobe',true)}{input('setting','Setting',true)}</>:<>
-   {select('language','Language',languages)}{select('purpose','Purpose',purposes,v=>{setForm(f=>({...f,purpose:v,media_type:allowed[v].includes(f.media_type)?f.media_type:allowed[v][0]}));setSelected(null);setFile(null);})}
+   {select('language','Language',languages)}{select('purpose','Purpose',editing?Object.fromEntries(Object.entries(purposes).filter(([k])=>allowed[k].includes(form.media_type))):purposes,v=>{setForm(f=>({...f,purpose:v,media_type:allowed[v].includes(f.media_type)?f.media_type:allowed[v][0]}));setSelected(null);setFile(null);})}
    {editing?<label className="text-xs">{t('Media type')}<p>{t(types[form.media_type])}</p></label>:select('media_type','Media type',Object.fromEntries(Object.entries(types).filter(([k])=>allowed[form.purpose].includes(k))),v=>{change('media_type',v);setSelected(null);setFile(null);})}
    {select('spokesperson_id','Spokesperson',{'':'Unassigned',...Object.fromEntries(speakerRows.filter(s=>!s.archived||s.id===form.spokesperson_id).map(s=>[s.id,s.name]))})}{input('description','Description',true)}
    </>}
