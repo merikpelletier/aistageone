@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Play, Users, PenTool, Code2, Handshake } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/api/base44Client';
+import { recordNavigationEvent } from '@/lib/NavigationTracker';
 import { translateLanding, localizeLandingRecord } from '@/lib/landingFrench';
 
 const ROLE_ICONS = [Users, PenTool, Code2, Handshake];
@@ -122,6 +123,7 @@ export default function PrelaunchLanding() {
       else setWaitMessage(t(preRegister?.button_2_url) || error.message || t('Unable to register right now.'));
       return;
     }
+    recordNavigationEvent('waitlist_success');
     setWaitMessage(t(preRegister?.button_1_url) || t('You are on the list. We will keep you informed.'));
     setWaitlist(v => ({ ...v, name: '', email: '' }));
   };
@@ -136,6 +138,7 @@ export default function PrelaunchLanding() {
       setTeamMessage(joinTeam?.button_2_label || error.message || t('Unable to send your application right now.'));
       return;
     }
+    recordNavigationEvent('team_success');
     setTeamMessage(t(joinTeam?.button_1_url) || t('Thank you. Your application has been received.'));
     setTeam({ name: '', email: '', role_interest: '', portfolio_url: '', message: '' });
   };
