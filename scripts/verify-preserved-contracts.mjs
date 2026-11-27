@@ -96,3 +96,19 @@ for (const [source, marker] of [
   [analyticsSchema, "aistage_publication_date between s and e"],
 ]) if (!source.includes(marker)) throw new Error('Analytics contract missing: ' + marker);
 console.log('Live Analytics contract check passed.');
+
+const trafficSchema=readFileSync(new URL('../supabase/migrations/20261127175900_analytics_navigation_and_conversion.sql',import.meta.url),'utf8');
+const navigationTracker=readFileSync(new URL('../src/lib/NavigationTracker.jsx',import.meta.url),'utf8');
+const landing=readFileSync(new URL('../src/pages/PrelaunchLanding.jsx',import.meta.url),'utf8');
+for(const [source,marker] of [
+ [trafficSchema,'on conflict(id) do nothing'],
+ [trafficSchema,'alter table public.analytics_navigation_event enable row level security'],
+ [trafficSchema,'if not public.is_admin()'],
+ [trafficSchema,'revoke all on public.analytics_navigation_event from public,anon,authenticated'],
+ [navigationTracker,'navigator.globalPrivacyControl'],
+ [navigationTracker,"recordNavigationEvent('page_view',location.pathname)"],
+ [landing,"recordNavigationEvent('waitlist_success')"],
+ [landing,"recordNavigationEvent('team_success')"],
+ [analytics,"supabase.rpc('admin_traffic_snapshot',{p_range:range})"],
+]) if(!source.includes(marker)) throw new Error('Traffic analytics contract missing: '+marker);
+console.log('Traffic analytics contract check passed.');
