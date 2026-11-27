@@ -139,3 +139,7 @@ for(const [source,marker] of [[marketingSocial,"marketing-social-oauth"],[market
 const publishingStudio=readFileSync(new URL('../src/components/admin/AdminMarketingPublishingStudio.jsx',import.meta.url),'utf8');
 const publishingSchema=readFileSync(new URL('../supabase/migrations/20261127215951_marketing_publishing_drafts.sql',import.meta.url),'utf8');
 for(const [source,marker] of [[publishingStudio,'data-marketing-publishing-studio'],[publishingStudio,"url.searchParams.set('utm_source'"],[publishingStudio,'a.authorized&&!a.archived'],[publishingSchema,'enable row level security'],[publishingSchema,'public.is_admin()'],[publishingSchema,'invalid_media']])if(!source.includes(marker))throw new Error('Publishing Studio contract missing: '+marker);
+
+const publishingCalendar=readFileSync(new URL('../src/components/admin/AdminMarketingPublishingCalendar.jsx',import.meta.url),'utf8');
+const calendarSchema=readFileSync(new URL('../supabase/migrations/20261127220347_marketing_publication_calendar.sql',import.meta.url),'utf8');
+for(const [source,marker] of [[publishingCalendar,'data-marketing-publishing-calendar'],[publishingCalendar,'Approve publication'],[publishingCalendar,".eq('updated_at',row.updated_at)"],[calendarSchema,'new.approved_at=null;new.approved_by=null'],[calendarSchema,'auth.uid()'],[publishingStudio,'planned_at,approved_at,approved_by']])if(!source.includes(marker))throw new Error('Publishing Calendar contract missing: '+marker);
