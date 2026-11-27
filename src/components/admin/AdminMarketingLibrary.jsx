@@ -55,7 +55,7 @@ export default function AdminMarketingLibrary({section='media'}){
    if(!editing){
     if(source==='vault'){if(!selected||selected.media_type!==form.media_type)throw Error(t('File required'));payload.vault_asset_id=selected.id;}
     else{
-     if(!file||!file.type.startsWith(form.media_type+'/')||file.size>52428800)throw Error(t('File required'));
+     if(!file||!file.type.startsWith(form.media_type+'/'))throw Error(t('File required'));
      const ext=file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,8)||'bin';
      uploaded=crypto.randomUUID()+'.'+ext;
      const {error}=await supabase.storage.from('marketing-private').upload(uploaded,file,{contentType:file.type,upsert:false});if(error)throw error;
@@ -72,7 +72,7 @@ export default function AdminMarketingLibrary({section='media'}){
  const rows=(activeQuery.data||[]).filter(r=>(filter==='all'||(filter==='active'?!r.archived:r.archived))&&(brandFilter==='all'||r.brand===brandFilter||r.brand==='both')&&(isSpeaker||((langFilter==='all'||r.language===langFilter||r.language==='both')&&(typeFilter==='all'||r.media_type===typeFilter))));
  const select=(k,label,options,onChange)=> <label className="block text-xs text-white/70 space-y-1">{t(label)}<select className={field} value={form[k]} onChange={e=>onChange?onChange(e.target.value):change(k,e.target.value)}>{Object.entries(options).map(([v,l])=><option key={v} value={v}>{t(l)}</option>)}</select></label>;
  const input=(k,label,area=false)=><label className="block text-xs text-white/70 space-y-1">{t(label)}{area?<textarea className={field} rows={3} value={form[k]} onChange={e=>change(k,e.target.value)}/>:<input className={field} maxLength={200} required value={form[k]} onChange={e=>change(k,e.target.value)}/>}</label>;
- const valid=form&&form.name.trim()&&(isSpeaker||(form.authorized&&allowed[form.purpose]?.includes(form.media_type)&&(editing|| (source==='vault'?selected?.media_type===form.media_type:!!file&&file.type.startsWith(form.media_type+'/')&&file.size<=52428800))));
+ const valid=form&&form.name.trim()&&(isSpeaker||(form.authorized&&allowed[form.purpose]?.includes(form.media_type)&&(editing|| (source==='vault'?selected?.media_type===form.media_type:!!file&&file.type.startsWith(form.media_type+'/')))));
  const filterSelect=(value,onChange,options,label)=><select aria-label={t(label)} className={btn+' bg-neutral-950'} value={value} onChange={e=>onChange(e.target.value)}>{Object.entries(options).map(([v,l])=><option key={v} value={v}>{t(l)}</option>)}</select>;
  return <section className="space-y-4" data-marketing-library={section}>
   <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-medium">{t(isSpeaker?'Spokespersons':'Media Library')}</h2><button className={primary} disabled={!!form} onClick={()=>open()}>{t(isSpeaker?'New spokesperson':'New media')}</button></div>
