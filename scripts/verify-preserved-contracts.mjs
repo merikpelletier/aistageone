@@ -123,3 +123,6 @@ console.log('AI analytics source contract check passed.');
 
 const reconcileSource=readFileSync(new URL('../supabase/functions/analytics-replicate-reconcile/index.ts',import.meta.url),'utf8');
 for(const [source,marker] of [[analytics,"supabase.functions.invoke('analytics-replicate-reconcile'"],[reconcileSource,"data.user?.app_metadata?.role!=='admin'"],[reconcileSource,"method:'GET'"],[reconcileSource,"analytics_ai_prediction_observation"],[reconcileSource,"analytics_pending_predictions"]])if(!source.includes(marker))throw new Error('AI reconciliation contract missing: '+marker);
+
+const analyticsCostSchema=readFileSync(new URL('../supabase/migrations/20261127182155_analytics_partial_provider_costs.sql',import.meta.url),'utf8');
+for(const [source,marker] of [[analytics,"supabase.rpc('admin_ai_cost_estimates',{p_range:range})"],[analytics,"data-analytics-cost-report"],[analytics,"cost?.estimated_usd"],[analytics,"min-w-0 max-w-full w-full"],[analyticsCostSchema,"if not public.is_admin()"],[analyticsCostSchema,"sum(estimated_usd)"]])if(!source.includes(marker))throw new Error('Analytics cost contract missing: '+marker);
