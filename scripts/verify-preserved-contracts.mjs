@@ -126,3 +126,5 @@ for(const [source,marker] of [[analytics,"supabase.functions.invoke('analytics-r
 
 const analyticsCostSchema=readFileSync(new URL('../supabase/migrations/20261127182155_analytics_partial_provider_costs.sql',import.meta.url),'utf8');
 for(const [source,marker] of [[analytics,"supabase.rpc('admin_ai_cost_estimates',{p_range:range})"],[analytics,"data-analytics-cost-report"],[analytics,"cost?.estimated_usd"],[analytics,"min-w-0 max-w-full w-full"],[analyticsCostSchema,"if not public.is_admin()"],[analyticsCostSchema,"sum(estimated_usd)"]])if(!source.includes(marker))throw new Error('Analytics cost contract missing: '+marker);
+
+for(const marker of ['data-analytics-model-ledger','overflow-x-auto','table-fixed','r.calls,r.succeeded,r.failed,r.unresolved,r.canceled,cost?.priced_calls','usd(cost?.estimated_usd)'])if(!analytics.includes(marker))throw new Error('Compact AI ledger contract missing: '+marker);
