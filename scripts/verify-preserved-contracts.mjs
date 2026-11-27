@@ -75,3 +75,12 @@ for (const [source, marker] of [
   [centralUpload, 'uploadVideoToCloudflareStream(file, { dossierId })'],
 ]) if (!source.includes(marker)) throw new Error('Marketing Stream contract missing: ' + marker);
 console.log('Marketing Stream routing contract check passed.');
+
+for (const source of [marketing, marketingLibrary]) {
+  for (const tag of source.matchAll(/<select\b[^>]*>/g)) {
+    if (!tag[0].includes('colorScheme:"dark"')) throw new Error('Marketing select requires dark native menu contrast');
+  }
+  for (const tag of source.matchAll(/<option\b[^>]*>/g)) {
+    if (!tag[0].includes('color:"#fff",backgroundColor:"#171717"')) throw new Error('Marketing option requires readable contrast');
+  }
+}
