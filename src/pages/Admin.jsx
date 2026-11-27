@@ -68,6 +68,7 @@ import AdminPrelaunch from '@/components/admin/AdminPrelaunch';
 import AdminSetDesignerImages from '@/components/admin/AdminSetDesignerImages';
 import AdminAnalytics from '@/components/admin/AdminAnalytics';
 import AdminMarketing from '@/components/admin/AdminMarketing';
+import AdminMarketingLibrary from '@/components/admin/AdminMarketingLibrary';
 import AdminTranslations from '@/components/admin/AdminTranslations';
 
 const groups = [
@@ -85,6 +86,8 @@ const groups = [
     icon: Megaphone,
     items: [
       ['marketing-campaigns', 'Marketing', Megaphone, <AdminMarketing />],
+      ['marketing-speakers', 'Spokespersons', Users, <AdminMarketingLibrary key="speakers" section="speakers" />],
+      ['marketing-media', 'Media Library', Library, <AdminMarketingLibrary key="media" section="media" />],
     ],
   },
   {
