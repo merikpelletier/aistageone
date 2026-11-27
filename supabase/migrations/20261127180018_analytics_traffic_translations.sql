@@ -1,0 +1,20 @@
+insert into public.translation_dictionary(namespace,source_key,translations) values
+('ui','Recorded page views','{"en":"Recorded page views","fr":"Pages vues enregistrées"}'::jsonb),
+('ui','Waitlist registrations','{"en":"Waitlist registrations","fr":"Préinscriptions"}'::jsonb),
+('ui','Team applications','{"en":"Team applications","fr":"Candidatures"}'::jsonb),
+('ui','Internal traffic collection starts with this release. Earlier page views are unavailable. Conversion totals come from database records; campaign attribution is observed client-side and may be incomplete.','{"en":"Internal traffic collection starts with this release. Earlier page views are unavailable. Conversion totals come from database records; campaign attribution is observed client-side and may be incomplete.","fr":"La collecte interne débute avec cette version. Les visites antérieures sont indisponibles. Les totaux de conversion proviennent de la base ; l’attribution aux campagnes est observée côté navigateur et peut être incomplète."}'::jsonb),
+('ui','Traffic by site','{"en":"Traffic by site","fr":"Trafic par site"}'::jsonb),
+('ui','Site','{"en":"Site","fr":"Site"}'::jsonb),
+('ui','Page views','{"en":"Page views","fr":"Pages vues"}'::jsonb),
+('ui','Attributed registrations','{"en":"Attributed registrations","fr":"Préinscriptions attribuées"}'::jsonb),
+('ui','Attributed applications','{"en":"Attributed applications","fr":"Candidatures attribuées"}'::jsonb),
+('ui','Traffic by day','{"en":"Traffic by day","fr":"Trafic par jour"}'::jsonb),
+('ui','Date','{"en":"Date","fr":"Date"}'::jsonb),
+('ui','Top pages','{"en":"Top pages","fr":"Pages principales"}'::jsonb),
+('ui','Page','{"en":"Page","fr":"Page"}'::jsonb),
+('ui','Traffic sources','{"en":"Traffic sources","fr":"Sources du trafic"}'::jsonb),
+('ui','Source','{"en":"Source","fr":"Source"}'::jsonb),
+('ui','Campaign attribution','{"en":"Campaign attribution","fr":"Attribution des campagnes"}'::jsonb),
+('ui','Medium','{"en":"Medium","fr":"Canal"}'::jsonb),
+('ui','Campaign','{"en":"Campaign","fr":"Campagne"}'::jsonb)
+on conflict(namespace,source_key) do nothing;
