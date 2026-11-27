@@ -1,0 +1,21 @@
+create or replace function public.admin_analytics_snapshot(p_range text default '30d')
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare s timestamptz; e timestamptz := now(); result jsonb;
+begin
+ if not public.is_admin() then raise exception 'admin_required' using errcode='42501'; end if;
+ s := case p_range when 'today' then date_trunc('day',e at time zone 'America/Toronto') at time zone 'America/Toronto' when '7d' then e-interval '7 days' when '30d' then e-interval '30 days' when '90d' then e-interval '90 days' else null end;
+ if s is null then raise exception 'invalid_range'; end if;
+ select jsonb_build_object(
+ 'from',s,'to',e,
+ 'members',jsonb_build_object('total',(select count(*) from public.member_profile where not coalesce(is_sample,false)), 'new',(select count(*) from public.member_profile where not coalesce(is_sample,false) and created_date between s and e),'signed_in',(select count(distinct u.id) from public.member_profile m join auth.users u on u.id=m.auth_user_id where not coalesce(m.is_sample,false) and u.last_sign_in_at between s and e)),
+ 'content',jsonb_build_object('published_total',(select count(*) from public.dossier where status='published' and not coalesce(is_sample,false)), 'new_publications',(select count(*) from public.dossier where status='published' and not coalesce(is_sample,false) and aistage_publication_date between s and e),'undated',(select count(*) from public.dossier where status='published' and not coalesce(is_sample,false) and aistage_publication_date is null)),
+ 'studio',jsonb_build_object('story_projects',(select count(*) from public.story_session where not coalesce(is_sample,false) and created_date between s and e),'slide_projects',(select count(*) from public.slide_project where created_at between s and e),'shoot_projects',(select count(*) from public.shoot_project where created_at between s and e)),
+ 'credits',jsonb_build_object('transactions',(select count(*) from public.token_transaction where not coalesce(is_sample,false) and coalesce(created_at,created_date) between s and e),'usage', (select coalesce(sum(abs(token_amount)),0) from public.token_transaction where not coalesce(is_sample,false) and transaction_type='usage' and coalesce(created_at,created_date) between s and e),'refunds',(select coalesce(sum(abs(token_amount)),0) from public.token_transaction where not coalesce(is_sample,false) and transaction_type='refund' and coalesce(created_at,created_date) between s and e)),
+ 'sponsors',jsonb_build_object('sales',(select count(*) from public.sponsor_sale where not coalesce(is_sample,false) and sale_date between s and e),'amount',(select coalesce(sum(total_amount),0) from public.sponsor_sale where not coalesce(is_sample,false) and sale_date between s and e)),
+ 'commerce',jsonb_build_object('downloads',(select count(*) from public.asset_download where not coalesce(is_sample,false) and downloaded_at between s and e),'purchases_3d',(select count(*) from public.studio_3d_purchase where purchased_at between s and e),'paid_orders',(select count(*) from public."order" where not coalesce(is_sample,false) and payment_date between s and e)),
+ 'ai',jsonb_build_object('calls',(select count(*) from public.ai_model_call where created_at between s and e),'events',(select count(*) from public.ai_usage_event where created_at between s and e),'succeeded',(select count(*) from public.ai_usage_event where status='succeeded' and created_at between s and e),'failed',(select count(*) from public.ai_usage_event where status='failed' and created_at between s and e),'recorded_cost_cad',(select coalesce(sum(cost_cad),0) from public.ai_usage_event where created_at between s and e),'by_tool',(select coalesce(jsonb_agg(to_jsonb(t) order by t.events desc),'[]'::jsonb) from (select coalesce(tool_id,'unknown') as tool,count(*) as events,coalesce(sum(cost_cad),0) as cost_cad from public.ai_usage_event where created_at between s and e group by tool_id order by count(*) desc limit 30)t))
+ ) into result;
+ return result;
+end $$;
+revoke all on function public.admin_analytics_snapshot(text) from public,anon;
+grant execute on function public.admin_analytics_snapshot(text) to authenticated;

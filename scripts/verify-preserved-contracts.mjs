@@ -84,3 +84,15 @@ for (const source of [marketing, marketingLibrary]) {
     if (!tag[0].includes('color:"#fff",backgroundColor:"#171717"')) throw new Error('Marketing option requires readable contrast');
   }
 }
+
+const analytics = readFileSync(new URL('../src/components/admin/AdminAnalytics.jsx', import.meta.url), 'utf8');
+const analyticsSchema = readFileSync(new URL('../supabase/migrations/20261127175516_admin_analytics_snapshot.sql', import.meta.url), 'utf8');
+for (const [source, marker] of [
+  [analytics, "queryKey:['admin-analytics-snapshot',range]"],
+  [analytics, "supabase.rpc('admin_analytics_snapshot',{p_range:range})"],
+  [analytics, "Traffic data unavailable"],
+  [analyticsSchema, "if not public.is_admin()"],
+  [analyticsSchema, "revoke all on function public.admin_analytics_snapshot(text) from public,anon"],
+  [analyticsSchema, "aistage_publication_date between s and e"],
+]) if (!source.includes(marker)) throw new Error('Analytics contract missing: ' + marker);
+console.log('Live Analytics contract check passed.');
