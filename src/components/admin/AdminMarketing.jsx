@@ -69,11 +69,11 @@ export default function AdminMarketing() {
       <h3 className="text-base">{t(editing?'Edit':'New campaign')}</h3>
       <div className="grid gap-3 md:grid-cols-2">
         {input('name','Campaign name','text',{required:true,maxLength:200})}
-        <label className="block space-y-1 text-xs text-white/70">{t('Brand')}<select className={field} value={form.brand} onChange={e=>change('brand',e.target.value)}>{Object.entries(brands).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
+        <label className="block space-y-1 text-xs text-white/70">{t('Brand')}<select style={{colorScheme:"dark",color:"#fff",backgroundColor:"#171717"}} className={field} value={form.brand} onChange={e=>change('brand',e.target.value)}>{Object.entries(brands).map(([key,label])=><option style={{color:"#fff",backgroundColor:"#171717"}} key={key} value={key}>{label}</option>)}</select></label>
         {area('objective','Objective')}{area('audience','Target audience')}
         <div className="md:col-span-2">{area('strategy','Strategy')}</div>
         {input('budget_cad','Budget (CAD)','number',{required:true,min:0,max:9999999999.99,step:'0.01'})}
-        <label className="block space-y-1 text-xs text-white/70">{t('Status')}<select className={field} value={form.status} onChange={e=>change('status',e.target.value)}>{Object.entries(statuses).map(([key,label])=><option key={key} value={key}>{t(label)}</option>)}</select></label>
+        <label className="block space-y-1 text-xs text-white/70">{t('Status')}<select style={{colorScheme:"dark",color:"#fff",backgroundColor:"#171717"}} className={field} value={form.status} onChange={e=>change('status',e.target.value)}>{Object.entries(statuses).map(([key,label])=><option style={{color:"#fff",backgroundColor:"#171717"}} key={key} value={key}>{t(label)}</option>)}</select></label>
         {input('starts_on','Start date','date')}{input('ends_on','End date','date',{min:form.starts_on||undefined})}
       </div>
       {save.error && <p role="alert" className="text-red-300 text-sm">{save.error.message}</p>}
