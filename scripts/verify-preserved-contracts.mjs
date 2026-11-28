@@ -151,3 +151,7 @@ for(const [source,marker] of [[marketingDirector,"base44.functions.invoke('invok
 const directorSchedule=readFileSync(new URL('../supabase/migrations/20261127223302_marketing_director_autonomous_schedule.sql',import.meta.url),'utf8');
 if(marketingDirector.includes('setCount')||marketingDirector.includes('raw.posts.length>count')||directorSchedule.includes('between 1 and 7')||directorSchedule.includes("interval '32 days'"))throw new Error('Arbitrary director quota reintroduced');
 for(const marker of ['starts_on,ends_on','public.is_admin()'])if(!directorSchedule.includes(marker))throw new Error('Autonomous schedule contract missing: '+marker);
+
+const marketingProduction=readFileSync(new URL('../src/lib/marketingProduction.js',import.meta.url),'utf8');
+const marketingRenderer=readFileSync(new URL('../src/lib/marketingVideoRenderer.js',import.meta.url),'utf8');
+for(const [source,marker] of [[marketingDirector,'produceMarketingDraft(draft'],[publishingStudio,'produceMarketingDraft(row'],[marketingProduction,"base44.functions.invoke('generateSpeech'"],[marketingProduction,"action:'options'"],[marketingProduction,".eq('authorized',true)"],[marketingProduction,".eq('updated_at',draft.updated_at)"],[marketingRenderer,'new MediaRecorder'],[marketingRenderer,'song.loop=true'],[marketingRenderer,'voice?.pause()'],[marketingRenderer,'s.el.play()']])if(!source.includes(marker))throw new Error('Marketing production contract missing: '+marker);
