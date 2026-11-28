@@ -1,6 +1,7 @@
 import React,{useState} from 'react';
 import {useQuery,useMutation,useQueryClient} from '@tanstack/react-query';
 import {supabase} from '@/api/base44Client';
+import {produceMarketingDraft} from '@/lib/marketingProduction';
 const empty=()=>({brand:'aistage',campaign_id:'',network:'facebook',title:'',caption:'',hashtags:'',production_notes:'',destination_path:'/',media_ids:[]});
 const brands={aistage:'AISTAGE.ONE',leplateau:'LEPLATEAU.AI'};
 const networks={facebook:'Facebook',instagram:'Instagram',youtube:'YouTube'};
@@ -18,13 +19,14 @@ function MediaPreview({row,t}){
 }
 export default function AdminMarketingPublishingStudio({t,campaigns=[]}){
  const qc=useQueryClient();
- const [form,setForm]=useState(null),[brandFilter,setBrandFilter]=useState('all'),[search,setSearch]=useState(''),[copied,setCopied]=useState(false);
+ const [form,setForm]=useState(null),[brandFilter,setBrandFilter]=useState('all'),[search,setSearch]=useState(''),[copied,setCopied]=useState(false),[productionStage,setProductionStage]=useState('');
  const drafts=useQuery({queryKey:['marketing-publication-drafts'],queryFn:()=>read('marketing_publication_drafts')});
  const media=useQuery({queryKey:['marketing-publishing-media'],queryFn:()=>read('marketing_media')});
  const eligible=(media.data||[]).filter(a=>form&&a.authorized&&!a.archived&&[form.brand,'both'].includes(a.brand)&&[form.brand==='aistage'?'en':'fr','both'].includes(a.language)&&['image','video'].includes(a.media_type)&&(form.network!=='youtube'||a.media_type==='video'));
  const selected=form?.media_ids.map(id=>eligible.find(a=>a.id===id)).filter(Boolean)||[];
  const link=form?trackedLink(form):'';
  const save=useMutation({mutationFn:async()=>{const {id,created_at,updated_at,planned_at,approved_at,approved_by,...payload}=form;payload.title=payload.title.trim();payload.campaign_id=payload.campaign_id||null;const q=id?supabase.from('marketing_publication_drafts').update(payload).eq('id',id).eq('updated_at',updated_at):supabase.from('marketing_publication_drafts').insert(payload);const {data,error}=await q.select('*').single();if(error)throw error;return data;},onSuccess:async data=>{setForm(data);await qc.invalidateQueries({queryKey:['marketing-publication-drafts']});}});
+ const production=useMutation({mutationFn:async row=>{setProductionStage('');return produceMarketingDraft(row,(stage,percent)=>setProductionStage(t(stage)+(Number.isFinite(percent)?' '+percent+'%':'')));},onSuccess:async()=>{setProductionStage(t('Production completed'));setForm(null);},onSettled:async()=>{await Promise.all([qc.invalidateQueries({queryKey:['marketing-publication-drafts']}),qc.invalidateQueries({queryKey:['marketing-publishing-media']})]);}});
  const open=r=>{save.reset();setCopied(false);setSearch('');setForm(r?{...r,campaign_id:r.campaign_id||''}:{...empty(),brand:brandFilter==='all'?'aistage':brandFilter});};
  const change=(k,v)=>{setCopied(false);setForm(f=>({...f,[k]:v}));};
  const pick=id=>setForm(f=>({...f,media_ids:f.media_ids.includes(id)?f.media_ids.filter(x=>x!==id):f.network==='youtube'?[id]:f.media_ids.length<10?[...f.media_ids,id]:f.media_ids}));
@@ -32,7 +34,7 @@ export default function AdminMarketingPublishingStudio({t,campaigns=[]}){
  const select=(label,value,onChange,children)=><label className="block space-y-1 text-xs text-white/70">{t(label)}<select style={{colorScheme:'dark'}} className={field} value={value} onChange={e=>onChange(e.target.value)}>{children}</select></label>;
  const valid=!!(form?.title.trim()&&link&&selected.length===form.media_ids.length&&!media.isError);
  return <section className="min-w-0 space-y-4" data-marketing-publishing-studio>
- <header className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-medium">{t('Publishing Studio')}</h2><p className="text-xs text-white/60">{t('Draft preparation only — no social publication.')}</p></div><button className={primary} disabled={save.isPending} onClick={()=>open(null)}>{t('New publication')}</button></header>
+ <header className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-medium">{t('Publishing Studio')}</h2><p className="text-xs text-white/60">{t('Draft preparation only — no social publication.')} {t('Production uses platform credits. Keep this tab visible until rendering finishes.')}</p></div><button className={primary} disabled={save.isPending||production.isPending} onClick={()=>open(null)}>{t('New publication')}</button></header>
  <div className="flex flex-wrap gap-2">{['all','aistage','leplateau'].map(b=><button key={b} className={brandFilter===b?primary:btn} onClick={()=>setBrandFilter(b)}>{b==='all'?t('All brands'):brands[b]}</button>)}</div>
  {form&&<form className="border border-white/15 p-3 space-y-3" onSubmit={e=>{e.preventDefault();if(valid&&!save.isPending)save.mutate();}}>
  <div className="grid gap-3 md:grid-cols-2">
@@ -55,9 +57,10 @@ export default function AdminMarketingPublishingStudio({t,campaigns=[]}){
  {save.error&&<p role="alert" className="text-red-300 text-xs">{save.error.message}</p>}{save.isSuccess&&<p role="status" className="text-xs text-white/70">{t('Draft saved')}</p>}
  <div className="flex gap-2"><button className={primary} disabled={!valid||save.isPending}>{t('Save draft')}</button><button type="button" className={btn} disabled={save.isPending} onClick={()=>{setForm(null);save.reset();}}>{t('Close')}</button></div>
  </form>}
+ {productionStage&&<p role="status" className="text-xs text-white/70">{productionStage}</p>}{production.error&&<p role="alert" className="text-red-300 text-xs">{production.error.message}</p>}
  {drafts.isError&&<p role="alert" className="text-red-300">{drafts.error.message}</p>}
  {drafts.isPending&&<p>{t('Loading')}</p>}
- <div className="space-y-1">{(drafts.data||[]).filter(r=>brandFilter==='all'||r.brand===brandFilter).map(r=><article key={r.id} className="border border-white/10 p-3 flex flex-wrap justify-between items-center gap-2"><div className="min-w-0"><div className="font-medium text-sm break-words">{r.title}</div><div className="text-xs text-white/60">{brands[r.brand]} · {networks[r.network]} · {t('Draft')}</div></div><button className={btn} disabled={save.isPending} onClick={()=>open(r)}>{t('Edit')}</button></article>)}</div>
+ <div className="space-y-1">{(drafts.data||[]).filter(r=>brandFilter==='all'||r.brand===brandFilter).map(r=><article key={r.id} className="border border-white/10 p-3 flex flex-wrap justify-between items-center gap-2"><div className="min-w-0"><div className="font-medium text-sm break-words">{r.title}</div><div className="text-xs text-white/60">{brands[r.brand]} · {networks[r.network]} · {t('Draft')}</div></div><div className="flex gap-2"><button className={btn} disabled={save.isPending||production.isPending||!!form} onClick={()=>production.mutate(r)}>{t('Produce video')}</button><button className={btn} disabled={save.isPending||production.isPending} onClick={()=>open(r)}>{t('Edit')}</button></div></article>)}</div>
  {!drafts.isPending&&!drafts.isError&&!(drafts.data||[]).some(r=>brandFilter==='all'||r.brand===brandFilter)&&<p className="text-xs text-white/60">{t('No publication drafts')}</p>}
  </section>;
 }
